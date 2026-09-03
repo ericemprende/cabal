@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Coins, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
@@ -16,7 +18,7 @@ import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { useUI } from '@/lib/store'
-import { useMe } from '@/lib/api-client'
+import { qk, useMe } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
@@ -45,6 +47,40 @@ export default function Home() {
     window.history.replaceState(null, '', window.location.pathname)
     if (me?.isAdmin) setAdminOpen(true)
   }, [wantsAdmin, me?.isAdmin, setAdminOpen])
+
+  // Retorno del OAuth de X / Google: /?connected=x|google (&connect_error=)
+  const qc = useQueryClient()
+  const [oauthReturn] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const sp = new URLSearchParams(window.location.search)
+    const provider = sp.get('connected')
+    const error = sp.get('connect_error')
+    if (!provider && !error) return null
+    window.history.replaceState(null, '', window.location.pathname)
+    return { provider, error }
+  })
+
+  useEffect(() => {
+    if (!oauthReturn) return
+    qc.invalidateQueries({ queryKey: qk.me })
+    qc.invalidateQueries({ queryKey: qk.authStatus })
+    if (oauthReturn.error) {
+      const msgs: Record<string, string> = {
+        access_denied: 'Autorización cancelada en el proveedor',
+        state: 'La sesión de verificación expiró, intenta de nuevo',
+        token: 'El proveedor rechazó el intercambio del código',
+        profile: 'No se pudo leer tu perfil del proveedor',
+        no_config: 'Las API keys del proveedor no están configuradas',
+        server: 'Error inesperado durante la verificación',
+      }
+      toast.error(msgs[oauthReturn.error] ?? 'No se pudo completar la verificación')
+    } else if (oauthReturn.provider) {
+      toast.success(
+        oauthReturn.provider === 'x' ? 'Cuenta de X verificada' : 'Cuenta de Google verificada',
+        { description: '+5 puntos Cabal por verificar tu identidad' }
+      )
+    }
+  }, [oauthReturn, qc])
 
   return (
     <div className="flex min-h-screen flex-col">

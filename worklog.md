@@ -97,3 +97,23 @@ Stage Summary:
 - URL del administrador: preview + /?admin=1 (usuario "tu" es admin)
 - Logo de Cabal Coin listo como placeholder de marca; reemplazable por el logo real del usuario desde Admin → Proyectos → Cabal Coin → Logo (o enviarlo por chat)
 - OAuth X/Google simulado, preparado para intercambiar por X API v2 / Google Identity Services con credenciales reales
+
+---
+Task ID: social-oauth
+Agent: Z.ai (main)
+Task: Conectar las APIs reales de X (Twitter) y Google vía OAuth 2.0 en el perfil de Cabal
+
+Work Log:
+- Creado src/lib/oauth.ts: PKCE (S256), configs por env (X_CLIENT_ID/X_CLIENT_SECRET, GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET), appOrigin() con x-forwarded-host/proto, cookies de estado (10 min, httpOnly), endpoints oficiales de ambos proveedores.
+- Creado src/lib/social.ts: linkProvider/unlinkProvider compartidos + bonus único de +5 puntos por proveedor (verify_x / verify_google).
+- Nuevas rutas: /api/auth/x/start (redirect a x.com/i/oauth2/authorize con PKCE), /api/auth/x/callback (intercambio Basic auth → /2/users/me → vincula @usuario), /api/auth/google/start y /callback (OpenID Connect: token → userinfo → vincula email), /api/auth/status (reporta si hay credenciales + callback URLs exactas).
+- Refactor /api/me/verify: ahora solo modo demo (input de handle/email) + desconexión; usa social.ts.
+- Frontend: hook useAuthStatus en api-client.ts; nuevo componente oauth-consent-dialog.tsx (pantalla de consentimiento simulada estilo X negra y estilo Google blanca, con logos de marca SVG); ProfileDialog reescrito: chip OAUTH 2.0/DEMO por fila, CTA que redirige al flujo real o abre consent demo, guía plegable "Conectar las APIs reales" con pasos y callback URLs copiables.
+- page.tsx: maneja el retorno ?connected=x|google&connect_error=... con toasts y refresco de datos.
+- Verificado con Agent Browser: conectar X (consent demo → @lobo_degen verificado), conectar Google (consent demo → email verificado), +5/+5 puntos en historial, desconexión, guía expandida con callback URLs correctas vía gateway (https://preview-...space-z.ai/api/auth/x/callback).
+- Edge cases probados: /start sin credenciales → {mode:'demo'}; callback sin state → redirect connect_error. Lint limpio. Cuentas dejadas desconectadas para que el usuario pruebe.
+
+Stage Summary:
+- Verificación social con OAuth 2.0 real lista: al configurar X_CLIENT_ID/X_CLIENT_SECRET y GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET los botones pasan automáticamente al flujo oficial (Authorization Code + PKCE para X, OpenID Connect para Google).
+- Sin credenciales: flujo demo completo y funcional con pantalla de consentimiento simulada.
+- URLs de callback que hay que registrar: {origin}/api/auth/x/callback y {origin}/api/auth/google/callback (visibles y copiables desde el propio perfil).

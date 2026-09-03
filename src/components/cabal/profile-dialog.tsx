@@ -5,10 +5,13 @@ import {
   AtSign,
   BadgeCheck,
   CalendarDays,
+  ChevronDown,
+  Copy,
   Flame,
   Gift,
   GraduationCap,
   Heart,
+  KeyRound,
   Mail,
   MessageSquare,
   RefreshCw,
@@ -16,6 +19,7 @@ import {
   Wallet,
   Zap,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -24,8 +28,9 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { timeAgo } from '@/lib/cabal'
-import { useMe, useUpdateMe, useVerifyProvider } from '@/lib/api-client'
+import { useAuthStatus, useMe, useUpdateMe, useVerifyProvider, type AuthStatusDTO } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 
 const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   thesis: { label: 'Tesis publicada', icon: GraduationCap },
@@ -56,9 +61,20 @@ export function ProfileDialog() {
 function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data']> }) {
   const { setProfileOpen } = useUI()
   const updateMe = useUpdateMe()
+  const { data: authStatus } = useAuthStatus()
+  const [consent, setConsent] = useState<'x' | 'google' | null>(null)
   const [name, setName] = useState(me.name)
   const [bio, setBio] = useState(me.bio ?? '')
   const [wallet, setWallet] = useState(me.wallet ?? '')
+
+  /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo si no. */
+  const connect = (provider: 'x' | 'google') => {
+    if (authStatus?.[provider]?.configured) {
+      window.location.assign(`/api/auth/${provider}/start`)
+    } else {
+      setConsent(provider)
+    }
+  }
 
   const save = () => {
     updateMe.mutate({
@@ -145,7 +161,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           </div>
         </div>
 
-        {/* Conexiones: X y Google */}
+        {/* Conexiones: X y Google (OAuth 2.0 real con fallback demo) */}
         <div className="space-y-2 border-b border-white/10 p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conexiones y verificación</p>
           <ConnectionRow
@@ -154,9 +170,10 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             subtitle="Verifica tu identidad con tu cuenta de X · +5 puntos"
             verified={me?.xVerified ?? false}
             verifiedLabel={me?.xHandle ? `@${me.xHandle}` : 'Verificada'}
-            placeholder="@tu_usuario"
             provider="x"
-            cta="Verificar con X"
+            cta="Conectar con X"
+            configured={authStatus?.x.configured ?? false}
+            onConnect={() => connect('x')}
           />
           <ConnectionRow
             icon={<Mail className="h-4 w-4" />}
@@ -164,10 +181,12 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             subtitle="Confirma tu email con Google · +5 puntos"
             verified={me?.googleVerified ?? false}
             verifiedLabel={me?.googleEmail ?? 'Verificada'}
-            placeholder="tu@email.com"
             provider="google"
-            cta="Verificar con Google"
+            cta="Conectar con Google"
+            configured={authStatus?.google.configured ?? false}
+            onConnect={() => connect('google')}
           />
+          <ApiSetupHelp status={authStatus} />
         </div>
 
         {/* Edit profile */}
@@ -203,6 +222,9 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             {updateMe.isPending ? 'Guardando…' : 'Guardar perfil'}
           </Button>
         </div>
+
+      {/* Pantalla de consentimiento simulada (modo demo, sin API keys) */}
+      <OAuthConsentDialog provider={consent} appName="Cabal" onOpenChange={(o) => !o && setConsent(null)} />
     </>
   )
 }
@@ -219,29 +241,31 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   )
 }
 
-// Fila de conexión con proveedor externo (X / Google) con verificación inline
+// Fila de conexión con proveedor externo (X / Google)
+// - Con API keys: redirige al flujo OAuth 2.0 real del proveedor.
+// - Sin API keys: abre la pantalla de consentimiento simulada (demo).
 function ConnectionRow({
   icon,
   title,
   subtitle,
   verified,
   verifiedLabel,
-  placeholder,
   provider,
   cta,
+  configured,
+  onConnect,
 }: {
   icon: React.ReactNode
   title: string
   subtitle: string
   verified: boolean
   verifiedLabel: string
-  placeholder: string
   provider: 'x' | 'google'
   cta: string
+  configured: boolean
+  onConnect: () => void
 }) {
   const verify = useVerifyProvider()
-  const [open, setOpen] = useState(false)
-  const [value, setValue] = useState('')
 
   if (verified) {
     return (
@@ -274,43 +298,128 @@ function ConnectionRow({
           {icon}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold">{title}</p>
+          <p className="flex items-center gap-1.5 text-[13px] font-bold">
+            {title}
+            <span
+              className={cn(
+                'rounded px-1 py-px text-[9px] font-black tracking-wide',
+                configured ? 'bg-[#8FA83F]/15 text-primary' : 'bg-white/8 text-zinc-400'
+              )}
+            >
+              {configured ? 'OAUTH 2.0' : 'DEMO'}
+            </span>
+          </p>
           <p className="truncate text-[11px] text-muted-foreground">{subtitle}</p>
         </div>
         <Button
           size="sm"
-          onClick={() => setOpen((v) => !v)}
-          className={cn(
-            'h-8 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary'
-          )}
+          onClick={onConnect}
+          className="h-8 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
           variant="ghost"
         >
-          {open ? 'Cancelar' : cta}
+          {cta}
         </Button>
       </div>
+      {!configured && (
+        <p className="mt-2 pl-12 text-[10px] leading-relaxed text-muted-foreground/70">
+          Sin credenciales del proveedor: se abre una pantalla de autorización simulada.
+          Configura las API keys para usar el OAuth real.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** Guía plegable para configurar las credenciales OAuth reales. */
+function ApiSetupHelp({ status }: { status: AuthStatusDTO | undefined }) {
+  const [open, setOpen] = useState(false)
+
+  const copy = (url: string | undefined, label: string) => {
+    if (!url) return
+    navigator.clipboard?.writeText(url).then(
+      () => toast.success(`${label} copiada`),
+      () => toast.error('No se pudo copiar')
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0d0f0b]">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2 text-[12px] font-semibold text-zinc-300">
+          <KeyRound className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+          Conectar las APIs reales (OAuth 2.0)
+        </span>
+        <ChevronDown className={cn('h-4 w-4 shrink-0 text-zinc-500 transition-transform', open && 'rotate-180')} aria-hidden />
+      </button>
+
       {open && (
-        <div className="mt-2.5 flex items-center gap-2">
-          <Input
-            autoFocus
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={placeholder}
-            className="h-9 bg-[#121410] text-sm"
-            aria-label={title}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && value.trim()) verify.mutate({ provider, value: value.trim() })
-            }}
-          />
-          <Button
-            size="sm"
-            disabled={!value.trim() || verify.isPending}
-            onClick={() => verify.mutate({ provider, value: value.trim() })}
-            className="h-9 shrink-0 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
-          >
-            {verify.isPending ? 'Conectando…' : 'Conectar'}
-          </Button>
+        <div className="space-y-3 border-t border-white/10 px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
+          {/* X */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-bold text-zinc-200">X (Twitter)</p>
+            <ol className="list-decimal space-y-0.5 pl-4">
+              <li>
+                En <span className="font-mono text-zinc-300">developer.x.com</span> crea un Project + App y
+                activa <span className="text-zinc-300">User authentication settings</span> → OAuth 2.0 → Web App.
+              </li>
+              <li>Registra esta Callback URI:</li>
+            </ol>
+            <CallbackUrl url={status?.x.callbackUrl} onCopy={() => copy(status?.x.callbackUrl, 'Callback URI de X')} />
+            <p>
+              Guarda las variables de entorno{' '}
+              <span className="font-mono text-zinc-300">X_CLIENT_ID</span> y{' '}
+              <span className="font-mono text-zinc-300">X_CLIENT_SECRET</span>.
+            </p>
+          </div>
+
+          {/* Google */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-bold text-zinc-200">Google</p>
+            <ol className="list-decimal space-y-0.5 pl-4">
+              <li>
+                En <span className="font-mono text-zinc-300">console.cloud.google.com</span> configura la pantalla
+                de consentimiento (Externa) y crea credenciales → ID de cliente OAuth → Aplicación web.
+              </li>
+              <li>Registra esta URI de redirección autorizada:</li>
+            </ol>
+            <CallbackUrl
+              url={status?.google.callbackUrl}
+              onCopy={() => copy(status?.google.callbackUrl, 'URI de redirección de Google')}
+            />
+            <p>
+              Guarda <span className="font-mono text-zinc-300">GOOGLE_CLIENT_ID</span> y{' '}
+              <span className="font-mono text-zinc-300">GOOGLE_CLIENT_SECRET</span>.
+            </p>
+          </div>
+
+          <p className="rounded-lg bg-white/4 px-2.5 py-1.5 text-[10px]">
+            Tras guardar las variables, reinicia el servidor: los botones pasarán
+            automáticamente al flujo real con la pantalla oficial de X / Google.
+          </p>
         </div>
       )}
+    </div>
+  )
+}
+
+function CallbackUrl({ url, onCopy }: { url?: string; onCopy: () => void }) {
+  return (
+    <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#0a0b08] px-2 py-1.5">
+      <code className="min-w-0 flex-1 truncate font-mono text-[10px] text-zinc-300">{url ?? 'Cargando…'}</code>
+      <button
+        type="button"
+        onClick={onCopy}
+        disabled={!url}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/10 text-zinc-400 transition-colors hover:text-primary"
+        aria-label="Copiar URL"
+      >
+        <Copy className="h-3 w-3" aria-hidden />
+      </button>
     </div>
   )
 }

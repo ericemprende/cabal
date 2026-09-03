@@ -26,8 +26,14 @@ export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> 
   return res.json() as Promise<T>
 }
 
+export type AuthStatusDTO = {
+  x: { configured: boolean; callbackUrl: string }
+  google: { configured: boolean; callbackUrl: string }
+}
+
 export const qk = {
   me: ['me'] as const,
+  authStatus: ['authStatus'] as const,
   launches: ['launches'] as const,
   launch: (id: string) => ['launch', id] as const,
   tokens: (sort?: string, network?: string) => ['tokens', sort, network] as const,
@@ -44,6 +50,15 @@ export const qk = {
 
 export function useMe() {
   return useQuery<MeDTO>({ queryKey: qk.me, queryFn: () => jsonFetch('/api/me') })
+}
+
+/** Estado de configuración OAuth (API keys reales) de X y Google. */
+export function useAuthStatus() {
+  return useQuery<AuthStatusDTO>({
+    queryKey: qk.authStatus,
+    queryFn: () => jsonFetch('/api/auth/status'),
+    staleTime: 60_000,
+  })
 }
 
 export function useLaunches() {
