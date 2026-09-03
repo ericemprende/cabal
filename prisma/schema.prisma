@@ -21,6 +21,9 @@ model User {
   callsTotal    Int      @default(0)
   followers     Int      @default(0)
   isCurrentUser Boolean  @default(false)
+  isAdmin       Boolean  @default(false)
+  points        Int      @default(0)
+  lifetimePoints Int     @default(0)
   createdAt     DateTime @default(now())
   posts         Post[]
   launches      Launch[]
@@ -28,6 +31,7 @@ model User {
   votes         Vote[]
   followersRel  Follow[] @relation("followTarget")
   followingRel  Follow[] @relation("followUser")
+  pointEvents   PointEvent[]
 }
 
 model Launch {
@@ -96,6 +100,21 @@ model Vote {
   targetId String
 
   @@unique([userId, target, targetId])
+}
+
+model PointEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int
+  reason    String   // thesis | comment | launch | like_received | hype_received | admin_adjust | redeem
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
 }
 
 model Follow {

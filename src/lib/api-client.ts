@@ -1,0 +1,218 @@
+'use client'
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import type {
+  AdminOverviewDTO,
+  AdminUserRowDTO,
+  LaunchDetailDTO,
+  LaunchDTO,
+  LeaderboardDTO,
+  MeDTO,
+  PostDTO,
+  TokenDTO,
+  TokenDetailDTO,
+} from '@/lib/types'
+
+export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error((body as { error?: string }).error ?? `Error ${res.status}`)
+  }
+  return res.json() as Promise<T>
+}
+
+export const qk = {
+  me: ['me'] as const,
+  launches: ['launches'] as const,
+  launch: (id: string) => ['launch', id] as const,
+  tokens: (sort?: string, network?: string) => ['tokens', sort, network] as const,
+  token: (id: string) => ['token', id] as const,
+  feed: ['feed'] as const,
+  leaderboard: ['leaderboard'] as const,
+  points: ['points'] as const,
+  adminOverview: ['admin', 'overview'] as const,
+  adminUsers: ['admin', 'users'] as const,
+  adminRules: ['admin', 'rules'] as const,
+}
+
+export function useMe() {
+  return useQuery<MeDTO>({ queryKey: qk.me, queryFn: () => jsonFetch('/api/me') })
+}
+
+export function useLaunches() {
+  return useQuery<LaunchDTO[]>({ queryKey: qk.launches, queryFn: () => jsonFetch('/api/launches') })
+}
+
+export function useLaunch(id: string | null) {
+  return useQuery<LaunchDetailDTO>({
+    queryKey: qk.launch(id ?? ''),
+    queryFn: () => jsonFetch(`/api/launches/${id}`),
+    enabled: !!id,
+  })
+}
+
+export function useTokens(sort: string, network: string) {
+  return useQuery<TokenDTO[]>({
+    queryKey: qk.tokens(sort, network),
+    queryFn: () => jsonFetch(`/api/tokens?sort=${sort}&network=${network}`),
+  })
+}
+
+export function useToken(id: string | null) {
+  return useQuery<TokenDetailDTO>({
+    queryKey: qk.token(id ?? ''),
+    queryFn: () => jsonFetch(`/api/tokens/${id}`),
+    enabled: !!id,
+  })
+}
+
+export function useFeed() {
+  return useQuery<PostDTO[]>({ queryKey: qk.feed, queryFn: () => jsonFetch('/api/feed') })
+}
+
+export function useLeaderboard() {
+  return useQuery<LeaderboardDTO>({
+    queryKey: qk.leaderboard,
+    queryFn: () => jsonFetch('/api/leaderboard'),
+  })
+}
+
+export function useAdminOverview(enabled: boolean) {
+  return useQuery<AdminOverviewDTO>({
+    queryKey: qk.adminOverview,
+    queryFn: () => jsonFetch('/api/admin/overview'),
+    enabled,
+  })
+}
+
+export function useAdminUsers(enabled: boolean) {
+  return useQuery<AdminUserRowDTO[]>({
+    queryKey: qk.adminUsers,
+    queryFn: () => jsonFetch('/api/admin/users'),
+    enabled,
+  })
+}
+
+// ---------- mutations ----------
+function useInvalidateOnSuccess() {
+  const qc = useQueryClient()
+  return () => qc.invalidateQueries()
+}
+
+export function useHypeToggle() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (launchId: string) =>
+      jsonFetch<{ ok: boolean; hyped: boolean; hype: number }>(`/api/launches/${launchId}/hype`, {
+        method: 'POST',
+      }),
+    onSuccess: () => invalidate(),
+  })
+}
+
+export function useLikeToggle() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (postId: string) =>
+      jsonFetch<{ ok: boolean; liked: boolean; likes: number }>(`/api/posts/${postId}/like`, {
+        method: 'POST',
+      }),
+    onSuccess: () => invalidate(),
+  })
+}
+
+export function useFollowToggle() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (userId: string) =>
+      jsonFetch<{ ok: boolean; following: boolean }>(`/api/follow/${userId}`, { method: 'POST' }),
+    onSuccess: () => invalidate(),
+  })
+}
+
+export function useCreatePost() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { kind: string; content: string; launchId?: string; tokenId?: string }) =>
+      jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/posts', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res, vars) => {
+      invalidate()
+      if (res.pointsEarned > 0) {
+        toast.success(`+${res.pointsEarned} puntos Cabal`, {
+          description: vars.kind === 'thesis' ? 'Publicaste una tesis' : 'Publicaste un comentario',
+        })
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useCreateLaunch() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, string>) =>
+      jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/launches', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res) => {
+      invalidate()
+      if (res.pointsEarned > 0)
+        toast.success(`+${res.pointsEarned} puntos Cabal`, {
+          description: 'Launch publicado en el Radar',
+        })
+      else toast.success('Launch publicado en el Radar')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useUpdateMe() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, string>) =>
+      jsonFetch<{ ok: boolean }>('/api/me', { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Perfil actualizado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminAdjustPoints(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { userId: string; amount: number; note?: string }) =>
+      jsonFetch<{ ok: boolean; points: number }>('/api/admin/points', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminRules(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (rules: Record<string, number>) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/rules', {
+        method: 'PUT',
+        body: JSON.stringify(rules),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Reglas de puntos actualizadas')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}

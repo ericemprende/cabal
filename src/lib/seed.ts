@@ -19,6 +19,18 @@ async function seed(): Promise<void> {
 
   const now = Date.now()
 
+  // ---------- POINT RULES (editable desde el dashboard admin) ----------
+  await db.setting.createMany({
+    data: [
+      { key: 'points_thesis', value: '25' },
+      { key: 'points_comment', value: '5' },
+      { key: 'points_launch', value: '40' },
+      { key: 'points_like_received', value: '2' },
+      { key: 'points_hype_received', value: '1' },
+      { key: 'points_daily_visit', value: '3' },
+    ],
+  })
+
   // ---------- USERS ----------
   const u = async (data: {
     handle: string
@@ -41,7 +53,10 @@ async function seed(): Promise<void> {
     avatar: '🐺',
     bio: 'Nuevo en el Cabal. Cazando el próximo 100x antes que nadie.',
     isCurrentUser: true,
+    isAdmin: true,
     cabalScore: 10,
+    points: 132,
+    lifetimePoints: 132,
   })
   const basedDev = await u({
     handle: 'based_dev',
@@ -55,6 +70,8 @@ async function seed(): Promise<void> {
     callsWon: 7,
     callsTotal: 9,
     followers: 4820,
+    points: 1840,
+    lifetimePoints: 2100,
   })
   const cryptonita = await u({
     handle: 'cryptonita',
@@ -67,6 +84,8 @@ async function seed(): Promise<void> {
     callsWon: 23,
     callsTotal: 31,
     followers: 12400,
+    points: 3240,
+    lifetimePoints: 3600,
   })
   const degenmike = await u({
     handle: 'degenmike',
@@ -77,6 +96,8 @@ async function seed(): Promise<void> {
     callsWon: 14,
     callsTotal: 22,
     followers: 8100,
+    points: 1620,
+    lifetimePoints: 1810,
   })
   const salem = await u({
     handle: 'salem',
@@ -87,6 +108,8 @@ async function seed(): Promise<void> {
     callsWon: 9,
     callsTotal: 15,
     followers: 3900,
+    points: 980,
+    lifetimePoints: 1120,
   })
   const ponziPete = await u({
     handle: 'ponzi_pete',
@@ -99,6 +122,8 @@ async function seed(): Promise<void> {
     callsWon: 1,
     callsTotal: 8,
     followers: 210,
+    points: 40,
+    lifetimePoints: 180,
   })
   const nate = await u({
     handle: 'nate',
@@ -109,6 +134,8 @@ async function seed(): Promise<void> {
     callsWon: 11,
     callsTotal: 18,
     followers: 5200,
+    points: 1210,
+    lifetimePoints: 1350,
   })
   const wood = await u({
     handle: 'wood',
@@ -119,6 +146,8 @@ async function seed(): Promise<void> {
     callsWon: 7,
     callsTotal: 12,
     followers: 2400,
+    points: 760,
+    lifetimePoints: 890,
   })
   const swizzle = await u({
     handle: 'swizzle',
@@ -129,6 +158,8 @@ async function seed(): Promise<void> {
     callsWon: 6,
     callsTotal: 11,
     followers: 1800,
+    points: 690,
+    lifetimePoints: 780,
   })
   const elprofe = await u({
     handle: 'elprofe',
@@ -139,6 +170,8 @@ async function seed(): Promise<void> {
     callsWon: 18,
     callsTotal: 25,
     followers: 9600,
+    points: 2870,
+    lifetimePoints: 3150,
   })
   const lamboLu = await u({
     handle: 'lambo_lu',
@@ -149,6 +182,8 @@ async function seed(): Promise<void> {
     callsWon: 5,
     callsTotal: 10,
     followers: 1500,
+    points: 540,
+    lifetimePoints: 640,
   })
   const anon47 = await u({
     handle: 'anon47',
@@ -159,6 +194,8 @@ async function seed(): Promise<void> {
     callsWon: 4,
     callsTotal: 9,
     followers: 900,
+    points: 430,
+    lifetimePoints: 520,
   })
   const kael = await u({
     handle: 'kael',
@@ -172,6 +209,8 @@ async function seed(): Promise<void> {
     callsWon: 1,
     callsTotal: 2,
     followers: 340,
+    points: 190,
+    lifetimePoints: 190,
   })
 
   // ---------- LAUNCHES (pre-launch radar) ----------
@@ -824,6 +863,47 @@ async function seed(): Promise<void> {
     data: [
       { userId: tu.id, target: 'launch', targetId: smole.id },
       { userId: tu.id, target: 'launch', targetId: cabalCoin.id },
+    ],
+  })
+
+  // ---------- POINT EVENTS (historial del usuario actual) ----------
+  await db.pointEvent.createMany({
+    data: [
+      {
+        userId: tu.id,
+        amount: 40,
+        reason: 'launch',
+        note: 'Publicaste el launch: SMOLE Coin (SMOL)',
+        createdAt: new Date(now - 6 * HOUR),
+      },
+      {
+        userId: tu.id,
+        amount: 25,
+        reason: 'thesis',
+        note: 'Tesis publicada en CABAL Coin',
+        createdAt: new Date(now - 5 * HOUR),
+      },
+      {
+        userId: tu.id,
+        amount: 5,
+        reason: 'comment',
+        note: 'Comentario en el feed',
+        createdAt: new Date(now - 4 * HOUR),
+      },
+      {
+        userId: tu.id,
+        amount: 12,
+        reason: 'like_received',
+        note: '6 likes recibidos en tus posts',
+        createdAt: new Date(now - 3 * HOUR),
+      },
+      {
+        userId: tu.id,
+        amount: 50,
+        reason: 'admin_adjust',
+        note: 'Bono de bienvenida del Cabal 🐺',
+        createdAt: new Date(now - 2 * HOUR),
+      },
     ],
   })
 }

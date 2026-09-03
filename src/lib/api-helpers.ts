@@ -1,6 +1,78 @@
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/seed'
 
+// ---------- POINTS ENGINE ----------
+export const POINT_RULE_KEYS = [
+  'points_thesis',
+  'points_comment',
+  'points_launch',
+  'points_like_received',
+  'points_hype_received',
+  'points_daily_visit',
+] as const
+
+export type PointReason =
+  | 'thesis'
+  | 'comment'
+  | 'launch'
+  | 'like_received'
+  | 'hype_received'
+  | 'daily_visit'
+  | 'admin_adjust'
+  | 'redeem'
+
+const REASON_TO_KEY: Record<string, string> = {
+  thesis: 'points_thesis',
+  comment: 'points_comment',
+  launch: 'points_launch',
+  like_received: 'points_like_received',
+  hype_received: 'points_hype_received',
+  daily_visit: 'points_daily_visit',
+}
+
+export async function getPointRules(): Promise<Record<string, number>> {
+  const settings = await db.setting.findMany({ where: { key: { startsWith: 'points_' } } })
+  const rules: Record<string, number> = {}
+  for (const s of settings) rules[s.key] = parseInt(s.value, 10) || 0
+  return rules
+}
+
+/** Awards points to a user according to the configured rule. Returns points awarded (0 if rule = 0). */
+export async function awardPoints(
+  userId: string,
+  reason: PointReason,
+  note?: string,
+  customAmount?: number
+): Promise<number> {
+  const amount =
+    customAmount ??
+    (REASON_TO_KEY[reason] ? (await getPointRules())[REASON_TO_KEY[reason]] ?? 0 : 0)
+  if (amount === 0) return 0
+  await db.$transaction([
+    db.pointEvent.create({ data: { userId, amount, reason, note } }),
+    db.user.update({
+      where: { id: userId },
+      data: {
+        points: { increment: amount },
+        lifetimePoints: { increment: Math.max(amount, 0) },
+      },
+    }),
+  ])
+  return amount
+}
+
+export async function requireAdmin() {
+  const me = await getCurrentUser()
+  if (!me.isAdmin) throw new ForbiddenError()
+  return me
+}
+
+export class ForbiddenError extends Error {
+  constructor() {
+    super('Admin access required')
+  }
+}
+
 export async function getCurrentUser() {
   await ensureSeeded()
   const user = await db.user.findFirst({ where: { isCurrentUser: true } })
