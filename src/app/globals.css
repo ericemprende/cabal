@@ -203,6 +203,22 @@
   animation: cabal-pulse 1.6s ease-in-out infinite;
 }
 
+/* Live pulse rojo (EN VIVO / inminente) */
+@keyframes cabal-pulse-red {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(255, 77, 94, 0.45);
+  }
+  50% {
+    opacity: 0.75;
+    box-shadow: 0 0 0 6px rgba(255, 77, 94, 0);
+  }
+}
+.live-dot-red {
+  animation: cabal-pulse-red 1.2s ease-in-out infinite;
+}
+
 /* Ticker marquee */
 @keyframes ticker-scroll {
   0% {

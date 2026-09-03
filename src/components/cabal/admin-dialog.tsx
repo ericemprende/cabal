@@ -2,19 +2,51 @@
 
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BarChart3, Heart, Minus, Plus, Save, Settings2, ShieldCheck, Users, Zap } from 'lucide-react'
+import {
+  BarChart3,
+  CheckCircle2,
+  Coins,
+  Heart,
+  Minus,
+  Pencil,
+  Plus,
+  Rocket,
+  Save,
+  Settings2,
+  ShieldCheck,
+  Users,
+  XCircle,
+  Zap,
+} from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { PointsPill, UserAvatar } from '@/components/cabal/shared'
+import { NETWORKS } from '@/lib/cabal'
+import { PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { ImageDrop } from '@/components/cabal/post-launch-dialog'
 import { timeAgo } from '@/lib/cabal'
-import { jsonFetch, qk, useAdminAdjustPoints, useAdminOverview, useAdminRules, useAdminUsers } from '@/lib/api-client'
+import {
+  jsonFetch,
+  qk,
+  uploadImage,
+  useAdminAdjustPoints,
+  useAdminLaunches,
+  useAdminOverview,
+  useAdminRules,
+  useAdminTokens,
+  useAdminUpdateLaunch,
+  useAdminUpdateToken,
+  useAdminUpdateUser,
+  useAdminUsers,
+} from '@/lib/api-client'
 import { useUI } from '@/lib/store'
-import type { AdminUserRowDTO } from '@/lib/types'
+import type { AdminUserRowDTO, LaunchDTO, TokenDTO } from '@/lib/types'
 
 const RULE_LABELS: Record<string, string> = {
   points_thesis: 'Tesis publicada',
@@ -33,13 +65,56 @@ const REASON_COLORS: Record<string, string> = {
   hype_received: '#ffe08a',
   admin_adjust: '#7d9340',
   redeem: '#ff4d5e',
+  verify_x: '#9945FF',
+  verify_google: '#8A92B2',
 }
 
-type AdminView = 'puntos' | 'reglas' | 'stats'
+type AdminView = 'usuarios' | 'reglas' | 'proyectos' | 'tokens' | 'stats'
+
+function toInputDateTime(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Toggle pequeño tipo chip para campos booleanos
+function ChipToggle({
+  label,
+  checked,
+  onChange,
+  okIcon = true,
+}: {
+  label: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  okIcon?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      aria-pressed={checked}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
+        checked
+          ? 'border-[#8FA83F]/45 bg-[#8FA83F]/12 text-primary'
+          : 'border-white/10 bg-[#121410] text-muted-foreground hover:border-white/25'
+      )}
+    >
+      {okIcon &&
+        (checked ? (
+          <CheckCircle2 className="h-3 w-3" aria-hidden />
+        ) : (
+          <XCircle className="h-3 w-3" aria-hidden />
+        ))}
+      {label}
+    </button>
+  )
+}
 
 export function AdminDialog() {
   const { adminOpen, setAdminOpen } = useUI()
-  const [view, setView] = useState<AdminView>('puntos')
+  const [view, setView] = useState<AdminView>('usuarios')
   const enabled = adminOpen
   const overview = useAdminOverview(enabled)
   const users = useAdminUsers(enabled)
@@ -68,10 +143,12 @@ export function AdminDialog() {
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-bold">
             <ShieldCheck className="h-5 w-5 text-primary" /> Dashboard Admin
           </DialogTitle>
-          <div className="mt-3 flex gap-1.5">
+          <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto">
             {(
               [
-                { key: 'puntos', label: 'Puntos de usuarios', icon: Zap },
+                { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
+                { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
+                { key: 'tokens', label: 'Tokens', icon: Coins },
                 { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
                 { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
               ] as { key: AdminView; label: string; icon: typeof Zap }[]
@@ -80,7 +157,7 @@ export function AdminDialog() {
                 key={v.key}
                 onClick={() => setView(v.key)}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+                  'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
                   view === v.key
                     ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
                     : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
@@ -94,17 +171,26 @@ export function AdminDialog() {
         </div>
 
         <div className="p-4">
-          {view === 'puntos' && (
+          {view === 'usuarios' && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
-                Ajusta el balance de cualquier miembro. Cada cambio queda registrado en su historial.
+                Ajusta puntos, edita perfiles (X, Telegram, Google) y gestiona insignias y roles. Cada cambio queda registrado.
               </p>
               {users.isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
               {(users.data ?? []).map((u) => (
-                <AdminUserRow key={u.id} user={u} onAdjust={(amount, note) => adjust.mutate({ userId: u.id, amount, note })} />
+                <AdminUserRow
+                  key={u.id}
+                  user={u}
+                  enabled={enabled}
+                  onAdjust={(amount, note) => adjust.mutate({ userId: u.id, amount, note })}
+                />
               ))}
             </div>
           )}
+
+          {view === 'proyectos' && <AdminLaunches enabled={enabled} />}
+
+          {view === 'tokens' && <AdminTokens enabled={enabled} />}
 
           {view === 'reglas' && (
             <div className="space-y-3">
@@ -220,16 +306,34 @@ export function AdminDialog() {
   )
 }
 
+// ---------------- Usuarios: puntos + edición de perfil ----------------
 function AdminUserRow({
   user,
+  enabled,
   onAdjust,
 }: {
   user: AdminUserRowDTO
+  enabled: boolean
   onAdjust: (amount: number, note?: string) => void
 }) {
+  const updateUser = useAdminUpdateUser(enabled)
   const [amount, setAmount] = useState('50')
   const [note, setNote] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    name: user.name,
+    handle: user.handle,
+    xHandle: user.xHandle ?? '',
+    tgHandle: user.tgHandle ?? '',
+    googleEmail: user.googleEmail ?? '',
+    walletVerified: user.walletVerified,
+    xVerified: user.xVerified,
+    googleVerified: user.googleVerified,
+    isDev: user.isDev,
+    isAdmin: user.isAdmin ?? false,
+  })
   const amt = parseInt(amount, 10) || 0
+  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
 
   const doAdjust = (sign: 1 | -1) => {
     if (amt <= 0) {
@@ -241,42 +345,465 @@ function AdminUserRow({
     toast.success(`${sign > 0 ? '+' : '-'}${amt} puntos para @${user.handle}`)
   }
 
+  const save = () => {
+    updateUser.mutate(
+      {
+        id: user.id,
+        name: form.name,
+        handle: form.handle,
+        xHandle: form.xHandle,
+        tgHandle: form.tgHandle,
+        googleEmail: form.googleEmail,
+        walletVerified: form.walletVerified,
+        xVerified: form.xVerified,
+        googleVerified: form.googleVerified,
+        isDev: form.isDev,
+        isAdmin: form.isAdmin,
+      },
+      { onSuccess: () => setEditing(false) }
+    )
+  }
+
   return (
-    <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-white/10 bg-[#0a0b08] p-3">
-      <UserAvatar name={user.name} handle={user.handle} size="md" verified={user.walletVerified} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold">
-          {user.name}
-          {user.isAdmin && <span className="ml-1.5 rounded bg-[#8FA83F]/12 px-1 py-px text-[9px] font-black text-primary">ADMIN</span>}
-        </p>
-        <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-          @{user.handle} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
-          <Heart className="h-3 w-3" aria-hidden />
-        </p>
-      </div>
-      <PointsPill points={user.points} />
-      <div className="flex items-center gap-1.5">
-        <Input
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Motivo (opcional)"
-          className="h-8 w-36 border-white/10 bg-[#121410] text-xs"
-          aria-label="Motivo del ajuste"
-        />
-        <Input
-          type="number"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="h-8 w-16 border-white/10 bg-[#121410] text-center font-mono text-xs font-bold"
-          aria-label="Monto"
-        />
-        <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-[#8FA83F]" aria-label="Añadir puntos">
-          <Plus className="h-4 w-4" strokeWidth={3} />
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <UserAvatar name={user.name} handle={user.handle} size="md" verified={user.walletVerified} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">
+            {user.name}
+            {user.isAdmin && <span className="ml-1.5 rounded bg-[#8FA83F]/12 px-1 py-px text-[9px] font-black text-primary">ADMIN</span>}
+            {user.xVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">X</span>}
+            {user.googleVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">G</span>}
+          </p>
+          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+            @{user.handle} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
+            <Heart className="h-3 w-3" aria-hidden />
+          </p>
+        </div>
+        <PointsPill points={user.points} />
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setEditing((v) => !v)}
+          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
         </Button>
-        <Button size="icon" variant="secondary" onClick={() => doAdjust(-1)} className="h-8 w-8 rounded-lg text-[#ff8080] hover:bg-destructive/15" aria-label="Quitar puntos">
-          <Minus className="h-4 w-4" strokeWidth={3} />
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Motivo (opcional)"
+            className="h-8 w-32 border-white/10 bg-[#121410] text-xs"
+            aria-label="Motivo del ajuste"
+          />
+          <Input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="h-8 w-16 border-white/10 bg-[#121410] text-center font-mono text-xs font-bold"
+            aria-label="Monto"
+          />
+          <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-[#8FA83F]" aria-label="Añadir puntos">
+            <Plus className="h-4 w-4" strokeWidth={3} />
+          </Button>
+          <Button size="icon" variant="secondary" onClick={() => doAdjust(-1)} className="h-8 w-8 rounded-lg text-[#ff8080] hover:bg-destructive/15" aria-label="Quitar puntos">
+            <Minus className="h-4 w-4" strokeWidth={3} />
+          </Button>
+        </div>
+      </div>
+
+      {editing && (
+        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+              <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Handle</Label>
+              <Input value={form.handle} onChange={(e) => set('handle', e.target.value)} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">X (Twitter)</Label>
+              <Input value={form.xHandle} onChange={(e) => set('xHandle', e.target.value)} placeholder="@usuario" className="h-8 bg-[#0a0b08] text-[13px]" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Telegram</Label>
+              <Input value={form.tgHandle} onChange={(e) => set('tgHandle', e.target.value)} placeholder="@usuario" className="h-8 bg-[#0a0b08] text-[13px]" />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Google (email)</Label>
+              <Input value={form.googleEmail} onChange={(e) => set('googleEmail', e.target.value)} placeholder="usuario@gmail.com" className="h-8 bg-[#0a0b08] text-[13px]" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <ChipToggle label="Wallet verificada" checked={form.walletVerified} onChange={(v) => set('walletVerified', v)} />
+            <ChipToggle label="X verificada" checked={form.xVerified} onChange={(v) => set('xVerified', v)} />
+            <ChipToggle label="Google verificada" checked={form.googleVerified} onChange={(v) => set('googleVerified', v)} />
+            <ChipToggle label="Dev" checked={form.isDev} onChange={(v) => set('isDev', v)} okIcon={false} />
+            <ChipToggle label="Admin" checked={form.isAdmin} onChange={(v) => set('isAdmin', v)} okIcon={false} />
+          </div>
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={save}
+              disabled={updateUser.isPending}
+              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            >
+              <Save className="h-3.5 w-3.5" /> {updateUser.isPending ? 'Guardando…' : 'Guardar perfil'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------- Proyectos (launches) ----------------
+function AdminLaunches({ enabled }: { enabled: boolean }) {
+  const launches = useAdminLaunches(enabled)
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Corrige cualquier dato de un lanzamiento: nombre, ticker, fecha, red, imágenes, privacidad y checks de seguridad.
+      </p>
+      {launches.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+      {(launches.data ?? []).map((l) => (
+        <AdminLaunchRow key={l.id} launch={l} enabled={enabled} />
+      ))}
+    </div>
+  )
+}
+
+function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boolean }) {
+  const updateLaunch = useAdminUpdateLaunch(enabled)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    name: launch.name,
+    ticker: launch.ticker ?? '',
+    isPrivate: launch.isPrivate,
+    network: launch.network,
+    launchAt: toInputDateTime(launch.launchAt),
+    description: launch.description,
+    image: launch.image ?? '',
+    banner: launch.banner ?? '',
+    lpLocked: launch.lpLocked,
+    mintRevoked: launch.mintRevoked,
+    top10Pct: String(launch.top10Pct),
+  })
+  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+
+  const pick = (key: 'image' | 'banner') => async (file: File) => {
+    try {
+      const url = await uploadImage(file)
+      set(key, url)
+    } catch (e) {
+      toast.error((e as Error).message)
+    }
+  }
+
+  const save = () => {
+    updateLaunch.mutate(
+      {
+        id: launch.id,
+        name: form.name,
+        ticker: form.ticker,
+        isPrivate: form.isPrivate,
+        network: form.network,
+        launchAt: new Date(form.launchAt).toISOString(),
+        description: form.description,
+        image: form.image,
+        banner: form.banner,
+        lpLocked: form.lpLocked,
+        mintRevoked: form.mintRevoked,
+        top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
+      },
+      { onSuccess: () => setEditing(false) }
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">
+            {launch.name}{' '}
+            <span className="font-mono text-xs text-primary">{launch.ticker ? `$${launch.ticker}` : ''}</span>
+            {launch.isPrivate && (
+              <span className="ml-1.5 rounded bg-amber-300/12 px-1 py-px text-[9px] font-black uppercase text-amber-300">Privado</span>
+            )}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {NETWORKS[launch.network as keyof typeof NETWORKS]?.label ?? launch.network} ·{' '}
+            {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · hype {launch.hype}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setEditing((v) => !v)}
+          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
         </Button>
       </div>
+
+      {editing && (
+        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+              <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Ticker (opcional)</Label>
+              <Input value={form.ticker} onChange={(e) => set('ticker', e.target.value.toUpperCase())} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fecha y hora</Label>
+              <Input type="datetime-local" value={form.launchAt} onChange={(e) => set('launchAt', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px] [color-scheme:dark]" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(NETWORKS).map(([key, meta]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => set('network', key)}
+                    className={cn(
+                      'flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold',
+                      form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
+                    )}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} aria-hidden />
+                    {meta.short}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+            <ImageDrop
+              url={form.image}
+              onSelect={pick('image')}
+              onRemove={() => set('image', '')}
+              aspect="square"
+              label="Logo / imagen"
+              hint="Subir logo"
+            />
+            <ImageDrop
+              url={form.banner}
+              onSelect={pick('banner')}
+              onRemove={() => set('banner', '')}
+              aspect="video"
+              label="Banner"
+              hint="Sube un banner (16:9)"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Descripción</Label>
+            <Textarea value={form.description} onChange={(e) => set('description', e.target.value)} className="min-h-[56px] resize-none bg-[#0a0b08] text-[13px]" />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <ChipToggle label="Ticker privado" checked={form.isPrivate} onChange={(v) => set('isPrivate', v)} okIcon={false} />
+            <ChipToggle label="LP bloqueada" checked={form.lpLocked} onChange={(v) => set('lpLocked', v)} />
+            <ChipToggle label="Mint revocado" checked={form.mintRevoked} onChange={(v) => set('mintRevoked', v)} />
+            <span className="ml-auto flex items-center gap-1.5">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Top10 %</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={form.top10Pct}
+                onChange={(e) => set('top10Pct', e.target.value)}
+                className="h-8 w-16 border-white/10 bg-[#0a0b08] text-center font-mono text-[13px]"
+              />
+            </span>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              size="sm"
+              onClick={save}
+              disabled={updateLaunch.isPending}
+              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            >
+              <Save className="h-3.5 w-3.5" /> {updateLaunch.isPending ? 'Guardando…' : 'Guardar launch'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------- Tokens (logo, métricas) ----------------
+function AdminTokens({ enabled }: { enabled: boolean }) {
+  const tokens = useAdminTokens(enabled)
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Edita tokens en vivo: logo, nombre, ticker, red y métricas. Ej: actualiza el logo del Cabal Coin aquí.
+      </p>
+      {tokens.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+      {(tokens.data ?? []).map((t) => (
+        <AdminTokenRow key={t.id} token={t} enabled={enabled} />
+      ))}
+    </div>
+  )
+}
+
+function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }) {
+  const updateToken = useAdminUpdateToken(enabled)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState({
+    name: token.name,
+    ticker: token.ticker,
+    network: token.network,
+    image: token.image ?? '',
+    price: String(token.price),
+    mc: String(token.mc),
+    change24h: String(token.change24h),
+    volume24h: String(token.volume24h),
+    holders: String(token.holders),
+    top10Pct: String(token.top10Pct),
+    isRug: token.isRug,
+  })
+  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+
+  const save = () => {
+    updateToken.mutate(
+      {
+        id: token.id,
+        name: form.name,
+        ticker: form.ticker,
+        network: form.network,
+        image: form.image,
+        price: Number(form.price) || 0,
+        mc: Number(form.mc) || 0,
+        change24h: Number(form.change24h) || 0,
+        volume24h: Number(form.volume24h) || 0,
+        holders: Math.max(0, Math.round(Number(form.holders) || 0)),
+        top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
+        isRug: form.isRug,
+      },
+      { onSuccess: () => setEditing(false) }
+    )
+  }
+
+  const numField = (key: keyof typeof form, label: string, step = 'any') => (
+    <div className="space-y-1">
+      <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+      <Input
+        type="number"
+        step={step}
+        value={form[key] as string}
+        onChange={(e) => set(key, e.target.value)}
+        className="h-8 bg-[#0a0b08] font-mono text-[13px]"
+      />
+    </div>
+  )
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <TokenGlyph src={token.image} ticker={token.ticker} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold">
+            {token.name} <span className="font-mono text-xs text-primary">${token.ticker}</span>
+            {token.isRug && <span className="ml-1.5 rounded bg-[#ff4d5e]/12 px-1 py-px text-[9px] font-black uppercase text-[#ff8080]">Rug</span>}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">
+            {NETWORKS[token.network as keyof typeof NETWORKS]?.label ?? token.network} · ${token.mc.toLocaleString('es')} MC · {token.change24h > 0 ? '+' : ''}{token.change24h}% 24h
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setEditing((v) => !v)}
+          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
+        </Button>
+      </div>
+
+      {editing && (
+        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+          <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+            <ImageDrop
+              url={form.image}
+              onSelect={async (file) => {
+                try {
+                  const url = await uploadImage(file)
+                  set('image', url)
+                } catch (e) {
+                  toast.error((e as Error).message)
+                }
+              }}
+              onRemove={() => set('image', '')}
+              aspect="square"
+              label="Logo del token"
+              hint="Subir logo"
+            />
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+                <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Ticker</Label>
+                <Input value={form.ticker} onChange={(e) => set('ticker', e.target.value.toUpperCase())} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>
+                <div className="flex flex-wrap gap-1">
+                  {Object.entries(NETWORKS).map(([key, meta]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => set('network', key)}
+                      className={cn(
+                        'flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold',
+                        form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
+                      )}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} aria-hidden />
+                      {meta.short}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+            {numField('price', 'Precio USD')}
+            {numField('mc', 'Market cap')}
+            {numField('change24h', 'Cambio 24h %')}
+            {numField('volume24h', 'Volumen 24h')}
+            {numField('holders', 'Holders', '1')}
+            {numField('top10Pct', 'Top10 %', '1')}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ChipToggle label="Marcado como rug" checked={form.isRug} onChange={(v) => set('isRug', v)} okIcon={false} />
+            <Button
+              size="sm"
+              onClick={save}
+              disabled={updateToken.isPending}
+              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            >
+              <Save className="h-3.5 w-3.5" /> {updateToken.isPending ? 'Guardando…' : 'Guardar token'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -10,6 +10,11 @@ type DbUser = {
   bio: string | null
   wallet: string | null
   walletVerified: boolean
+  xHandle: string | null
+  xVerified: boolean
+  googleEmail: string | null
+  googleVerified: boolean
+  tgHandle: string | null
   isDev: boolean
   isAdmin: boolean
   cabalScore: number
@@ -29,6 +34,11 @@ export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
     bio: u.bio,
     wallet: u.wallet,
     walletVerified: u.walletVerified,
+    xHandle: u.xHandle,
+    xVerified: u.xVerified,
+    googleEmail: u.googleEmail,
+    googleVerified: u.googleVerified,
+    tgHandle: u.tgHandle,
     isDev: u.isDev,
     isAdmin: u.isAdmin,
     cabalScore: u.cabalScore,
@@ -64,9 +74,10 @@ export async function toPostDTO(
       launch = {
         id: l.id,
         name: l.name,
-        ticker: l.ticker,
+        ticker: l.isPrivate ? null : l.ticker,
         emoji: l.emoji,
         image: l.image,
+        isPrivate: l.isPrivate,
         network: l.network,
         launchAt: l.launchAt.toISOString(),
       }

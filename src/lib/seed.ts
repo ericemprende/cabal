@@ -39,12 +39,20 @@ async function seed(): Promise<void> {
     bio?: string
     wallet?: string
     walletVerified?: boolean
+    xHandle?: string
+    xVerified?: boolean
+    googleEmail?: string
+    googleVerified?: boolean
+    tgHandle?: string
     isDev?: boolean
+    isAdmin?: boolean
     cabalScore?: number
     callsWon?: number
     callsTotal?: number
     followers?: number
     isCurrentUser?: boolean
+    points?: number
+    lifetimePoints?: number
   }) => db.user.create({ data })
 
   const tu = await u({
@@ -65,6 +73,9 @@ async function seed(): Promise<void> {
     bio: 'Dev verificado. Construyo en Solana. LP siempre bloqueada, mint siempre revocado.',
     wallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
     walletVerified: true,
+    xHandle: 'based_dev',
+    xVerified: true,
+    tgHandle: 'based_dev',
     isDev: true,
     cabalScore: 920,
     callsWon: 7,
@@ -80,6 +91,11 @@ async function seed(): Promise<void> {
     bio: 'Caller. Si lo posteo antes del launch, es porque leí el contrato.',
     wallet: '0x8ba1f109551bD432803012645Ac136ddd64DBA72',
     walletVerified: true,
+    xHandle: 'cryptonita',
+    xVerified: true,
+    googleEmail: 'cryptonita@gmail.com',
+    googleVerified: true,
+    tgHandle: 'cryptonita_calls',
     cabalScore: 1450,
     callsWon: 23,
     callsTotal: 31,
@@ -154,6 +170,8 @@ async function seed(): Promise<void> {
     name: 'Swizzle',
     avatar: '🍸',
     bio: 'El PR de los launches. Si no tiene memes, no lanza.',
+    tgHandle: 'swizzle_pr',
+    xHandle: 'swizzle_kol',
     cabalScore: 430,
     callsWon: 6,
     callsTotal: 11,
@@ -166,6 +184,10 @@ async function seed(): Promise<void> {
     name: 'El Profe',
     avatar: '🎓',
     bio: 'Tesis con fundamentos: holders, LP, bundles y narrativa.',
+    googleEmail: 'elprofe.degen@gmail.com',
+    googleVerified: true,
+    xHandle: 'elprofe_calls',
+    xVerified: true,
     cabalScore: 1100,
     callsWon: 18,
     callsTotal: 25,
@@ -216,10 +238,11 @@ async function seed(): Promise<void> {
   // ---------- LAUNCHES (pre-launch radar) ----------
   const mkLaunch = (data: {
     name: string
-    ticker: string
+    ticker: string | null
     emoji: string
     image?: string
     banner?: string
+    isPrivate?: boolean
     network: string
     launchAt: Date
     description: string
@@ -371,6 +394,43 @@ async function seed(): Promise<void> {
     top10Pct: 17,
     createdById: lamboLu.id,
     createdAt: new Date(now - 7 * HOUR),
+  })
+
+  // Ya se lanzó hace 18 minutos → badge EN VIVO (rojo)
+  await mkLaunch({
+    name: 'Fomo Dog',
+    ticker: 'FOMO',
+    emoji: '🐕',
+    network: 'base',
+    launchAt: new Date(now - 18 * MIN),
+    description:
+      'El perro del FOMO, lanzado hace minutos en Base. Liquidez añadienda en vivo, los primeros holders reportan gráfico limpio. Sigue el launch en vivo desde el canal de la comunidad.',
+    twitter: 'https://x.com/fomodog_base',
+    hype: 271,
+    lpLocked: true,
+    mintRevoked: false,
+    top10Pct: 15,
+    createdById: degenmike.id,
+    createdAt: new Date(now - 26 * HOUR),
+  })
+
+  // Launch privado: sin ticker público, se reserva hasta el bloque 1
+  await mkLaunch({
+    name: 'Proyecto Centinela',
+    ticker: null,
+    emoji: '🚀',
+    isPrivate: true,
+    network: 'solana',
+    launchAt: new Date(now + 9 * HOUR + 25 * MIN),
+    description:
+      'Launch anunciado en modo privado: el ticker y el contrato se revelan en el bloque 1. Lo único público: el dev ya lanzó antes un token 3x con LP quemada y el snapshot de los primeros 200 hypes tendrá airdrop. Únete al canal cerrado para la alerta.',
+    telegram: 'https://t.me/centinela_close',
+    hype: 129,
+    lpLocked: true,
+    mintRevoked: false,
+    top10Pct: 20,
+    createdById: anon47.id,
+    createdAt: new Date(now - 4 * HOUR),
   })
 
   // ---------- TOKENS (live) ----------

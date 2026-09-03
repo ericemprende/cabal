@@ -20,6 +20,8 @@ export type PointReason =
   | 'daily_visit'
   | 'admin_adjust'
   | 'redeem'
+  | 'verify_x'
+  | 'verify_google'
 
 const REASON_TO_KEY: Record<string, string> = {
   thesis: 'points_thesis',

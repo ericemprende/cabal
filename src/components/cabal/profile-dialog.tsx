@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import {
+  AtSign,
   BadgeCheck,
   CalendarDays,
   Flame,
   Gift,
   GraduationCap,
   Heart,
+  Mail,
   MessageSquare,
   RefreshCw,
   Rocket,
@@ -22,7 +24,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { timeAgo } from '@/lib/cabal'
-import { useMe, useUpdateMe } from '@/lib/api-client'
+import { useMe, useUpdateMe, useVerifyProvider } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
 const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
@@ -34,6 +36,8 @@ const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   daily_visit: { label: 'Visita diaria', icon: CalendarDays },
   admin_adjust: { label: 'Bonus del Cabal', icon: Gift },
   redeem: { label: 'Canje', icon: RefreshCw },
+  verify_x: { label: 'Cuenta de X verificada', icon: AtSign },
+  verify_google: { label: 'Cuenta de Google verificada', icon: Mail },
 }
 
 export function ProfileDialog() {
@@ -141,6 +145,31 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           </div>
         </div>
 
+        {/* Conexiones: X y Google */}
+        <div className="space-y-2 border-b border-white/10 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conexiones y verificación</p>
+          <ConnectionRow
+            icon={<AtSign className="h-4 w-4" />}
+            title="Cuenta de X"
+            subtitle="Verifica tu identidad con tu cuenta de X · +5 puntos"
+            verified={me?.xVerified ?? false}
+            verifiedLabel={me?.xHandle ? `@${me.xHandle}` : 'Verificada'}
+            placeholder="@tu_usuario"
+            provider="x"
+            cta="Verificar con X"
+          />
+          <ConnectionRow
+            icon={<Mail className="h-4 w-4" />}
+            title="Cuenta de Google"
+            subtitle="Confirma tu email con Google · +5 puntos"
+            verified={me?.googleVerified ?? false}
+            verifiedLabel={me?.googleEmail ?? 'Verificada'}
+            placeholder="tu@email.com"
+            provider="google"
+            cta="Verificar con Google"
+          />
+        </div>
+
         {/* Edit profile */}
         <div className="space-y-3.5 p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editar perfil</p>
@@ -186,6 +215,102 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
         <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
       </div>
       <p className="mt-0.5 text-sm font-bold tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+// Fila de conexión con proveedor externo (X / Google) con verificación inline
+function ConnectionRow({
+  icon,
+  title,
+  subtitle,
+  verified,
+  verifiedLabel,
+  placeholder,
+  provider,
+  cta,
+}: {
+  icon: React.ReactNode
+  title: string
+  subtitle: string
+  verified: boolean
+  verifiedLabel: string
+  placeholder: string
+  provider: 'x' | 'google'
+  cta: string
+}) {
+  const verify = useVerifyProvider()
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState('')
+
+  if (verified) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-[#8FA83F]/20 bg-[#8FA83F]/6 p-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#8FA83F]/25 bg-[#8FA83F]/10 text-primary" aria-hidden>
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 text-[13px] font-bold">
+            {title}
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Verificada" />
+          </p>
+          <p className="truncate text-[11px] text-muted-foreground">{verifiedLabel}</p>
+        </div>
+        <button
+          onClick={() => verify.mutate({ provider, disconnect: true })}
+          disabled={verify.isPending}
+          className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-destructive/40 hover:text-[#ff8080]"
+        >
+          Desconectar
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400" aria-hidden>
+          {icon}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-bold">{title}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{subtitle}</p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => setOpen((v) => !v)}
+          className={cn(
+            'h-8 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary'
+          )}
+          variant="ghost"
+        >
+          {open ? 'Cancelar' : cta}
+        </Button>
+      </div>
+      {open && (
+        <div className="mt-2.5 flex items-center gap-2">
+          <Input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={placeholder}
+            className="h-9 bg-[#121410] text-sm"
+            aria-label={title}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && value.trim()) verify.mutate({ provider, value: value.trim() })
+            }}
+          />
+          <Button
+            size="sm"
+            disabled={!value.trim() || verify.isPending}
+            onClick={() => verify.mutate({ provider, value: value.trim() })}
+            className="h-9 shrink-0 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+          >
+            {verify.isPending ? 'Conectando…' : 'Conectar'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

@@ -59,9 +59,14 @@ export function PostCard({
               onClick={() => openLaunch(post.launch!.id)}
               className="mt-2 flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-left transition-colors hover:border-[#8FA83F]/35"
             >
-              <TokenGlyph src={post.launch.image} ticker={post.launch.ticker} size="xs" />
+              <TokenGlyph src={post.launch.image} ticker={post.launch.ticker ?? post.launch.name} size="xs" />
               <span className="text-xs font-semibold">
-                {post.launch.ticker} <span className="font-normal text-muted-foreground">launch</span>
+                {post.launch.isPrivate || !post.launch.ticker ? (
+                  <span className="text-amber-300/90">Privado</span>
+                ) : (
+                  post.launch.ticker
+                )}{' '}
+                <span className="font-normal text-muted-foreground">launch</span>
               </span>
               <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-primary">ver en radar →</span>
             </button>

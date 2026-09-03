@@ -95,10 +95,15 @@ export function Header() {
                   onClick={() => openLaunch(l.id)}
                   className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/5"
                 >
-                  <TokenGlyph src={l.image} ticker={l.ticker} size="sm" />
+                  <TokenGlyph src={l.image} ticker={l.ticker ?? l.name} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold">
-                      {l.ticker} <span className="font-normal text-muted-foreground">· {l.name}</span>
+                      {l.isPrivate || !l.ticker ? (
+                        <span className="text-amber-300/90">Privado</span>
+                      ) : (
+                        l.ticker
+                      )}{' '}
+                      <span className="font-normal text-muted-foreground">· {l.name}</span>
                     </p>
                     <div className="mt-0.5 flex items-center gap-1.5">
                       <NetworkBadge network={l.network} />
@@ -165,7 +170,7 @@ function SearchDialog({
   users,
   onOpenLaunch,
 }: {
-  launches: { id: string; name: string; ticker: string; image?: string | null; network: string; launchAt: string }[]
+  launches: { id: string; name: string; ticker: string | null; isPrivate: boolean; image?: string | null; network: string; launchAt: string }[]
   users: { id: string; name: string; handle: string; avatar: string; points: number }[]
   onOpenLaunch: (id: string) => void
 }) {
@@ -175,7 +180,7 @@ function SearchDialog({
 
   const ql = q.trim().toLowerCase()
   const fLaunches = ql
-    ? launches.filter((l) => `${l.name} ${l.ticker}`.toLowerCase().includes(ql)).slice(0, 4)
+    ? launches.filter((l) => `${l.name} ${l.ticker ?? ''}`.toLowerCase().includes(ql)).slice(0, 4)
     : launches.slice(0, 3)
   const fTokens = ql ? (tokens ?? []).filter((t) => `${t.name} ${t.ticker}`.toLowerCase().includes(ql)).slice(0, 4) : (tokens ?? []).slice(0, 3)
   const fUsers = ql ? users.filter((u) => `${u.name} ${u.handle}`.toLowerCase().includes(ql)).slice(0, 4) : users.slice(0, 3)
@@ -199,7 +204,7 @@ function SearchDialog({
         </div>
         <div className="space-y-4 p-3">
           {[
-            { title: 'Lanzamientos · Radar', kind: 'launch' as const, items: fLaunches.map((l) => ({ id: l.id, src: l.image, ticker: l.ticker, main: `${l.ticker} · ${l.name}`, sub: l.network, onClick: () => onOpenLaunch(l.id), badge: <NetworkBadge network={l.network} /> })) },
+            { title: 'Lanzamientos · Radar', kind: 'launch' as const, items: fLaunches.map((l) => ({ id: l.id, src: l.image, ticker: l.ticker ?? l.name, main: `${l.ticker && !l.isPrivate ? `$${l.ticker} · ` : ''}${l.name}${l.isPrivate ? ' · Privado' : ''}`, sub: l.network, onClick: () => onOpenLaunch(l.id), badge: <NetworkBadge network={l.network} /> })) },
             { title: 'Tokens en vivo', kind: 'launch' as const, items: fTokens.map((t) => ({ id: t.id, src: t.image, ticker: t.ticker, main: `${t.ticker} · ${t.name}`, sub: `$${t.mc >= 1e6 ? `${(t.mc / 1e6).toFixed(1)}M` : `${Math.round(t.mc / 1e3)}K`} MC`, onClick: () => openToken(t.id), badge: <NetworkBadge network={t.network} /> })) },
             { title: 'Traders', kind: 'user' as const, items: fUsers.map((u) => ({ id: u.id, src: '', ticker: u.name, main: u.name, sub: `@${u.handle}`, onClick: () => {}, badge: <PointsPill points={u.points} /> })) },
           ].map(

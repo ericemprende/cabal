@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { CalendarClock, ImagePlus, Loader2, Trash2, Zap } from 'lucide-react'
+import { CalendarClock, EyeOff, ImagePlus, Loader2, Trash2, Zap } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { NETWORKS } from '@/lib/cabal'
-import { useCreateLaunch } from '@/lib/api-client'
+import { uploadImage, useCreateLaunch } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
 const EMPTY_FORM = {
@@ -27,16 +27,7 @@ const EMPTY_FORM = {
   banner: '',
 }
 
-async function uploadImage(file: File): Promise<string> {
-  const fd = new FormData()
-  fd.append('file', file)
-  const res = await fetch('/api/upload', { method: 'POST', body: fd })
-  const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
-  if (!res.ok || !body.url) throw new Error(body.error ?? 'No se pudo subir la imagen')
-  return body.url
-}
-
-function ImageDrop({
+export function ImageDrop({
   url,
   onSelect,
   onRemove,
@@ -119,6 +110,7 @@ export function PostLaunchDialog() {
   const { postLaunchOpen, setPostLaunchOpen } = useUI()
   const createLaunch = useCreateLaunch()
   const [form, setForm] = useState(EMPTY_FORM)
+  const [isPrivate, setIsPrivate] = useState(false)
   const [error, setError] = useState('')
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
@@ -137,8 +129,12 @@ export function PostLaunchDialog() {
 
   const submit = () => {
     setError('')
-    if (!form.name.trim() || !form.ticker.trim() || !form.launchAt) {
-      setError('Nombre, ticker y fecha son obligatorios')
+    if (!form.name.trim() || !form.launchAt) {
+      setError('Nombre y fecha son obligatorios')
+      return
+    }
+    if (!form.ticker.trim() && !isPrivate) {
+      setError('Ingresa el ticker o marca el lanzamiento como privado')
       return
     }
     createLaunch.mutate(
@@ -146,11 +142,13 @@ export function PostLaunchDialog() {
         ...form,
         image: form.image === 'uploading' ? '' : form.image,
         banner: form.banner === 'uploading' ? '' : form.banner,
+        isPrivate: String(isPrivate),
       },
       {
         onSuccess: () => {
           setPostLaunchOpen(false)
           setForm(EMPTY_FORM)
+          setIsPrivate(false)
         },
         onError: (e: Error) => setError(e.message),
       }
@@ -179,10 +177,55 @@ export function PostLaunchDialog() {
               <Input id="pl-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Smole Coin" className="h-10 bg-[#0a0b08]" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pl-ticker" className="text-xs font-semibold">Ticker *</Label>
-              <Input id="pl-ticker" value={form.ticker} onChange={(e) => set('ticker', e.target.value.toUpperCase())} placeholder="SMOL" className="h-10 bg-[#0a0b08] font-mono" />
+              <Label htmlFor="pl-ticker" className="text-xs font-semibold">
+                Ticker <span className="font-normal text-muted-foreground">· opcional</span>
+              </Label>
+              <Input
+                id="pl-ticker"
+                value={form.ticker}
+                onChange={(e) => set('ticker', e.target.value.toUpperCase())}
+                placeholder={isPrivate ? 'Reservado' : 'SMOL'}
+                disabled={false}
+                className="h-10 bg-[#0a0b08] font-mono"
+              />
             </div>
           </div>
+
+          {/* Modo privado: reserva el ticker y anuncia sin revelarlo */}
+          <button
+            type="button"
+            onClick={() => setIsPrivate((v) => !v)}
+            aria-pressed={isPrivate}
+            className={cn(
+              'flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all',
+              isPrivate
+                ? 'border-amber-300/40 bg-amber-300/8'
+                : 'border-white/10 bg-[#0a0b08] hover:border-white/20'
+            )}
+          >
+            <span
+              className={cn(
+                'mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full border px-0.5 transition-colors',
+                isPrivate ? 'border-amber-300/50 bg-amber-300/25' : 'border-white/15 bg-white/5'
+              )}
+              aria-hidden
+            >
+              <span
+                className={cn(
+                  'h-3.5 w-3.5 rounded-full transition-transform',
+                  isPrivate ? 'translate-x-4 bg-amber-300' : 'translate-x-0 bg-zinc-400'
+                )}
+              />
+            </span>
+            <span className="min-w-0">
+              <span className={cn('flex items-center gap-1.5 text-[13px] font-bold', isPrivate ? 'text-amber-300' : 'text-foreground')}>
+                <EyeOff className="h-3.5 w-3.5" aria-hidden /> Lanzamiento privado
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
+                Anuncia el launch sin revelar el ticker: la comunidad verá “Privado” y el ticker se reserva hasta la fecha del lanzamiento.
+              </span>
+            </span>
+          </button>
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Red *</Label>

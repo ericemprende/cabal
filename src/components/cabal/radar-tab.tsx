@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { Flame, Globe, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CountdownPill, NetworkBadge, SafetyChecks, TokenGlyph, useCountdown } from '@/components/cabal/shared'
+import { CountdownPill, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, useCountdown } from '@/components/cabal/shared'
 import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
 import { useHypeToggle, useLaunches } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -120,16 +120,21 @@ export function RadarTab() {
 
 function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => void }) {
   const c = useCountdown(launch.launchAt)
+  const urgent = !c.live && !c.ended && c.totalMs < 45 * 60_000
+  const soon = !c.live && !c.ended && !urgent && c.totalMs < 6 * 3600_000
   return (
     <button
       onClick={onOpen}
-      className="card-surface group relative block w-full overflow-hidden rounded-2xl border border-white/12 p-5 text-left transition-all hover:border-[#8FA83F]/50 sm:p-6"
+      className={cn(
+        'card-surface group relative block w-full overflow-hidden rounded-2xl border p-5 text-left transition-all sm:p-6',
+        c.live || urgent ? 'border-[#ff4d5e]/40 hover:border-[#ff4d5e]/60' : 'border-white/12 hover:border-[#8FA83F]/50'
+      )}
     >
       <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#8FA83F]/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-white/5 blur-3xl" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="animate-float-slow shrink-0">
-          <TokenGlyph src={launch.image} ticker={launch.ticker} size="xl" className="h-16 w-16" />
+          <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="xl" className="h-16 w-16" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -142,14 +147,23 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
             </span>
           </div>
           <h2 className="font-display mt-1 truncate text-xl font-bold sm:text-2xl">
-            {launch.name} <span className="text-primary text-glow">${launch.ticker}</span>
+            {launch.name}{' '}
+            <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary text-glow" />
           </h2>
           <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{launch.description}</p>
         </div>
         <div className="flex flex-row items-center gap-3 sm:flex-col sm:items-end">
           <div className="text-right">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Lanza en</p>
-            <p className={cn('font-mono text-2xl font-bold tabular-nums text-glow text-primary sm:text-3xl', c.live && 'text-base')}>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              {c.live ? 'Lanzando ahora' : 'Lanza en'}
+            </p>
+            <p
+              className={cn(
+                'font-mono text-2xl font-bold tabular-nums text-glow sm:text-3xl',
+                c.live || urgent ? 'text-[#ff6b7a]' : soon ? 'text-amber-300' : 'text-primary',
+                (c.live || urgent) && 'text-base'
+              )}
+            >
               {c.text}
             </p>
           </div>
@@ -163,20 +177,23 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
   const hype = useHypeToggle()
   const { openLaunch } = useUI()
   const c = useCountdown(launch.launchAt)
+  const urgent = !c.live && !c.ended && c.totalMs < 45 * 60_000
 
   return (
     <article
       onClick={() => openLaunch(launch.id)}
       className={cn(
         'card-surface group flex cursor-pointer flex-col gap-3 rounded-xl border p-4 transition-all hover:-translate-y-0.5',
-        c.live ? 'border-[#8FA83F]/40 neon-shadow' : 'border-white/10 hover:border-[#8FA83F]/30'
+        c.live || urgent
+          ? 'border-[#ff4d5e]/40 shadow-[0_0_14px_rgba(255,77,94,0.08)] hover:border-[#ff4d5e]/60'
+          : 'border-white/10 hover:border-[#8FA83F]/30'
       )}
     >
       <div className="flex items-start gap-3">
-        <TokenGlyph src={launch.image} ticker={launch.ticker} size="lg" />
+        <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="lg" />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
-            <span className="shrink-0 font-display text-[15px] font-bold text-primary">${launch.ticker}</span>
+            <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="shrink-0 font-display text-[15px] font-bold text-primary" />
             <span className="truncate text-[13px] font-semibold text-foreground/80">{launch.name}</span>
           </div>
           <div className="mt-1 flex items-center gap-1.5">

@@ -29,10 +29,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const dto: LaunchDetailDTO = {
       id: launch.id,
       name: launch.name,
-      ticker: launch.ticker,
+      ticker: launch.isPrivate && launch.createdById !== me.id && !me.isAdmin ? null : launch.ticker,
       emoji: launch.emoji,
       image: launch.image,
       banner: launch.banner,
+      isPrivate: launch.isPrivate,
       network: launch.network,
       launchAt: launch.launchAt.toISOString(),
       description: launch.description,

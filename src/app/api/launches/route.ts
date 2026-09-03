@@ -23,10 +23,11 @@ export async function GET() {
     const dto: LaunchDTO[] = launches.map((l) => ({
       id: l.id,
       name: l.name,
-      ticker: l.ticker,
+      ticker: l.isPrivate ? null : l.ticker,
       emoji: l.emoji,
       image: l.image,
       banner: l.banner,
+      isPrivate: l.isPrivate,
       network: l.network,
       launchAt: l.launchAt.toISOString(),
       description: l.description,
@@ -53,13 +54,22 @@ export async function POST(req: Request) {
   try {
     const me = await getCurrentUser()
     const body = await req.json()
-    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram, image, banner } = body
-    if (!name || !ticker || !network || !launchAt) {
-      return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
+    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram, image, banner, isPrivate } = body
+    if (!name || !network || !launchAt) {
+      return NextResponse.json({ error: 'Faltan campos requeridos (nombre, red y fecha)' }, { status: 400 })
     }
     const when = new Date(launchAt)
     if (isNaN(when.getTime())) {
       return NextResponse.json({ error: 'Fecha de lanzamiento inválida' }, { status: 400 })
+    }
+    // El ticker es opcional: se puede anunciar un launch sin revelarlo (modo privado)
+    const cleanTicker = typeof ticker === 'string' && ticker.trim() ? ticker.trim().slice(0, 12).toUpperCase() : null
+    const priv = Boolean(isPrivate)
+    if (!priv && !cleanTicker) {
+      return NextResponse.json(
+        { error: 'Ingresa el ticker o marca el lanzamiento como privado' },
+        { status: 400 }
+      )
     }
     const safeUrl = (v: unknown) =>
       typeof v === 'string' && (v.startsWith('/uploads/') || v.startsWith('/seed/') || v.startsWith('https://'))
@@ -68,10 +78,11 @@ export async function POST(req: Request) {
     const launch = await db.launch.create({
       data: {
         name: String(name).slice(0, 60),
-        ticker: String(ticker).slice(0, 12).toUpperCase(),
+        ticker: cleanTicker,
         emoji: (emoji || '🚀').slice(0, 8),
         image: safeUrl(image),
         banner: safeUrl(banner),
+        isPrivate: priv,
         network,
         launchAt: when,
         description: String(description || '').slice(0, 800),
@@ -85,7 +96,7 @@ export async function POST(req: Request) {
     const pointsEarned = await awardPoints(
       me.id,
       'launch',
-      `Publicaste el launch: ${launch.name} (${launch.ticker})`
+      `Publicaste el launch: ${launch.name}${launch.ticker ? ` (${launch.ticker})` : ' (privado)'}`
     )
     return NextResponse.json({ ok: true, pointsEarned }, { status: 201 })
   } catch (e) {

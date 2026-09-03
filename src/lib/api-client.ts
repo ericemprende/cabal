@@ -38,6 +38,8 @@ export const qk = {
   adminOverview: ['admin', 'overview'] as const,
   adminUsers: ['admin', 'users'] as const,
   adminRules: ['admin', 'rules'] as const,
+  adminLaunches: ['admin', 'launches'] as const,
+  adminTokens: ['admin', 'tokens'] as const,
 }
 
 export function useMe() {
@@ -96,6 +98,32 @@ export function useAdminUsers(enabled: boolean) {
     queryFn: () => jsonFetch('/api/admin/users'),
     enabled,
   })
+}
+
+export function useAdminLaunches(enabled: boolean) {
+  return useQuery<LaunchDTO[]>({
+    queryKey: qk.adminLaunches,
+    queryFn: () => jsonFetch('/api/admin/launches'),
+    enabled,
+  })
+}
+
+export function useAdminTokens(enabled: boolean) {
+  return useQuery<TokenDTO[]>({
+    queryKey: qk.adminTokens,
+    queryFn: () => jsonFetch('/api/admin/tokens'),
+    enabled,
+  })
+}
+
+// ---------- upload ----------
+export async function uploadImage(file: File): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const res = await fetch('/api/upload', { method: 'POST', body: fd })
+  const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
+  if (!res.ok || !body.url) throw new Error(body.error ?? 'No se pudo subir la imagen')
+  return body.url
 }
 
 // ---------- mutations ----------
@@ -188,6 +216,29 @@ export function useUpdateMe() {
   })
 }
 
+export function useVerifyProvider() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { provider: 'x' | 'google'; value?: string; disconnect?: boolean }) =>
+      jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/me/verify', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res, vars) => {
+      invalidate()
+      if (vars.disconnect) {
+        toast.success('Conexión eliminada')
+      } else {
+        toast.success(
+          res.pointsEarned > 0 ? `Verificado · +${res.pointsEarned} puntos Cabal` : 'Cuenta verificada',
+          { description: vars.provider === 'x' ? 'Cuenta de X conectada' : 'Cuenta de Google conectada' }
+        )
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useAdminAdjustPoints(enabled: boolean) {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
@@ -212,6 +263,54 @@ export function useAdminRules(enabled: boolean) {
     onSuccess: () => {
       invalidate()
       toast.success('Reglas de puntos actualizadas')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminUpdateUser(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, unknown> & { id: string }) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/users', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Perfil actualizado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminUpdateLaunch(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, unknown> & { id: string }) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/launches', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Launch actualizado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminUpdateToken(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, unknown> & { id: string }) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/tokens', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Token actualizado')
     },
     onError: (e: Error) => toast.error(e.message),
   })

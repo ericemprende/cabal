@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Coins, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
@@ -16,12 +16,18 @@ import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { useUI } from '@/lib/store'
+import { useMe } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
-  const { tab, setSearchOpen } = useUI()
+  const { tab, setSearchOpen, setAdminOpen } = useUI()
+  const { data: me } = useMe()
+  // Se lee una sola vez al montar para que la carga async de /api/me no lo pierda
+  const [wantsAdmin] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1'
+  )
 
-  // "/" opens search like a command palette
+  // "/" abre la búsqueda como paleta de comandos
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
@@ -32,6 +38,13 @@ export default function Home() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [setSearchOpen])
+
+  // Deep link del panel admin: /?admin=1
+  useEffect(() => {
+    if (!wantsAdmin) return
+    window.history.replaceState(null, '', window.location.pathname)
+    if (me?.isAdmin) setAdminOpen(true)
+  }, [wantsAdmin, me?.isAdmin, setAdminOpen])
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { CheckCircle2, Timer, XCircle, Zap } from 'lucide-react'
+import { CheckCircle2, Lock, Timer, XCircle, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { countdownParts, networkMeta, safetyCheck } from '@/lib/cabal'
 
@@ -150,6 +150,33 @@ export function NetworkBadge({ network, className }: { network: string; classNam
   )
 }
 
+// ---------- Ticker label (con soporte para launches privados) ----------
+export function TickerLabel({
+  ticker,
+  isPrivate,
+  className,
+}: {
+  ticker?: string | null
+  isPrivate?: boolean
+  className?: string
+}) {
+  if (isPrivate || !ticker) {
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 rounded-md border border-amber-300/30 bg-amber-300/8 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300/90',
+          className
+        )}
+        title="Ticker reservado · se revela en el lanzamiento"
+      >
+        <Lock className="h-2.5 w-2.5" aria-hidden />
+        Privado
+      </span>
+    )
+  }
+  return <span className={className}>${ticker}</span>
+}
+
 // ---------- Points pill ----------
 export function PointsPill({ points, className }: { points: number; className?: string }) {
   return (
@@ -212,10 +239,13 @@ export function CountdownPill({
       : size === 'lg'
         ? 'text-base px-3 py-1.5'
         : 'text-xs px-2 py-1'
+  // Rojo: en vivo o a punto de lanzar (<45 min) · Ámbar: pocas horas (<6 h) · Oliva: con tiempo
+  const urgent = c.totalMs < 45 * 60_000
+  const soon = c.totalMs < 6 * 3600_000
   if (c.live)
     return (
-      <span className={cn('inline-flex items-center gap-1.5 rounded-md border border-[#8FA83F]/40 bg-[#8FA83F]/10 font-bold uppercase text-primary', cls, className)}>
-        <span className="live-dot h-1.5 w-1.5 rounded-full bg-primary" />
+      <span className={cn('inline-flex items-center gap-1.5 rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>
+        <span className="live-dot-red h-1.5 w-1.5 rounded-full bg-[#ff4d5e]" />
         En vivo
       </span>
     )
@@ -225,18 +255,25 @@ export function CountdownPill({
         Finalizado
       </span>
     )
-  const urgent = c.totalMs < 60 * 60_000
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-md border font-mono font-bold tabular-nums',
-        urgent ? 'border-amber-300/40 bg-amber-300/10 text-amber-300' : 'border-[#8FA83F]/30 bg-[#8FA83F]/8 text-primary',
+        urgent
+          ? 'border-[#ff4d5e]/50 bg-[#ff4d5e]/10 text-[#ff6b7a]'
+          : soon
+            ? 'border-amber-300/40 bg-amber-300/10 text-amber-300'
+            : 'border-[#8FA83F]/30 bg-[#8FA83F]/8 text-primary',
         cls,
         className
       )}
-      title="Tiempo para el lanzamiento"
+      title={urgent ? 'Lanzamiento inminente' : 'Tiempo para el lanzamiento'}
     >
-      <Timer className="h-3 w-3" aria-hidden />
+      {urgent ? (
+        <span className="live-dot-red h-1.5 w-1.5 rounded-full bg-[#ff4d5e]" aria-hidden />
+      ) : (
+        <Timer className="h-3 w-3" aria-hidden />
+      )}
       {c.text}
     </span>
   )

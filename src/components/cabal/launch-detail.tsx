@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CountdownPill, NetworkBadge, SafetyChecks, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CountdownPill, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch } from '@/lib/api-client'
@@ -54,14 +54,20 @@ export function LaunchDetailDialog() {
             <div className="relative border-b border-white/10 p-5">
               <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#8FA83F]/8 blur-3xl" />
               <DialogTitle className="flex items-start gap-3 text-left">
-                <TokenGlyph src={launch.image} ticker={launch.ticker} size="xl" />
+                <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="xl" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display truncate text-xl font-bold">
-                      {launch.name} <span className="text-primary">${launch.ticker}</span>
+                      {launch.name}{' '}
+                      <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary" />
                     </h2>
                     <NetworkBadge network={launch.network} />
                   </div>
+                  {launch.isPrivate && !launch.ticker && (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-amber-300/90">
+                      Ticker reservado · se revela en el bloque 1
+                    </p>
+                  )}
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
                     <CountdownPill target={launch.launchAt} />
                     <span className="text-xs text-muted-foreground">

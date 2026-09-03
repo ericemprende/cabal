@@ -6,6 +6,11 @@ export interface UserDTO {
   bio?: string | null
   wallet?: string | null
   walletVerified: boolean
+  xHandle?: string | null
+  xVerified: boolean
+  googleEmail?: string | null
+  googleVerified: boolean
+  tgHandle?: string | null
   isDev: boolean
   isAdmin?: boolean
   cabalScore: number
@@ -20,9 +25,10 @@ export interface UserDTO {
 export interface LaunchRefDTO {
   id: string
   name: string
-  ticker: string
+  ticker: string | null
   emoji: string
   image?: string | null
+  isPrivate: boolean
   network: string
   launchAt: string
 }
@@ -54,10 +60,11 @@ export interface PostDTO {
 export interface LaunchDTO {
   id: string
   name: string
-  ticker: string
+  ticker: string | null
   emoji: string
   image?: string | null
   banner?: string | null
+  isPrivate: boolean
   network: string
   launchAt: string
   description: string

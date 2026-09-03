@@ -4,7 +4,7 @@ export const NETWORKS: Record<
   NetworkKey,
   { label: string; short: string; dot: string }
 > = {
-  solana: { label: 'Solana', short: 'SOL', dot: '#14F195' },
+  solana: { label: 'Solana', short: 'SOL', dot: '#9945FF' },
   base: { label: 'Base', short: 'BASE', dot: '#0052FF' },
   ethereum: { label: 'Ethereum', short: 'ETH', dot: '#8A92B2' },
   bsc: { label: 'BNB Chain', short: 'BSC', dot: '#F0B90B' },

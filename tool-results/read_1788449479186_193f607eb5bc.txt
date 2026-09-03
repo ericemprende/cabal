@@ -1,0 +1,915 @@
+     1→import { db } from '@/lib/db'
+     2→
+     3→let seedPromise: Promise<void> | null = null
+     4→
+     5→const MIN = 60 * 1000
+     6→const HOUR = 60 * MIN
+     7→const DAY = 24 * HOUR
+     8→
+     9→export async function ensureSeeded(): Promise<void> {
+    10→  if (!seedPromise) {
+    11→    seedPromise = seed()
+    12→  }
+    13→  return seedPromise
+    14→}
+    15→
+    16→async function seed(): Promise<void> {
+    17→  const count = await db.user.count()
+    18→  if (count > 0) return
+    19→
+    20→  const now = Date.now()
+    21→
+    22→  // ---------- POINT RULES (editable desde el dashboard admin) ----------
+    23→  await db.setting.createMany({
+    24→    data: [
+    25→      { key: 'points_thesis', value: '25' },
+    26→      { key: 'points_comment', value: '5' },
+    27→      { key: 'points_launch', value: '40' },
+    28→      { key: 'points_like_received', value: '2' },
+    29→      { key: 'points_hype_received', value: '1' },
+    30→      { key: 'points_daily_visit', value: '3' },
+    31→    ],
+    32→  })
+    33→
+    34→  // ---------- USERS ----------
+    35→  const u = async (data: {
+    36→    handle: string
+    37→    name: string
+    38→    avatar: string
+    39→    bio?: string
+    40→    wallet?: string
+    41→    walletVerified?: boolean
+    42→    isDev?: boolean
+    43→    cabalScore?: number
+    44→    callsWon?: number
+    45→    callsTotal?: number
+    46→    followers?: number
+    47→    isCurrentUser?: boolean
+    48→  }) => db.user.create({ data })
+    49→
+    50→  const tu = await u({
+    51→    handle: 'tu',
+    52→    name: 'Tú',
+    53→    avatar: '🐺',
+    54→    bio: 'Nuevo en el Cabal. Cazando el próximo 100x antes que nadie.',
+    55→    isCurrentUser: true,
+    56→    isAdmin: true,
+    57→    cabalScore: 10,
+    58→    points: 132,
+    59→    lifetimePoints: 132,
+    60→  })
+    61→  const basedDev = await u({
+    62→    handle: 'based_dev',
+    63→    name: 'Based Dev',
+    64→    avatar: '🔧',
+    65→    bio: 'Dev verificado. Construyo en Solana. LP siempre bloqueada, mint siempre revocado.',
+    66→    wallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
+    67→    walletVerified: true,
+    68→    isDev: true,
+    69→    cabalScore: 920,
+    70→    callsWon: 7,
+    71→    callsTotal: 9,
+    72→    followers: 4820,
+    73→    points: 1840,
+    74→    lifetimePoints: 2100,
+    75→  })
+    76→  const cryptonita = await u({
+    77→    handle: 'cryptonita',
+    78→    name: 'Cryptonita',
+    79→    avatar: '👩‍🚀',
+    80→    bio: 'Caller. Si lo posteo antes del launch, es porque leí el contrato.',
+    81→    wallet: '0x8ba1f109551bD432803012645Ac136ddd64DBA72',
+    82→    walletVerified: true,
+    83→    cabalScore: 1450,
+    84→    callsWon: 23,
+    85→    callsTotal: 31,
+    86→    followers: 12400,
+    87→    points: 3240,
+    88→    lifetimePoints: 3600,
+    89→  })
+    90→  const degenmike = await u({
+    91→    handle: 'degenmike',
+    92→    name: 'Degen Mike',
+    93→    avatar: '🦈',
+    94→    bio: 'Entré a 4K MC en WIF. Pregúntame cómo.',
+    95→    cabalScore: 890,
+    96→    callsWon: 14,
+    97→    callsTotal: 22,
+    98→    followers: 8100,
+    99→    points: 1620,
+   100→    lifetimePoints: 1810,
+   101→  })
+   102→  const salem = await u({
+   103→    handle: 'salem',
+   104→    name: 'Salem',
+   105→    avatar: '🧙',
+   106→    bio: 'Lectura de charts y vibras. 60/40 win rate y subiendo.',
+   107→    cabalScore: 640,
+   108→    callsWon: 9,
+   109→    callsTotal: 15,
+   110→    followers: 3900,
+   111→    points: 980,
+   112→    lifetimePoints: 1120,
+   113→  })
+   114→  const ponziPete = await u({
+   115→    handle: 'ponzi_pete',
+   116→    name: 'Ponzi Pete',
+   117→    avatar: '🐍',
+   118→    bio: 'lanzo tokens :)',
+   119→    wallet: '0xdead0000000000000000000000000000000001',
+   120→    isDev: true,
+   121→    cabalScore: 60,
+   122→    callsWon: 1,
+   123→    callsTotal: 8,
+   124→    followers: 210,
+   125→    points: 40,
+   126→    lifetimePoints: 180,
+   127→  })
+   128→  const nate = await u({
+   129→    handle: 'nate',
+   130→    name: 'Nate',
+   131→    avatar: '🦍',
+   132→    bio: 'Apilo bananas y memecoins.',
+   133→    cabalScore: 720,
+   134→    callsWon: 11,
+   135→    callsTotal: 18,
+   136→    followers: 5200,
+   137→    points: 1210,
+   138→    lifetimePoints: 1350,
+   139→  })
+   140→  const wood = await u({
+   141→    handle: 'wood',
+   142→    name: 'Wood',
+   143→    avatar: '🌲',
+   144→    bio: 'Paciente. Compro el fondo, vendo el hype.',
+   145→    cabalScore: 510,
+   146→    callsWon: 7,
+   147→    callsTotal: 12,
+   148→    followers: 2400,
+   149→    points: 760,
+   150→    lifetimePoints: 890,
+   151→  })
+   152→  const swizzle = await u({
+   153→    handle: 'swizzle',
+   154→    name: 'Swizzle',
+   155→    avatar: '🍸',
+   156→    bio: 'El PR de los launches. Si no tiene memes, no lanza.',
+   157→    cabalScore: 430,
+   158→    callsWon: 6,
+   159→    callsTotal: 11,
+   160→    followers: 1800,
+   161→    points: 690,
+   162→    lifetimePoints: 780,
+   163→  })
+   164→  const elprofe = await u({
+   165→    handle: 'elprofe',
+   166→    name: 'El Profe',
+   167→    avatar: '🎓',
+   168→    bio: 'Tesis con fundamentos: holders, LP, bundles y narrativa.',
+   169→    cabalScore: 1100,
+   170→    callsWon: 18,
+   171→    callsTotal: 25,
+   172→    followers: 9600,
+   173→    points: 2870,
+   174→    lifetimePoints: 3150,
+   175→  })
+   176→  const lamboLu = await u({
+   177→    handle: 'lambo_lu',
+   178→    name: 'Lambo Lu',
+   179→    avatar: '🏎️',
+   180→    bio: 'De 0 a degen en 3 meses.',
+   181→    cabalScore: 380,
+   182→    callsWon: 5,
+   183→    callsTotal: 10,
+   184→    followers: 1500,
+   185→    points: 540,
+   186→    lifetimePoints: 640,
+   187→  })
+   188→  const anon47 = await u({
+   189→    handle: 'anon47',
+   190→    name: 'Anon 47',
+   191→    avatar: '👻',
+   192→    bio: 'No confíes en nadie. Ni en mí.',
+   193→    cabalScore: 290,
+   194→    callsWon: 4,
+   195→    callsTotal: 9,
+   196→    followers: 900,
+   197→    points: 430,
+   198→    lifetimePoints: 520,
+   199→  })
+   200→  const kael = await u({
+   201→    handle: 'kael',
+   202→    name: 'Kael',
+   203→    avatar: '🐱',
+   204→    bio: 'Primer launch en Base. Aprendiendo.',
+   205→    wallet: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+   206→    walletVerified: true,
+   207→    isDev: true,
+   208→    cabalScore: 150,
+   209→    callsWon: 1,
+   210→    callsTotal: 2,
+   211→    followers: 340,
+   212→    points: 190,
+   213→    lifetimePoints: 190,
+   214→  })
+   215→
+   216→  // ---------- LAUNCHES (pre-launch radar) ----------
+   217→  const mkLaunch = (data: {
+   218→    name: string
+   219→    ticker: string
+   220→    emoji: string
+   221→    image?: string
+   222→    banner?: string
+   223→    network: string
+   224→    launchAt: Date
+   225→    description: string
+   226→    website?: string
+   227→    twitter?: string
+   228→    telegram?: string
+   229→    hype: number
+   230→    lpLocked?: boolean
+   231→    mintRevoked?: boolean
+   232→    top10Pct?: number
+   233→    createdById: string
+   234→    createdAt: Date
+   235→  }) => db.launch.create({ data })
+   236→
+   237→  const smole = await mkLaunch({
+   238→    name: 'Smole Coin',
+   239→    ticker: 'SMOL',
+   240→    emoji: '🐹',
+   241→    image: '/seed/smol.png',
+   242→    network: 'solana',
+   243→    launchAt: new Date(now + 47 * MIN),
+   244→    description:
+   245→      'El hamster que nunca vendió. Launch justo, sin allocación del equipo. LP quemada al 100% y mint revocado antes del launch. Comunidad desde el día 1, memes listos, 20 KOLs confirmados en las primeras 2 horas. Narrativa: los pequeños ganan.',
+   246→    website: 'https://smol.xyz',
+   247→    twitter: 'https://x.com/smolcoin',
+   248→    telegram: 'https://t.me/smolcoin',
+   249→    hype: 342,
+   250→    lpLocked: true,
+   251→    mintRevoked: true,
+   252→    top10Pct: 9,
+   253→    createdById: basedDev.id,
+   254→    createdAt: new Date(now - 5 * HOUR),
+   255→  })
+   256→  const wif2 = await mkLaunch({
+   257→    name: 'Wif Hat 2',
+   258→    ticker: 'WIF2',
+   259→    emoji: '🐶',
+   260→    network: 'solana',
+   261→    launchAt: new Date(now + 28 * MIN),
+   262→    description:
+   263→      'La secuela que nadie pidió y todos vamos a comprar..snapshot de holders de WIF para airdrop en el bloque 1. Sin bolsa de valores, sin drama. Solo un perro con sombrero otra vez.',
+   264→    twitter: 'https://x.com/wifhat2',
+   265→    hype: 587,
+   266→    lpLocked: true,
+   267→    mintRevoked: false,
+   268→    top10Pct: 18,
+   269→    createdById: degenmike.id,
+   270→    createdAt: new Date(now - 2 * HOUR),
+   271→  })
+   272→  const ncat = await mkLaunch({
+   273→    name: 'Neon Cat',
+   274→    ticker: 'NCAT',
+   275→    emoji: '🐈‍⬛',
+   276→    network: 'base',
+   277→    launchAt: new Date(now + 6 * HOUR + 12 * MIN),
+   278→    description:
+   279→      'Un gato neón para la cadena verde. Primer launch de Kael en Base: contraste total, fee mínimo, comunidad construida en Farcaster desde hace 3 semanas. Arte generado 100% on-chain.',
+   280→    website: 'https://neoncat.base',
+   281→    twitter: 'https://x.com/neoncat_base',
+   282→    hype: 156,
+   283→    lpLocked: true,
+   284→    mintRevoked: true,
+   285→    top10Pct: 14,
+   286→    createdById: kael.id,
+   287→    createdAt: new Date(now - 20 * HOUR),
+   288→  })
+   289→  const cabalCoin = await mkLaunch({
+   290→    name: 'Cabal Coin',
+   291→    ticker: 'CABAL',
+   292→    emoji: '🟢',
+   293→    image: '/seed/cabal.png',
+   294→    banner: '/seed/cabal-banner.png',
+   295→    network: 'solana',
+   296→    launchAt: new Date(now + 26 * HOUR),
+   297→    description:
+   298→      'El token de esta comunidad. 0% tax, LP bloqueada 6 meses, mint revocado en vivo durante el stream de lanzamiento. 50% del supply para los 500 primeros miembros verificados del Radar. Si estás aquí temprano, ya sabes.',
+   299→    website: 'https://cabal.claims',
+   300→    twitter: 'https://x.com/cabalcoin',
+   301→    telegram: 'https://t.me/cabalcoin',
+   302→    hype: 823,
+   303→    lpLocked: true,
+   304→    mintRevoked: true,
+   305→    top10Pct: 6,
+   306→    createdById: cryptonita.id,
+   307→    createdAt: new Date(now - 9 * HOUR),
+   308→  })
+   309→  const gato = await mkLaunch({
+   310→    name: 'Gato Gordo',
+   311→    ticker: 'GATO',
+   312→    emoji: '😺',
+   313→    network: 'bsc',
+   314→    launchAt: new Date(now + 30 * HOUR + 40 * MIN),
+   315→    description:
+   316→      'El gato más gordo de BSC. Fair launch puro, sin presale, sin team allocation. Cuidado: el dev no tiene historial verificado todavía, entren con lo que puedan perder.',
+   317→    twitter: 'https://x.com/gatogordo_bsc',
+   318→    hype: 94,
+   319→    lpLocked: false,
+   320→    mintRevoked: false,
+   321→    top10Pct: 31,
+   322→    createdById: anon47.id,
+   323→    createdAt: new Date(now - 3 * HOUR),
+   324→  })
+   325→  const frogk = await mkLaunch({
+   326→    name: 'Frog King',
+   327→    ticker: 'FROGK',
+   328→    emoji: '🐸',
+   329→    network: 'ethereum',
+   330→    launchAt: new Date(now + 3 * DAY + 4 * HOUR),
+   331→    description:
+   332→      'La rana que corona a Ethereum mainnet. Tesis de El Profe: la narrativa de ranas siempre corre en ETH cuando BTC lateraliza. Contrato auditado por 2 firmas, distribution check pública.',
+   333→    website: 'https://frogking.eth',
+   334→    twitter: 'https://x.com/frogkingeth',
+   335→    telegram: 'https://t.me/frogking',
+   336→    hype: 211,
+   337→    lpLocked: true,
+   338→    mintRevoked: true,
+   339→    top10Pct: 11,
+   340→    createdById: elprofe.id,
+   341→    createdAt: new Date(now - 30 * HOUR),
+   342→  })
+   343→  const zpunk = await mkLaunch({
+   344→    name: 'Zombie Punks',
+   345→    ticker: 'ZPUNK',
+   346→    emoji: '🧟',
+   347→    network: 'base',
+   348→    launchAt: new Date(now + 5 * DAY),
+   349→    description:
+   350→      'Punks pero zombis pero en Base. Mint gratis + fee de lanzamiento que va 100% a LP. Temporada de Halloween eterna. El PR lo maneja Swizzle, ya saben que habrá hilos.',
+   351→    twitter: 'https://x.com/zombiepunks',
+   352→    hype: 88,
+   353→    lpLocked: false,
+   354→    mintRevoked: true,
+   355→    top10Pct: 22,
+   356→    createdById: swizzle.id,
+   357→    createdAt: new Date(now - 14 * HOUR),
+   358→  })
+   359→  const tucan = await mkLaunch({
+   360→    name: 'Tucan Trade',
+   361→    ticker: 'TUC',
+   362→    emoji: '🦜',
+   363→    network: 'tron',
+   364→    launchAt: new Date(now + 12 * HOUR),
+   365→    description:
+   366→      'El loro que repite todo lo que dice la cadena. Experimento social en Tron: el token tuitea sus propias stats cada hora. LP bloqueada 3 meses, mint revocado, audit en curso.',
+   367→    website: 'https://tucan.tron',
+   368→    hype: 63,
+   369→    lpLocked: true,
+   370→    mintRevoked: true,
+   371→    top10Pct: 17,
+   372→    createdById: lamboLu.id,
+   373→    createdAt: new Date(now - 7 * HOUR),
+   374→  })
+   375→
+   376→  // ---------- TOKENS (live) ----------
+   377→  const mkToken = (data: {
+   378→    name: string
+   379→    ticker: string
+   380→    emoji: string
+   381→    network: string
+   382→    price: number
+   383→    mc: number
+   384→    change24h: number
+   385→    volume24h: number
+   386→    holders: number
+   387→    top10Pct: number
+   388→    contract: string
+   389→    devId: string
+   390→    launchedAt: Date
+   391→    athMc: number
+   392→    isRug?: boolean
+   393→  }) => db.token.create({ data })
+   394→
+   395→  const bonk2 = await mkToken({
+   396→    name: 'Bonk Two',
+   397→    ticker: 'BONK2',
+   398→    emoji: '🐕',
+   399→    network: 'solana',
+   400→    price: 0.000042,
+   401→    mc: 42000000,
+   402→    change24h: 12.4,
+   403→    volume24h: 3100000,
+   404→    holders: 21400,
+   405→    top10Pct: 12,
+   406→    contract: 'BonK2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   407→    devId: basedDev.id,
+   408→    launchedAt: new Date(now - 21 * DAY),
+   409→    athMc: 61000000,
+   410→  })
+   411→  const mocha = await mkToken({
+   412→    name: 'Mocha',
+   413→    ticker: 'MOCH',
+   414→    emoji: '☕',
+   415→    network: 'solana',
+   416→    price: 0.0031,
+   417→    mc: 3100000,
+   418→    change24h: 45.7,
+   419→    volume24h: 890000,
+   420→    holders: 4300,
+   421→    top10Pct: 16,
+   422→    contract: 'moCHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   423→    devId: basedDev.id,
+   424→    launchedAt: new Date(now - 4 * DAY),
+   425→    athMc: 3400000,
+   426→  })
+   427→  const ligma = await mkToken({
+   428→    name: 'Ligma',
+   429→    ticker: 'LIGMA',
+   430→    emoji: '🧠',
+   431→    network: 'solana',
+   432→    price: 0.00087,
+   433→    mc: 8700000,
+   434→    change24h: -8.2,
+   435→    volume24h: 420000,
+   436→    holders: 6100,
+   437→    top10Pct: 24,
+   438→    contract: 'LiGMAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   439→    devId: degenmike.id,
+   440→    launchedAt: new Date(now - 9 * DAY),
+   441→    athMc: 15200000,
+   442→  })
+   443→  const gigachad = await mkToken({
+   444→    name: 'Gigachad Sol',
+   445→    ticker: 'GIGA',
+   446→    emoji: '💪',
+   447→    network: 'solana',
+   448→    price: 0.021,
+   449→    mc: 21000000,
+   450→    change24h: 88.3,
+   451→    volume24h: 5400000,
+   452→    holders: 12800,
+   453→    top10Pct: 10,
+   454→    contract: 'GIGAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   455→    devId: nate.id,
+   456→    launchedAt: new Date(now - 15 * DAY),
+   457→    athMc: 23000000,
+   458→  })
+   459→  const doomer = await mkToken({
+   460→    name: 'Doomer',
+   461→    ticker: 'DOOM',
+   462→    emoji: '😩',
+   463→    network: 'base',
+   464→    price: 0.00012,
+   465→    mc: 1200000,
+   466→    change24h: -22.5,
+   467→    volume24h: 130000,
+   468→    holders: 2100,
+   469→    top10Pct: 38,
+   470→    contract: '0xD00M000000000000000000000000000000000001',
+   471→    devId: anon47.id,
+   472→    launchedAt: new Date(now - 6 * DAY),
+   473→    athMc: 4100000,
+   474→  })
+   475→  const pepeChain = await mkToken({
+   476→    name: 'Pepe Chain',
+   477→    ticker: 'PCHAIN',
+   478→    emoji: '🐸',
+   479→    network: 'base',
+   480→    price: 0.000578,
+   481→    mc: 5780000,
+   482→    change24h: 33.1,
+   483→    volume24h: 720000,
+   484→    holders: 8900,
+   485→    top10Pct: 14,
+   486→    contract: '0xPCxxxxxxx0000000000000000000000000000002',
+   487→    devId: kael.id,
+   488→    launchedAt: new Date(now - 11 * DAY),
+   489→    athMc: 9200000,
+   490→  })
+   491→  const moonx = await mkToken({
+   492→    name: 'MoonX',
+   493→    ticker: 'MOONX',
+   494→    emoji: '🌙',
+   495→    network: 'bsc',
+   496→    price: 0.0000011,
+   497→    mc: 110000,
+   498→    change24h: -91.4,
+   499→    volume24h: 40000,
+   500→    holders: 310,
+   501→    top10Pct: 82,
+   502→    contract: '0xM00NX0000000000000000000000000000000003',
+   503→    devId: ponziPete.id,
+   504→    launchedAt: new Date(now - 18 * DAY),
+   505→    athMc: 1900000,
+   506→    isRug: true,
+   507→  })
+   508→  const rugPull = await mkToken({
+   509→    name: 'RugPull coin',
+   510→    ticker: 'RUG',
+   511→    emoji: '🪤',
+   512→    network: 'bsc',
+   513→    price: 0.0000002,
+   514→    mc: 9000,
+   515→    change24h: -99.2,
+   516→    volume24h: 1200,
+   517→    holders: 42,
+   518→    top10Pct: 97,
+   519→    contract: '0xRUG0000000000000000000000000000000000004',
+   520→    devId: ponziPete.id,
+   521→    launchedAt: new Date(now - 27 * DAY),
+   522→    athMc: 2400000,
+   523→    isRug: true,
+   524→  })
+   525→  const solSearch = await mkToken({
+   526→    name: 'Sol Searcher',
+   527→    ticker: 'SRCH',
+   528→    emoji: '🔍',
+   529→    network: 'solana',
+   530→    price: 0.00034,
+   531→    mc: 3400000,
+   532→    change24h: 19.8,
+   533→    volume24h: 510000,
+   534→    holders: 5200,
+   535→    top10Pct: 19,
+   536→    contract: 'SRCHxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   537→    devId: salem.id,
+   538→    launchedAt: new Date(now - 2 * DAY),
+   539→    athMc: 3600000,
+   540→  })
+   541→  const forestFren = await mkToken({
+   542→    name: 'Forest Fren',
+   543→    ticker: 'FREN',
+   544→    emoji: '🌳',
+   545→    network: 'base',
+   546→    price: 0.00091,
+   547→    mc: 9100000,
+   548→    change24h: 6.9,
+   549→    volume24h: 300000,
+   550→    holders: 7400,
+   551→    top10Pct: 21,
+   552→    contract: '0xFRENxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx5',
+   553→    devId: wood.id,
+   554→    launchedAt: new Date(now - 13 * DAY),
+   555→    athMc: 11000000,
+   556→  })
+   557→  const martini = await mkToken({
+   558→    name: 'Martini',
+   559→    ticker: 'MRTN',
+   560→    emoji: '🍸',
+   561→    network: 'ethereum',
+   562→    price: 0.0024,
+   563→    mc: 24000000,
+   564→    change24h: -4.3,
+   565→    volume24h: 1800000,
+   566→    holders: 9800,
+   567→    top10Pct: 13,
+   568→    contract: '0xMRTNxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx6',
+   569→    devId: swizzle.id,
+   570→    launchedAt: new Date(now - 30 * DAY),
+   571→    athMc: 39000000,
+   572→  })
+   573→  const tesis = await mkToken({
+   574→    name: 'Tesis Token',
+   575→    ticker: 'TESIS',
+   576→    emoji: '📜',
+   577→    network: 'solana',
+   578→    price: 0.0069,
+   579→    mc: 6900000,
+   580→    change24h: 27.4,
+   581→    volume24h: 980000,
+   582→    holders: 6600,
+   583→    top10Pct: 11,
+   584→    contract: 'TESISxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   585→    devId: elprofe.id,
+   586→    launchedAt: new Date(now - 7 * DAY),
+   587→    athMc: 8100000,
+   588→  })
+   589→  const lamboInu = await mkToken({
+   590→    name: 'Lambo Inu',
+   591→    ticker: 'LINU',
+   592→    emoji: '🏎️',
+   593→    network: 'tron',
+   594→    price: 0.000047,
+   595→    mc: 470000,
+   596→    change24h: 102.7,
+   597→    volume24h: 210000,
+   598→    holders: 1900,
+   599→    top10Pct: 27,
+   600→    contract: 'TLINUxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+   601→    devId: lamboLu.id,
+   602→    launchedAt: new Date(now - 36 * HOUR),
+   603→    athMc: 520000,
+   604→  })
+   605→  const ghost = await mkToken({
+   606→    name: 'Ghostface',
+   607→    ticker: 'GHST',
+   608→    emoji: '👻',
+   609→    network: 'ethereum',
+   610→    price: 0.0014,
+   611→    mc: 1400000,
+   612→    change24h: -12.1,
+   613→    volume24h: 96000,
+   614→    holders: 2900,
+   615→    top10Pct: 29,
+   616→    contract: '0xGHSTxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx7',
+   617→    devId: anon47.id,
+   618→    launchedAt: new Date(now - 16 * DAY),
+   619→    athMc: 5200000,
+   620→  })
+   621→
+   622→  // ---------- POSTS (feed / tesis / comentarios) ----------
+   623→  const mkPost = (data: {
+   624→    kind: string
+   625→    content: string
+   626→    userId: string
+   627→    launchId?: string
+   628→    tokenId?: string
+   629→    likes?: number
+   630→    pnl?: number
+   631→    createdAt: Date
+   632→  }) => db.post.create({ data })
+   633→
+   634→  // Theses on tokens
+   635→  await mkPost({
+   636→    kind: 'thesis',
+   637→    content:
+   638→      'Tesis GIGA: el 88% subió con volumen real, no bundles. Top10 holders al 10%, LP bloqueada y el dev ya entregó 2 tokens limpios. Si rompe los 25M de MC con estos holders, la liquidez del CEX lo manda a 100M. Entré a 12M y no muevo hasta el listing.',
+   639→    userId: elprofe.id,
+   640→    tokenId: gigachad.id,
+   641→    likes: 148,
+   642→    createdAt: new Date(now - 8 * HOUR),
+   643→  })
+   644→  await mkPost({
+   645→    kind: 'thesis',
+   646→    content:
+   647→      'MOCH a 45% en 24h con solo 4 días de vida y 4300 holders. El gráfico es el más limpio que he visto desde BONK. based_dev ya tiene reputación con BONK2, y esta vez el float es más chico. 3M de MC es temprano todavía.',
+   648→    userId: cryptonita.id,
+   649→    tokenId: mocha.id,
+   650→    likes: 96,
+   651→    createdAt: new Date(now - 4 * HOUR),
+   652→  })
+   653→  await mkPost({
+   654→    kind: 'comment',
+   655→    content: 'Ojo con el top10 al 38% en DOOM. Dos wallets entraron 15 minutos después del launch. Huele a preparación de dump.',
+   656→    userId: salem.id,
+   657→    tokenId: doomer.id,
+   658→    likes: 61,
+   659→    createdAt: new Date(now - 12 * HOUR),
+   660→  })
+   661→  await mkPost({
+   662→    kind: 'comment',
+   663→    content: 'dev = ponzi_pete. Ya hizo esto con RUG coin: LP no bloqueada, mint activo y abandono a las 48h. NO entren a MOONX. El historial del dev está en su perfil, es público.',
+   664→    userId: cryptonita.id,
+   665→    tokenId: moonx.id,
+   666→    likes: 204,
+   667→    createdAt: new Date(now - 20 * HOUR),
+   668→  })
+   669→  await mkPost({
+   670→    kind: 'thesis',
+   671→    content:
+   672→      'PCHAIN es la jugada de Base esta semana. Kael verificó wallet, publicó el contrato con anticipación y está haciendo AMA diario en Farcaster. La comunidad crece 300 holders/día sin paid shills. Si toca 10M, HODL hasta 25M.',
+   673→    userId: nate.id,
+   674→    tokenId: pepeChain.id,
+   675→    likes: 87,
+   676→    createdAt: new Date(now - 16 * HOUR),
+   677→  })
+   678→  await mkPost({
+   679→    kind: 'trade',
+   680→    content: 'Sold 50% de LIGMA. Subió 8 días seguidos y el RSI está por las nubes. Dejo el resto correr con SL en la entrada.',
+   681→    userId: degenmike.id,
+   682→    tokenId: ligma.id,
+   683→    likes: 44,
+   684→    pnl: 3120.5,
+   685→    createdAt: new Date(now - 2 * HOUR),
+   686→  })
+   687→  await mkPost({
+   688→    kind: 'comment',
+   689→    content: 'TESIS token con 27% verde y el dev publicando cada movimiento. Así se construye en público. Nada que agregar, solo subir la tesis del Profe.',
+   690→    userId: wood.id,
+   691→    tokenId: tesis.id,
+   692→    likes: 23,
+   693→    createdAt: new Date(now - 6 * HOUR),
+   694→  })
+   695→  await mkPost({
+   696→    kind: 'trade',
+   697→    content: 'Entré a LINU a 190K MC. Tron necesita su season de memecoins y este tiene los memes más sanos del ecosistema. NFA, pero mi cartera ya es verde.',
+   698→    userId: lamboLu.id,
+   699→    tokenId: lamboInu.id,
+   700→    likes: 38,
+   701→    pnl: 412.0,
+   702→    createdAt: new Date(now - 9 * HOUR),
+   703→  })
+   704→  await mkPost({
+   705→    kind: 'comment',
+   706→    content: 'MRTN es el blue chip de esta lista. 30 días, 24M MC y sigue en top de volumen en ETH. Cuando el mercado esté rojo, mira quién resiste: estos son.',
+   707→    userId: salem.id,
+   708→    tokenId: martini.id,
+   709→    likes: 52,
+   710→    createdAt: new Date(now - 26 * HOUR),
+   711→  })
+   712→  await mkPost({
+   713→    kind: 'comment',
+   714→    content: 'SRCH a 2 días de nacer y ya con 5.2K holders. La narrativa de herramientas on-chain está subiendo. Si based_dev lanza SMOL limpio, toda su cartera de devs sube de reputación.',
+   715→    userId: cryptonita.id,
+   716→    tokenId: solSearch.id,
+   717→    likes: 41,
+   718→    createdAt: new Date(now - 11 * HOUR),
+   719→  })
+   720→  await mkPost({
+   721→    kind: 'thesis',
+   722→    content:
+   723→      'FREN: el único token de Base con crecimiento de holders sostenido 3 semanas. Sin KOLs, sin pump & dumps. Wood no tuitea, solo construye. Este es de los que se compran y se olvidan por 6 meses.',
+   724→    userId: elprofe.id,
+   725→    tokenId: forestFren.id,
+   726→    likes: 73,
+   727→    createdAt: new Date(now - 30 * HOUR),
+   728→  })
+   729→  await mkPost({
+   730→    kind: 'comment',
+   731→    content: 'GHST cayendo con la season de ETH. Buen momento para DCA si crees en la narrativa de terror on-chain para Halloween.',
+   732→    userId: anon47.id,
+   733→    tokenId: ghost.id,
+   734→    likes: 12,
+   735→    createdAt: new Date(now - 22 * HOUR),
+   736→  })
+   737→
+   738→  // Posts on launches (pre-launch hype)
+   739→  await mkPost({
+   740→    kind: 'thesis',
+   741→    content:
+   742→      'Tesis WIF2: el snapshot de holders de WIF trae 40K wallets mirando el launch. La primera vela la hacen los bots, la segunda la hace la comunidad. Si el top10 queda bajo 20%, esto vuela. Cuidado con el mint: todavía no lo revocan, les recomiendo esperar al check.',
+   743→    userId: elprofe.id,
+   744→    launchId: wif2.id,
+   745→    likes: 132,
+   746→    createdAt: new Date(now - 1 * HOUR),
+   747→  })
+   748→  await mkPost({
+   749→    kind: 'comment',
+   750→    content: 'SMOL es el launch más limpio del mes: LP quemada, mint revocado, top10 al 9%. based_dev ha entregado 2 tokens sin drama. El hamster se come al perro.',
+   751→    userId: cryptonita.id,
+   752→    launchId: smole.id,
+   753→    likes: 178,
+   754→    createdAt: new Date(now - 3 * HOUR),
+   755→  })
+   756→  await mkPost({
+   757→    kind: 'comment',
+   758→    content: 'Confirmado: 20 KOLs van a tuitear SMOL en la primera hora. Ya vi el grupo. Prepáren sus alerts, el launch es en menos de 1 hora.',
+   759→    userId: swizzle.id,
+   760→    launchId: smole.id,
+   761→    likes: 65,
+   762→    createdAt: new Date(now - 40 * MIN),
+   763→  })
+   764→  await mkPost({
+   765→    kind: 'comment',
+   766→    content: 'CABAL al 50% para los primeros 500 verificados. Esto es lo que ninguna terminal te da: acceso real a los launches de la comunidad. Yo ya soy de los primeros 100.',
+   767→    userId: nate.id,
+   768→    launchId: cabalCoin.id,
+   769→    likes: 251,
+   770→    createdAt: new Date(now - 5 * HOUR),
+   771→  })
+   772→  await mkPost({
+   773→    kind: 'thesis',
+   774→    content:
+   775→      'Tesis CABAL: las plataformas de comunidad siempre tokenizan cuando el engagement está en el techo. 823 de hype pre-launch sin token es la señal más fuerte que he visto este año. El floor es la comunidad misma.',
+   776→    userId: elprofe.id,
+   777→    launchId: cabalCoin.id,
+   778→    likes: 189,
+   779→    createdAt: new Date(now - 7 * HOUR),
+   780→  })
+   781→  await mkPost({
+   782→    kind: 'comment',
+   783→    content: 'NCAT: Kael publicó el arte on-chain 3 semanas antes del launch. Eso es construir de verdad. Base necesita su gato.',
+   784→    userId: salem.id,
+   785→    launchId: ncat.id,
+   786→    likes: 47,
+   787→    createdAt: new Date(now - 18 * HOUR),
+   788→  })
+   789→  await mkPost({
+   790→    kind: 'comment',
+   791→    content: 'GATO sin LP bloqueada y top10 al 31% = casino. Si entran, usen tamaño de apuesta de casino. El dev no tiene historial.',
+   792→    userId: cryptonita.id,
+   793→    launchId: gato.id,
+   794→    likes: 58,
+   795→    createdAt: new Date(now - 2 * HOUR),
+   796→  })
+   797→  await mkPost({
+   798→    kind: 'comment',
+   799→    content: 'FROGK con doble audit y distribution pública. La narrativa rana siempre corre en ETH. Un poco lejos todavía (3 días) pero es de las tesis más sólidas del radar.',
+   800→    userId: wood.id,
+   801→    launchId: frogk.id,
+   802→    likes: 39,
+   803→    createdAt: new Date(now - 24 * HOUR),
+   804→  })
+   805→  await mkPost({
+   806→    kind: 'comment',
+   807→    content: 'El loro de Tron tuiteando sus propias stats cada hora es el content que este espacio necesitaba 😂',
+   808→    userId: anon47.id,
+   809→    launchId: tucan.id,
+   810→    likes: 29,
+   811→    createdAt: new Date(now - 6 * HOUR),
+   812→  })
+   813→
+   814→  // General feed posts
+   815→  await mkPost({
+   816→    kind: 'call',
+   817→    content:
+   818→      'CALL PÚBLICO: Si SMOL abre bajo 100K MC y el top10 queda bajo 15%, hago thread con las 5 wallets del dev para que todos verifiquen. La ventaja aquí es tener la info ANTES del launch, no después.',
+   819→    userId: degenmike.id,
+   820→    likes: 91,
+   821→    createdAt: new Date(now - 30 * MIN),
+   822→  })
+   823→  await mkPost({
+   824→    kind: 'call',
+   825→    content: 'PnL del mes cerrado: +$8,420 gracias a entrar temprano a PCHAIN y MOCH gracias a los posts del Radar. El que informa primero, gana.',
+   826→    userId: cryptonita.id,
+   827→    likes: 167,
+   828→    pnl: 8420.0,
+   829→    createdAt: new Date(now - 13 * HOUR),
+   830→  })
+   831→  await mkPost({
+   832→    kind: 'comment',
+   833→    content: 'Me encanta que esto no sea otro terminal. Aquí se habla, se lee y se decide con tiempo. Los terminales te muestran el token cuando ya es tarde.',
+   834→    userId: wood.id,
+   835→    likes: 84,
+   836→    createdAt: new Date(now - 21 * HOUR),
+   837→  })
+   838→  await mkPost({
+   839→    kind: 'call',
+   840→    content: 'Tip del día: antes de entrar a cualquier launch revisen 3 cosas en la tarjeta: LP bloqueada 🔒, mint revocado ⛔ y top10 bajo 20%. Si falla 2 de 3, es casino.',
+   841→    userId: elprofe.id,
+   842→    likes: 143,
+   843→    createdAt: new Date(now - 15 * HOUR),
+   844→  })
+   845→  await mkPost({
+   846→    kind: 'comment',
+   847→    content: 'primer día en el Cabal y ya entendí más que en 3 meses de terminales',
+   848→    userId: tu.id,
+   849→    likes: 12,
+   850→    createdAt: new Date(now - 50 * MIN),
+   851→  })
+   852→
+   853→  // ---------- FOLLOWS (for current user) ----------
+   854→  await db.follow.createMany({
+   855→    data: [cryptonita, elprofe, basedDev].map((t) => ({
+   856→      userId: tu.id,
+   857→      targetId: t.id,
+   858→    })),
+   859→  })
+   860→
+   861→  // bump followers counts
+   862→  await db.user.update({ where: { id: cryptonita.id }, data: { followers: { increment: 1 } } })
+   863→  await db.user.update({ where: { id: elprofe.id }, data: { followers: { increment: 1 } } })
+   864→  await db.user.update({ where: { id: basedDev.id }, data: { followers: { increment: 1 } } })
+   865→
+   866→  // ---------- HYPE VOTES ----------
+   867→  await db.vote.createMany({
+   868→    data: [
+   869→      { userId: tu.id, target: 'launch', targetId: smole.id },
+   870→      { userId: tu.id, target: 'launch', targetId: cabalCoin.id },
+   871→    ],
+   872→  })
+   873→
+   874→  // ---------- POINT EVENTS (historial del usuario actual) ----------
+   875→  await db.pointEvent.createMany({
+   876→    data: [
+   877→      {
+   878→        userId: tu.id,
+   879→        amount: 40,
+   880→        reason: 'launch',
+   881→        note: 'Publicaste el launch: SMOLE Coin (SMOL)',
+   882→        createdAt: new Date(now - 6 * HOUR),
+   883→      },
+   884→      {
+   885→        userId: tu.id,
+   886→        amount: 25,
+   887→        reason: 'thesis',
+   888→        note: 'Tesis publicada en CABAL Coin',
+   889→        createdAt: new Date(now - 5 * HOUR),
+   890→      },
+   891→      {
+   892→        userId: tu.id,
+   893→        amount: 5,
+   894→        reason: 'comment',
+   895→        note: 'Comentario en el feed',
+   896→        createdAt: new Date(now - 4 * HOUR),
+   897→      },
+   898→      {
+   899→        userId: tu.id,
+   900→        amount: 12,
+   901→        reason: 'like_received',
+   902→        note: '6 likes recibidos en tus posts',
+   903→        createdAt: new Date(now - 3 * HOUR),
+   904→      },
+   905→      {
+   906→        userId: tu.id,
+   907→        amount: 50,
+   908→        reason: 'admin_adjust',
+   909→        note: 'Bono de bienvenida del Cabal',
+   910→        createdAt: new Date(now - 2 * HOUR),
+   911→      },
+   912→    ],
+   913→  })
+   914→}
+   915→

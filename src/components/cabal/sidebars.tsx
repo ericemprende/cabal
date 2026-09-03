@@ -83,10 +83,15 @@ export function RightRail() {
                 onClick={() => openLaunch(l.id)}
                 className="card-surface flex w-full items-center gap-2.5 rounded-xl border border-white/10 p-2.5 text-left transition-colors hover:border-[#8FA83F]/30"
               >
-                <TokenGlyph src={l.image} ticker={l.ticker} size="sm" />
+                <TokenGlyph src={l.image} ticker={l.ticker ?? l.name} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-bold">
-                    {l.ticker} <span className="font-normal text-muted-foreground">· {l.name}</span>
+                    {l.isPrivate || !l.ticker ? (
+                      <span className="text-amber-300/90">Privado</span>
+                    ) : (
+                      l.ticker
+                    )}{' '}
+                    <span className="font-normal text-muted-foreground">· {l.name}</span>
                   </p>
                   <div className="mt-0.5"><NetworkBadge network={l.network} /></div>
                 </div>
