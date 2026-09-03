@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  handle        String   @unique
+  name          String
+  avatar        String   @default("🐺")
+  bio           String?
+  wallet        String?
+  walletVerified Boolean @default(false)
+  isDev         Boolean  @default(false)
+  cabalScore    Int      @default(0)
+  callsWon      Int      @default(0)
+  callsTotal    Int      @default(0)
+  followers     Int      @default(0)
+  isCurrentUser Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  posts         Post[]
+  launches      Launch[]
+  tokens        Token[]
+  votes         Vote[]
+  followersRel  Follow[] @relation("followTarget")
+  followingRel  Follow[] @relation("followUser")
+}
+
+model Launch {
+  id          String   @id @default(cuid())
+  name        String
+  ticker      String
+  emoji       String   @default("🚀")
+  network     String   @default("solana")
+  launchAt    DateTime
+  description String
+  website     String?
+  twitter     String?
+  telegram    String?
+  status      String   @default("upcoming")
+  hype        Int      @default(0)
+  lpLocked    Boolean  @default(false)
+  mintRevoked Boolean  @default(false)
+  top10Pct    Float    @default(25)
+  createdById String
+  createdAt   DateTime @default(now())
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  posts       Post[]
+}
+
+model Token {
+  id         String   @id @default(cuid())
+  name       String
+  ticker     String
+  emoji      String   @default("🪙")
+  network    String   @default("solana")
+  price      Float    @default(0.0001)
+  mc         Float    @default(0)
+  change24h  Float    @default(0)
+  volume24h  Float    @default(0)
+  holders    Int      @default(0)
+  top10Pct   Float    @default(25)
+  contract   String   @default("")
+  devId      String
+  dev        User     @relation(fields: [devId], references: [id])
+  launchedAt DateTime
+  athMc      Float    @default(0)
+  isRug      Boolean  @default(false)
+  posts      Post[]
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  kind      String   @default("comment") // thesis | comment | call | trade
+  content   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  launchId  String?
+  launch    Launch?  @relation(fields: [launchId], references: [id])
+  tokenId   String?
+  token     Token?   @relation(fields: [tokenId], references: [id])
+  likes     Int      @default(0)
+  pnl       Float?
+  createdAt DateTime @default(now())
+}
+
+model Vote {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  target   String // "launch" | "post"
+  targetId String
+
+  @@unique([userId, target, targetId])
+}
+
+model Follow {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation("followUser", fields: [userId], references: [id])
+  targetId String
+  target   User   @relation("followTarget", fields: [targetId], references: [id])
+  @@unique([userId, targetId])
+}
