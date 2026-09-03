@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Crown, ShieldCheck, TrendingUp, Zap } from 'lucide-react'
+import { Crown, Shield, ShieldCheck, Target, TrendingUp, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { EmojiAvatar, PointsPill } from '@/components/cabal/shared'
+import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct } from '@/lib/cabal'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
 import type { LeaderboardEntryDTO } from '@/lib/types'
@@ -19,22 +19,23 @@ export function LeaderboardTab() {
       <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
         {(
           [
-            { key: 'callers', label: '🎯 Top Callers' },
-            { key: 'points', label: '⚡ Puntos Cabal' },
-            { key: 'devs', label: '🔧 Devs' },
-            { key: 'clans', label: '🏰 Clanes' },
-          ] as { key: Board; label: string }[]
+            { key: 'callers', label: 'Top Callers', icon: Target },
+            { key: 'points', label: 'Puntos Cabal', icon: Zap },
+            { key: 'devs', label: 'Devs', icon: Wrench },
+            { key: 'clans', label: 'Clanes', icon: Shield },
+          ] as { key: Board; label: string; icon: typeof Target }[]
         ).map((b) => (
           <button
             key={b.key}
             onClick={() => setBoard(b.key)}
             className={cn(
-              'shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all',
+              'flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold transition-all',
               board === b.key
-                ? 'border-[#00ff88]/50 bg-[#00ff88]/10 text-primary neon-shadow'
-                : 'border-[#00ff88]/12 bg-[#0b120d] text-muted-foreground hover:border-[#00ff88]/30'
+                ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary neon-shadow'
+                : 'border-white/10 bg-[#121410] text-muted-foreground hover:border-[#8FA83F]/30'
             )}
           >
+            <b.icon className="h-3.5 w-3.5" aria-hidden />
             {b.label}
           </button>
         ))}
@@ -43,18 +44,20 @@ export function LeaderboardTab() {
       {isLoading ? (
         <div className="space-y-2">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl border border-[#00ff88]/8 bg-[#0b120d]" />
+            <div key={i} className="h-16 animate-pulse rounded-xl border border-white/8 bg-[#121410]" />
           ))}
         </div>
       ) : board === 'clans' ? (
         <div className="grid gap-3 sm:grid-cols-2">
           {data?.clans.map((c, i) => (
-            <div key={c.id} className="card-surface flex items-center gap-3 rounded-xl border border-[#00ff88]/12 p-4">
-              <span className="text-3xl" aria-hidden>{c.emoji}</span>
+            <div key={c.id} className="card-surface flex items-center gap-3 rounded-xl border border-white/10 p-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400" aria-hidden>
+                <Shield className="h-5 w-5" />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 truncate font-display text-sm font-bold">
                   #{i + 1} {c.name}
-                  <span className="rounded bg-[#00ff88]/10 px-1.5 py-px font-mono text-[10px] text-primary">{c.tag}</span>
+                  <span className="rounded bg-[#8FA83F]/10 px-1.5 py-px font-mono text-[10px] text-primary">{c.tag}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">{c.members} miembros</p>
               </div>
@@ -81,15 +84,14 @@ export function LeaderboardTab() {
 function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
   const follow = useFollowToggle()
   const { user, rank } = entry
-  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`
   const winRate = entry.winRate ?? 0
 
   return (
-    <div className="card-surface flex items-center gap-3 rounded-xl border border-[#00ff88]/8 p-3 transition-colors hover:border-[#00ff88]/25">
-      <span className={cn('w-8 shrink-0 text-center font-display text-sm font-bold', rank <= 3 ? 'text-lg' : 'text-muted-foreground')}>
-        {medal}
+    <div className="card-surface flex items-center gap-3 rounded-xl border border-white/8 p-3 transition-colors hover:border-white/12">
+      <span className={cn('w-8 shrink-0 text-center font-machina text-sm font-bold', rank <= 3 ? 'text-primary' : 'text-muted-foreground')}>
+        {String(rank).padStart(2, '0')}
       </span>
-      <EmojiAvatar emoji={user.avatar} size="md" verified={user.walletVerified} />
+      <UserAvatar name={user.name} handle={user.handle} size="md" verified={user.walletVerified} />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-sm font-bold">
           {user.name}
@@ -100,8 +102,8 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
         {/* win rate bar for callers/devs */}
         {(board === 'callers' || board === 'devs') && (
           <div className="mt-1.5 flex items-center gap-2">
-            <div className="h-1 w-24 overflow-hidden rounded-full bg-[#00ff88]/8">
-              <div className="h-full rounded-full bg-gradient-to-r from-[#00ff88]/50 to-[#00ff88]" style={{ width: `${winRate}%` }} />
+            <div className="h-1 w-24 overflow-hidden rounded-full bg-[#8FA83F]/8">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/50 to-[#8FA83F]" style={{ width: `${winRate}%` }} />
             </div>
             <span className="text-[10px] font-semibold text-muted-foreground">
               {user.callsWon}/{user.callsTotal} aciertos · {winRate}%
@@ -128,7 +130,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
         {!user.isFollowed && (
           <button
             onClick={() => follow.mutate(user.id)}
-            className="rounded-full border border-[#00ff88]/30 px-3 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-[#00ff88]/10"
+            className="rounded-full border border-[#8FA83F]/30 px-3 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-[#8FA83F]/10"
           >
             Seguir
           </button>

@@ -2,13 +2,13 @@ export type NetworkKey = 'solana' | 'base' | 'ethereum' | 'bsc' | 'tron'
 
 export const NETWORKS: Record<
   NetworkKey,
-  { label: string; short: string; color: string; emoji: string; dot: string }
+  { label: string; short: string; dot: string }
 > = {
-  solana: { label: 'Solana', short: 'SOL', color: '#14F195', emoji: '◎', dot: '#14F195' },
-  base: { label: 'Base', short: 'BASE', color: '#00FF88', emoji: '⬡', dot: '#0052FF' },
-  ethereum: { label: 'Ethereum', short: 'ETH', color: '#8A92B2', emoji: 'Ξ', dot: '#8A92B2' },
-  bsc: { label: 'BNB Chain', short: 'BSC', color: '#F0B90B', emoji: '🔶', dot: '#F0B90B' },
-  tron: { label: 'Tron', short: 'TRX', color: '#FF4D5E', emoji: '🔺', dot: '#FF4D5E' },
+  solana: { label: 'Solana', short: 'SOL', dot: '#14F195' },
+  base: { label: 'Base', short: 'BASE', dot: '#0052FF' },
+  ethereum: { label: 'Ethereum', short: 'ETH', dot: '#8A92B2' },
+  bsc: { label: 'BNB Chain', short: 'BSC', dot: '#F0B90B' },
+  tron: { label: 'Tron', short: 'TRX', dot: '#FF4D5E' },
 }
 
 export function networkMeta(key: string) {
@@ -106,7 +106,7 @@ export const POST_KIND_META: Record<
   string,
   { label: string; className: string }
 > = {
-  thesis: { label: 'Tesis', className: 'bg-[#00ff88]/15 text-[#00ff88] border-[#00ff88]/30' },
+  thesis: { label: 'Tesis', className: 'bg-[#8FA83F]/15 text-[#8FA83F] border-[#8FA83F]/30' },
   call: { label: 'Call', className: 'bg-amber-400/15 text-amber-300 border-amber-400/30' },
   trade: { label: 'Trade', className: 'bg-fuchsia-400/10 text-fuchsia-300 border-fuchsia-400/25' },
   comment: { label: 'Comentario', className: 'bg-zinc-400/10 text-zinc-300 border-zinc-400/20' },

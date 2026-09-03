@@ -3,12 +3,43 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------- Neue Machina (self-hosted) ---------- */
+@font-face {
+  font-family: "Neue Machina";
+  src: url("/fonts/NeueMachina-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Neue Machina";
+  src: url("/fonts/NeueMachina-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Neue Machina";
+  src: url("/fonts/NeueMachina-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Neue Machina";
+  src: url("/fonts/NeueMachina-Ultrabold.woff") format("woff");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-space-grotesk);
+  --font-machina: "Neue Machina", var(--font-space-grotesk), var(--font-geist-sans), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,39 +79,41 @@
 
 :root {
   --radius: 0.75rem;
-  --neon: #00ff88;
-  --neon-dim: #00cc6a;
-  --background: #060a08;
-  --foreground: #e8f2ea;
-  --card: #0b120d;
-  --card-foreground: #e8f2ea;
-  --popover: #0b120d;
-  --popover-foreground: #e8f2ea;
-  --primary: #00ff88;
-  --primary-foreground: #04140b;
-  --secondary: #111a13;
-  --secondary-foreground: #d5e5d8;
-  --muted: #10170f;
-  --muted-foreground: #7d9484;
-  --accent: #12241a;
-  --accent-foreground: #b8ffd9;
+  /* Verde oliva — acento sobrio */
+  --neon: #8fa83f;
+  --neon-dim: #6e8236;
+  --background: #0a0b08;
+  --foreground: #e9eae4;
+  --card: #121410;
+  --card-foreground: #e9eae4;
+  --popover: #121410;
+  --popover-foreground: #e9eae4;
+  --primary: #8fa83f;
+  --primary-foreground: #101403;
+  --secondary: #191c13;
+  --secondary-foreground: #d6dcc6;
+  --muted: #171910;
+  --muted-foreground: #8b917f;
+  --accent: #1e2212;
+  --accent-foreground: #cdd9a3;
   --destructive: #ff4d5e;
-  --border: rgba(0, 255, 136, 0.09);
-  --input: rgba(0, 255, 136, 0.14);
-  --ring: rgba(0, 255, 136, 0.4);
-  --chart-1: #00ff88;
+  /* Bordes neutros — nada de verde en los bordes */
+  --border: rgba(255, 255, 255, 0.07);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: rgba(143, 168, 63, 0.45);
+  --chart-1: #8fa83f;
   --chart-2: #ffb020;
   --chart-3: #ff4d5e;
-  --chart-4: #b8ffd9;
-  --chart-5: #7d9484;
-  --sidebar: #080d09;
-  --sidebar-foreground: #e8f2ea;
-  --sidebar-primary: #00ff88;
-  --sidebar-primary-foreground: #04140b;
-  --sidebar-accent: #12241a;
-  --sidebar-accent-foreground: #b8ffd9;
-  --sidebar-border: rgba(0, 255, 136, 0.09);
-  --sidebar-ring: rgba(0, 255, 136, 0.4);
+  --chart-4: #cdd9a3;
+  --chart-5: #8b917f;
+  --sidebar: #0d0e0a;
+  --sidebar-foreground: #e9eae4;
+  --sidebar-primary: #8fa83f;
+  --sidebar-primary-foreground: #101403;
+  --sidebar-accent: #1e2212;
+  --sidebar-accent-foreground: #cdd9a3;
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --sidebar-ring: rgba(143, 168, 63, 0.45);
 }
 
 @layer base {
@@ -92,7 +125,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image: radial-gradient(1200px 500px at 70% -10%, rgba(0, 255, 136, 0.055), transparent 60%);
+    background-image: radial-gradient(1200px 500px at 70% -10%, rgba(143, 168, 63, 0.035), transparent 60%);
     font-feature-settings: "tnum";
   }
 }
@@ -102,30 +135,35 @@
   font-family: var(--font-space-grotesk), var(--font-geist-sans), sans-serif;
 }
 
+.font-machina {
+  font-family: var(--font-machina);
+}
+
+/* Glows muy sutiles — antes neón intenso */
 .text-glow {
   text-shadow:
-    0 0 8px rgba(0, 255, 136, 0.65),
-    0 0 24px rgba(0, 255, 136, 0.28);
+    0 0 8px rgba(143, 168, 63, 0.3),
+    0 0 20px rgba(143, 168, 63, 0.12);
 }
 
 .neon-shadow {
   box-shadow:
-    0 0 12px rgba(0, 255, 136, 0.28),
-    inset 0 0 0 1px rgba(0, 255, 136, 0.25);
+    0 0 10px rgba(143, 168, 63, 0.14),
+    inset 0 0 0 1px rgba(143, 168, 63, 0.18);
 }
 
 .neon-shadow-strong {
   box-shadow:
-    0 0 18px rgba(0, 255, 136, 0.45),
-    0 0 40px rgba(0, 255, 136, 0.12),
-    inset 0 0 0 1px rgba(0, 255, 136, 0.4);
+    0 0 14px rgba(143, 168, 63, 0.24),
+    0 0 32px rgba(143, 168, 63, 0.08),
+    inset 0 0 0 1px rgba(143, 168, 63, 0.28);
 }
 
 .card-surface {
-  background: linear-gradient(180deg, rgba(0, 255, 136, 0.028), rgba(0, 0, 0, 0) 40%), var(--card);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.016), rgba(0, 0, 0, 0) 40%), var(--card);
 }
 
-/* Scrollbars */
+/* Scrollbars neutros */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -134,11 +172,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 136, 0.16);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 255, 136, 0.32);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -154,11 +192,11 @@
   0%,
   100% {
     opacity: 1;
-    box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.5);
+    box-shadow: 0 0 0 0 rgba(143, 168, 63, 0.4);
   }
   50% {
     opacity: 0.75;
-    box-shadow: 0 0 0 6px rgba(0, 255, 136, 0);
+    box-shadow: 0 0 0 6px rgba(143, 168, 63, 0);
   }
 }
 .live-dot {

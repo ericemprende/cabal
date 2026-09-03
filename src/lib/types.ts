@@ -22,6 +22,7 @@ export interface LaunchRefDTO {
   name: string
   ticker: string
   emoji: string
+  image?: string | null
   network: string
   launchAt: string
 }
@@ -31,6 +32,7 @@ export interface TokenRefDTO {
   name: string
   ticker: string
   emoji: string
+  image?: string | null
   network: string
   mc: number
 }
@@ -54,6 +56,8 @@ export interface LaunchDTO {
   name: string
   ticker: string
   emoji: string
+  image?: string | null
+  banner?: string | null
   network: string
   launchAt: string
   description: string
@@ -76,6 +80,7 @@ export interface TokenDTO {
   name: string
   ticker: string
   emoji: string
+  image?: string | null
   network: string
   price: number
   mc: number

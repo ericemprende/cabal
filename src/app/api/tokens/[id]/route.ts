@@ -39,6 +39,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       name: token.name,
       ticker: token.ticker,
       emoji: token.emoji,
+      image: token.image,
       network: token.network,
       price: token.price,
       mc: token.mc,

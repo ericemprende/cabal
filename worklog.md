@@ -56,3 +56,21 @@ Stage Summary:
 - Backend 100% operativo con sistema de puntos configurable desde admin
 - Reglas por defecto: tesis=25, comentario=5, launch=40, like recibido=2, hype recibido=1, visita diaria=3
 - Pendiente: frontend completo (tema neón verde, tabs Radar/Tokens/Feed/Líderes, modales, dashboard admin)
+
+---
+Task ID: 12
+Agent: main (Z.ai Code)
+Task: Rediseño visual Cabal — wordmark Neue Machina, paleta oliva, iconos monocromos, upload de imagen/banner
+
+Work Log:
+- Fuente: Neue Machina (Pangram Pangram) auto-alojada en public/fonts (Regular/Medium/Bold/Ultrabold woff), @font-face + utilidad .font-machina; wordmark "CABAL" en mayúscula bold SIN logo SVG (eliminado public/logo.svg, favicon tipográfico en src/app/icon.svg)
+- Paleta oliva: --neon #8fa83f (antes #00ff88), fondos cálidos #0a0b08/#121410, BORDES NEUTROS blancos (border-white/8-12) en todo el shell, glows reducidos ~60%, scrollbars neutros, base/bnb badges monocromos con dot de color
+- Iconos monocromos: UserAvatar (iniciales en Neue Machina, tonos neutros deterministas, badge verificado oliva) reemplaza todos los EmojiAvatar; TokenGlyph (imagen del token o inicial en tile monocromo) para launches/tokens; todos los emojis de UI reemplazados por Lucide (Zap puntos, Timer countdowns, CheckCircle2/XCircle safety, Globe filtros, Flame/Sparkles/Trending sorts, Target/Wrench/Shield/ShieldChart leaderboards, GraduationCap/Megaphone/MessageSquare kinds, Heart likes, medallas→rank 01/02/03 tipográfico)
+- Upload de imágenes: schema Launch.image/Launch.banner + Token.image, API /api/upload (multipart, valida mime y 2.5MB, guarda en public/uploads), POST /api/launches acepta image/banner (valida ruta), formulario "Publicar lanzamiento" con dropzones cuadrada (imagen del token) y 16:9 (banner opcional) con preview y remove; imágenes renderizadas en radar/hero/detalle (banner con fade)/feed/chips
+- Seed regenerado: imágenes AI para SMOL y CABAL (+banner) en public/seed/, notas de puntos sin emojis, DB reseteada
+- Admin: tabs con iconos, labels de reglas sin emojis, likes con Heart; Perfil: historial de puntos con iconos por tipo, balance con Zap en font-machina, picker de avatar eliminado
+- Verificación E2E con Agent Browser (desktop 1440 + iPhone 14): radar con imágenes, tesis +25 (132→157), upload real de imagen → preview → launch TVST publicado +40 (157→197) y visible en radar con su imagen, tokens/líderes/clanes/perfil/admin/búsqueda/footer/móvil sin emojis ni errores de consola; lint 0 errores
+
+Stage Summary:
+- Cabal rediseñado: identidad tipográfica Neue Machina, paleta oliva sobria con bordes neutros, iconografía monocroma homogénea, y lanzamientos con imagen + banner subibles por el usuario
+- Golden path completo verificado en navegador; app lista para preview

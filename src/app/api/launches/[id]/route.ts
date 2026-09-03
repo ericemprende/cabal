@@ -31,6 +31,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       name: launch.name,
       ticker: launch.ticker,
       emoji: launch.emoji,
+      image: launch.image,
+      banner: launch.banner,
       network: launch.network,
       launchAt: launch.launchAt.toISOString(),
       description: launch.description,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Minus, Plus, Save, ShieldCheck, Users, Zap } from 'lucide-react'
+import { BarChart3, Heart, Minus, Plus, Save, Settings2, ShieldCheck, Users, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -10,28 +10,28 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { EmojiAvatar, PointsPill } from '@/components/cabal/shared'
+import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { timeAgo } from '@/lib/cabal'
 import { jsonFetch, qk, useAdminAdjustPoints, useAdminOverview, useAdminRules, useAdminUsers } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import type { AdminUserRowDTO } from '@/lib/types'
 
 const RULE_LABELS: Record<string, string> = {
-  points_thesis: '🎓 Tesis publicada',
-  points_comment: '💬 Comentario',
-  points_launch: '🚀 Launch publicado',
-  points_like_received: '❤️ Like recibido',
-  points_hype_received: '🔥 Hype en tu launch',
-  points_daily_visit: '📅 Visita diaria',
+  points_thesis: 'Tesis publicada',
+  points_comment: 'Comentario',
+  points_launch: 'Launch publicado',
+  points_like_received: 'Like recibido',
+  points_hype_received: 'Hype en tu launch',
+  points_daily_visit: 'Visita diaria',
 }
 
 const REASON_COLORS: Record<string, string> = {
-  launch: '#00ff88',
-  thesis: '#4dffa8',
-  comment: '#b8ffd9',
+  launch: '#8FA83F',
+  thesis: '#a5bd55',
+  comment: '#cdd9a3',
   like_received: '#ffb020',
   hype_received: '#ffe08a',
-  admin_adjust: '#8affce',
+  admin_adjust: '#7d9340',
   redeem: '#ff4d5e',
 }
 
@@ -63,29 +63,30 @@ export function AdminDialog() {
 
   return (
     <Dialog open={adminOpen} onOpenChange={setAdminOpen}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-[#00ff88]/25 bg-[#0b120d] p-0 sm:max-w-3xl" aria-describedby={undefined}>
-        <div className="sticky top-0 z-10 border-b border-[#00ff88]/12 bg-[#0b120d] p-4">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/12 bg-[#121410] p-0 sm:max-w-3xl" aria-describedby={undefined}>
+        <div className="sticky top-0 z-10 border-b border-white/10 bg-[#121410] p-4">
           <DialogTitle className="flex items-center gap-2 font-display text-lg font-bold">
             <ShieldCheck className="h-5 w-5 text-primary" /> Dashboard Admin
           </DialogTitle>
           <div className="mt-3 flex gap-1.5">
             {(
               [
-                { key: 'puntos', label: '⚡ Puntos de usuarios' },
-                { key: 'reglas', label: '⚙️ Reglas de puntos' },
-                { key: 'stats', label: '📊 Estadísticas' },
-              ] as { key: AdminView; label: string }[]
+                { key: 'puntos', label: 'Puntos de usuarios', icon: Zap },
+                { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
+                { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
+              ] as { key: AdminView; label: string; icon: typeof Zap }[]
             ).map((v) => (
               <button
                 key={v.key}
                 onClick={() => setView(v.key)}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+                  'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
                   view === v.key
-                    ? 'border-[#00ff88]/50 bg-[#00ff88]/10 text-primary'
-                    : 'border-[#00ff88]/12 text-muted-foreground hover:border-[#00ff88]/30'
+                    ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                    : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
                 )}
               >
+                <v.icon className="h-3.5 w-3.5" aria-hidden />
                 {v.label}
               </button>
             ))}
@@ -112,7 +113,7 @@ export function AdminDialog() {
               </p>
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {Object.entries(RULE_LABELS).map(([key, label]) => (
-                  <div key={key} className="flex items-center gap-3 rounded-xl border border-[#00ff88]/12 bg-[#060a08] px-3.5 py-3">
+                  <div key={key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
                     <span className="flex-1 text-[13px] font-semibold">{label}</span>
                     <Input
                       type="number"
@@ -120,17 +121,17 @@ export function AdminDialog() {
                       max={10000}
                       value={ruleValue(key)}
                       onChange={(e) => setRule(key, Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                      className="h-9 w-20 border-[#00ff88]/20 bg-[#0b120d] text-center font-mono font-bold text-primary"
+                      className="h-9 w-20 border-white/10 bg-[#121410] text-center font-mono font-bold text-primary"
                       aria-label={label}
                     />
-                    <span className="text-xs text-muted-foreground">⚡</span>
+                    <Zap className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
                   </div>
                 ))}
               </div>
               <Button
                 onClick={() => saveRules.mutate(rulesToSave())}
                 disabled={saveRules.isPending}
-                className="h-10 gap-2 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-[#00ff88]"
+                className="h-10 gap-2 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]"
               >
                 <Save className="h-4 w-4" /> Guardar reglas
               </Button>
@@ -146,22 +147,22 @@ export function AdminDialog() {
                 <Kpi label="Tokens" value={overview.data?.totalTokens ?? 0} />
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-xl border border-[#00ff88]/15 bg-[#060a08] p-4">
+                <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Puntos en circulación</p>
-                  <p className="font-display mt-1 text-3xl font-black text-primary text-glow">
-                    {(overview.data?.pointsInCirculation ?? 0).toLocaleString('es')} ⚡
+                  <p className="font-machina mt-1 text-3xl font-bold text-primary">
+                    {(overview.data?.pointsInCirculation ?? 0).toLocaleString('es')}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Emitidos históricos: {(overview.data?.pointsIssuedTotal ?? 0).toLocaleString('es')} ⚡
+                    Emitidos históricos: {(overview.data?.pointsIssuedTotal ?? 0).toLocaleString('es')}
                   </p>
                 </div>
-                <div className="rounded-xl border border-[#00ff88]/15 bg-[#060a08] p-4">
+                <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Top earners</p>
                   <div className="mt-2 space-y-1.5">
                     {(overview.data?.topEarners ?? []).map((t, i) => (
                       <div key={t.user.id} className="flex items-center gap-2 text-[13px]">
                         <span className="w-4 text-muted-foreground">{i + 1}.</span>
-                        <EmojiAvatar emoji={t.user.avatar} size="xs" ring={false} />
+                        <UserAvatar name={t.user.name} handle={t.user.handle} size="xs" ring={false} />
                         <span className="flex-1 truncate font-medium">{t.user.name}</span>
                         <PointsPill points={t.points} />
                       </div>
@@ -170,21 +171,21 @@ export function AdminDialog() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[#00ff88]/15 bg-[#060a08] p-4">
+              <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
                 <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Distribución de puntos por actividad</p>
                 <div className="h-52">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dist} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
-                      <CartesianGrid stroke="rgba(0,255,136,0.07)" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fill: '#7d9484', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
-                      <YAxis tick={{ fill: '#7d9484', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+                      <YAxis tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        cursor={{ fill: 'rgba(0,255,136,0.05)' }}
-                        contentStyle={{ background: '#0b120d', border: '1px solid rgba(0,255,136,0.25)', borderRadius: 10, fontSize: 12 }}
+                        cursor={{ fill: 'rgba(143,168,63,0.05)' }}
+                        contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
                       />
                       <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                         {dist.map((d) => (
-                          <Cell key={d.key} fill={REASON_COLORS[d.key] ?? '#00ff88'} fillOpacity={0.85} />
+                          <Cell key={d.key} fill={REASON_COLORS[d.key] ?? '#8FA83F'} fillOpacity={0.85} />
                         ))}
                       </Bar>
                     </BarChart>
@@ -192,12 +193,12 @@ export function AdminDialog() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-[#00ff88]/15 bg-[#060a08] p-4">
+              <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
                 <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad reciente de puntos</p>
                 <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
                   {(overview.data?.recentEvents ?? []).map((e) => (
-                    <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-[#00ff88]/4">
-                      <EmojiAvatar emoji={e.user.avatar} size="xs" ring={false} />
+                    <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-white/4">
+                      <UserAvatar name={e.user.name} handle={e.user.handle} size="xs" ring={false} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px]">
                           <span className="font-semibold">{e.user.name}</span> <span className="text-muted-foreground">· {e.note}</span>
@@ -205,7 +206,7 @@ export function AdminDialog() {
                         <p className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</p>
                       </div>
                       <span className={cn('font-mono text-[13px] font-bold', e.amount >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
-                        {e.amount >= 0 ? '+' : ''}{e.amount} ⚡
+                        {e.amount >= 0 ? '+' : ''}{e.amount}
                       </span>
                     </div>
                   ))}
@@ -241,15 +242,16 @@ function AdminUserRow({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-[#00ff88]/10 bg-[#060a08] p-3">
-      <EmojiAvatar emoji={user.avatar} size="md" verified={user.walletVerified} />
+    <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <UserAvatar name={user.name} handle={user.handle} size="md" verified={user.walletVerified} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold">
           {user.name}
-          {user.isAdmin && <span className="ml-1.5 rounded bg-[#00ff88]/12 px-1 py-px text-[9px] font-black text-primary">ADMIN</span>}
+          {user.isAdmin && <span className="ml-1.5 rounded bg-[#8FA83F]/12 px-1 py-px text-[9px] font-black text-primary">ADMIN</span>}
         </p>
-        <p className="truncate text-xs text-muted-foreground">
-          @{user.handle} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived} ❤️
+        <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+          @{user.handle} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
+          <Heart className="h-3 w-3" aria-hidden />
         </p>
       </div>
       <PointsPill points={user.points} />
@@ -258,17 +260,17 @@ function AdminUserRow({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Motivo (opcional)"
-          className="h-8 w-36 border-[#00ff88]/15 bg-[#0b120d] text-xs"
+          className="h-8 w-36 border-white/10 bg-[#121410] text-xs"
           aria-label="Motivo del ajuste"
         />
         <Input
           type="number"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="h-8 w-16 border-[#00ff88]/20 bg-[#0b120d] text-center font-mono text-xs font-bold"
+          className="h-8 w-16 border-white/10 bg-[#121410] text-center font-mono text-xs font-bold"
           aria-label="Monto"
         />
-        <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-[#00ff88]" aria-label="Añadir puntos">
+        <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-[#8FA83F]" aria-label="Añadir puntos">
           <Plus className="h-4 w-4" strokeWidth={3} />
         </Button>
         <Button size="icon" variant="secondary" onClick={() => doAdjust(-1)} className="h-8 w-8 rounded-lg text-[#ff8080] hover:bg-destructive/15" aria-label="Quitar puntos">
@@ -281,7 +283,7 @@ function AdminUserRow({
 
 function Kpi({ label, value, icon }: { label: string; value: number; icon?: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-[#00ff88]/12 bg-[#060a08] px-3.5 py-3">
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
       <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         {icon} {label}
       </p>

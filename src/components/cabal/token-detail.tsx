@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BadgeCheck, Zap } from 'lucide-react'
+import { BadgeCheck, History, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { EmojiAvatar, NetworkBadge } from '@/components/cabal/shared'
+import { NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, shortWallet, timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useToken } from '@/lib/api-client'
@@ -40,7 +40,7 @@ export function TokenDetailDialog() {
         }
       }}
     >
-      <DialogContent className="max-h-[88vh] overflow-y-auto border-[#00ff88]/20 bg-[#0b120d] p-0 sm:max-w-2xl" aria-describedby={undefined}>
+      <DialogContent className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-2xl" aria-describedby={undefined}>
         {isLoading || !token ? (
           <div className="space-y-3 p-6">
             <DialogTitle className="sr-only">Detalle del token</DialogTitle>
@@ -51,9 +51,9 @@ export function TokenDetailDialog() {
         ) : (
           <div className="space-y-0">
             {/* header */}
-            <div className="border-b border-[#00ff88]/12 p-5">
+            <div className="border-b border-white/10 p-5">
               <DialogTitle className="flex items-start gap-3 text-left">
-                <EmojiAvatar emoji={token.emoji} size="xl" />
+                <TokenGlyph src={token.image} ticker={token.ticker} size="xl" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display truncate text-xl font-bold">
@@ -81,14 +81,14 @@ export function TokenDetailDialog() {
                   <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
                     <defs>
                       <linearGradient id="mcFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#00ff88" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#00ff88" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#8FA83F" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#8FA83F" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid stroke="rgba(0,255,136,0.07)" vertical={false} />
-                    <XAxis dataKey="t" tick={{ fill: '#7d9484', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={40} />
+                    <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
+                    <XAxis dataKey="t" tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={40} />
                     <YAxis
-                      tick={{ fill: '#7d9484', fontSize: 10 }}
+                      tick={{ fill: '#8b917f', fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                       width={56}
@@ -96,11 +96,11 @@ export function TokenDetailDialog() {
                       domain={['auto', 'auto']}
                     />
                     <Tooltip
-                      contentStyle={{ background: '#0b120d', border: '1px solid rgba(0,255,136,0.25)', borderRadius: 10, fontSize: 12 }}
-                      labelStyle={{ color: '#7d9484' }}
+                      contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
+                      labelStyle={{ color: '#8b917f' }}
                       formatter={(v) => [fmtMc(Number(v)), 'Market Cap']}
                     />
-                    <Area type="monotone" dataKey="mc" stroke="#00ff88" strokeWidth={2} fill="url(#mcFill)" />
+                    <Area type="monotone" dataKey="mc" stroke="#8FA83F" strokeWidth={2} fill="url(#mcFill)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -110,18 +110,19 @@ export function TokenDetailDialog() {
                 <Stat label="Holders" value={fmtNum(token.holders)} />
                 <Stat label="Vol 24h" value={fmtMc(token.volume24h)} />
                 <Stat label="Top 10" value={`${token.top10Pct}%`} warn={token.top10Pct > 20} />
-                <Stat label="Tesis" value={`${token.postsCount} 💬`} />
+                <Stat label="Tesis" value={String(token.postsCount)} />
               </div>
             </div>
 
             {/* DEV TRACK RECORD — el diferencial */}
-            <div className="border-b border-[#00ff88]/12 p-5">
-              <p className="pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                🧾 Historial del dev <span className="text-primary">· verificado por wallet</span>
+            <div className="border-b border-white/10 p-5">
+              <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> Historial del dev
+                <span className="font-normal normal-case text-primary/80">· verificado por wallet</span>
               </p>
-              <div className="flex flex-col gap-3 rounded-xl border border-[#00ff88]/12 bg-[#060a08] p-3.5 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2.5">
-                  <EmojiAvatar emoji={token.dev.avatar} size="lg" verified={token.dev.walletVerified} />
+                  <UserAvatar name={token.dev.name} handle={token.dev.handle} size="lg" verified={token.dev.walletVerified} />
                   <div>
                     <p className="flex items-center gap-1 text-sm font-bold">
                       {token.dev.name}
@@ -154,7 +155,7 @@ export function TokenDetailDialog() {
                     onClick={() => follow.mutate(token.dev.id)}
                     className={cn(
                       'h-8 rounded-lg text-xs font-bold',
-                      !token.dev.isFollowed && 'bg-primary text-primary-foreground hover:bg-[#00ff88]'
+                      !token.dev.isFollowed && 'bg-primary text-primary-foreground hover:bg-[#8FA83F]'
                     )}
                   >
                     {token.dev.isFollowed ? 'Siguiendo' : 'Seguir'}
@@ -168,15 +169,15 @@ export function TokenDetailDialog() {
                     key={d.id}
                     className={cn(
                       'flex shrink-0 items-center gap-2 rounded-lg border px-2.5 py-1.5',
-                      d.isRug ? 'border-[#ff4d5e]/25 bg-[#ff4d5e]/5' : 'border-[#00ff88]/15 bg-[#00ff88]/4'
+                      d.isRug ? 'border-[#ff4d5e]/25 bg-[#ff4d5e]/5' : 'border-white/10 bg-white/4'
                     )}
                   >
-                    <span aria-hidden>{d.emoji}</span>
+                    <TokenGlyph ticker={d.ticker} size="xs" />
                     <div>
                       <p className="text-xs font-bold">{d.ticker}</p>
                       <p className="text-[10px] text-muted-foreground">{timeAgo(d.launchedAt)} · {fmtMc(d.mc)}</p>
                     </div>
-                    <span className={cn('rounded px-1 py-0.5 text-[9px] font-black', d.isRug ? 'bg-[#ff4d5e]/20 text-[#ff8080]' : 'bg-[#00ff88]/15 text-primary')}>
+                    <span className={cn('rounded px-1 py-0.5 text-[9px] font-black', d.isRug ? 'bg-[#ff4d5e]/20 text-[#ff8080]' : 'bg-[#8FA83F]/15 text-primary')}>
                       {d.isRug ? 'RUG' : `ATH ${fmtMc(d.athMc)}`}
                     </span>
                   </div>
@@ -189,11 +190,11 @@ export function TokenDetailDialog() {
               <p className="pb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Tesis de la comunidad · {token.posts.length}
               </p>
-              <div className="mb-3 rounded-xl border border-[#00ff88]/15 bg-[#060a08] p-2.5">
+              <div className="mb-3 rounded-xl border border-white/10 bg-[#0a0b08] p-2.5">
                 <Textarea
                   value={thesis}
                   onChange={(e) => setThesis(e.target.value)}
-                  placeholder={`Tu tesis sobre ${token.ticker}: ¿por qué va a subir? (+25 puntos ⚡)`}
+                  placeholder={`Tu tesis sobre ${token.ticker}: ¿por qué va a subir? (+25 puntos)`}
                   className="min-h-[64px] resize-none border-0 bg-transparent text-sm focus-visible:ring-0"
                   aria-label="Escribir tesis"
                 />
@@ -207,7 +208,7 @@ export function TokenDetailDialog() {
                         { onSuccess: () => setThesis('') }
                       )
                     }}
-                    className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#00ff88]"
+                    className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
                   >
                     <Zap className="h-3 w-3" /> Publicar tesis
                   </Button>
@@ -215,7 +216,7 @@ export function TokenDetailDialog() {
               </div>
               <div className="max-h-[40vh] space-y-2.5 overflow-y-auto pr-1">
                 {token.posts.length === 0 && (
-                  <p className="py-6 text-center text-sm text-muted-foreground">Nadie ha publicado tesis todavía. Tú puedes ser el primero 🎓</p>
+                  <p className="py-6 text-center text-sm text-muted-foreground">Nadie ha publicado tesis todavía. Tú puedes ser el primero</p>
                 )}
                 {token.posts.map((p) => (
                   <PostCard key={p.id} post={p} />
@@ -231,7 +232,7 @@ export function TokenDetailDialog() {
 
 function Stat({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
-    <div className="rounded-lg border border-[#00ff88]/10 bg-[#060a08] px-3 py-2">
+    <div className="rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={cn('mt-0.5 text-sm font-bold tabular-nums', warn && 'text-amber-300')}>{value}</p>
     </div>

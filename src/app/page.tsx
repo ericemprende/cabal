@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Radar as RadarIcon } from 'lucide-react'
+import { Coins, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
 import { Ticker } from '@/components/cabal/ticker'
@@ -44,10 +44,10 @@ export default function Home() {
           <div className="min-w-0 flex-1">
             {/* Desktop tab bar */}
             <div className="mb-4 hidden items-center gap-1 md:flex" role="tablist" aria-label="Secciones">
-              <TabButton active={tab === 'radar'} onClick={() => useUI.getState().setTab('radar')} icon="🛰" label="Radar de Launches" />
-              <TabButton active={tab === 'tokens'} onClick={() => useUI.getState().setTab('tokens')} icon="🪙" label="Tokens" />
-              <TabButton active={tab === 'feed'} onClick={() => useUI.getState().setTab('feed')} icon="💬" label="Feed" />
-              <TabButton active={tab === 'leaderboard'} onClick={() => useUI.getState().setTab('leaderboard')} icon="🏆" label="Líderes" />
+              <TabButton active={tab === 'radar'} onClick={() => useUI.getState().setTab('radar')} icon={RadarTabIcon} label="Radar de Launches" />
+              <TabButton active={tab === 'tokens'} onClick={() => useUI.getState().setTab('tokens')} icon={Coins} label="Tokens" />
+              <TabButton active={tab === 'feed'} onClick={() => useUI.getState().setTab('feed')} icon={MessageSquare} label="Feed" />
+              <TabButton active={tab === 'leaderboard'} onClick={() => useUI.getState().setTab('leaderboard')} icon={Trophy} label="Líderes" />
             </div>
 
             {/* Mobile section title */}
@@ -69,12 +69,14 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-[#00ff88]/10 pb-16 pt-6 md:pb-10" style={{ marginBottom: 0 }}>
+      <footer className="mt-auto border-t border-white/10 pb-16 pt-6 md:pb-10" style={{ marginBottom: 0 }}>
         <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row">
           <p>
-            <span className="font-display font-bold text-primary">cabal</span> · la comunidad que ve los launches antes que nadie
+            <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · la comunidad que ve los launches antes que nadie
           </p>
-          <p>⚡ Tesis +25 · Launch +40 · Se canjean por $CABAL</p>
+          <p className="flex items-center gap-1">
+            <Zap className="h-3 w-3 text-primary/70" aria-hidden /> Tesis +25 · Launch +40 · Se canjean por $CABAL
+          </p>
         </div>
       </footer>
 
@@ -94,12 +96,12 @@ export default function Home() {
 function TabButton({
   active,
   onClick,
-  icon,
+  icon: Icon,
   label,
 }: {
   active: boolean
   onClick: () => void
-  icon: string
+  icon: typeof RadarIcon
   label: string
 }) {
   return (
@@ -108,13 +110,13 @@ function TabButton({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        'rounded-full px-4 py-2 text-[13px] font-bold transition-all',
+        'flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-bold transition-all',
         active
-          ? 'bg-[#00ff88]/12 text-primary neon-shadow'
-          : 'text-muted-foreground hover:bg-[#00ff88]/5 hover:text-foreground'
+          ? 'bg-[#8FA83F]/12 text-primary neon-shadow'
+          : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
       )}
     >
-      <span className="mr-1.5" aria-hidden>{icon}</span>
+      <Icon className="h-4 w-4" aria-hidden strokeWidth={active ? 2.4 : 2} />
       {label}
     </button>
   )

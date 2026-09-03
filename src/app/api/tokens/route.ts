@@ -30,6 +30,7 @@ export async function GET(req: Request) {
       name: t.name,
       ticker: t.ticker,
       emoji: t.emoji,
+      image: t.image,
       network: t.network,
       price: t.price,
       mc: t.mc,

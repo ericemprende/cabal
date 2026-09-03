@@ -2,7 +2,7 @@
 
 import { Heart, MessageCircle, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { EmojiAvatar, KindBadge } from '@/components/cabal/shared'
+import { KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { useFollowToggle, useLikeToggle } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -24,12 +24,12 @@ export function PostCard({
   return (
     <article
       className={cn(
-        'card-surface rounded-xl border border-[#00ff88]/10 transition-colors hover:border-[#00ff88]/25',
+        'card-surface rounded-xl border border-white/10 transition-colors hover:border-white/12',
         compact ? 'p-2.5' : 'p-3.5'
       )}
     >
       <div className="flex items-start gap-2.5">
-        <EmojiAvatar emoji={post.user.avatar} size={compact ? 'sm' : 'md'} verified={post.user.walletVerified} />
+        <UserAvatar name={post.user.name} handle={post.user.handle} size={compact ? 'sm' : 'md'} verified={post.user.walletVerified} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <span className={cn('truncate font-semibold', compact ? 'text-[13px]' : 'text-sm')}>{post.user.name}</span>
@@ -57,9 +57,9 @@ export function PostCard({
           {post.launch && (
             <button
               onClick={() => openLaunch(post.launch!.id)}
-              className="mt-2 flex w-full items-center gap-2 rounded-lg border border-[#00ff88]/15 bg-[#00ff88]/5 px-2.5 py-1.5 text-left transition-colors hover:border-[#00ff88]/35"
+              className="mt-2 flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-left transition-colors hover:border-[#8FA83F]/35"
             >
-              <span aria-hidden>{post.launch.emoji}</span>
+              <TokenGlyph src={post.launch.image} ticker={post.launch.ticker} size="xs" />
               <span className="text-xs font-semibold">
                 {post.launch.ticker} <span className="font-normal text-muted-foreground">launch</span>
               </span>
@@ -69,9 +69,9 @@ export function PostCard({
           {post.token && (
             <button
               onClick={() => openToken(post.token!.id)}
-              className="mt-2 flex w-full items-center gap-2 rounded-lg border border-[#00ff88]/15 bg-[#00ff88]/5 px-2.5 py-1.5 text-left transition-colors hover:border-[#00ff88]/35"
+              className="mt-2 flex w-full items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-left transition-colors hover:border-[#8FA83F]/35"
             >
-              <span aria-hidden>{post.token.emoji}</span>
+              <TokenGlyph src={post.token.image} ticker={post.token.ticker} size="xs" />
               <span className="text-xs font-semibold">
                 {post.token.ticker} <span className="font-normal text-muted-foreground">{fmtMc(post.token.mc)} MC</span>
               </span>
@@ -98,7 +98,7 @@ export function PostCard({
               </button>
             )}
             {typeof post.pnl === 'number' && post.pnl > 0 && (
-              <span className="ml-auto flex items-center gap-1 rounded-md bg-[#00ff88]/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
+              <span className="ml-auto flex items-center gap-1 rounded-md bg-[#8FA83F]/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
                 <TrendingUp className="h-3 w-3" /> +${post.pnl.toLocaleString('es')}
               </span>
             )}

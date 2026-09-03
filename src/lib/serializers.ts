@@ -66,6 +66,7 @@ export async function toPostDTO(
         name: l.name,
         ticker: l.ticker,
         emoji: l.emoji,
+        image: l.image,
         network: l.network,
         launchAt: l.launchAt.toISOString(),
       }
@@ -78,6 +79,7 @@ export async function toPostDTO(
         name: t.name,
         ticker: t.ticker,
         emoji: t.emoji,
+        image: t.image,
         network: t.network,
         mc: t.mc,
       }

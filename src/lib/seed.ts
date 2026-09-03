@@ -218,6 +218,8 @@ async function seed(): Promise<void> {
     name: string
     ticker: string
     emoji: string
+    image?: string
+    banner?: string
     network: string
     launchAt: Date
     description: string
@@ -236,6 +238,7 @@ async function seed(): Promise<void> {
     name: 'Smole Coin',
     ticker: 'SMOL',
     emoji: '🐹',
+    image: '/seed/smol.png',
     network: 'solana',
     launchAt: new Date(now + 47 * MIN),
     description:
@@ -287,6 +290,8 @@ async function seed(): Promise<void> {
     name: 'Cabal Coin',
     ticker: 'CABAL',
     emoji: '🟢',
+    image: '/seed/cabal.png',
+    banner: '/seed/cabal-banner.png',
     network: 'solana',
     launchAt: new Date(now + 26 * HOUR),
     description:
@@ -839,7 +844,7 @@ async function seed(): Promise<void> {
   })
   await mkPost({
     kind: 'comment',
-    content: 'primer día en el Cabal y ya entendí más que en 3 meses de terminales 🐺',
+    content: 'primer día en el Cabal y ya entendí más que en 3 meses de terminales',
     userId: tu.id,
     likes: 12,
     createdAt: new Date(now - 50 * MIN),
@@ -901,7 +906,7 @@ async function seed(): Promise<void> {
         userId: tu.id,
         amount: 50,
         reason: 'admin_adjust',
-        note: 'Bono de bienvenida del Cabal 🐺',
+        note: 'Bono de bienvenida del Cabal',
         createdAt: new Date(now - 2 * HOUR),
       },
     ],

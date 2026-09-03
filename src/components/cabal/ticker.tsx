@@ -10,11 +10,10 @@ export function Ticker() {
   if (items.length === 0) return null
   const doubled = [...items, ...items]
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 hidden h-8 items-center overflow-hidden border-t border-[#00ff88]/10 bg-[#080d09]/95 backdrop-blur-md md:flex" aria-hidden>
+    <div className="fixed inset-x-0 bottom-0 z-30 hidden h-8 items-center overflow-hidden border-t border-white/10 bg-[#0d0e0a]/95 backdrop-blur-md md:flex" aria-hidden>
       <div className="animate-ticker flex w-max items-center gap-8 px-4">
         {doubled.map((t, i) => (
           <span key={`${t.id}-${i}`} className="flex items-center gap-1.5 text-[11px] font-medium whitespace-nowrap">
-            <span aria-hidden>{t.emoji}</span>
             <span className="text-foreground/90">{t.ticker}</span>
             <span className="text-muted-foreground">{networkMeta(t.network).short}</span>
             <span className="text-foreground/80">{fmtMc(t.mc)}</span>

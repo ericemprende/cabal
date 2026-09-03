@@ -15,7 +15,7 @@ export function MobileNav() {
   const { tab, setTab, setPostLaunchOpen } = useUI()
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-[#00ff88]/10 bg-[#060a08]/95 backdrop-blur-md md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0b08]/95 backdrop-blur-md md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Navegación principal"
     >
@@ -58,7 +58,7 @@ function NavButton({
       )}
       aria-current={active ? 'page' : undefined}
     >
-      <Icon className={cn('h-5 w-5', active && 'drop-shadow-[0_0_6px_rgba(0,255,136,0.6)]')} strokeWidth={active ? 2.5 : 2} />
+      <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
       <span>{label}</span>
     </button>
   )

@@ -1,9 +1,9 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Radio, Zap } from 'lucide-react'
+import { Crown, Radio, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { CountdownPill, EmojiAvatar, NetworkBadge, PointsPill } from '@/components/cabal/shared'
+import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { useFollowToggle, useFeed, useLaunches, useLeaderboard } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -28,7 +28,7 @@ export function LeftFeed() {
         </div>
         <div className="space-y-2">
           {isLoading &&
-            [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#0b120d]" />)}
+            [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
           {activity.map((p) => (
             <PostCard
               key={p.id}
@@ -69,9 +69,11 @@ export function RightRail() {
         {/* Next launches */}
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">⏱ Próximos a lanzar</p>
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              <Timer className="h-3.5 w-3.5" aria-hidden /> Próximos a lanzar
+            </p>
             <button onClick={() => setPostLaunchOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
-              <Zap className="h-3 w-3" /> +40
+              <Zap className="h-3 w-3" aria-hidden /> +40
             </button>
           </div>
           <div className="space-y-2">
@@ -79,9 +81,9 @@ export function RightRail() {
               <button
                 key={l.id}
                 onClick={() => openLaunch(l.id)}
-                className="card-surface flex w-full items-center gap-2.5 rounded-xl border border-[#00ff88]/10 p-2.5 text-left transition-colors hover:border-[#00ff88]/30"
+                className="card-surface flex w-full items-center gap-2.5 rounded-xl border border-white/10 p-2.5 text-left transition-colors hover:border-[#8FA83F]/30"
               >
-                <EmojiAvatar emoji={l.emoji} size="sm" />
+                <TokenGlyph src={l.image} ticker={l.ticker} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-bold">
                     {l.ticker} <span className="font-normal text-muted-foreground">· {l.name}</span>
@@ -92,7 +94,7 @@ export function RightRail() {
               </button>
             ))}
             {next.length === 0 && (
-              <p className="rounded-xl border border-dashed border-[#00ff88]/15 p-3 text-center text-xs text-muted-foreground">
+              <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
                 Radar despejado… publica el próximo launch
               </p>
             )}
@@ -101,14 +103,16 @@ export function RightRail() {
 
         {/* Top callers */}
         <section>
-          <p className="mb-2 px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">👑 Top del Cabal</p>
-          <div className="card-surface space-y-0.5 rounded-xl border border-[#00ff88]/10 p-1.5">
+          <p className="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            <Crown className="h-3.5 w-3.5 text-amber-300/80" aria-hidden /> Top del Cabal
+          </p>
+          <div className="card-surface space-y-0.5 rounded-xl border border-white/10 p-1.5">
             {top.map((c, i) => (
-              <div key={c.user.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-[#00ff88]/5">
+              <div key={c.user.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-white/5">
                 <span className={cn('w-4 text-center text-[11px] font-bold', i === 0 ? 'text-amber-300' : 'text-muted-foreground')}>
                   {i + 1}
                 </span>
-                <EmojiAvatar emoji={c.user.avatar} size="xs" verified={c.user.walletVerified} />
+                <UserAvatar name={c.user.name} handle={c.user.handle} size="xs" verified={c.user.walletVerified} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold">{c.user.name}</p>
                   <p className="truncate text-[10px] text-muted-foreground">{fmtNum(c.user.followers)} seguidores</p>
@@ -129,8 +133,10 @@ export function RightRail() {
         </section>
 
         {/* Points CTA */}
-        <section className="rounded-xl border border-[#00ff88]/20 bg-gradient-to-br from-[#00ff88]/10 to-transparent p-4">
-          <p className="font-display text-sm font-bold text-primary">⚡ Puntos Cabal</p>
+        <section className="rounded-xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
+          <p className="flex items-center gap-1.5 font-display text-sm font-bold text-primary">
+            <Zap className="h-4 w-4" aria-hidden /> Puntos Cabal
+          </p>
           <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">
             Publica launches y tesis → gana puntos → cámbialos por tokens cuando lancemos $CABAL.
           </p>

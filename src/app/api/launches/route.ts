@@ -25,6 +25,8 @@ export async function GET() {
       name: l.name,
       ticker: l.ticker,
       emoji: l.emoji,
+      image: l.image,
+      banner: l.banner,
       network: l.network,
       launchAt: l.launchAt.toISOString(),
       description: l.description,
@@ -51,7 +53,7 @@ export async function POST(req: Request) {
   try {
     const me = await getCurrentUser()
     const body = await req.json()
-    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram } = body
+    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram, image, banner } = body
     if (!name || !ticker || !network || !launchAt) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
     }
@@ -59,11 +61,17 @@ export async function POST(req: Request) {
     if (isNaN(when.getTime())) {
       return NextResponse.json({ error: 'Fecha de lanzamiento inválida' }, { status: 400 })
     }
+    const safeUrl = (v: unknown) =>
+      typeof v === 'string' && (v.startsWith('/uploads/') || v.startsWith('/seed/') || v.startsWith('https://'))
+        ? v.slice(0, 500)
+        : null
     const launch = await db.launch.create({
       data: {
         name: String(name).slice(0, 60),
         ticker: String(ticker).slice(0, 12).toUpperCase(),
         emoji: (emoji || '🚀').slice(0, 8),
+        image: safeUrl(image),
+        banner: safeUrl(banner),
         network,
         launchAt: when,
         description: String(description || '').slice(0, 800),

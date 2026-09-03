@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Flame, Lock, Plus, Rocket, ShieldOff } from 'lucide-react'
+import { Flame, Globe, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CountdownPill, EmojiAvatar, NetworkBadge, SafetyChecks, useCountdown } from '@/components/cabal/shared'
+import { CountdownPill, NetworkBadge, SafetyChecks, TokenGlyph, useCountdown } from '@/components/cabal/shared'
 import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
 import { useHypeToggle, useLaunches } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -48,31 +48,41 @@ export function RadarTab() {
               className={cn(
                 'shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all',
                 network === n
-                  ? 'border-[#00ff88]/50 bg-[#00ff88]/10 text-primary neon-shadow'
-                  : 'border-[#00ff88]/12 bg-[#0b120d] text-muted-foreground hover:border-[#00ff88]/30 hover:text-foreground'
+                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary neon-shadow'
+                  : 'border-white/10 bg-[#121410] text-muted-foreground hover:border-[#8FA83F]/30 hover:text-foreground'
               )}
             >
-              {n === 'all' ? '🌐 Todas' : networkMeta(n).short}
+              {n === 'all' ? (
+                <span className="flex items-center gap-1.5">
+                  <Globe className="h-3.5 w-3.5" aria-hidden /> Todas
+                </span>
+              ) : (
+                networkMeta(n).short
+              )}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setSort('soon')}
-            className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'soon' ? 'border-[#00ff88]/50 bg-[#00ff88]/10 text-primary' : 'border-[#00ff88]/12 text-muted-foreground')}
+            className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'soon' ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground')}
           >
-            ⏱ Próximos
+            <span className="flex items-center gap-1.5">
+              <Timer className="h-3.5 w-3.5" aria-hidden /> Próximos
+            </span>
           </button>
           <button
             onClick={() => setSort('hype')}
-            className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'hype' ? 'border-[#00ff88]/50 bg-[#00ff88]/10 text-primary' : 'border-[#00ff88]/12 text-muted-foreground')}
+            className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'hype' ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground')}
           >
-            🔥 Más hype
+            <span className="flex items-center gap-1.5">
+              <Flame className="h-3.5 w-3.5" aria-hidden /> Más hype
+            </span>
           </button>
           <Button
             size="sm"
             onClick={() => setPostLaunchOpen(true)}
-            className="hidden h-8 gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#00ff88] md:inline-flex"
+            className="hidden h-8 gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F] md:inline-flex"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={3} /> Publicar
           </Button>
@@ -83,17 +93,17 @@ export function RadarTab() {
       {isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-52 animate-pulse rounded-xl border border-[#00ff88]/8 bg-[#0b120d]" />
+            <div key={i} className="h-52 animate-pulse rounded-xl border border-white/8 bg-[#121410]" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[#00ff88]/20 py-16 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/10 py-16 text-center">
           <Rocket className="h-8 w-8 text-muted-foreground" />
           <div>
             <p className="font-semibold">No hay launches con este filtro</p>
             <p className="text-sm text-muted-foreground">Sé el primero en avisar a la comunidad (+40 puntos)</p>
           </div>
-          <Button onClick={() => setPostLaunchOpen(true)} className="bg-primary font-bold text-primary-foreground hover:bg-[#00ff88]">
+          <Button onClick={() => setPostLaunchOpen(true)} className="bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]">
             Publicar lanzamiento
           </Button>
         </div>
@@ -113,13 +123,13 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
   return (
     <button
       onClick={onOpen}
-      className="card-surface group relative block w-full overflow-hidden rounded-2xl border border-[#00ff88]/25 p-5 text-left transition-all hover:border-[#00ff88]/50 sm:p-6"
+      className="card-surface group relative block w-full overflow-hidden rounded-2xl border border-white/12 p-5 text-left transition-all hover:border-[#8FA83F]/50 sm:p-6"
     >
-      <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#00ff88]/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-[#00ff88]/6 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#8FA83F]/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-white/5 blur-3xl" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="animate-float-slow flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/8 text-4xl neon-shadow">
-          <span aria-hidden>{launch.emoji}</span>
+        <div className="animate-float-slow shrink-0">
+          <TokenGlyph src={launch.image} ticker={launch.ticker} size="xl" className="h-16 w-16" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -159,11 +169,11 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
       onClick={() => openLaunch(launch.id)}
       className={cn(
         'card-surface group flex cursor-pointer flex-col gap-3 rounded-xl border p-4 transition-all hover:-translate-y-0.5',
-        c.live ? 'border-[#00ff88]/40 neon-shadow' : 'border-[#00ff88]/10 hover:border-[#00ff88]/30'
+        c.live ? 'border-[#8FA83F]/40 neon-shadow' : 'border-white/10 hover:border-[#8FA83F]/30'
       )}
     >
       <div className="flex items-start gap-3">
-        <EmojiAvatar emoji={launch.emoji} size="lg" />
+        <TokenGlyph src={launch.image} ticker={launch.ticker} size="lg" />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
             <span className="shrink-0 font-display text-[15px] font-bold text-primary">${launch.ticker}</span>
@@ -183,7 +193,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
 
       <SafetyChecks lpLocked={launch.lpLocked} mintRevoked={launch.mintRevoked} top10Pct={launch.top10Pct} />
 
-      <div className="mt-auto flex items-center gap-2 border-t border-[#00ff88]/8 pt-2.5">
+      <div className="mt-auto flex items-center gap-2 border-t border-white/8 pt-2.5">
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -192,8 +202,8 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           className={cn(
             'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition-all active:scale-95',
             launch.hyped
-              ? 'border-[#00ff88]/50 bg-[#00ff88]/15 text-primary'
-              : 'border-[#00ff88]/15 text-muted-foreground hover:border-[#00ff88]/40 hover:text-primary'
+              ? 'border-[#8FA83F]/50 bg-[#8FA83F]/15 text-primary'
+              : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/40 hover:text-primary'
           )}
           aria-label="Dar hype"
         >
@@ -201,7 +211,8 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           {launch.hype}
         </button>
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          💬 {launch.postsCount}
+          <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+          {launch.postsCount}
         </span>
         <span className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground">
           {launch.lpLocked ? <Lock className="h-3 w-3 text-primary" /> : <ShieldOff className="h-3 w-3 text-amber-300" />}

@@ -25,9 +25,6 @@ export const metadata: Metadata = {
   description:
     "La plataforma social donde descubres los memecoins ANTES de que salgan. Lanzamientos posteados por la comunidad, tesis, historial de devs verificados y puntos canjeables por tokens.",
   keywords: ["Cabal", "memecoins", "lanzamientos", "radar", "crypto", "comunidad"],
-  icons: {
-    icon: "/logo.svg",
-  },
   openGraph: {
     title: "Cabal — Radar de Memecoins",
     description: "Descubre los memecoins ANTES de que salgan. Únete al Cabal.",
@@ -37,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#060a08",
+  themeColor: "#0a0b08",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
