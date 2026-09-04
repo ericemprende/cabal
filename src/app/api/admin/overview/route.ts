@@ -4,9 +4,9 @@ import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
 import type { AdminOverviewDTO } from '@/lib/types'
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const [users, postCount, launchCount, tokenCount, pointsAgg, events, distribution, redeemCount] =
       await Promise.all([
         db.user.findMany({ orderBy: { points: 'desc' } }),

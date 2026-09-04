@@ -9,6 +9,7 @@ export async function GET() {
     const me = await getCurrentUser()
     const [launches, votes, follows, postCounts] = await Promise.all([
       db.launch.findMany({
+        where: { hidden: false },
         include: { createdBy: true },
         orderBy: { launchAt: 'asc' },
       }),
@@ -28,6 +29,9 @@ export async function GET() {
       image: l.image,
       banner: l.banner,
       isPrivate: l.isPrivate,
+      hidden: l.hidden,
+      submitterRole: l.submitterRole === 'dev' ? 'dev' : 'community',
+      contract: l.contract,
       network: l.network,
       launchAt: l.launchAt.toISOString(),
       description: l.description,
@@ -54,7 +58,7 @@ export async function POST(req: Request) {
   try {
     const me = await getCurrentUser()
     const body = await req.json()
-    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram, image, banner, isPrivate } = body
+    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram, image, banner, isPrivate, submitterRole, contract } = body
     if (!name || !network || !launchAt) {
       return NextResponse.json({ error: 'Faltan campos requeridos (nombre, red y fecha)' }, { status: 400 })
     }
@@ -75,6 +79,10 @@ export async function POST(req: Request) {
       typeof v === 'string' && (v.startsWith('/uploads/') || v.startsWith('/seed/') || v.startsWith('https://'))
         ? v.slice(0, 500)
         : null
+    // ¿Quién publica? dev = el propio dev postula su proyecto | community = alguien que encontró la info
+    const role = submitterRole === 'dev' ? 'dev' : 'community'
+    const cleanContract =
+      typeof contract === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim()) ? contract.trim() : null
     const launch = await db.launch.create({
       data: {
         name: String(name).slice(0, 60),
@@ -83,6 +91,8 @@ export async function POST(req: Request) {
         image: safeUrl(image),
         banner: safeUrl(banner),
         isPrivate: priv,
+        submitterRole: role,
+        contract: cleanContract,
         network,
         launchAt: when,
         description: String(description || '').slice(0, 800),

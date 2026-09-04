@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/seed'
+import { isAdminRequest } from '@/lib/admin-auth'
 
 // ---------- POINTS ENGINE ----------
 export const POINT_RULE_KEYS = [
@@ -63,10 +64,11 @@ export async function awardPoints(
   return amount
 }
 
-export async function requireAdmin() {
+export async function requireAdmin(req?: Request) {
   const me = await getCurrentUser()
-  if (!me.isAdmin) throw new ForbiddenError()
-  return me
+  // Acceso si el usuario actual es admin O si trae la cookie de sesión de /admin
+  if (me.isAdmin || (req && isAdminRequest(req))) return me
+  throw new ForbiddenError()
 }
 
 export class ForbiddenError extends Error {

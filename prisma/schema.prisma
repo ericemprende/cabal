@@ -40,28 +40,31 @@ model User {
 }
 
 model Launch {
-  id          String   @id @default(cuid())
-  name        String
-  ticker      String?
-  emoji       String   @default("🚀")
-  image       String?
-  banner      String?
-  isPrivate   Boolean  @default(false)
-  network     String   @default("solana")
-  launchAt    DateTime
-  description String
-  website     String?
-  twitter     String?
-  telegram    String?
-  status      String   @default("upcoming")
-  hype        Int      @default(0)
-  lpLocked    Boolean  @default(false)
-  mintRevoked Boolean  @default(false)
-  top10Pct    Float    @default(25)
-  createdById String
-  createdAt   DateTime @default(now())
-  createdBy   User     @relation(fields: [createdById], references: [id])
-  posts       Post[]
+  id            String   @id @default(cuid())
+  name          String
+  ticker        String?
+  emoji         String   @default("🚀")
+  image         String?
+  banner        String?
+  isPrivate     Boolean  @default(false)
+  hidden        Boolean  @default(false)
+  submitterRole String   @default("community") // dev = lo sube su propio dev | community = scout que comparte info
+  contract      String?  // CA del token si ya fue desplegado (para gráfico en vivo)
+  network       String   @default("solana")
+  launchAt      DateTime
+  description   String
+  website       String?
+  twitter       String?
+  telegram      String?
+  status        String   @default("upcoming")
+  hype          Int      @default(0)
+  lpLocked      Boolean  @default(false)
+  mintRevoked   Boolean  @default(false)
+  top10Pct      Float    @default(25)
+  createdById   String
+  createdAt     DateTime @default(now())
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  posts         Post[]
 }
 
 model Token {

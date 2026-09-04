@@ -4,9 +4,9 @@ import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
 import type { AdminUserRowDTO } from '@/lib/types'
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const users = await db.user.findMany({ orderBy: { points: 'desc' } })
     const [postCounts, launchCounts, likeSums, lastEvents] = await Promise.all([
       db.post.groupBy({ by: ['userId'], _count: { _all: true } }),
@@ -36,7 +36,7 @@ export async function GET() {
 // PATCH: el admin edita perfiles (nombre, handle, redes sociales, badges, roles)
 export async function PATCH(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const body = await req.json()
     const { id } = body
     if (!id || typeof id !== 'string') {

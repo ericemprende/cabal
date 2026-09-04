@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { computeLaunchStatus, getCurrentUser } from '@/lib/api-helpers'
+import { isAdminRequest } from '@/lib/admin-auth'
 import { toPostDTO, toUserDTO } from '@/lib/serializers'
 import type { LaunchDetailDTO, PostDTO } from '@/lib/types'
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const me = await getCurrentUser()
@@ -13,6 +14,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       include: { createdBy: true },
     })
     if (!launch) return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
+    // Los launches ocultos por el admin solo son visibles para admins
+    if (launch.hidden && !me.isAdmin && !isAdminRequest(req)) {
+      return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
+    }
 
     const [posts, votes, follows] = await Promise.all([
       db.post.findMany({
@@ -34,6 +39,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       image: launch.image,
       banner: launch.banner,
       isPrivate: launch.isPrivate,
+      hidden: launch.hidden,
+      submitterRole: launch.submitterRole === 'dev' ? 'dev' : 'community',
+      contract: launch.contract,
       network: launch.network,
       launchAt: launch.launchAt.toISOString(),
       description: launch.description,

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BadgeCheck, History, Zap } from 'lucide-react'
+import { BadgeCheck, ChartLine, History, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
+import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, shortWallet, timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useToken } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -20,6 +21,12 @@ export function TokenDetailDialog() {
   const createPost = useCreatePost()
   const follow = useFollowToggle()
   const [thesis, setThesis] = useState('')
+
+  // Tab del gráfico por token: "En vivo" por defecto si hay contrato, "Histórico" si no
+  const [tabChoice, setTabChoice] = useState<{ tokenId: string | null; tab: 'live' | 'history' }>({ tokenId: null, tab: 'live' })
+  const hasContract = !!token?.contract
+  const activeTab: 'live' | 'history' = tabChoice.tokenId === token?.id ? tabChoice.tab : hasContract ? 'live' : 'history'
+  const selectTab = (tab: 'live' | 'history') => setTabChoice({ tokenId: token?.id ?? null, tab })
 
   const chartData = useMemo(
     () =>
@@ -75,34 +82,74 @@ export function TokenDetailDialog() {
                 </div>
               </DialogTitle>
 
-              {/* chart */}
-              <div className="mt-4 h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
-                    <defs>
-                      <linearGradient id="mcFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8FA83F" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#8FA83F" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
-                    <XAxis dataKey="t" tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={40} />
-                    <YAxis
-                      tick={{ fill: '#8b917f', fontSize: 10 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={56}
-                      tickFormatter={(v: number) => fmtMc(v)}
-                      domain={['auto', 'auto']}
+              {/* chart: en vivo (widget on-chain) o histórico (sintético) */}
+              <div className="mt-4">
+                <div className="mb-2 flex items-center gap-1 rounded-lg border border-white/10 bg-[#0a0b08] p-1" role="tablist" aria-label="Modo del gráfico">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'live'}
+                    onClick={() => selectTab('live')}
+                    className={cn(
+                      'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-bold transition-colors',
+                      activeTab === 'live' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <span
+                      className={cn('h-1.5 w-1.5 rounded-full', activeTab === 'live' ? 'live-dot-red bg-[#ff4d5e]' : 'bg-white/25')}
+                      aria-hidden
                     />
-                    <Tooltip
-                      contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
-                      labelStyle={{ color: '#8b917f' }}
-                      formatter={(v) => [fmtMc(Number(v)), 'Market Cap']}
-                    />
-                    <Area type="monotone" dataKey="mc" stroke="#8FA83F" strokeWidth={2} fill="url(#mcFill)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                    En vivo
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'history'}
+                    onClick={() => selectTab('history')}
+                    className={cn(
+                      'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[11px] font-bold transition-colors',
+                      activeTab === 'history' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <ChartLine className="h-3.5 w-3.5" aria-hidden />
+                    Histórico
+                  </button>
+                </div>
+                {activeTab === 'live' ? (
+                  <>
+                    <LiveChart network={token.network} contract={token.contract} height={360} />
+                    <ExternalLinksRow network={token.network} contract={token.contract} className="mt-2" />
+                  </>
+                ) : (
+                  <div className="h-44 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+                        <defs>
+                          <linearGradient id="mcFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#8FA83F" stopOpacity={0.35} />
+                            <stop offset="100%" stopColor="#8FA83F" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
+                        <XAxis dataKey="t" tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={40} />
+                        <YAxis
+                          tick={{ fill: '#8b917f', fontSize: 10 }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={56}
+                          tickFormatter={(v: number) => fmtMc(v)}
+                          domain={['auto', 'auto']}
+                        />
+                        <Tooltip
+                          contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
+                          labelStyle={{ color: '#8b917f' }}
+                          formatter={(v) => [fmtMc(Number(v)), 'Market Cap']}
+                        />
+                        <Area type="monotone" dataKey="mc" stroke="#8FA83F" strokeWidth={2} fill="url(#mcFill)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
 
               {/* stats */}

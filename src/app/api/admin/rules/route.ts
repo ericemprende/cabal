@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ForbiddenError, getPointRules, requireAdmin } from '@/lib/api-helpers'
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const rules = await getPointRules()
     return NextResponse.json(rules)
   } catch (e) {
@@ -15,7 +15,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const body = (await req.json()) as Record<string, number>
     const updates = Object.entries(body)
       .filter(([k, v]) => k.startsWith('points_') && Number.isFinite(v) && v >= 0 && v <= 10000)

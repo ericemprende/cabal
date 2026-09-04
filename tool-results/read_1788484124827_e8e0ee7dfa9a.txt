@@ -1,0 +1,821 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useState } from 'react'
+     4→     4→import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+     5→     5→import {
+     6→     6→  BarChart3,
+     7→     7→  CheckCircle2,
+     8→     8→  Coins,
+     9→     9→  Heart,
+    10→    10→  Minus,
+    11→    11→  Pencil,
+    12→    12→  Plus,
+    13→    13→  Rocket,
+    14→    14→  Save,
+    15→    15→  Settings2,
+    16→    16→  ShieldCheck,
+    17→    17→  Users,
+    18→    18→  XCircle,
+    19→    19→  Zap,
+    20→    20→} from 'lucide-react'
+    21→    21→import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+    22→    22→import { Input } from '@/components/ui/input'
+    23→    23→import { Textarea } from '@/components/ui/textarea'
+    24→    24→import { Button } from '@/components/ui/button'
+    25→    25→import { Label } from '@/components/ui/label'
+    26→    26→import { Skeleton } from '@/components/ui/skeleton'
+    27→    27→import { useQuery } from '@tanstack/react-query'
+    28→    28→import { toast } from 'sonner'
+    29→    29→import { cn } from '@/lib/utils'
+    30→    30→import { NETWORKS } from '@/lib/cabal'
+    31→    31→import { PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+    32→    32→import { ImageDrop } from '@/components/cabal/post-launch-dialog'
+    33→    33→import { timeAgo } from '@/lib/cabal'
+    34→    34→import {
+    35→    35→  jsonFetch,
+    36→    36→  qk,
+    37→    37→  uploadImage,
+    38→    38→  useAdminAdjustPoints,
+    39→    39→  useAdminLaunches,
+    40→    40→  useAdminOverview,
+    41→    41→  useAdminRules,
+    42→    42→  useAdminTokens,
+    43→    43→  useAdminUpdateLaunch,
+    44→    44→  useAdminUpdateToken,
+    45→    45→  useAdminUpdateUser,
+    46→    46→  useAdminUsers,
+    47→    47→} from '@/lib/api-client'
+    48→    48→import { useUI } from '@/lib/store'
+    49→    49→import type { AdminUserRowDTO, LaunchDTO, TokenDTO } from '@/lib/types'
+    50→    50→
+    51→    51→const RULE_LABELS: Record<string, string> = {
+    52→    52→  points_thesis: 'Tesis publicada',
+    53→    53→  points_comment: 'Comentario',
+    54→    54→  points_launch: 'Launch publicado',
+    55→    55→  points_like_received: 'Like recibido',
+    56→    56→  points_hype_received: 'Hype en tu launch',
+    57→    57→  points_daily_visit: 'Visita diaria',
+    58→    58→}
+    59→    59→
+    60→    60→const REASON_COLORS: Record<string, string> = {
+    61→    61→  launch: '#8FA83F',
+    62→    62→  thesis: '#a5bd55',
+    63→    63→  comment: '#cdd9a3',
+    64→    64→  like_received: '#ffb020',
+    65→    65→  hype_received: '#ffe08a',
+    66→    66→  admin_adjust: '#7d9340',
+    67→    67→  redeem: '#ff4d5e',
+    68→    68→  verify_x: '#9945FF',
+    69→    69→  verify_google: '#8A92B2',
+    70→    70→}
+    71→    71→
+    72→    72→type AdminView = 'usuarios' | 'reglas' | 'proyectos' | 'tokens' | 'stats'
+    73→    73→
+    74→    74→function toInputDateTime(iso: string): string {
+    75→    75→  const d = new Date(iso)
+    76→    76→  const pad = (n: number) => String(n).padStart(2, '0')
+    77→    77→  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    78→    78→}
+    79→    79→
+    80→    80→// Toggle pequeño tipo chip para campos booleanos
+    81→    81→function ChipToggle({
+    82→    82→  label,
+    83→    83→  checked,
+    84→    84→  onChange,
+    85→    85→  okIcon = true,
+    86→    86→}: {
+    87→    87→  label: string
+    88→    88→  checked: boolean
+    89→    89→  onChange: (v: boolean) => void
+    90→    90→  okIcon?: boolean
+    91→    91→}) {
+    92→    92→  return (
+    93→    93→    <button
+    94→    94→      type="button"
+    95→    95→      onClick={() => onChange(!checked)}
+    96→    96→      aria-pressed={checked}
+    97→    97→      className={cn(
+    98→    98→        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
+    99→    99→        checked
+   100→   100→          ? 'border-[#8FA83F]/45 bg-[#8FA83F]/12 text-primary'
+   101→   101→          : 'border-white/10 bg-[#121410] text-muted-foreground hover:border-white/25'
+   102→   102→      )}
+   103→   103→    >
+   104→   104→      {okIcon &&
+   105→   105→        (checked ? (
+   106→   106→          <CheckCircle2 className="h-3 w-3" aria-hidden />
+   107→   107→        ) : (
+   108→   108→          <XCircle className="h-3 w-3" aria-hidden />
+   109→   109→        ))}
+   110→   110→      {label}
+   111→   111→    </button>
+   112→   112→  )
+   113→   113→}
+   114→   114→
+   115→   115→export function AdminDialog() {
+   116→   116→  const { adminOpen, setAdminOpen } = useUI()
+   117→   117→  const [view, setView] = useState<AdminView>('usuarios')
+   118→   118→  const enabled = adminOpen
+   119→   119→  const overview = useAdminOverview(enabled)
+   120→   120→  const users = useAdminUsers(enabled)
+   121→   121→  const rulesQ = useQuery<Record<string, number>>({
+   122→   122→    queryKey: qk.adminRules,
+   123→   123→    queryFn: () => jsonFetch('/api/admin/rules'),
+   124→   124→    enabled,
+   125→   125→  })
+   126→   126→  const saveRules = useAdminRules(enabled)
+   127→   127→  const adjust = useAdminAdjustPoints(enabled)
+   128→   128→
+   129→   129→  // draft edits over the server rules — no effect needed
+   130→   130→  const [draft, setDraft] = useState<Record<string, number>>({})
+   131→   131→  const ruleValue = (key: string) => draft[key] ?? rulesQ.data?.[key] ?? 0
+   132→   132→  const setRule = (key: string, v: number) => setDraft((d) => ({ ...d, [key]: v }))
+   133→   133→  const rulesToSave = () => ({ ...(rulesQ.data ?? {}), ...draft })
+   134→   134→
+   135→   135→  const dist = (overview.data?.distribution ?? [])
+   136→   136→    .filter((d) => d.total > 0)
+   137→   137→    .map((d) => ({ name: RULE_LABELS[`points_${d.reason}`] ?? d.reason, value: d.total, key: d.reason }))
+   138→   138→
+   139→   139→  return (
+   140→   140→    <Dialog open={adminOpen} onOpenChange={setAdminOpen}>
+   141→   141→      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/12 bg-[#121410] p-0 sm:max-w-3xl" aria-describedby={undefined}>
+   142→   142→        <div className="sticky top-0 z-10 border-b border-white/10 bg-[#121410] p-4">
+   143→   143→          <DialogTitle className="flex items-center gap-2 font-display text-lg font-bold">
+   144→   144→            <ShieldCheck className="h-5 w-5 text-primary" /> Dashboard Admin
+   145→   145→          </DialogTitle>
+   146→   146→          <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto">
+   147→   147→            {(
+   148→   148→              [
+   149→   149→                { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
+   150→   150→                { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
+   151→   151→                { key: 'tokens', label: 'Tokens', icon: Coins },
+   152→   152→                { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
+   153→   153→                { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
+   154→   154→              ] as { key: AdminView; label: string; icon: typeof Zap }[]
+   155→   155→            ).map((v) => (
+   156→   156→              <button
+   157→   157→                key={v.key}
+   158→   158→                onClick={() => setView(v.key)}
+   159→   159→                className={cn(
+   160→   160→                  'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+   161→   161→                  view === v.key
+   162→   162→                    ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+   163→   163→                    : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
+   164→   164→                )}
+   165→   165→              >
+   166→   166→                <v.icon className="h-3.5 w-3.5" aria-hidden />
+   167→   167→                {v.label}
+   168→   168→              </button>
+   169→   169→            ))}
+   170→   170→          </div>
+   171→   171→        </div>
+   172→   172→
+   173→   173→        <div className="p-4">
+   174→   174→          {view === 'usuarios' && (
+   175→   175→            <div className="space-y-2">
+   176→   176→              <p className="text-xs text-muted-foreground">
+   177→   177→                Ajusta puntos, edita perfiles (X, Telegram, Google) y gestiona insignias y roles. Cada cambio queda registrado.
+   178→   178→              </p>
+   179→   179→              {users.isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+   180→   180→              {(users.data ?? []).map((u) => (
+   181→   181→                <AdminUserRow
+   182→   182→                  key={u.id}
+   183→   183→                  user={u}
+   184→   184→                  enabled={enabled}
+   185→   185→                  onAdjust={(amount, note) => adjust.mutate({ userId: u.id, amount, note })}
+   186→   186→                />
+   187→   187→              ))}
+   188→   188→            </div>
+   189→   189→          )}
+   190→   190→
+   191→   191→          {view === 'proyectos' && <AdminLaunches enabled={enabled} />}
+   192→   192→
+   193→   193→          {view === 'tokens' && <AdminTokens enabled={enabled} />}
+   194→   194→
+   195→   195→          {view === 'reglas' && (
+   196→   196→            <div className="space-y-3">
+   197→   197→              <p className="text-xs text-muted-foreground">
+   198→   198→                Define cuántos puntos gana cada acción. Se aplica de inmediato para toda la comunidad.
+   199→   199→              </p>
+   200→   200→              <div className="grid gap-2.5 sm:grid-cols-2">
+   201→   201→                {Object.entries(RULE_LABELS).map(([key, label]) => (
+   202→   202→                  <div key={key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+   203→   203→                    <span className="flex-1 text-[13px] font-semibold">{label}</span>
+   204→   204→                    <Input
+   205→   205→                      type="number"
+   206→   206→                      min={0}
+   207→   207→                      max={10000}
+   208→   208→                      value={ruleValue(key)}
+   209→   209→                      onChange={(e) => setRule(key, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+   210→   210→                      className="h-9 w-20 border-white/10 bg-[#121410] text-center font-mono font-bold text-primary"
+   211→   211→                      aria-label={label}
+   212→   212→                    />
+   213→   213→                    <Zap className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+   214→   214→                  </div>
+   215→   215→                ))}
+   216→   216→              </div>
+   217→   217→              <Button
+   218→   218→                onClick={() => saveRules.mutate(rulesToSave())}
+   219→   219→                disabled={saveRules.isPending}
+   220→   220→                className="h-10 gap-2 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   221→   221→              >
+   222→   222→                <Save className="h-4 w-4" /> Guardar reglas
+   223→   223→              </Button>
+   224→   224→            </div>
+   225→   225→          )}
+   226→   226→
+   227→   227→          {view === 'stats' && (
+   228→   228→            <div className="space-y-4">
+   229→   229→              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+   230→   230→                <Kpi label="Miembros" value={overview.data?.totalUsers ?? 0} icon={<Users className="h-4 w-4" />} />
+   231→   231→                <Kpi label="Posts" value={overview.data?.totalPosts ?? 0} />
+   232→   232→                <Kpi label="Launches" value={overview.data?.totalLaunches ?? 0} />
+   233→   233→                <Kpi label="Tokens" value={overview.data?.totalTokens ?? 0} />
+   234→   234→              </div>
+   235→   235→              <div className="grid gap-3 md:grid-cols-2">
+   236→   236→                <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   237→   237→                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Puntos en circulación</p>
+   238→   238→                  <p className="font-machina mt-1 text-3xl font-bold text-primary">
+   239→   239→                    {(overview.data?.pointsInCirculation ?? 0).toLocaleString('es')}
+   240→   240→                  </p>
+   241→   241→                  <p className="mt-1 text-xs text-muted-foreground">
+   242→   242→                    Emitidos históricos: {(overview.data?.pointsIssuedTotal ?? 0).toLocaleString('es')}
+   243→   243→                  </p>
+   244→   244→                </div>
+   245→   245→                <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   246→   246→                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Top earners</p>
+   247→   247→                  <div className="mt-2 space-y-1.5">
+   248→   248→                    {(overview.data?.topEarners ?? []).map((t, i) => (
+   249→   249→                      <div key={t.user.id} className="flex items-center gap-2 text-[13px]">
+   250→   250→                        <span className="w-4 text-muted-foreground">{i + 1}.</span>
+   251→   251→                        <UserAvatar name={t.user.name} handle={t.user.handle} size="xs" ring={false} />
+   252→   252→                        <span className="flex-1 truncate font-medium">{t.user.name}</span>
+   253→   253→                        <PointsPill points={t.points} />
+   254→   254→                      </div>
+   255→   255→                    ))}
+   256→   256→                  </div>
+   257→   257→                </div>
+   258→   258→              </div>
+   259→   259→
+   260→   260→              <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   261→   261→                <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Distribución de puntos por actividad</p>
+   262→   262→                <div className="h-52">
+   263→   263→                  <ResponsiveContainer width="100%" height="100%">
+   264→   264→                    <BarChart data={dist} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
+   265→   265→                      <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
+   266→   266→                      <XAxis dataKey="name" tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+   267→   267→                      <YAxis tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} />
+   268→   268→                      <Tooltip
+   269→   269→                        cursor={{ fill: 'rgba(143,168,63,0.05)' }}
+   270→   270→                        contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
+   271→   271→                      />
+   272→   272→                      <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+   273→   273→                        {dist.map((d) => (
+   274→   274→                          <Cell key={d.key} fill={REASON_COLORS[d.key] ?? '#8FA83F'} fillOpacity={0.85} />
+   275→   275→                        ))}
+   276→   276→                      </Bar>
+   277→   277→                    </BarChart>
+   278→   278→                  </ResponsiveContainer>
+   279→   279→                </div>
+   280→   280→              </div>
+   281→   281→
+   282→   282→              <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   283→   283→                <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad reciente de puntos</p>
+   284→   284→                <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+   285→   285→                  {(overview.data?.recentEvents ?? []).map((e) => (
+   286→   286→                    <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-white/4">
+   287→   287→                      <UserAvatar name={e.user.name} handle={e.user.handle} size="xs" ring={false} />
+   288→   288→                      <div className="min-w-0 flex-1">
+   289→   289→                        <p className="truncate text-[13px]">
+   290→   290→                          <span className="font-semibold">{e.user.name}</span> <span className="text-muted-foreground">· {e.note}</span>
+   291→   291→                        </p>
+   292→   292→                        <p className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</p>
+   293→   293→                      </div>
+   294→   294→                      <span className={cn('font-mono text-[13px] font-bold', e.amount >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+   295→   295→                        {e.amount >= 0 ? '+' : ''}{e.amount}
+   296→   296→                      </span>
+   297→   297→                    </div>
+   298→   298→                  ))}
+   299→   299→                </div>
+   300→   300→              </div>
+   301→   301→            </div>
+   302→   302→          )}
+   303→   303→        </div>
+   304→   304→      </DialogContent>
+   305→   305→    </Dialog>
+   306→   306→  )
+   307→   307→}
+   308→   308→
+   309→   309→// ---------------- Usuarios: puntos + edición de perfil ----------------
+   310→   310→function AdminUserRow({
+   311→   311→  user,
+   312→   312→  enabled,
+   313→   313→  onAdjust,
+   314→   314→}: {
+   315→   315→  user: AdminUserRowDTO
+   316→   316→  enabled: boolean
+   317→   317→  onAdjust: (amount: number, note?: string) => void
+   318→   318→}) {
+   319→   319→  const updateUser = useAdminUpdateUser(enabled)
+   320→   320→  const [amount, setAmount] = useState('50')
+   321→   321→  const [note, setNote] = useState('')
+   322→   322→  const [editing, setEditing] = useState(false)
+   323→   323→  const [form, setForm] = useState({
+   324→   324→    name: user.name,
+   325→   325→    handle: user.handle,
+   326→   326→    xHandle: user.xHandle ?? '',
+   327→   327→    tgHandle: user.tgHandle ?? '',
+   328→   328→    googleEmail: user.googleEmail ?? '',
+   329→   329→    walletVerified: user.walletVerified,
+   330→   330→    xVerified: user.xVerified,
+   331→   331→    googleVerified: user.googleVerified,
+   332→   332→    isDev: user.isDev,
+   333→   333→    isAdmin: user.isAdmin ?? false,
+   334→   334→  })
+   335→   335→  const amt = parseInt(amount, 10) || 0
+   336→   336→  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+   337→   337→
+   338→   338→  const doAdjust = (sign: 1 | -1) => {
+   339→   339→    if (amt <= 0) {
+   340→   340→      toast.error('Ingresa un monto mayor a 0')
+   341→   341→      return
+   342→   342→    }
+   343→   343→    onAdjust(sign * amt, note.trim() || undefined)
+   344→   344→    setNote('')
+   345→   345→    toast.success(`${sign > 0 ? '+' : '-'}${amt} puntos para @${user.handle}`)
+   346→   346→  }
+   347→   347→
+   348→   348→  const save = () => {
+   349→   349→    updateUser.mutate(
+   350→   350→      {
+   351→   351→        id: user.id,
+   352→   352→        name: form.name,
+   353→   353→        handle: form.handle,
+   354→   354→        xHandle: form.xHandle,
+   355→   355→        tgHandle: form.tgHandle,
+   356→   356→        googleEmail: form.googleEmail,
+   357→   357→        walletVerified: form.walletVerified,
+   358→   358→        xVerified: form.xVerified,
+   359→   359→        googleVerified: form.googleVerified,
+   360→   360→        isDev: form.isDev,
+   361→   361→        isAdmin: form.isAdmin,
+   362→   362→      },
+   363→   363→      { onSuccess: () => setEditing(false) }
+   364→   364→    )
+   365→   365→  }
+   366→   366→
+   367→   367→  return (
+   368→   368→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   369→   369→      <div className="flex flex-wrap items-center gap-2.5">
+   370→   370→        <UserAvatar name={user.name} handle={user.handle} size="md" verified={user.walletVerified} />
+   371→   371→        <div className="min-w-0 flex-1">
+   372→   372→          <p className="truncate text-sm font-bold">
+   373→   373→            {user.name}
+   374→   374→            {user.isAdmin && <span className="ml-1.5 rounded bg-[#8FA83F]/12 px-1 py-px text-[9px] font-black text-primary">ADMIN</span>}
+   375→   375→            {user.xVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">X</span>}
+   376→   376→            {user.googleVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">G</span>}
+   377→   377→          </p>
+   378→   378→          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+   379→   379→            @{user.handle} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
+   380→   380→            <Heart className="h-3 w-3" aria-hidden />
+   381→   381→          </p>
+   382→   382→        </div>
+   383→   383→        <PointsPill points={user.points} />
+   384→   384→        <Button
+   385→   385→          size="sm"
+   386→   386→          variant="ghost"
+   387→   387→          onClick={() => setEditing((v) => !v)}
+   388→   388→          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   389→   389→        >
+   390→   390→          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
+   391→   391→        </Button>
+   392→   392→        <div className="flex items-center gap-1.5">
+   393→   393→          <Input
+   394→   394→            value={note}
+   395→   395→            onChange={(e) => setNote(e.target.value)}
+   396→   396→            placeholder="Motivo (opcional)"
+   397→   397→            className="h-8 w-32 border-white/10 bg-[#121410] text-xs"
+   398→   398→            aria-label="Motivo del ajuste"
+   399→   399→          />
+   400→   400→          <Input
+   401→   401→            type="number"
+   402→   402→            value={amount}
+   403→   403→            onChange={(e) => setAmount(e.target.value)}
+   404→   404→            className="h-8 w-16 border-white/10 bg-[#121410] text-center font-mono text-xs font-bold"
+   405→   405→            aria-label="Monto"
+   406→   406→          />
+   407→   407→          <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-[#8FA83F]" aria-label="Añadir puntos">
+   408→   408→            <Plus className="h-4 w-4" strokeWidth={3} />
+   409→   409→          </Button>
+   410→   410→          <Button size="icon" variant="secondary" onClick={() => doAdjust(-1)} className="h-8 w-8 rounded-lg text-[#ff8080] hover:bg-destructive/15" aria-label="Quitar puntos">
+   411→   411→            <Minus className="h-4 w-4" strokeWidth={3} />
+   412→   412→          </Button>
+   413→   413→        </div>
+   414→   414→      </div>
+   415→   415→
+   416→   416→      {editing && (
+   417→   417→        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+   418→   418→          <div className="grid gap-2.5 sm:grid-cols-2">
+   419→   419→            <div className="space-y-1">
+   420→   420→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+   421→   421→              <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+   422→   422→            </div>
+   423→   423→            <div className="space-y-1">
+   424→   424→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Handle</Label>
+   425→   425→              <Input value={form.handle} onChange={(e) => set('handle', e.target.value)} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+   426→   426→            </div>
+   427→   427→            <div className="space-y-1">
+   428→   428→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">X (Twitter)</Label>
+   429→   429→              <Input value={form.xHandle} onChange={(e) => set('xHandle', e.target.value)} placeholder="@usuario" className="h-8 bg-[#0a0b08] text-[13px]" />
+   430→   430→            </div>
+   431→   431→            <div className="space-y-1">
+   432→   432→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Telegram</Label>
+   433→   433→              <Input value={form.tgHandle} onChange={(e) => set('tgHandle', e.target.value)} placeholder="@usuario" className="h-8 bg-[#0a0b08] text-[13px]" />
+   434→   434→            </div>
+   435→   435→            <div className="space-y-1 sm:col-span-2">
+   436→   436→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Google (email)</Label>
+   437→   437→              <Input value={form.googleEmail} onChange={(e) => set('googleEmail', e.target.value)} placeholder="usuario@gmail.com" className="h-8 bg-[#0a0b08] text-[13px]" />
+   438→   438→            </div>
+   439→   439→          </div>
+   440→   440→          <div className="flex flex-wrap gap-1.5">
+   441→   441→            <ChipToggle label="Wallet verificada" checked={form.walletVerified} onChange={(v) => set('walletVerified', v)} />
+   442→   442→            <ChipToggle label="X verificada" checked={form.xVerified} onChange={(v) => set('xVerified', v)} />
+   443→   443→            <ChipToggle label="Google verificada" checked={form.googleVerified} onChange={(v) => set('googleVerified', v)} />
+   444→   444→            <ChipToggle label="Dev" checked={form.isDev} onChange={(v) => set('isDev', v)} okIcon={false} />
+   445→   445→            <ChipToggle label="Admin" checked={form.isAdmin} onChange={(v) => set('isAdmin', v)} okIcon={false} />
+   446→   446→          </div>
+   447→   447→          <div className="flex justify-end">
+   448→   448→            <Button
+   449→   449→              size="sm"
+   450→   450→              onClick={save}
+   451→   451→              disabled={updateUser.isPending}
+   452→   452→              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   453→   453→            >
+   454→   454→              <Save className="h-3.5 w-3.5" /> {updateUser.isPending ? 'Guardando…' : 'Guardar perfil'}
+   455→   455→            </Button>
+   456→   456→          </div>
+   457→   457→        </div>
+   458→   458→      )}
+   459→   459→    </div>
+   460→   460→  )
+   461→   461→}
+   462→   462→
+   463→   463→// ---------------- Proyectos (launches) ----------------
+   464→   464→function AdminLaunches({ enabled }: { enabled: boolean }) {
+   465→   465→  const launches = useAdminLaunches(enabled)
+   466→   466→  return (
+   467→   467→    <div className="space-y-2">
+   468→   468→      <p className="text-xs text-muted-foreground">
+   469→   469→        Corrige cualquier dato de un lanzamiento: nombre, ticker, fecha, red, imágenes, privacidad y checks de seguridad.
+   470→   470→      </p>
+   471→   471→      {launches.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+   472→   472→      {(launches.data ?? []).map((l) => (
+   473→   473→        <AdminLaunchRow key={l.id} launch={l} enabled={enabled} />
+   474→   474→      ))}
+   475→   475→    </div>
+   476→   476→  )
+   477→   477→}
+   478→   478→
+   479→   479→function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boolean }) {
+   480→   480→  const updateLaunch = useAdminUpdateLaunch(enabled)
+   481→   481→  const [editing, setEditing] = useState(false)
+   482→   482→  const [form, setForm] = useState({
+   483→   483→    name: launch.name,
+   484→   484→    ticker: launch.ticker ?? '',
+   485→   485→    isPrivate: launch.isPrivate,
+   486→   486→    network: launch.network,
+   487→   487→    launchAt: toInputDateTime(launch.launchAt),
+   488→   488→    description: launch.description,
+   489→   489→    image: launch.image ?? '',
+   490→   490→    banner: launch.banner ?? '',
+   491→   491→    lpLocked: launch.lpLocked,
+   492→   492→    mintRevoked: launch.mintRevoked,
+   493→   493→    top10Pct: String(launch.top10Pct),
+   494→   494→  })
+   495→   495→  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+   496→   496→
+   497→   497→  const pick = (key: 'image' | 'banner') => async (file: File) => {
+   498→   498→    try {
+   499→   499→      const url = await uploadImage(file)
+   500→   500→      set(key, url)
+   501→   501→    } catch (e) {
+   502→   502→      toast.error((e as Error).message)
+   503→   503→    }
+   504→   504→  }
+   505→   505→
+   506→   506→  const save = () => {
+   507→   507→    updateLaunch.mutate(
+   508→   508→      {
+   509→   509→        id: launch.id,
+   510→   510→        name: form.name,
+   511→   511→        ticker: form.ticker,
+   512→   512→        isPrivate: form.isPrivate,
+   513→   513→        network: form.network,
+   514→   514→        launchAt: new Date(form.launchAt).toISOString(),
+   515→   515→        description: form.description,
+   516→   516→        image: form.image,
+   517→   517→        banner: form.banner,
+   518→   518→        lpLocked: form.lpLocked,
+   519→   519→        mintRevoked: form.mintRevoked,
+   520→   520→        top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
+   521→   521→      },
+   522→   522→      { onSuccess: () => setEditing(false) }
+   523→   523→    )
+   524→   524→  }
+   525→   525→
+   526→   526→  return (
+   527→   527→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   528→   528→      <div className="flex flex-wrap items-center gap-2.5">
+   529→   529→        <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="md" />
+   530→   530→        <div className="min-w-0 flex-1">
+   531→   531→          <p className="truncate text-sm font-bold">
+   532→   532→            {launch.name}{' '}
+   533→   533→            <span className="font-mono text-xs text-primary">{launch.ticker ? `$${launch.ticker}` : ''}</span>
+   534→   534→            {launch.isPrivate && (
+   535→   535→              <span className="ml-1.5 rounded bg-amber-300/12 px-1 py-px text-[9px] font-black uppercase text-amber-300">Privado</span>
+   536→   536→            )}
+   537→   537→          </p>
+   538→   538→          <p className="truncate text-xs text-muted-foreground">
+   539→   539→            {NETWORKS[launch.network as keyof typeof NETWORKS]?.label ?? launch.network} ·{' '}
+   540→   540→            {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · hype {launch.hype}
+   541→   541→          </p>
+   542→   542→        </div>
+   543→   543→        <Button
+   544→   544→          size="sm"
+   545→   545→          variant="ghost"
+   546→   546→          onClick={() => setEditing((v) => !v)}
+   547→   547→          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   548→   548→        >
+   549→   549→          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
+   550→   550→        </Button>
+   551→   551→      </div>
+   552→   552→
+   553→   553→      {editing && (
+   554→   554→        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+   555→   555→          <div className="grid gap-2.5 sm:grid-cols-2">
+   556→   556→            <div className="space-y-1">
+   557→   557→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+   558→   558→              <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+   559→   559→            </div>
+   560→   560→            <div className="space-y-1">
+   561→   561→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Ticker (opcional)</Label>
+   562→   562→              <Input value={form.ticker} onChange={(e) => set('ticker', e.target.value.toUpperCase())} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+   563→   563→            </div>
+   564→   564→            <div className="space-y-1">
+   565→   565→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fecha y hora</Label>
+   566→   566→              <Input type="datetime-local" value={form.launchAt} onChange={(e) => set('launchAt', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px] [color-scheme:dark]" />
+   567→   567→            </div>
+   568→   568→            <div className="space-y-1">
+   569→   569→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>
+   570→   570→              <div className="flex flex-wrap gap-1">
+   571→   571→                {Object.entries(NETWORKS).map(([key, meta]) => (
+   572→   572→                  <button
+   573→   573→                    key={key}
+   574→   574→                    type="button"
+   575→   575→                    onClick={() => set('network', key)}
+   576→   576→                    className={cn(
+   577→   577→                      'flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold',
+   578→   578→                      form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
+   579→   579→                    )}
+   580→   580→                  >
+   581→   581→                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} aria-hidden />
+   582→   582→                    {meta.short}
+   583→   583→                  </button>
+   584→   584→                ))}
+   585→   585→              </div>
+   586→   586→            </div>
+   587→   587→          </div>
+   588→   588→
+   589→   589→          <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+   590→   590→            <ImageDrop
+   591→   591→              url={form.image}
+   592→   592→              onSelect={pick('image')}
+   593→   593→              onRemove={() => set('image', '')}
+   594→   594→              aspect="square"
+   595→   595→              label="Logo / imagen"
+   596→   596→              hint="Subir logo"
+   597→   597→            />
+   598→   598→            <ImageDrop
+   599→   599→              url={form.banner}
+   600→   600→              onSelect={pick('banner')}
+   601→   601→              onRemove={() => set('banner', '')}
+   602→   602→              aspect="video"
+   603→   603→              label="Banner"
+   604→   604→              hint="Sube un banner (16:9)"
+   605→   605→            />
+   606→   606→          </div>
+   607→   607→
+   608→   608→          <div className="space-y-1">
+   609→   609→            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Descripción</Label>
+   610→   610→            <Textarea value={form.description} onChange={(e) => set('description', e.target.value)} className="min-h-[56px] resize-none bg-[#0a0b08] text-[13px]" />
+   611→   611→          </div>
+   612→   612→
+   613→   613→          <div className="flex flex-wrap items-center gap-1.5">
+   614→   614→            <ChipToggle label="Ticker privado" checked={form.isPrivate} onChange={(v) => set('isPrivate', v)} okIcon={false} />
+   615→   615→            <ChipToggle label="LP bloqueada" checked={form.lpLocked} onChange={(v) => set('lpLocked', v)} />
+   616→   616→            <ChipToggle label="Mint revocado" checked={form.mintRevoked} onChange={(v) => set('mintRevoked', v)} />
+   617→   617→            <span className="ml-auto flex items-center gap-1.5">
+   618→   618→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Top10 %</Label>
+   619→   619→              <Input
+   620→   620→                type="number"
+   621→   621→                min={0}
+   622→   622→                max={100}
+   623→   623→                value={form.top10Pct}
+   624→   624→                onChange={(e) => set('top10Pct', e.target.value)}
+   625→   625→                className="h-8 w-16 border-white/10 bg-[#0a0b08] text-center font-mono text-[13px]"
+   626→   626→              />
+   627→   627→            </span>
+   628→   628→          </div>
+   629→   629→
+   630→   630→          <div className="flex justify-end">
+   631→   631→            <Button
+   632→   632→              size="sm"
+   633→   633→              onClick={save}
+   634→   634→              disabled={updateLaunch.isPending}
+   635→   635→              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   636→   636→            >
+   637→   637→              <Save className="h-3.5 w-3.5" /> {updateLaunch.isPending ? 'Guardando…' : 'Guardar launch'}
+   638→   638→            </Button>
+   639→   639→          </div>
+   640→   640→        </div>
+   641→   641→      )}
+   642→   642→    </div>
+   643→   643→  )
+   644→   644→}
+   645→   645→
+   646→   646→// ---------------- Tokens (logo, métricas) ----------------
+   647→   647→function AdminTokens({ enabled }: { enabled: boolean }) {
+   648→   648→  const tokens = useAdminTokens(enabled)
+   649→   649→  return (
+   650→   650→    <div className="space-y-2">
+   651→   651→      <p className="text-xs text-muted-foreground">
+   652→   652→        Edita tokens en vivo: logo, nombre, ticker, red y métricas. Ej: actualiza el logo del Cabal Coin aquí.
+   653→   653→      </p>
+   654→   654→      {tokens.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+   655→   655→      {(tokens.data ?? []).map((t) => (
+   656→   656→        <AdminTokenRow key={t.id} token={t} enabled={enabled} />
+   657→   657→      ))}
+   658→   658→    </div>
+   659→   659→  )
+   660→   660→}
+   661→   661→
+   662→   662→function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }) {
+   663→   663→  const updateToken = useAdminUpdateToken(enabled)
+   664→   664→  const [editing, setEditing] = useState(false)
+   665→   665→  const [form, setForm] = useState({
+   666→   666→    name: token.name,
+   667→   667→    ticker: token.ticker,
+   668→   668→    network: token.network,
+   669→   669→    image: token.image ?? '',
+   670→   670→    price: String(token.price),
+   671→   671→    mc: String(token.mc),
+   672→   672→    change24h: String(token.change24h),
+   673→   673→    volume24h: String(token.volume24h),
+   674→   674→    holders: String(token.holders),
+   675→   675→    top10Pct: String(token.top10Pct),
+   676→   676→    isRug: token.isRug,
+   677→   677→  })
+   678→   678→  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+   679→   679→
+   680→   680→  const save = () => {
+   681→   681→    updateToken.mutate(
+   682→   682→      {
+   683→   683→        id: token.id,
+   684→   684→        name: form.name,
+   685→   685→        ticker: form.ticker,
+   686→   686→        network: form.network,
+   687→   687→        image: form.image,
+   688→   688→        price: Number(form.price) || 0,
+   689→   689→        mc: Number(form.mc) || 0,
+   690→   690→        change24h: Number(form.change24h) || 0,
+   691→   691→        volume24h: Number(form.volume24h) || 0,
+   692→   692→        holders: Math.max(0, Math.round(Number(form.holders) || 0)),
+   693→   693→        top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
+   694→   694→        isRug: form.isRug,
+   695→   695→      },
+   696→   696→      { onSuccess: () => setEditing(false) }
+   697→   697→    )
+   698→   698→  }
+   699→   699→
+   700→   700→  const numField = (key: keyof typeof form, label: string, step = 'any') => (
+   701→   701→    <div className="space-y-1">
+   702→   702→      <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+   703→   703→      <Input
+   704→   704→        type="number"
+   705→   705→        step={step}
+   706→   706→        value={form[key] as string}
+   707→   707→        onChange={(e) => set(key, e.target.value)}
+   708→   708→        className="h-8 bg-[#0a0b08] font-mono text-[13px]"
+   709→   709→      />
+   710→   710→    </div>
+   711→   711→  )
+   712→   712→
+   713→   713→  return (
+   714→   714→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   715→   715→      <div className="flex flex-wrap items-center gap-2.5">
+   716→   716→        <TokenGlyph src={token.image} ticker={token.ticker} size="md" />
+   717→   717→        <div className="min-w-0 flex-1">
+   718→   718→          <p className="truncate text-sm font-bold">
+   719→   719→            {token.name} <span className="font-mono text-xs text-primary">${token.ticker}</span>
+   720→   720→            {token.isRug && <span className="ml-1.5 rounded bg-[#ff4d5e]/12 px-1 py-px text-[9px] font-black uppercase text-[#ff8080]">Rug</span>}
+   721→   721→          </p>
+   722→   722→          <p className="truncate text-xs text-muted-foreground">
+   723→   723→            {NETWORKS[token.network as keyof typeof NETWORKS]?.label ?? token.network} · ${token.mc.toLocaleString('es')} MC · {token.change24h > 0 ? '+' : ''}{token.change24h}% 24h
+   724→   724→          </p>
+   725→   725→        </div>
+   726→   726→        <Button
+   727→   727→          size="sm"
+   728→   728→          variant="ghost"
+   729→   729→          onClick={() => setEditing((v) => !v)}
+   730→   730→          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   731→   731→        >
+   732→   732→          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
+   733→   733→        </Button>
+   734→   734→      </div>
+   735→   735→
+   736→   736→      {editing && (
+   737→   737→        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+   738→   738→          <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+   739→   739→            <ImageDrop
+   740→   740→              url={form.image}
+   741→   741→              onSelect={async (file) => {
+   742→   742→                try {
+   743→   743→                  const url = await uploadImage(file)
+   744→   744→                  set('image', url)
+   745→   745→                } catch (e) {
+   746→   746→                  toast.error((e as Error).message)
+   747→   747→                }
+   748→   748→              }}
+   749→   749→              onRemove={() => set('image', '')}
+   750→   750→              aspect="square"
+   751→   751→              label="Logo del token"
+   752→   752→              hint="Subir logo"
+   753→   753→            />
+   754→   754→            <div className="grid gap-2.5 sm:grid-cols-2">
+   755→   755→              <div className="space-y-1">
+   756→   756→                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+   757→   757→                <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+   758→   758→              </div>
+   759→   759→              <div className="space-y-1">
+   760→   760→                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Ticker</Label>
+   761→   761→                <Input value={form.ticker} onChange={(e) => set('ticker', e.target.value.toUpperCase())} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+   762→   762→              </div>
+   763→   763→              <div className="space-y-1 sm:col-span-2">
+   764→   764→                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>
+   765→   765→                <div className="flex flex-wrap gap-1">
+   766→   766→                  {Object.entries(NETWORKS).map(([key, meta]) => (
+   767→   767→                    <button
+   768→   768→                      key={key}
+   769→   769→                      type="button"
+   770→   770→                      onClick={() => set('network', key)}
+   771→   771→                      className={cn(
+   772→   772→                        'flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold',
+   773→   773→                        form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
+   774→   774→                      )}
+   775→   775→                    >
+   776→   776→                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} aria-hidden />
+   777→   777→                      {meta.short}
+   778→   778→                    </button>
+   779→   779→                  ))}
+   780→   780→                </div>
+   781→   781→              </div>
+   782→   782→            </div>
+   783→   783→          </div>
+   784→   784→
+   785→   785→          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+   786→   786→            {numField('price', 'Precio USD')}
+   787→   787→            {numField('mc', 'Market cap')}
+   788→   788→            {numField('change24h', 'Cambio 24h %')}
+   789→   789→            {numField('volume24h', 'Volumen 24h')}
+   790→   790→            {numField('holders', 'Holders', '1')}
+   791→   791→            {numField('top10Pct', 'Top10 %', '1')}
+   792→   792→          </div>
+   793→   793→
+   794→   794→          <div className="flex flex-wrap items-center justify-between gap-2">
+   795→   795→            <ChipToggle label="Marcado como rug" checked={form.isRug} onChange={(v) => set('isRug', v)} okIcon={false} />
+   796→   796→            <Button
+   797→   797→              size="sm"
+   798→   798→              onClick={save}
+   799→   799→              disabled={updateToken.isPending}
+   800→   800→              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   801→   801→            >
+   802→   802→              <Save className="h-3.5 w-3.5" /> {updateToken.isPending ? 'Guardando…' : 'Guardar token'}
+   803→   803→            </Button>
+   804→   804→          </div>
+   805→   805→        </div>
+   806→   806→      )}
+   807→   807→    </div>
+   808→   808→  )
+   809→   809→}
+   810→   810→
+   811→   811→function Kpi({ label, value, icon }: { label: string; value: number; icon?: React.ReactNode }) {
+   812→   812→  return (
+   813→   813→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+   814→   814→      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+   815→   815→        {icon} {label}
+   816→   816→      </p>
+   817→   817→      <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
+   818→   818→    </div>
+   819→   819→  )
+   820→   820→}
+   821→   821→

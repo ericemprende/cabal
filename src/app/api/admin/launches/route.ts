@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
@@ -9,10 +9,13 @@ const safeUrl = (v: unknown) =>
     ? v.slice(0, 500)
     : null
 
-// GET: lista completa para el admin (ticker real incluso en launches privados)
-export async function GET() {
+const safeContract = (v: unknown) =>
+  typeof v === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(v.trim()) ? v.trim() : null
+
+// GET: lista completa para el admin (incluye launches ocultos, ticker real de privados)
+export async function GET(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const launches = await db.launch.findMany({
       include: { createdBy: true },
       orderBy: { launchAt: 'asc' },
@@ -25,6 +28,9 @@ export async function GET() {
       image: l.image,
       banner: l.banner,
       isPrivate: l.isPrivate,
+      hidden: l.hidden,
+      submitterRole: l.submitterRole === 'dev' ? 'dev' : 'community',
+      contract: l.contract,
       network: l.network,
       launchAt: l.launchAt.toISOString(),
       description: l.description,
@@ -48,10 +54,10 @@ export async function GET() {
   }
 }
 
-// PATCH: el admin corrige cualquier dato de un launch (nombre, ticker, fecha, red, imágenes, privacidad, safety)
+// PATCH: el admin corrige cualquier dato de un launch (redes, contrato, visibilidad, rol del que sube, etc.)
 export async function PATCH(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const body = await req.json()
     const { id } = body
     if (!id || typeof id !== 'string') {
@@ -75,12 +81,18 @@ export async function PATCH(req: Request) {
       data.launchAt = when
     }
     if (typeof body.description === 'string') data.description = body.description.slice(0, 800)
+    // Redes sociales / enlaces del proyecto (editables desde el panel)
     if ('website' in body) data.website = safeUrl(body.website)
     if ('twitter' in body) data.twitter = safeUrl(body.twitter)
     if ('telegram' in body) data.telegram = safeUrl(body.telegram)
     if ('image' in body) data.image = safeUrl(body.image)
     if ('banner' in body) data.banner = safeUrl(body.banner)
+    if ('contract' in body) data.contract = safeContract(body.contract)
     if (typeof body.isPrivate === 'boolean') data.isPrivate = body.isPrivate
+    if (typeof body.hidden === 'boolean') data.hidden = body.hidden
+    if (body.submitterRole === 'dev' || body.submitterRole === 'community') {
+      data.submitterRole = body.submitterRole
+    }
     for (const flag of ['lpLocked', 'mintRevoked'] as const) {
       if (typeof body[flag] === 'boolean') data[flag] = body[flag]
     }
@@ -89,7 +101,27 @@ export async function PATCH(req: Request) {
     }
 
     const updated = await db.launch.update({ where: { id }, data })
-    return NextResponse.json({ ok: true, launch: { id: updated.id, ticker: updated.ticker } })
+    return NextResponse.json({ ok: true, launch: { id: updated.id, hidden: updated.hidden } })
+  } catch (e) {
+    if (e instanceof ForbiddenError) return NextResponse.json({ error: e.message }, { status: 403 })
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
+}
+
+// DELETE: elimina el launch y limpia sus dependencias (posts quedan como comentarios sueltos)
+export async function DELETE(req: Request) {
+  try {
+    await requireAdmin(req)
+    const id = new URL(req.url).searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 })
+    const target = await db.launch.findUnique({ where: { id } })
+    if (!target) return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
+    await db.$transaction([
+      db.vote.deleteMany({ where: { target: 'launch', targetId: id } }),
+      db.post.updateMany({ where: { launchId: id }, data: { launchId: null } }),
+      db.launch.delete({ where: { id } }),
+    ])
+    return NextResponse.json({ ok: true })
   } catch (e) {
     if (e instanceof ForbiddenError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

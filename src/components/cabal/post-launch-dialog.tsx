@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { CalendarClock, EyeOff, ImagePlus, Loader2, Trash2, Zap } from 'lucide-react'
+import { CalendarClock, Code2, EyeOff, Hash, ImagePlus, Loader2, Radar, Trash2, Zap } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -19,6 +19,7 @@ const EMPTY_FORM = {
   ticker: '',
   network: 'solana',
   launchAt: '',
+  contract: '',
   description: '',
   website: '',
   twitter: '',
@@ -111,6 +112,7 @@ export function PostLaunchDialog() {
   const createLaunch = useCreateLaunch()
   const [form, setForm] = useState(EMPTY_FORM)
   const [isPrivate, setIsPrivate] = useState(false)
+  const [submitterRole, setSubmitterRole] = useState<'dev' | 'community'>('community')
   const [error, setError] = useState('')
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
@@ -137,9 +139,16 @@ export function PostLaunchDialog() {
       setError('Ingresa el ticker o marca el lanzamiento como privado')
       return
     }
+    const contract = form.contract.trim()
+    if (contract && !/^[a-zA-Z0-9:_-]{2,80}$/.test(contract)) {
+      setError('El CA/contrato solo admite letras, números y : _ - (2 a 80 caracteres)')
+      return
+    }
     createLaunch.mutate(
       {
         ...form,
+        contract,
+        submitterRole,
         image: form.image === 'uploading' ? '' : form.image,
         banner: form.banner === 'uploading' ? '' : form.banner,
         isPrivate: String(isPrivate),
@@ -149,6 +158,7 @@ export function PostLaunchDialog() {
           setPostLaunchOpen(false)
           setForm(EMPTY_FORM)
           setIsPrivate(false)
+          setSubmitterRole('community')
         },
         onError: (e: Error) => setError(e.message),
       }
@@ -171,6 +181,27 @@ export function PostLaunchDialog() {
         </div>
 
         <div className="space-y-4 p-5">
+          {/* ¿Quién publica este launch? (obligatorio) */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">¿Quién publica este launch? *</Label>
+            <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Rol de quien publica">
+              <RoleOption
+                active={submitterRole === 'dev'}
+                onClick={() => setSubmitterRole('dev')}
+                icon={<Code2 className="h-3.5 w-3.5" aria-hidden />}
+                title="Soy el dev"
+                subtitle="Postulo mi propio proyecto"
+              />
+              <RoleOption
+                active={submitterRole === 'community'}
+                onClick={() => setSubmitterRole('community')}
+                icon={<Radar className="h-3.5 w-3.5" aria-hidden />}
+                title="Comunidad"
+                subtitle="Encontré la info y la comparto (+puntos)"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-[1fr_120px] gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="pl-name" className="text-xs font-semibold">Nombre del token *</Label>
@@ -246,6 +277,26 @@ export function PostLaunchDialog() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* CA del token (opcional): activa el gráfico en vivo en la ficha */}
+          <div className="space-y-1.5">
+            <Label htmlFor="pl-contract" className="flex items-center gap-1.5 text-xs font-semibold">
+              <Hash className="h-3 w-3 text-primary/70" aria-hidden /> CA / Contrato del token
+              <span className="font-normal text-muted-foreground">· opcional</span>
+            </Label>
+            <Input
+              id="pl-contract"
+              value={form.contract}
+              onChange={(e) => set('contract', e.target.value)}
+              placeholder="Ej: 7xKX...pump (si el token ya está desplegado)"
+              autoComplete="off"
+              spellCheck={false}
+              className="h-10 bg-[#0a0b08] font-mono text-sm"
+            />
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              Si el token ya fue desplegado, pégalo aquí para activar el gráfico en vivo estilo GMGN en su ficha.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -326,5 +377,51 @@ export function PostLaunchDialog() {
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Opción excluyente del selector "¿Quién publica este launch?" (dev / comunidad) */
+function RoleOption({
+  active,
+  onClick,
+  icon,
+  title,
+  subtitle,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  title: string
+  subtitle: string
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={active}
+      onClick={onClick}
+      className={cn(
+        'flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all active:scale-[0.99]',
+        active
+          ? 'border-[#8FA83F]/60 bg-[#8FA83F]/8'
+          : 'border-white/10 bg-[#0a0b08] hover:border-white/25'
+      )}
+    >
+      <span
+        className={cn(
+          'mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
+          active
+            ? 'border-[#8FA83F]/40 bg-[#8FA83F]/15 text-primary'
+            : 'border-white/10 bg-white/5 text-muted-foreground'
+        )}
+        aria-hidden
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className={cn('block text-[13px] font-bold', active && 'text-primary')}>{title}</span>
+        <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">{subtitle}</span>
+      </span>
+    </button>
   )
 }

@@ -315,6 +315,21 @@ export function useAdminUpdateLaunch(enabled: boolean) {
   })
 }
 
+export function useAdminDeleteLaunch(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (launchId: string) =>
+      jsonFetch<{ ok: boolean }>(`/api/admin/launches?id=${encodeURIComponent(launchId)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Launch eliminado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useAdminUpdateToken(enabled: boolean) {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({

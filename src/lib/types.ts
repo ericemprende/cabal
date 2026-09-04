@@ -65,6 +65,9 @@ export interface LaunchDTO {
   image?: string | null
   banner?: string | null
   isPrivate: boolean
+  hidden?: boolean
+  submitterRole: 'dev' | 'community' // dev = lo sube el propio dev · community = scout que encontró la info
+  contract?: string | null // CA del token desplegado (habilita gráfico en vivo)
   network: string
   launchAt: string
   description: string

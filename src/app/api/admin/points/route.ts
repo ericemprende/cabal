@@ -4,7 +4,7 @@ import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
 
 export async function POST(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const body = await req.json()
     const { userId, amount, note, reason } = body
     const amt = parseInt(String(amount), 10)

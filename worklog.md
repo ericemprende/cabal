@@ -117,3 +117,84 @@ Stage Summary:
 - Verificación social con OAuth 2.0 real lista: al configurar X_CLIENT_ID/X_CLIENT_SECRET y GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET los botones pasan automáticamente al flujo oficial (Authorization Code + PKCE para X, OpenID Connect para Google).
 - Sin credenciales: flujo demo completo y funcional con pantalla de consentimiento simulada.
 - URLs de callback que hay que registrar: {origin}/api/auth/x/callback y {origin}/api/auth/google/callback (visibles y copiables desde el propio perfil).
+
+---
+Task ID: 6-a
+Agent: admin-ui
+Task: Extraer AdminPanel reutilizable, mejorar edición de launches (redes/CA/oculto/dev/eliminar) y crear página standalone /admin con login
+
+Work Log:
+- Creado src/components/cabal/admin-panel.tsx: nuevo componente exportado AdminPanel({ enabled?, stickyHeader?, onClose? }) con TODO el contenido extraído del AdminDialog intacto (tabs con iconos, vistas usuarios/proyectos/tokens/reglas/stats, AdminUserRow, AdminLaunches, AdminLaunchRow, AdminTokens, AdminTokenRow, Kpi, ChipToggle, RULE_LABELS, REASON_COLORS, gráfico recharts). Mismo estilo visual (fondo #121410, oliva #8FA83F, font-display). El título es un h2 (el DialogTitle vive en el wrapper); prop stickyHeader para reutilizar bajo el header sticky de /admin.
+- Mejorado AdminLaunchRow en admin-panel.tsx: inputs Website (https://…), Twitter/X (https://x.com/…), Telegram (https://t.me/…) → fields website/twitter/telegram del PATCH; input "CA / Contrato del token (opcional)" → field contract; ChipToggle "Oculto del radar" → field hidden + chip "OCULTO" (ámbar/zinc) junto al nombre cuando launch.hidden; ChipToggle "Es el dev" → submitterRole dev/community; botón Eliminar (Trash2, #ff8080) con AlertDialog de confirmación ("¿Eliminar este launch? Los comentarios se conservarán sin proyecto asociado.") → nueva mutation useAdminDeleteLaunch.
+- api-client.ts: añadido useAdminDeleteLaunch(enabled) → DELETE /api/admin/launches?id=… con jsonFetch, invalida queries y toast.success('Launch eliminado'). (Nada más tocado en el archivo.)
+- admin-dialog.tsx refactorizado a wrapper delgado: <Dialog open={adminOpen} onOpenChange={setAdminOpen}><DialogContent p-0 sm:max-w-3xl><DialogTitle sr-only /><AdminPanel enabled={adminOpen} /></DialogContent></Dialog>. Funcionalidad y deep link /?admin=1 intactos.
+- Creada src/app/admin/page.tsx (ruta standalone, sin Header/MobileNav): useQuery a /api/admin/session; loader centrado mientras carga; si no autenticado → login centrado (min-h-screen, fondo #0a0b08 con glow radial verde sutil, wordmark CABAL font-machina tracking amplio, tarjeta con Usuario/Contraseña + "Entrar al panel", Enter submit, errores con toast.error, POST /api/admin/login); si autenticado → header sticky "CABAL · PANEL ADMIN" + botón Salir (POST /api/admin/logout + invalidate session), AdminPanel en max-w-4xl mx-auto p-4, layout min-h-screen flex flex-col con footer mt-auto "Panel de administración · Cabal".
+- Verificado con curl: GET /api/admin/session sin cookie → {"authenticated":false}; POST login admin/admin123@ → {"ok":true} + Set-Cookie cabal_admin_session (HttpOnly, SameSite=lax, 8h); session con cookie → {"authenticated":true}; DELETE sin id → 400 "id requerido"; contraseña incorrecta → 401; GET /admin → 200 (compiló y renderizó, ver dev.log).
+- Lint: 0 errores (bun run lint). tsc --noEmit: sin errores en src/ (solo preexistentes en examples/ y skills/, fuera del alcance).
+- NOTA runtime (igual que la de 6-c, confirmada con pruebas): el proceso del dev server tiene en memoria el cliente Prisma ANTERIOR a los campos hidden/contract/submitterRole (schema, DB y cliente generado en disco SÍ están actualizados; verificado con PRAGMA table_info(Launch) y node_modules/.prisma). Consecuencias mientras no se reinicie el dev server: GET /api/launches → 500 (Unknown argument 'hidden'), GET /api/admin/launches responde sin las claves hidden/contract (undefined dropped) y PATCH con hidden/contract → 500. El flujo admin session/login/logout, usuarios, reglas, tokens, stats y la página /admin SÍ funcionan en runtime (verificados con curl). Tras un reinicio del dev server (gestión del sistema/main), todo el flujo de launches (radar + panel con hidden/contract) queda operativo — el código fuente de rutas ya es correcto.
+
+Stage Summary:
+- AdminPanel reutilizable en src/components/cabal/admin-panel.tsx, usado tanto por el modal de la app (/ o /?admin=1) como por la nueva página /admin.
+- Admin ahora gestiona launches completos: redes sociales, CA/contrato, ocultar del radar, rol dev/community y eliminación con confirmación.
+- Cómo probar /admin: abrir /admin → login admin / admin123@ → panel completo; Salir vuelve al login. El modal admin de la app conserva todo y suma las mejoras de launches.
+- No se tocó header.tsx ni componentes de otros agentes (post-launch-dialog, launch-detail, token-detail, radar-tab).
+
+---
+Task ID: 6-c
+Agent: live-chart
+Task: Gráfico de trading en vivo real (estilo GMGN/Axiom Pro) con toggle En vivo/Histórico en la ficha de token
+
+Work Log:
+- Creado src/components/cabal/live-chart.tsx con interfaz pública exacta exigida por 6-b: `LiveChart({ network, contract, height = 320 })`, `tradeLinks(network, contract): TradeLink[]` y extra `ExternalLinksRow({ network, contract, className })`
+- LiveChart: iframe embebido con TV widget de Birdeye (`https://birdeye.so/tv-widget/{contract}?chain={chain}`, mapeo solana/ethereum/base/bsc), sandbox allow-scripts/same-origin/popups/forms, allow clipboard-write, loading lazy, envuelto en rounded-xl bg #0a0b08 con leyenda "Gráfico en vivo · datos on-chain" (dot rojo pulsante live-dot-red + texto [10px]); para tron usa embed DexScreener (`?embed=1&theme=dark&info=0&trades=0`); sin contrato o red sin soporte → estado elegante "Gráfico en vivo no disponible para esta red" con botones externos centrados
+- tradeLinks: solana → Axiom Pro (primary, https://axiom.trade/meme/{ca}) + GMGN (sol) + Birdeye + DEXScreener; ethereum/base/bsc → GMGN (primary, slugs eth/base/bsc) + Birdeye + DEXScreener; tron → solo DEXScreener (primary, para garantizar siempre un botón principal); sin contrato → []
+- ExternalLinksRow: botones outline h-8 rounded-lg text-[11px] font-bold border-white/10 hover:border-[#8FA83F]/40 hover:text-primary con ExternalLink de lucide, target _blank rel noreferrer; primary con tinte oliva sutil (border/bg primary/10)
+- token-detail.tsx: toggle segmentado "En vivo | Histórico" (role tablist/tab, aria-selected, dot rojo pulsante en vivo, icono ChartLine en histórico) encima del gráfico; default "En vivo" si token.contract existe, "Histórico" si está vacío; estado por token sin setState en effects ({ tokenId, tab }); "En vivo" renderiza LiveChart height 360 + ExternalLinksRow mt-2; "Histórico" conserva el AreaChart recharts sintético intacto; resto de la ficha (dev track record, tesis, safety) sin cambios
+- No tocados: launch-detail, radar-tab, post-launch-dialog, admin-*, api-client, types (restricciones respetadas)
+- Verificación: bun run lint 0 errores; tsc --noEmit solo errores preexistentes en examples/ y skills/ (fuera de la app); curl /api/tokens 200, GET / 200 tras hot reload
+- NOTA para otros agentes (no es mío): dev.log muestra `GET /api/launches 500 — Unknown argument 'hidden'` (alguien filtra por Launch.hidden en el query de Prisma pero falta `db push` del schema); reportado, no tocado por restricción de scope
+
+Stage Summary:
+- Ficha de token muestra gráfico REAL de trading en vivo (Birdeye TV / DexScreener para tron) con links de trade a Axiom Pro, GMGN, Birdeye y DEXScreener según red, y fallback al gráfico sintético histórico
+- Componente listo para que 6-b lo importe en launch-detail.tsx con la interfaz acordada (LiveChart + tradeLinks)
+- Lint limpio, API viva, app compila en caliente sin errores
+
+---
+Task ID: 6-b
+Agent: launch-form
+Task: Rol dev/community en launches + CA de token y gráfico en vivo (formulario, detalle, radar)
+
+Work Log:
+- post-launch-dialog.tsx: nueva sección obligatoria "¿Quién publica este launch? *" al inicio del formulario con 2 cards excluyentes (radiogroup ARIA): "Soy el dev / Postulo mi propio proyecto" (Code2) y "Comunidad / Encontré la info y la comparto (+puntos)" (Radar); estado submitterRole ('dev'|'community', default 'community'), card activa con borde/bg verde #8FA83F. Campo opcional "CA / Contrato del token" (icono Hash, mono, placeholder "Ej: 7xKX...pump (si el token ya está desplegado)") con help text sobre el gráfico en vivo estilo GMGN; validación cliente regex /^[a-zA-Z0-9:_-]{2,80}$/ (igual al backend); mutate ahora envía submitterRole y contract; reset en onSuccess. Componente ImageDrop intacto (firma sin cambios, admin-panel sigue importándolo).
+- launch-detail.tsx: chip de rol junto al bloque de autor — DEV (bg-[#8FA83F]/15 text-primary) + "Dev del proyecto" o SCOUT (bg-white/8 text-zinc-400) + "Encontrado por la comunidad" ([10px] font-black uppercase). Nueva sección "Gráfico en vivo" (solo si launch.contract existe) entre el header y los comentarios: CA en chip mono truncado + LiveChart(network, contract, 320) + fila de botones externos con tradeLinks() (GMGN primario en verde oliva, DEXScreener, Birdeye, Axiom Pro cuando aplica; target=_blank rel=noreferrer, icono ExternalLink).
+- radar-tab.tsx: helper RoleChip ([9px] font-black uppercase) en el header de cada launch card (junto al NetworkBadge) y también en el hero destacado; si launch.contract existe, botón "Gráfico" (LineChart) en el footer de la card con stopPropagation que abre el detalle (sin link externo); footer con flex-wrap para móvil. Import LineChart verificado en lucide-react 0.525.0.
+- STUB: live-chart.tsx no existía aún (agente 6-c en paralelo) → creado stub MÍNIMO temporal con la interfaz pública EXACTA (LiveChart = iframe birdeye tv-widget; tradeLinks = GMGN/DEXScreener/Birdeye/Axiom Pro según red). Marcado en el header del archivo como stub: posiblemente reemplazado por agente 6-c sin cambios en consumidores.
+- Estilo: dark, acento oliva #8FA83F, lucide monocromos, sin emojis, responsive (cards dev/comunidad apiladas en móvil via grid sm:grid-cols-2).
+
+Stage Summary:
+- Flujo dev/scout completo: en el formulario se elige quién publica (default Comunidad +puntos); el rol se ve como chip DEV/SCOUT en el detalle y en cada card del radar (incluido hero); si el launch trae CA, su ficha muestra el gráfico en vivo + enlaces de trade GMGN/DEXScreener/Birdeye/Axiom.
+- Archivos editados: post-launch-dialog.tsx, launch-detail.tsx, radar-tab.tsx (+ stub live-chart.tsx). ImageDrop, admin-panel, token-detail, api-client, types y page.tsx sin tocar.
+- Lint: 0 errores (eslint limpio). tsc: sin errores en src/ (solo fallan examples/ y skills/ preexistentes, ajenos a la app). App compila y responde 200.
+
+---
+Task ID: admin-v2 (principal)
+Agent: Z.ai (main)
+Task: Favicon/logo Cabal, panel /admin con login (admin/admin123@), edición de redes de proyectos + ocultar/eliminar, gráficos en vivo (GMGN/Birdeye/DexScreener/Axiom), rol dev vs comunidad, /api/upload
+
+Work Log:
+- Favicon: upload/favicon cabal.png → src/app/icon.png (eliminado icon.svg) y → public/cabal-logo.png; logo del Cabal Coin actualizado sobrescribiendo public/seed/cabal.png (referenciado ya por la DB).
+- Schema Launch: +hidden, +submitterRole ('dev'|'community'), +contract. db push OK. Seed: Smole Coin, Neon Cat y Cabal Coin marcados como 'dev'.
+- src/lib/admin-auth.ts: sesión HMAC-SHA256 en cookie httpOnly (8h), credenciales por env (ADMIN_USER/ADMIN_PASSWORD, defaults admin/admin123@). Rutas /api/admin/login, /session, /logout.
+- requireAdmin(req) ahora acepta cookie de sesión admin O usuario isAdmin; actualizadas las 6 rutas admin.
+- API: DELETE /api/admin/launches?id (transacción: borra votos, suelta posts, borra launch); PATCH admin acepta website/twitter/telegram/contract/hidden/submitterRole; GET públicos de launches filtran hidden; detalle 404 para ocultos salvo admins.
+- Creada /api/upload (multipart → public/uploads, 5MB, png/jpg/webp/gif) — no existía y la subida de imágenes estaba rota.
+- types.ts: LaunchDTO con submitterRole/contract/hidden.
+- Subagentes (paralelos): 6-a admin-ui (AdminPanel extraído a admin-panel.tsx + página /admin con login + edición de redes/ocultar/eliminar en launches), 6-b launch-form (selector "¿Quién publica?" dev/comunidad + CA opcional en Publicar Launch, chips DEV/SCOUT en radar y detalle, LiveChart en detalle de launch), 6-c live-chart (componente live-chart.tsx con iframe Birdeye TV widget / DexScreener para tron + tradeLinks GMGN/DEXScreener/Birdeye/Axiom Pro + toggle "En vivo | Histórico" en token-detail).
+- Dev server reiniciado para cargar el cliente Prisma nuevo (los agents reportaron 500 "Unknown argument hidden" antes del reinicio).
+
+Stage Summary:
+- /admin operativo con usuario/contraseña (admin / admin123@, cookie HMAC 8h). El diálogo admin interno (/?admin=1) sigue funcionando con las mismas mejoras.
+- Desde Proyectos: editar redes sociales (website/X/Telegram), CA, ocultar (chip OCULTO + desaparece del radar público) y eliminar con confirmación.
+- Los tokens lanzados con CA muestran gráfico en vivo real (Birdeye) + enlaces a GMGN, DEXScreener, Birdeye y Axiom Pro; verificado con CA real (Bonk) mostrando gráfico real.
+- Diferenciación dev vs scout en Publicar Launch, tarjetas del Radar y detalle.
+- Verificado en navegador: login admin, editar/ocultar/restaurar/eliminar launch, gráfico en vivo, toggle histórico, favicon 200 image/png. Lint limpio.

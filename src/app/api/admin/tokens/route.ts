@@ -10,9 +10,9 @@ const safeUrl = (v: unknown) =>
     : null
 
 // GET: lista completa de tokens para el admin
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const tokens = await db.token.findMany({ include: { dev: true }, orderBy: { mc: 'desc' } })
     const dto: TokenDTO[] = tokens.map((t) => ({
       id: t.id,
@@ -44,7 +44,7 @@ export async function GET() {
 // PATCH: el admin edita tokens (nombre, ticker, logo/imagen, red, métricas, rug)
 export async function PATCH(req: Request) {
   try {
-    await requireAdmin()
+    await requireAdmin(req)
     const body = await req.json()
     const { id } = body
     if (!id || typeof id !== 'string') {

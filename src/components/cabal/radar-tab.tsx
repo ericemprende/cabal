@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Flame, Globe, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
+import { Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, useCountdown } from '@/components/cabal/shared'
@@ -11,6 +11,22 @@ import { useUI } from '@/lib/store'
 import type { LaunchDTO } from '@/lib/types'
 
 const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'tron'] as const
+
+/** Mini-chip de rol: DEV = lo publicó el propio dev · SCOUT = encontrado por la comunidad */
+function RoleChip({ role }: { role: 'dev' | 'community' }) {
+  const dev = role === 'dev'
+  return (
+    <span
+      className={cn(
+        'shrink-0 rounded px-1 py-px text-[9px] font-black uppercase tracking-wider',
+        dev ? 'bg-[#8FA83F]/15 text-primary' : 'bg-white/8 text-zinc-400'
+      )}
+      title={dev ? 'Publicado por el dev del proyecto' : 'Encontrado por la comunidad'}
+    >
+      {dev ? 'DEV' : 'SCOUT'}
+    </span>
+  )
+}
 
 export function RadarTab() {
   const { data: launches, isLoading } = useLaunches()
@@ -142,6 +158,7 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
               Destacado
             </span>
             <NetworkBadge network={launch.network} />
+            <RoleChip role={launch.submitterRole} />
             <span className="flex items-center gap-1 text-xs font-semibold text-amber-300">
               <Flame className="h-3.5 w-3.5" /> {launch.hype} hypes
             </span>
@@ -198,6 +215,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           </div>
           <div className="mt-1 flex items-center gap-1.5">
             <NetworkBadge network={launch.network} />
+            <RoleChip role={launch.submitterRole} />
             <span className="truncate text-[11px] text-muted-foreground">
               {timeAgo(launch.createdAt)} · @{launch.createdBy.handle}
             </span>
@@ -210,7 +228,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
 
       <SafetyChecks lpLocked={launch.lpLocked} mintRevoked={launch.mintRevoked} top10Pct={launch.top10Pct} />
 
-      <div className="mt-auto flex items-center gap-2 border-t border-white/8 pt-2.5">
+      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-white/8 pt-2.5">
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -231,6 +249,20 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           <MessageSquare className="h-3.5 w-3.5" aria-hidden />
           {launch.postsCount}
         </span>
+        {launch.contract && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              openLaunch(launch.id)
+            }}
+            className="flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-all hover:border-[#8FA83F]/40 hover:text-primary active:scale-95"
+            title="Ver gráfico en vivo en el detalle"
+            aria-label="Abrir gráfico en vivo en el detalle"
+          >
+            <LineChart className="h-3.5 w-3.5" aria-hidden />
+            Gráfico
+          </button>
+        )}
         <span className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground">
           {launch.lpLocked ? <Lock className="h-3 w-3 text-primary" /> : <ShieldOff className="h-3 w-3 text-amber-300" />}
           {launch.createdBy.isDev && launch.createdBy.walletVerified ? 'Dev verificado' : launch.createdBy.isDev ? 'Dev sin verificar' : 'Post de comunidad'}
