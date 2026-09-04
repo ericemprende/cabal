@@ -1,8 +1,10 @@
 'use client'
 
-import { ExternalLink, WifiOff } from 'lucide-react'
+import { ExternalLink, TrendingUp, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useAffiliates } from '@/lib/api-client'
+import { resolveAffiliateUrl } from '@/lib/affiliate'
 
 // Redes soportadas por el TV widget de Birdeye (tron NO soportado)
 const BIRDEYE_CHAINS: Record<string, string> = {
@@ -116,8 +118,47 @@ export function LiveChart({ network, contract, height = 320 }: { network: string
   )
 }
 
-/** Fila reutilizable de botones para tradear en plataformas externas */
+/** Fila reutilizable de botones para comprar/tradear el token.
+ *  Prioriza las plataformas afiliadas configuradas por el admin (enlace madre de
+ *  referido, con soporte del placeholder {ca}); si no hay ninguna configurada,
+ *  muestra enlaces directos a las plataformas según la red del token. */
 export function ExternalLinksRow({ network, contract, className }: { network: string; contract: string; className?: string }) {
+  const { data: affiliates } = useAffiliates()
+
+  const affiliateLinks = (affiliates ?? [])
+    .filter((a) => a.url)
+    .map((a) => ({ label: a.name, url: resolveAffiliateUrl(a.url, contract) }))
+
+  if (affiliateLinks.length > 0) {
+    const [primary, ...rest] = affiliateLinks
+    return (
+      <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
+        <Button
+          asChild
+          className="h-8 gap-1.5 rounded-lg bg-primary px-3 text-[11px] font-black text-primary-foreground hover:bg-[#8FA83F]"
+        >
+          <a href={primary.url} target="_blank" rel="noreferrer" aria-label={`Comprar en ${primary.label}`}>
+            <TrendingUp className="h-3.5 w-3.5" aria-hidden />
+            Comprar en {primary.label}
+          </a>
+        </Button>
+        {rest.map((link) => (
+          <Button
+            key={link.url}
+            variant="outline"
+            asChild
+            className="h-8 gap-1.5 rounded-lg border-white/10 px-2.5 text-[11px] font-bold text-muted-foreground hover:bg-transparent hover:text-primary"
+          >
+            <a href={link.url} target="_blank" rel="noreferrer" aria-label={`Comprar en ${link.label}`}>
+              <ExternalLink className="h-3 w-3" aria-hidden />
+              {link.label}
+            </a>
+          </Button>
+        ))}
+      </div>
+    )
+  }
+
   const links = tradeLinks(network, contract)
   if (links.length === 0) return null
   return (

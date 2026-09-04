@@ -129,6 +129,19 @@ model Setting {
   value String
 }
 
+// Plataformas de trading afiliadas (GMGN, Axiom, Photon…). El admin pega el
+// enlace madre de referido; los botones "Comprar" redirigen allí. Soporta el
+// placeholder {ca} para inyectar el contrato del token al abrir.
+model AffiliatePlatform {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  url       String   @default("")
+  active    Boolean  @default(false)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
 model Follow {
   id       String @id @default(cuid())
   userId   String

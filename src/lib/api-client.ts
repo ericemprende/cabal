@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import type {
   AdminOverviewDTO,
   AdminUserRowDTO,
+  AffiliatePlatformDTO,
   LaunchDetailDTO,
   LaunchDTO,
   LeaderboardDTO,
@@ -46,6 +47,8 @@ export const qk = {
   adminRules: ['admin', 'rules'] as const,
   adminLaunches: ['admin', 'launches'] as const,
   adminTokens: ['admin', 'tokens'] as const,
+  affiliates: ['affiliates'] as const,
+  adminAffiliates: ['admin', 'affiliates'] as const,
 }
 
 export function useMe() {
@@ -127,6 +130,23 @@ export function useAdminTokens(enabled: boolean) {
   return useQuery<TokenDTO[]>({
     queryKey: qk.adminTokens,
     queryFn: () => jsonFetch('/api/admin/tokens'),
+    enabled,
+  })
+}
+
+/** Plataformas afiliadas activas (enlaces madre de referido para "Comprar"). */
+export function useAffiliates() {
+  return useQuery<AffiliatePlatformDTO[]>({
+    queryKey: qk.affiliates,
+    queryFn: () => jsonFetch('/api/affiliate'),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useAdminAffiliates(enabled: boolean) {
+  return useQuery<AffiliatePlatformDTO[]>({
+    queryKey: qk.adminAffiliates,
+    queryFn: () => jsonFetch('/api/admin/affiliate'),
     enabled,
   })
 }
@@ -341,6 +361,53 @@ export function useAdminUpdateToken(enabled: boolean) {
     onSuccess: () => {
       invalidate()
       toast.success('Token actualizado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminSaveAffiliate(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, unknown> & { id: string }) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/affiliate', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Plataforma afiliada guardada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminCreateAffiliate(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { name: string; url?: string }) =>
+      jsonFetch<{ ok: boolean; id: string }>('/api/admin/affiliate', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Plataforma añadida')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminDeleteAffiliate(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (id: string) =>
+      jsonFetch<{ ok: boolean }>(`/api/admin/affiliate?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Plataforma eliminada')
     },
     onError: (e: Error) => toast.error(e.message),
   })

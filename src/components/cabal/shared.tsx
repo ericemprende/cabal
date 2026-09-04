@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { CheckCircle2, Lock, Timer, XCircle, Zap } from 'lucide-react'
+import { toast } from 'sonner'
+import { Check, CheckCircle2, Copy, Lock, Timer, XCircle, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { countdownParts, networkMeta, safetyCheck } from '@/lib/cabal'
+import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
 
 // ---------- Wordmark (sin logo: solo la fuente en mayúscula) ----------
 export function CabalWordmark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
@@ -131,6 +132,43 @@ export function TokenGlyph({
         <span>{(ticker || '?').replace(/^\$/, '')[0]?.toUpperCase()}</span>
       )}
     </div>
+  )
+}
+
+// ---------- Chip de contrato (CA) con botón copiar ----------
+export function CopyCA({ contract, className }: { contract: string; className?: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(contract)
+      setCopied(true)
+      toast.success('CA copiado al portapapeles')
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      toast.error('No se pudo copiar el CA')
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={contract}
+      aria-label={`Copiar contrato: ${contract}`}
+      className={cn(
+        'group inline-flex max-w-full items-center gap-1 rounded-md border border-white/10 bg-white/4 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-zinc-300 transition-colors hover:border-primary/40 hover:text-primary',
+        copied && 'border-primary/50 text-primary',
+        className
+      )}
+    >
+      <span className="truncate">{shortWallet(contract)}</span>
+      {copied ? (
+        <Check className="h-3 w-3 shrink-0 text-primary" aria-hidden />
+      ) : (
+        <Copy className="h-3 w-3 shrink-0 opacity-55 transition-opacity group-hover:opacity-100" aria-hidden />
+      )}
+    </button>
   )
 }
 

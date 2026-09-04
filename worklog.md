@@ -220,3 +220,29 @@ Stage Summary:
 - Nueva opción "pega la URL de la imagen" en formulario público y panel admin (image + banner + logo de token)
 - Favicon de Cabal activo
 - Bug crítico de isPrivate corregido: los launches nuevos ya no quedan en modo privado involuntariamente
+
+---
+Task ID: ca-copy-affiliates
+Agent: Z.ai Code (principal)
+Task: CA con icono copiar en popups (token/launch) + sección "Plataformas afiliadas" en el admin con enlace madre de referido para los botones Comprar (GMGN, Axiom, etc.)
+
+Work Log:
+- Prisma: nuevo modelo AffiliatePlatform (name, slug unique, url, active, order) + db push
+- src/lib/affiliate.ts: AFFILIATE_PRESETS (GMGN, Axiom Pro, Photon, BullX, Birdeye, DEXScreener), ensureAffiliatePresets() idempotente, isValidAffiliateUrl (https obligatorio) y resolveAffiliateUrl (reemplaza {ca} por el contrato del token)
+- API pública GET /api/affiliate: solo plataformas activas con url, ordenadas (auto-crea presets en primera consulta)
+- API admin /api/admin/affiliate: GET/POST/PATCH/DELETE con validaciones (url https, no activar sin enlace, vaciar url desactiva)
+- api-client: useAffiliates (público, staleTime 5min), useAdminAffiliates, useAdminSaveAffiliate, useAdminCreateAffiliate, useAdminDeleteAffiliate + qk keys
+- shared.tsx: nuevo componente CopyCA (chip mono con shortWallet + icono Copy→Check, navigator.clipboard, toast "CA copiado")
+- token-detail.tsx: CA ahora va debajo del precio como chip copiable (antes era texto plano truncado junto a nace/ATH)
+- launch-detail.tsx: el <code> del CA reemplazado por CopyCA; los enlaces estáticos de trade reemplazados por ExternalLinksRow
+- live-chart.tsx: ExternalLinksRow ahora es affiliate-aware: si hay plataformas afiliadas activas muestra "Comprar en {plataforma}" (primera = botón oliva prominente, resto chips outline) resolviendo {ca}; sin afiliados → fallback a los enlaces directos estáticos (GMGN/Axiom/Birdeye/DEXScreener por red)
+- admin-panel.tsx: nuevo tab "Plataformas afiliadas" (AdminAffiliates + AffiliateRow): editar nombre/enlace inline con botón Guardar (solo si hay cambios), toggle Activa (envía url del borrador en el mismo PATCH), eliminar con AlertDialog confirmación, form Añadir plataforma, tip del placeholder {ca}
+- Reinicio del dev server necesario tras db push (cliente Prisma nuevo); usado setsid para desligarlo del shell del tool
+- Verificado con curl: CRUD completo, validaciones de url/activación, API pública filtrando inactivas
+- Verificado con Agent Browser: popup token muestra CA debajo del precio + copia al portapapeles (mock clipboard), "Comprar en GMGN" y "Comprar en Axiom Pro" con href https://gmgn.ai/sol/token/{CA}?ref=... / axiom.trade/meme/{CA}?ref=..., launch detail con CopyCA y ambos enlaces, sección admin renderiza 6 presets y flujo "pegar enlace → activar" en un clic
+- Limpieza: launch de prueba eliminado vía API admin. Se dejan GMGN y Axiom configurados con ref de ejemplo (CABALTEST/MIREFCABAL) para que el usuario vea la función y reemplace con sus códigos reales
+
+Stage Summary:
+- El CA es visible y copiable con un clic debajo del precio en el popup de tokens y junto al gráfico en launch detail
+- Nueva sección "Plataformas afiliadas" en /admin: el admin pega su enlace madre de referido por plataforma y activa; los botones "Comprar" de toda la app redirigen a esos enlaces (soporta {ca} para deep-link del token)
+- Sin afiliados configurados, los botones muestran enlaces directos (comportamiento anterior) — la app nunca queda sin botones

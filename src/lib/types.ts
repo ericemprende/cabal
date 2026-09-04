@@ -131,6 +131,16 @@ export interface PointEventDTO {
   createdAt: string
 }
 
+/** Plataforma de trading afiliada. Pública solo si active && url. */
+export interface AffiliatePlatformDTO {
+  id: string
+  name: string
+  slug: string
+  url: string
+  active: boolean
+  order: number
+}
+
 export interface LaunchDetailDTO extends LaunchDTO {
   posts: PostDTO[]
 }

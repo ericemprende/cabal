@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, shortWallet, timeAgo } from '@/lib/cabal'
@@ -76,9 +76,13 @@ export function TokenDetailDialog() {
                     </span>
                     <span className="text-sm font-bold text-foreground/80">{fmtMc(token.mc)} MC</span>
                   </div>
-                  <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                    {shortWallet(token.contract)} · nace {timeAgo(token.launchedAt)} · ATH {fmtMc(token.athMc)}
-                  </p>
+                  {/* CA debajo del precio + icono copiar (solo token desplegado) */}
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                    {token.contract && <CopyCA contract={token.contract} />}
+                    <span>
+                      nace {timeAgo(token.launchedAt)} · ATH {fmtMc(token.athMc)}
+                    </span>
+                  </div>
                 </div>
               </DialogTitle>
 

@@ -2,15 +2,15 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { ExternalLink, Flame, Globe, Send, Twitter, Zap } from 'lucide-react'
+import { Flame, Globe, Send, Twitter, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CountdownPill, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CountdownPill, CopyCA, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
-import { LiveChart, tradeLinks } from '@/components/cabal/live-chart'
+import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -142,33 +142,10 @@ export function LaunchDetailDialog() {
               <section className="border-b border-white/10 p-4" aria-label="Gráfico en vivo del token">
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gráfico en vivo</p>
-                  <code
-                    className="max-w-[55%] truncate rounded-md border border-white/10 bg-[#0a0b08] px-2 py-1 font-mono text-[10px] text-zinc-400"
-                    title={launch.contract}
-                  >
-                    {launch.contract}
-                  </code>
+                  <CopyCA contract={launch.contract} className="max-w-[60%] text-[10px]" />
                 </div>
                 <LiveChart network={launch.network} contract={launch.contract} height={320} />
-                <div className="mt-2.5 flex flex-wrap gap-1.5">
-                  {tradeLinks(launch.network, launch.contract).map((l) => (
-                    <a
-                      key={l.url}
-                      href={l.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                        l.primary
-                          ? 'border-[#8FA83F]/40 bg-[#8FA83F]/8 text-primary hover:border-[#8FA83F]/60'
-                          : 'border-white/10 bg-white/5 text-foreground/85 hover:border-[#8FA83F]/50 hover:text-primary'
-                      )}
-                    >
-                      <ExternalLink className="h-3 w-3" aria-hidden />
-                      {l.label}
-                    </a>
-                  ))}
-                </div>
+                <ExternalLinksRow network={launch.network} contract={launch.contract} className="mt-2.5" />
               </section>
             )}
 

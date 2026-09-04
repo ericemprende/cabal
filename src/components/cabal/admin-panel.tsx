@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Coins,
   Heart,
+  Link2,
   Minus,
   Pencil,
   Plus,
@@ -46,17 +47,21 @@ import {
   qk,
   uploadImage,
   useAdminAdjustPoints,
+  useAdminAffiliates,
+  useAdminCreateAffiliate,
+  useAdminDeleteAffiliate,
   useAdminDeleteLaunch,
   useAdminLaunches,
   useAdminOverview,
   useAdminRules,
+  useAdminSaveAffiliate,
   useAdminTokens,
   useAdminUpdateLaunch,
   useAdminUpdateToken,
   useAdminUpdateUser,
   useAdminUsers,
 } from '@/lib/api-client'
-import type { AdminUserRowDTO, LaunchDTO, TokenDTO } from '@/lib/types'
+import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, TokenDTO } from '@/lib/types'
 
 const RULE_LABELS: Record<string, string> = {
   points_thesis: 'Tesis publicada',
@@ -79,7 +84,7 @@ const REASON_COLORS: Record<string, string> = {
   verify_google: '#8A92B2',
 }
 
-type AdminView = 'usuarios' | 'reglas' | 'proyectos' | 'tokens' | 'stats'
+type AdminView = 'usuarios' | 'reglas' | 'proyectos' | 'tokens' | 'afiliados' | 'stats'
 
 function toInputDateTime(iso: string): string {
   const d = new Date(iso)
@@ -183,6 +188,7 @@ export function AdminPanel({
               { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
               { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
               { key: 'tokens', label: 'Tokens', icon: Coins },
+              { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
               { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
               { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
             ] as { key: AdminView; label: string; icon: typeof Zap }[]
@@ -225,6 +231,8 @@ export function AdminPanel({
         {view === 'proyectos' && <AdminLaunches enabled={enabled} />}
 
         {view === 'tokens' && <AdminTokens enabled={enabled} />}
+
+        {view === 'afiliados' && <AdminAffiliates enabled={enabled} />}
 
         {view === 'reglas' && (
           <div className="space-y-3">
@@ -759,6 +767,180 @@ function AdminTokens({ enabled }: { enabled: boolean }) {
       {(tokens.data ?? []).map((t) => (
         <AdminTokenRow key={t.id} token={t} enabled={enabled} />
       ))}
+    </div>
+  )
+}
+
+// ---------------- Plataformas afiliadas (enlace madre de referido) ----------------
+function AdminAffiliates({ enabled }: { enabled: boolean }) {
+  const list = useAdminAffiliates(enabled)
+  const create = useAdminCreateAffiliate(enabled)
+  const [newName, setNewName] = useState('')
+  const [newUrl, setNewUrl] = useState('')
+
+  const addPlatform = () => {
+    if (!newName.trim()) {
+      toast.error('Ponle un nombre a la plataforma')
+      return
+    }
+    create.mutate(
+      { name: newName.trim(), url: newUrl.trim() || undefined },
+      { onSuccess: () => {
+          setNewName('')
+          setNewUrl('')
+        } }
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Define tus plataformas de trading como afiliado. Pega el <span className="font-semibold text-foreground">enlace madre de referido</span> de
+        cada una: es el enlace al que se redirige a la comunidad cuando presiona “Comprar”.
+      </p>
+
+      <div className="rounded-xl border border-[#8FA83F]/25 bg-[#8FA83F]/6 px-3.5 py-2.5">
+        <p className="flex items-start gap-2 text-[11px] leading-relaxed text-foreground/80">
+          <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+          <span>
+            Tip: si tu enlace incluye <code className="rounded bg-black/30 px-1 font-mono text-primary">{'{ca}'}</code>, se reemplaza
+            automáticamente por el contrato del token. Ej:{' '}
+            <code className="rounded bg-black/30 px-1 font-mono text-primary">https://gmgn.ai/sol/token/&#123;ca&#125;?ref=TUCODIGO</code>. Si no lo
+            incluye, el usuario llega directo al enlace madre.
+          </span>
+        </p>
+      </div>
+
+      {list.isLoading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+      <div className="space-y-2">
+        {(list.data ?? []).map((p, i) => (
+          <AffiliateRow key={p.id} platform={p} enabled={enabled} primary={i === 0} />
+        ))}
+        {!list.isLoading && (list.data ?? []).length === 0 && (
+          <p className="rounded-xl border border-dashed border-white/12 py-6 text-center text-xs text-muted-foreground">
+            Aún no hay plataformas. Añade la primera abajo.
+          </p>
+        )}
+      </div>
+
+      {/* Añadir plataforma */}
+      <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Añadir plataforma</p>
+        <div className="grid gap-2 sm:grid-cols-[160px_1fr_auto]">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nombre (ej: Photon)"
+            aria-label="Nombre de la plataforma"
+            className="h-9 bg-[#121410] text-[13px]"
+          />
+          <Input
+            value={newUrl}
+            onChange={(e) => setNewUrl(e.target.value)}
+            placeholder="https://…/?ref=TU_CODIGO"
+            inputMode="url"
+            spellCheck={false}
+            aria-label="Enlace de referido"
+            className="h-9 bg-[#121410] font-mono text-[12px]"
+          />
+          <Button
+            onClick={addPlatform}
+            disabled={create.isPending || !newName.trim()}
+            className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+          >
+            <Plus className="h-3.5 w-3.5" /> Añadir
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AffiliateRow({
+  platform,
+  enabled,
+  primary,
+}: {
+  platform: AffiliatePlatformDTO
+  enabled: boolean
+  primary: boolean
+}) {
+  const save = useAdminSaveAffiliate(enabled)
+  const remove = useAdminDeleteAffiliate(enabled)
+  const [name, setName] = useState(platform.name)
+  const [url, setUrl] = useState(platform.url)
+  const dirty = name !== platform.name || url !== platform.url
+
+  return (
+    <div className={cn('rounded-xl border bg-[#0a0b08] p-3', platform.active ? 'border-[#8FA83F]/30' : 'border-white/10')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-machina w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">{primary ? '1' : ''}</span>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label={`Nombre de ${platform.name}`}
+          className="h-9 w-36 shrink-0 bg-[#121410] text-[13px] font-bold"
+        />
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="Pega el enlace madre de referido (https://…)"
+          inputMode="url"
+          spellCheck={false}
+          aria-label={`Enlace de referido de ${platform.name}`}
+          className="h-9 min-w-[180px] flex-1 bg-[#121410] font-mono text-[12px]"
+        />
+        <ChipToggle
+          label={platform.active ? 'Activa' : 'Inactiva'}
+          checked={platform.active}
+          onChange={(v) => save.mutate({ id: platform.id, name, url, active: v })}
+        />
+        {dirty && (
+          <Button
+            size="sm"
+            onClick={() => save.mutate({ id: platform.id, name, url })}
+            disabled={save.isPending}
+            className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+          >
+            <Save className="h-3.5 w-3.5" /> Guardar
+          </Button>
+        )}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={enabled === false}
+              className="h-9 w-9 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-[#ff8080]"
+              aria-label={`Eliminar ${platform.name}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="border-white/10 bg-[#121410]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar {platform.name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Los botones “Comprar” dejarán de llevar a esta plataforma. Puedes volver a añadirla después.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-white/10 bg-transparent">Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => remove.mutate(platform.id)}
+                className="bg-[#ff4d5e] text-white hover:bg-[#ff6675]"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+      {platform.active && (
+        <p className="mt-1.5 truncate pl-7 text-[10px] text-muted-foreground">
+          La comunidad es redirigida a <span className="font-mono text-primary/90">{platform.url}</span>
+        </p>
+      )}
     </div>
   )
 }
