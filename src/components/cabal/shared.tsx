@@ -172,7 +172,7 @@ export function CopyCA({ contract, className }: { contract: string; className?: 
   )
 }
 
-// ---------- Network badge monocromático (identidad solo en el punto de color) ----------
+// ---------- Network badge monocromático (logo de la red + código corto) ----------
 export function NetworkBadge({ network, className }: { network: string; className?: string }) {
   const meta = networkMeta(network)
   return (
@@ -182,10 +182,87 @@ export function NetworkBadge({ network, className }: { network: string; classNam
         className
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} />
+      <NetworkIcon network={network} />
       {meta.short}
     </span>
   )
+}
+
+// ---------- Logos vectoriales de las redes (formas simplificadas) ----------
+export function NetworkIcon({ network, className }: { network: string; className?: string }) {
+  const cls = cn('h-3.5 w-3.5 shrink-0', className)
+  switch (network) {
+    case 'solana':
+      return (
+        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
+          <defs>
+            <linearGradient id="sol-g" x1="2" y1="13" x2="14" y2="3" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor="#14F195" />
+              <stop offset="1" stopColor="#9945FF" />
+            </linearGradient>
+          </defs>
+          <g fill="url(#sol-g)">
+            <path d="M4.1 2.9h8.9l-1.9 2.5H2.2Z" />
+            <path d="M2.9 6.8h9l1.9 2.5h-8.9Z" />
+            <path d="M4.1 10.6h8.9l-1.9 2.5H2.2Z" />
+          </g>
+        </svg>
+      )
+    case 'bsc':
+      return (
+        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
+          <g fill="#F0B90B">
+            <path d="m8 1.6 2 2-2 2-2-2z" />
+            <path d="m3.6 6 2 2-2 2-2-2z" />
+            <path d="m12.4 6 2 2-2 2-2-2z" />
+            <path d="m8 6 2 2-2 2-2-2z" />
+            <path d="m8 10.4 2 2-2 2-2-2z" />
+          </g>
+        </svg>
+      )
+    case 'base':
+      return (
+        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
+          <path
+            fill="#0052FF"
+            d="M8 1.6A6.4 6.4 0 1 0 8 14.4 6.4 6.4 0 0 0 8 1.6Zm-5 5.5h5.6v1.8H3Z"
+            fillRule="evenodd"
+            clipRule="evenodd"
+          />
+        </svg>
+      )
+    case 'ethereum':
+      return (
+        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
+          <path fill="#8A92B2" d="M8 1.6v4.9l4.2 1.9z" />
+          <path fill="#62688F" d="M8 1.6 3.8 8.4 8 6.5z" />
+          <path fill="#8A92B2" d="M8 9.1v5.3l4.2-5.8z" />
+          <path fill="#62688F" d="M8 14.4V9.1L3.8 8.6z" />
+          <path fill="#454A75" d="m8 8.4 4.2-2.4L8 8.1z" opacity=".9" />
+        </svg>
+      )
+    case 'tron':
+      return (
+        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
+          <path fill="#EB0029" fillRule="evenodd" clipRule="evenodd" d="M2.4 2.2 14 5.6 7.3 14.4Zm2.4 2.1 3.2 7.4L11.2 6Z" />
+        </svg>
+      )
+    case 'robinhood':
+      return (
+        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
+          <circle cx="8" cy="8" r="6.6" fill="#DFFF3F" />
+          <path
+            fill="#171A06"
+            d="M5 11.6c0-3.9 2.5-6.6 6-7.1-.1 4.1-2.4 6.7-5.4 7.2L5 12.9Z"
+          />
+          <path stroke="#171A06" strokeWidth=".8" strokeLinecap="round" d="M4.6 13.2 5.6 11.7" />
+        </svg>
+      )
+    default: {
+      const meta = networkMeta(network)
+      return <span className={cn('inline-block h-1.5 w-1.5 rounded-full', cls.includes('h-3.5') && 'h-2 w-2')} style={{ background: meta.dot }} />
+    }
+  }
 }
 
 // ---------- Ticker label (con soporte para launches privados) ----------

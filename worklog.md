@@ -285,3 +285,21 @@ Stage Summary:
 - El admin pega un enlace por red etiquetado "DE LA RED Solana/Base/Ethereum/BNB Chain/Tron/Robinhood"; los botones Comprar de cada token usan el de su red inyectando el {ca}
 - Verificado en navegador: LIGMA (SOL) → gmgn.ai/sol/token/SPlAtXGW_{CA} + axiom.trade/t/{CA}/@erice0009?chain=sol; MOONX (BSC) → gmgn.ai/bsc/... + chain=bnb; persistencia admin OK; datos de prueba limpiados (Photon restaurado)
 - Filtro RH visible en Radar; lint limpio; consola sin errores
+
+---
+Task ID: tz-robinhood-logos
+Agent: main (Z.ai Code)
+Task: Aclarar/arreglar zona horaria de launches + Robinhood en amarillo neón + logos SVG de redes
+
+Work Log:
+- Diagnóstico TZ: el display ya era correcto (toLocaleString → hora local de cada visitante; countdown absoluto). El admin ya convertía a ISO absoluto (toInputDateTime + toISOString). El BUG estaba en /publicar: enviaba el string crudo del datetime-local y el servidor lo interpretaba en SU zona (UTC) → para un publicador en Colombia (UTC-5) la hora quedaba desplazada +5h
+- Fix: /publicar ahora envía launchAt: new Date(form.launchAt).toISOString() (el navegador del publicador convierte su hora local a instante absoluto). Añadido hint "Es la hora de tu dispositivo. Cada usuario la ve convertida a su propia zona horaria."
+- cabal.ts: robinhood dot → #DFFF3F (amarillo neón)
+- shared.tsx: nuevo NetworkIcon con logos vectoriales simplificados (Solana 3 barras con gradiente #14F195→#9945FF, BSC 5 rombos #F0B90B, Base círculo con ranura #0052FF, ETH rombos #8A92B2/#62688F/#454A75, Tron triángulo #EB0029, Robinhood círculo #DFFF3F con pluma); NetworkBadge ahora usa NetworkIcon
+- Integrado NetworkIcon en: pickers de red de /publicar y admin (launch + tokens), labels "DE LA RED" de afiliados, chips de filtro del Radar
+- Verificado en navegador: badges con logos en Radar/sidebar/filtros, launch de prueba en robinhood publicado (network: robinhood, launchAt 2026-10-05T20:30:00.000Z = instante correcto), detalle muestra "5 oct, 20:30" en hora del visitante; launch de prueba eliminado
+
+Stage Summary:
+- Respuesta TZ: se guarda como instante absoluto UTC; cada usuario ve la fecha convertida a su zona horaria; la hora que ingresa el publicador se interpreta en SU dispositivo (fix aplicado a /publicar)
+- Robinhood: red completa para lanzamientos, color amarillo neón #DFFF3F, logo pluma; RH visible en picker/filtros/badges
+- Logos vectoriales propios para las 6 redes (sin dependencias externas); lint limpio, consola sin errores

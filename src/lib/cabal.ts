@@ -9,7 +9,7 @@ export const NETWORKS: Record<
   ethereum: { label: 'Ethereum', short: 'ETH', dot: '#8A92B2' },
   bsc: { label: 'BNB Chain', short: 'BSC', dot: '#F0B90B' },
   tron: { label: 'Tron', short: 'TRX', dot: '#FF4D5E' },
-  robinhood: { label: 'Robinhood', short: 'RH', dot: '#00C805' },
+  robinhood: { label: 'Robinhood', short: 'RH', dot: '#DFFF3F' },
 }
 
 export function networkMeta(key: string) {

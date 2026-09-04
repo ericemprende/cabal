@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CountdownPill, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, useCountdown } from '@/components/cabal/shared'
+import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown } from '@/components/cabal/shared'
 import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
 import { useHypeToggle, useLaunches } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -75,7 +75,10 @@ export function RadarTab() {
                   <Globe className="h-3.5 w-3.5" aria-hidden /> Todas
                 </span>
               ) : (
-                networkMeta(n).short
+                <span className="flex items-center gap-1.5">
+                  <NetworkIcon network={n} className="h-3 w-3" aria-hidden />
+                  {networkMeta(n).short}
+                </span>
               )}
             </button>
           ))}

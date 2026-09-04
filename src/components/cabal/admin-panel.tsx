@@ -42,7 +42,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { NETWORKS, timeAgo } from '@/lib/cabal'
 import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
-import { PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { PointsPill, TokenGlyph, UserAvatar, NetworkIcon } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import {
   jsonFetch,
@@ -677,7 +677,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
                       form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
                     )}
                   >
-                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} aria-hidden />
+                    <NetworkIcon network={key} className="h-3 w-3" />
                     {meta.short}
                   </button>
                 ))}
@@ -971,7 +971,7 @@ function AffiliateRow({
                 className="flex h-9 w-[104px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-[#121410] px-2 text-[10px] font-bold text-muted-foreground"
                 title={`Enlace de ${platform.name} DE LA RED ${meta.label}`}
               >
-                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: meta.dot }} aria-hidden />
+                <NetworkIcon network={n} className="h-3 w-3" />
                 {meta.label}
               </span>
               <Input
@@ -1115,7 +1115,7 @@ function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }
                         form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
                       )}
                     >
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: meta.dot }} aria-hidden />
+                      <NetworkIcon network={key} className="h-3 w-3" />
                       {meta.short}
                     </button>
                   ))}
