@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { CalendarClock, Code2, EyeOff, Hash, ImagePlus, Loader2, Radar, Trash2, Zap } from 'lucide-react'
+import { CalendarClock, Code2, EyeOff, Hash, ImagePlus, Link2, Loader2, Radar, Trash2, X, Zap } from 'lucide-react'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -31,22 +31,48 @@ const EMPTY_FORM = {
 export function ImageDrop({
   url,
   onSelect,
+  onPickUrl,
   onRemove,
   aspect,
   label,
   hint,
   disabled,
+  uploading = false,
 }: {
   url: string
   onSelect: (file: File) => void
+  onPickUrl: (url: string) => void
   onRemove: () => void
   aspect: 'square' | 'video'
   label: string
   hint: string
   disabled?: boolean
+  uploading?: boolean
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
+  const [urlMode, setUrlMode] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [urlError, setUrlError] = useState('')
+
+  const openUrlMode = () => {
+    setDraft(url && /^https:\/\//i.test(url) ? url : '')
+    setUrlError('')
+    setUrlMode(true)
+  }
+
+  const applyUrl = () => {
+    const v = draft.trim()
+    if (!v || disabled) return
+    const ok = /^https:\/\/\S+$/i.test(v) || v.startsWith('/uploads/') || v.startsWith('/seed/')
+    if (!ok) {
+      setUrlError('La URL debe empezar por https://')
+      return
+    }
+    setUrlError('')
+    onPickUrl(v)
+    setDraft('')
+    setUrlMode(false)
+  }
 
   return (
     <div className="space-y-1.5">
@@ -65,7 +91,56 @@ export function ImageDrop({
         }}
         aria-label={label}
       />
-      {url ? (
+      {urlMode ? (
+        <div
+          className={cn(
+            'space-y-1.5 rounded-xl border border-[#8FA83F]/30 bg-[#0a0b08] p-2.5',
+            aspect === 'square' ? 'w-24 min-w-0' : 'w-full'
+          )}
+        >
+          <div className="flex gap-1.5">
+            <Input
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                if (urlError) setUrlError('')
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  applyUrl()
+                }
+              }}
+              placeholder="https://…"
+              autoFocus
+              spellCheck={false}
+              autoComplete="off"
+              inputMode="url"
+              aria-label={`URL de la ${label.toLowerCase()}`}
+              className="h-8 bg-transparent font-mono text-[11px]"
+            />
+            <Button
+              onClick={applyUrl}
+              disabled={disabled || !draft.trim()}
+              className="h-8 shrink-0 rounded-lg bg-primary px-2.5 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            >
+              Usar
+            </Button>
+            <button
+              onClick={() => setUrlMode(false)}
+              disabled={disabled}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Cancelar URL"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {urlError && <p className="text-[10px] font-medium text-[#ff8080]">{urlError}</p>}
+          <p className="text-[10px] leading-snug text-muted-foreground">
+            Enlace directo a la imagen (https://). Ej: i.ibb.co, imgur, CDN del proyecto…
+          </p>
+        </div>
+      ) : url ? (
         <div
           className={cn(
             'group relative overflow-hidden rounded-xl border border-white/10 bg-[#0a0b08]',
@@ -73,36 +148,58 @@ export function ImageDrop({
           )}
         >
           <Image src={url} alt={label} fill sizes="320px" className="object-cover" unoptimized />
-          <button
-            onClick={onRemove}
-            disabled={disabled}
-            className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-[#0a0b08]/85 text-zinc-300 backdrop-blur transition-colors hover:text-[#ff8080]"
-            aria-label={`Quitar ${label.toLowerCase()}`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <div className="absolute right-1.5 top-1.5 flex gap-1">
+            <button
+              onClick={openUrlMode}
+              disabled={disabled}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0a0b08]/85 text-zinc-300 backdrop-blur transition-colors hover:text-primary"
+              aria-label={`Cambiar URL de ${label.toLowerCase()}`}
+            >
+              <Link2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={onRemove}
+              disabled={disabled}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0a0b08]/85 text-zinc-300 backdrop-blur transition-colors hover:text-[#ff8080]"
+              aria-label={`Quitar ${label.toLowerCase()}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       ) : (
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={disabled || uploading}
-          className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-[#0a0b08] text-xs font-medium text-muted-foreground transition-colors hover:border-[#8FA83F]/40 hover:text-foreground',
-            aspect === 'square' ? 'h-24' : 'h-28'
-          )}
-        >
-          {uploading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Subiendo…
-            </>
-          ) : (
-            <>
-              <ImagePlus className="h-4 w-4" aria-hidden /> {hint}
-            </>
-          )}
-        </button>
+        <>
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={disabled || uploading}
+            className={cn(
+              'flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-[#0a0b08] text-xs font-medium text-muted-foreground transition-colors hover:border-[#8FA83F]/40 hover:text-foreground',
+              aspect === 'square' ? 'h-20' : 'h-24'
+            )}
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Subiendo…
+              </>
+            ) : (
+              <>
+                <ImagePlus className="h-4 w-4" aria-hidden /> {hint}
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={openUrlMode}
+            disabled={disabled || uploading}
+            className="flex w-full items-center justify-center gap-1 rounded-lg text-[10px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+          >
+            <Link2 className="h-3 w-3" aria-hidden /> o pega la URL de la imagen
+          </button>
+        </>
       )}
-      {aspect === 'square' && <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP o GIF · máx 2.5 MB</p>}
+      {aspect === 'square' && !urlMode && (
+        <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP o GIF · máx 2.5 MB</p>
+      )}
     </div>
   )
 }
@@ -123,9 +220,12 @@ export function PostLaunchDialog() {
     try {
       const url = await uploadImage(file)
       setForm((f) => ({ ...f, [key]: url }))
+      toast.success(key === 'image' ? 'Imagen subida' : 'Banner subido')
     } catch (e) {
       setForm((f) => ({ ...f, [key]: '' }))
-      toast.error((e as Error).message)
+      toast.error((e as Error).message, {
+        description: 'Tip: también puedes pegar la URL de la imagen sin subirla.',
+      })
     }
   }
 
@@ -313,8 +413,10 @@ export function PostLaunchDialog() {
           {/* Identidad visual: imagen del token + banner opcional */}
           <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
             <ImageDrop
-              url={form.image}
+              url={form.image === 'uploading' ? '' : form.image}
+              uploading={form.image === 'uploading'}
               onSelect={handleSelect('image')}
+              onPickUrl={(u) => set('image', u)}
               onRemove={() => set('image', '')}
               aspect="square"
               label="Imagen del token"
@@ -322,8 +424,10 @@ export function PostLaunchDialog() {
               disabled={createLaunch.isPending}
             />
             <ImageDrop
-              url={form.banner}
+              url={form.banner === 'uploading' ? '' : form.banner}
+              uploading={form.banner === 'uploading'}
               onSelect={handleSelect('banner')}
+              onPickUrl={(u) => set('banner', u)}
               onRemove={() => set('banner', '')}
               aspect="video"
               label="Banner"

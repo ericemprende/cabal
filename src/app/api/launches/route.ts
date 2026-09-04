@@ -68,7 +68,8 @@ export async function POST(req: Request) {
     }
     // El ticker es opcional: se puede anunciar un launch sin revelarlo (modo privado)
     const cleanTicker = typeof ticker === 'string' && ticker.trim() ? ticker.trim().slice(0, 12).toUpperCase() : null
-    const priv = Boolean(isPrivate)
+    // El frontend envía booleans como strings ("true"/"false") — parsear de forma robusta
+    const priv = isPrivate === true || isPrivate === 'true'
     if (!priv && !cleanTicker) {
       return NextResponse.json(
         { error: 'Ingresa el ticker o marca el lanzamiento como privado' },

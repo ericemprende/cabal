@@ -198,3 +198,25 @@ Stage Summary:
 - Los tokens lanzados con CA muestran gráfico en vivo real (Birdeye) + enlaces a GMGN, DEXScreener, Birdeye y Axiom Pro; verificado con CA real (Bonk) mostrando gráfico real.
 - Diferenciación dev vs scout en Publicar Launch, tarjetas del Radar y detalle.
 - Verificado en navegador: login admin, editar/ocultar/restaurar/eliminar launch, gráfico en vivo, toggle histórico, favicon 200 image/png. Lint limpio.
+
+---
+Task ID: upload-fix
+Agent: Z.ai Code (principal)
+Task: Arreglar subida de imágenes en lanzamientos (404 en /api/upload) + añadir opción de pegar URL de imagen + favicon pendiente
+
+Work Log:
+- Diagnosticado en dev.log: `POST /api/upload 404` — la ruta API no existía aunque el frontend la llamaba
+- Creada `src/app/api/upload/route.ts` (runtime nodejs): valida MIME (png/jpg/webp/gif), tamaño ≤2.5MB, auth vía getCurrentUser, guarda en public/uploads con nombre randomUUID, devuelve `{url:'/uploads/<file>'}`
+- Reescrito `ImageDrop` en post-launch-dialog.tsx: nuevo prop `onPickUrl` + modo "pegar URL" (input con validación https://, /uploads/, /seed/, Enter para aplicar, botón Usar/Cancelar), botón de cambiar URL sobre el preview, prop `uploading` (arregla preview roto durante subida), toast de éxito y tip de URL al fallar
+- Actualizadas las 3 llamadas de ImageDrop en admin-panel.tsx (launch image, launch banner, token logo) — el admin hereda la opción URL
+- Añadido favicon al layout.tsx metadata (`icons: /cabal-logo.png`, apple icon) — pendiente de sesión anterior
+- **Bug extra descubierto y arreglado**: en POST /api/launches, `Boolean(isPrivate)` con `isPrivate="false"` (string del formulario) evaluaba TRUE → todo launch publicado quedaba "Privado" sin querer. Fix: parse robusto `isPrivate === true || isPrivate === 'true'`
+- Verificado con curl: POST /api/upload → 201 + archivo servido 200 image/png; tipo inválido → 400 con mensaje claro
+- Verificado con Agent Browser: flujo completo (subida archivo real → preview → publicar → launch visible en Radar con imagen), flujo URL (validación de error http://, URL externa https:// aplicada y renderizada), bug isPrivate confirmado y re-testeado tras el fix ($IUT visible, privado:false)
+- Limpieza: launches de prueba eliminados vía API admin, archivos de test borrados de public/uploads
+
+Stage Summary:
+- La subida de imágenes en lanzamientos funciona end-to-end (causa raíz: ruta /api/upload inexistente)
+- Nueva opción "pega la URL de la imagen" en formulario público y panel admin (image + banner + logo de token)
+- Favicon de Cabal activo
+- Bug crítico de isPrivate corregido: los launches nuevos ya no quedan en modo privado involuntariamente

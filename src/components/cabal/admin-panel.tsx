@@ -685,6 +685,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
             <ImageDrop
               url={form.image}
               onSelect={pick('image')}
+              onPickUrl={(u) => set('image', u)}
               onRemove={() => set('image', '')}
               aspect="square"
               label="Logo / imagen"
@@ -693,6 +694,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
             <ImageDrop
               url={form.banner}
               onSelect={pick('banner')}
+              onPickUrl={(u) => set('banner', u)}
               onRemove={() => set('banner', '')}
               aspect="video"
               label="Banner"
@@ -848,6 +850,7 @@ function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }
                   toast.error((e as Error).message)
                 }
               }}
+              onPickUrl={(u) => set('image', u)}
               onRemove={() => set('image', '')}
               aspect="square"
               label="Logo del token"
