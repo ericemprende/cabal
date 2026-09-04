@@ -11,8 +11,6 @@ interface UIState {
   openLaunch: (id: string | null) => void
   tokenDetailId: string | null
   openToken: (id: string | null) => void
-  postLaunchOpen: boolean
-  setPostLaunchOpen: (v: boolean) => void
   profileOpen: boolean
   setProfileOpen: (v: boolean) => void
   adminOpen: boolean
@@ -30,8 +28,6 @@ export const useUI = create<UIState>((set) => ({
   openLaunch: (launchDetailId) => set({ launchDetailId }),
   tokenDetailId: null,
   openToken: (tokenDetailId) => set({ tokenDetailId }),
-  postLaunchOpen: false,
-  setPostLaunchOpen: (postLaunchOpen) => set({ postLaunchOpen }),
   profileOpen: false,
   setProfileOpen: (profileOpen) => set({ profileOpen }),
   adminOpen: false,

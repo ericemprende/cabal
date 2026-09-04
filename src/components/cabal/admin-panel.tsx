@@ -41,7 +41,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { NETWORKS, timeAgo } from '@/lib/cabal'
 import { PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
-import { ImageDrop } from '@/components/cabal/post-launch-dialog'
+import { ImageDrop } from '@/components/cabal/image-drop'
 import {
   jsonFetch,
   qk,

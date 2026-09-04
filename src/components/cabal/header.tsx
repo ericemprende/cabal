@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Bell, ChevronDown, Plus, Search, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +28,8 @@ export function Header() {
   const { data: me } = useMe()
   const { data: launches } = useLaunches()
   const { data: leaderboard } = useLeaderboard()
-  const { setPostLaunchOpen, setSearchOpen, setProfileOpen, setAdminOpen, setTab, openLaunch } = useUI()
+  const router = useRouter()
+  const { setSearchOpen, setProfileOpen, setAdminOpen, setTab, openLaunch } = useUI()
 
   const soon = useMemo(() => {
     if (!launches) return []
@@ -65,7 +67,7 @@ export function Header() {
 
           <Button
             size="sm"
-            onClick={() => setPostLaunchOpen(true)}
+            onClick={() => router.push('/publicar')}
             className="neon-shadow hidden h-9 gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-bold text-primary-foreground hover:bg-[#8FA83F] sm:inline-flex"
           >
             <Plus className="h-4 w-4" strokeWidth={3} />

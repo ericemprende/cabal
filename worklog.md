@@ -246,3 +246,23 @@ Stage Summary:
 - El CA es visible y copiable con un clic debajo del precio en el popup de tokens y junto al gráfico en launch detail
 - Nueva sección "Plataformas afiliadas" en /admin: el admin pega su enlace madre de referido por plataforma y activa; los botones "Comprar" de toda la app redirigen a esos enlaces (soporta {ca} para deep-link del token)
 - Sin afiliados configurados, los botones muestran enlaces directos (comportamiento anterior) — la app nunca queda sin botones
+
+---
+Task ID: publicar-page
+Agent: main (Z.ai Code)
+Task: Convertir "Publicar lanzamiento" de popup a página completa (/publicar) + arreglar el pegado de URL en el logo (quedaba diminuto y no cargaba)
+
+Work Log:
+- Causa raíz del bug del logo: en ImageDrop, el panel de modo URL usaba `w-24 min-w-0` cuando aspect="square" → el input quedaba encerrado en 96px (imposible pegar/leer); el banner usaba w-full y por eso sí funcionaba
+- Creado src/components/cabal/image-drop.tsx: ImageDrop extraído a componente propio con fixes: (1) panel de URL SIEMPRE a ancho completo, (2) logo agrandado h-24→h-28, (3) vista previa EN VIVO mientras escribes la URL (object-contain) que detecta onError y avisa "Esa imagen no carga...", (4) API de props intacta (url/onSelect/onPickUrl/onRemove/aspect/label/hint/disabled/uploading)
+- Creada src/app/publicar/page.tsx: página completa con top bar sticky (Volver + wordmark + badge +40), formulario íntegro del antiguo popup (rol dev/comunidad, nombre/ticker, privado, red, CA, fecha, imagen+banner, pitch, links), estado de éxito con "+N puntos" y botones Ver en el Radar / Publicar otro, footer sticky con mt-auto y safe-area
+- Eliminado src/components/cabal/post-launch-dialog.tsx (ImageDrop vive ahora en image-drop.tsx)
+- Actualizados todos los disparadores a router.push('/publicar') o Link: header.tsx (botón Publicar launch), mobile-nav.tsx (FAB central → Link), radar-tab.tsx (botón Publicar + empty state), sidebars.tsx (RightRail x2)
+- store.ts: eliminados postLaunchOpen/setPostLaunchOpen; page.tsx: quitado PostLaunchDialog
+- admin-panel.tsx: import de ImageDrop actualizado al nuevo archivo
+
+Stage Summary:
+- /publicar es ahora una página completa (verificada en desktop y móvil); todos los botones de publicar de la app navegan a ella
+- Bug del logo por URL resuelto: panel a ancho completo + preview en vivo con detección de enlaces rotos (verificado con picsum en público y en admin)
+- Publicación end-to-end verificada en navegador: formulario → éxito +40 pts → launch visible en Radar con banner+logo → launch de prueba eliminado vía API admin
+- Lint limpio, sin errores de consola ni en dev.log

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -30,7 +31,8 @@ function RoleChip({ role }: { role: 'dev' | 'community' }) {
 
 export function RadarTab() {
   const { data: launches, isLoading } = useLaunches()
-  const { setPostLaunchOpen, openLaunch } = useUI()
+  const router = useRouter()
+  const { openLaunch } = useUI()
   const [network, setNetwork] = useState<string>('all')
   const [sort, setSort] = useState<'soon' | 'hype'>('soon')
 
@@ -97,7 +99,7 @@ export function RadarTab() {
           </button>
           <Button
             size="sm"
-            onClick={() => setPostLaunchOpen(true)}
+            onClick={() => router.push('/publicar')}
             className="hidden h-8 gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F] md:inline-flex"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={3} /> Publicar
@@ -119,7 +121,7 @@ export function RadarTab() {
             <p className="font-semibold">No hay launches con este filtro</p>
             <p className="text-sm text-muted-foreground">Sé el primero en avisar a la comunidad (+40 puntos)</p>
           </div>
-          <Button onClick={() => setPostLaunchOpen(true)} className="bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]">
+          <Button onClick={() => router.push('/publicar')} className="bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]">
             Publicar lanzamiento
           </Button>
         </div>

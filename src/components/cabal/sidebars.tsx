@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Crown, Radio, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
@@ -51,7 +52,8 @@ export function RightRail() {
   const { data: launches } = useLaunches()
   const { data: leaderboard } = useLeaderboard()
   const follow = useFollowToggle()
-  const { openLaunch, setPostLaunchOpen } = useUI()
+  const router = useRouter()
+  const { openLaunch } = useUI()
 
   const next = useMemo(
     () =>
@@ -72,7 +74,7 @@ export function RightRail() {
             <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               <Timer className="h-3.5 w-3.5" aria-hidden /> Próximos a lanzar
             </p>
-            <button onClick={() => setPostLaunchOpen(true)} className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
+            <button onClick={() => router.push('/publicar')} className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
               <Zap className="h-3 w-3" aria-hidden /> +40
             </button>
           </div>
@@ -145,7 +147,7 @@ export function RightRail() {
           <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">
             Publica launches y tesis → gana puntos → cámbialos por tokens cuando lancemos $CABAL.
           </p>
-          <button onClick={() => setPostLaunchOpen(true)} className="mt-2.5 w-full rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90">
+          <button onClick={() => router.push('/publicar')} className="mt-2.5 w-full rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90">
             Publicar mi primer launch
           </button>
         </section>

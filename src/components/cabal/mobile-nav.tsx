@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Radar, Coins, Rss, Trophy, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUI, type TabKey } from '@/lib/store'
@@ -12,7 +13,7 @@ const TABS: { key: TabKey; label: string; icon: typeof Radar }[] = [
 ]
 
 export function MobileNav() {
-  const { tab, setTab, setPostLaunchOpen } = useUI()
+  const { tab, setTab } = useUI()
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0b08]/95 backdrop-blur-md md:hidden"
@@ -23,13 +24,13 @@ export function MobileNav() {
         {TABS.slice(0, 2).map((t) => (
           <NavButton key={t.key} label={t.label} icon={t.icon} active={tab === t.key} onClick={() => setTab(t.key)} />
         ))}
-        <button
-          onClick={() => setPostLaunchOpen(true)}
+        <Link
+          href="/publicar"
           className="mx-auto -mt-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground neon-shadow-strong transition-transform active:scale-95"
           aria-label="Publicar lanzamiento"
         >
           <Plus className="h-6 w-6" strokeWidth={3} />
-        </button>
+        </Link>
         {TABS.slice(2).map((t) => (
           <NavButton key={t.key} label={t.label} icon={t.icon} active={tab === t.key} onClick={() => setTab(t.key)} />
         ))}

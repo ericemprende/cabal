@@ -13,7 +13,6 @@ import { TokensTab } from '@/components/cabal/tokens-tab'
 import { FeedTab } from '@/components/cabal/feed-tab'
 import { LeaderboardTab } from '@/components/cabal/leaderboard-tab'
 import { LaunchDetailDialog } from '@/components/cabal/launch-detail'
-import { PostLaunchDialog } from '@/components/cabal/post-launch-dialog'
 import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
@@ -134,7 +133,6 @@ export default function Home() {
 
       {/* Dialogs */}
       <LaunchDetailDialog />
-      <PostLaunchDialog />
       <TokenDetailDialog />
       <ProfileDialog />
       <AdminDialog />
