@@ -6,6 +6,7 @@ import {
   BarChart3,
   CheckCircle2,
   Coins,
+  Globe,
   Heart,
   Link2,
   Minus,
@@ -40,6 +41,7 @@ import { useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { NETWORKS, timeAgo } from '@/lib/cabal'
+import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
 import { PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import {
@@ -62,6 +64,16 @@ import {
   useAdminUsers,
 } from '@/lib/api-client'
 import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, TokenDTO } from '@/lib/types'
+
+/** Placeholder de ejemplo por red, con el formato real de GMGN/Axiom. */
+const NETWORK_PLACEHOLDER: Record<string, string> = {
+  solana: 'https://gmgn.ai/sol/token/TUCODIGO_{ca}',
+  base: 'https://gmgn.ai/base/token/TUCODIGO_{ca}',
+  ethereum: 'https://gmgn.ai/eth/token/TUCODIGO_{ca}',
+  bsc: 'https://axiom.trade/t/{ca}/@usuario?chain=bnb',
+  tron: 'https://…/token/{ca}',
+  robinhood: 'https://axiom.trade/t/{ca}/@usuario?chain=robinhood',
+}
 
 const RULE_LABELS: Record<string, string> = {
   points_thesis: 'Tesis publicada',
@@ -795,18 +807,20 @@ function AdminAffiliates({ enabled }: { enabled: boolean }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Define tus plataformas de trading como afiliado. Pega el <span className="font-semibold text-foreground">enlace madre de referido</span> de
-        cada una: es el enlace al que se redirige a la comunidad cuando presiona “Comprar”.
+        Define tus plataformas de trading como afiliado. Pega el <span className="font-semibold text-foreground">enlace de referido DE LA RED</span> que
+        corresponda en cada plataforma: la comunidad es redirigida allí al presionar “Comprar”, con el contrato del token ya inyectado.
       </p>
 
       <div className="rounded-xl border border-[#8FA83F]/25 bg-[#8FA83F]/6 px-3.5 py-2.5">
         <p className="flex items-start gap-2 text-[11px] leading-relaxed text-foreground/80">
           <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
           <span>
-            Tip: si tu enlace incluye <code className="rounded bg-black/30 px-1 font-mono text-primary">{'{ca}'}</code>, se reemplaza
-            automáticamente por el contrato del token. Ej:{' '}
-            <code className="rounded bg-black/30 px-1 font-mono text-primary">https://gmgn.ai/sol/token/&#123;ca&#125;?ref=TUCODIGO</code>. Si no lo
-            incluye, el usuario llega directo al enlace madre.
+            Usa <code className="rounded bg-black/30 px-1 font-mono text-primary">{'{ca}'}</code> donde va el contrato: se reemplaza solo al abrir.
+            Ejemplos — GMGN Solana:{' '}
+            <code className="rounded bg-black/30 px-1 font-mono text-primary">https://gmgn.ai/sol/token/TUCODIGO_&#123;ca&#125;</code> · Axiom BNB:{' '}
+            <code className="rounded bg-black/30 px-1 font-mono text-primary">https://axiom.trade/t/&#123;ca&#125;/@usuario?chain=bnb</code>. El enlace
+            madre general (ej. <code className="rounded bg-black/30 px-1 font-mono text-primary">https://axiom.trade/@usuario</code>) se usa cuando no
+            hay enlace de la red del token.
           </span>
         </p>
       </div>
@@ -869,7 +883,13 @@ function AffiliateRow({
   const remove = useAdminDeleteAffiliate(enabled)
   const [name, setName] = useState(platform.name)
   const [url, setUrl] = useState(platform.url)
-  const dirty = name !== platform.name || url !== platform.url
+  const [links, setLinks] = useState<Record<string, string>>(platform.links ?? {})
+  const dirty =
+    name !== platform.name || url !== platform.url || AFFILIATE_NETWORKS.some((n) => (links[n] ?? '') !== (platform.links?.[n] ?? ''))
+
+  const setLink = (network: string, v: string) => setLinks((f) => ({ ...f, [network]: v }))
+
+  const saveAll = () => save.mutate({ id: platform.id, name, url, links })
 
   return (
     <div className={cn('rounded-xl border bg-[#0a0b08] p-3', platform.active ? 'border-[#8FA83F]/30' : 'border-white/10')}>
@@ -884,21 +904,21 @@ function AffiliateRow({
         <Input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Pega el enlace madre de referido (https://…)"
+          placeholder="Enlace madre general · https://axiom.trade/@usuario (opcional)"
           inputMode="url"
           spellCheck={false}
-          aria-label={`Enlace de referido de ${platform.name}`}
+          aria-label={`Enlace madre general de ${platform.name}`}
           className="h-9 min-w-[180px] flex-1 bg-[#121410] font-mono text-[12px]"
         />
         <ChipToggle
           label={platform.active ? 'Activa' : 'Inactiva'}
           checked={platform.active}
-          onChange={(v) => save.mutate({ id: platform.id, name, url, active: v })}
+          onChange={(v) => save.mutate({ id: platform.id, name, url, links, active: v })}
         />
         {dirty && (
           <Button
             size="sm"
-            onClick={() => save.mutate({ id: platform.id, name, url })}
+            onClick={saveAll}
             disabled={save.isPending}
             className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
           >
@@ -936,9 +956,44 @@ function AffiliateRow({
           </AlertDialogContent>
         </AlertDialog>
       </div>
+
+      {/* Enlaces de referido DE LA RED {red}: uno por cadena, con soporte {ca} */}
+      <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <Globe className="h-3 w-3" aria-hidden /> Enlace de referido DE LA RED — pega el de cada cadena (usa{' '}
+        <code className="rounded bg-black/30 px-1 font-mono text-primary">{'{ca}'}</code> donde va el contrato)
+      </p>
+      <div className="grid gap-1.5 sm:grid-cols-2">
+        {AFFILIATE_NETWORKS.map((n) => {
+          const meta = NETWORKS[n]
+          return (
+            <div key={n} className="flex items-center gap-1.5">
+              <span
+                className="flex h-9 w-[104px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-[#121410] px-2 text-[10px] font-bold text-muted-foreground"
+                title={`Enlace de ${platform.name} DE LA RED ${meta.label}`}
+              >
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: meta.dot }} aria-hidden />
+                {meta.label}
+              </span>
+              <Input
+                value={links[n] ?? ''}
+                onChange={(e) => setLink(n, e.target.value)}
+                placeholder={NETWORK_PLACEHOLDER[n]}
+                inputMode="url"
+                spellCheck={false}
+                aria-label={`Enlace de ${platform.name} DE LA RED ${meta.label}`}
+                className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-[11px]"
+              />
+            </div>
+          )
+        })}
+      </div>
+
       {platform.active && (
-        <p className="mt-1.5 truncate pl-7 text-[10px] text-muted-foreground">
-          La comunidad es redirigida a <span className="font-mono text-primary/90">{platform.url}</span>
+        <p className="mt-1.5 truncate pl-1 text-[10px] text-muted-foreground">
+          Ejemplo redirección (Solana):{' '}
+          <span className="font-mono text-primary/90">
+            {platformLinkFor({ url, links }, 'solana', '2oFGkSFgkHS65ejE8eGU5nC749yw6UvmWQe9eNyspump') ?? '— pega un enlace arriba —'}
+          </span>
         </p>
       )}
     </div>

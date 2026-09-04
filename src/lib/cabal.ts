@@ -1,4 +1,4 @@
-export type NetworkKey = 'solana' | 'base' | 'ethereum' | 'bsc' | 'tron'
+export type NetworkKey = 'solana' | 'base' | 'ethereum' | 'bsc' | 'tron' | 'robinhood'
 
 export const NETWORKS: Record<
   NetworkKey,
@@ -9,6 +9,7 @@ export const NETWORKS: Record<
   ethereum: { label: 'Ethereum', short: 'ETH', dot: '#8A92B2' },
   bsc: { label: 'BNB Chain', short: 'BSC', dot: '#F0B90B' },
   tron: { label: 'Tron', short: 'TRX', dot: '#FF4D5E' },
+  robinhood: { label: 'Robinhood', short: 'RH', dot: '#00C805' },
 }
 
 export function networkMeta(key: string) {

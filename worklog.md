@@ -266,3 +266,22 @@ Stage Summary:
 - Bug del logo por URL resuelto: panel a ancho completo + preview en vivo con detección de enlaces rotos (verificado con picsum en público y en admin)
 - Publicación end-to-end verificada en navegador: formulario → éxito +40 pts → launch visible en Radar con banner+logo → launch de prueba eliminado vía API admin
 - Lint limpio, sin errores de consola ni en dev.log
+
+---
+Task ID: affiliate-networks
+Agent: main (Z.ai Code)
+Task: Enlaces de referido por red ("DE LA RED {red}") en plataformas afiliadas del admin + red Robinhood
+
+Work Log:
+- Schema: columna nueva `links String @default("{}")` en AffiliatePlatform (JSON red→url); bunx prisma db push. Reinicio del dev server requerido (Prisma Client viejo en memoria → "Unknown argument links")
+- lib/cabal.ts: añadida red 'robinhood' a NetworkKey/NETWORKS (label Robinhood, short RH, dot #00C805); radar-tab NETWORK_FILTERS incluye 'robinhood'
+- lib/affiliate.ts reescrito: AFFILIATE_NETWORKS (6 redes), CHAIN_SLUGS canónicos (sol/base/eth/bsc/tron/robinhood), sanitizeAffiliateLinks + parseAffiliateLinks, resolveAffiliateUrl soporta {ca} y {red}, platformLinkFor(platform, network, contract) → prioriza link de la red del token, cae al enlace madre general; si el link necesita {ca} y no hay contrato → null
+- APIs: /api/admin/affiliate POST/PATCH aceptan links (valida https por red, activación exige al menos un enlace); /api/affiliate público devuelve links parseados y incluye plataformas solo-con-links (OR url != '' OR links != '{}')
+- admin-panel: AffiliateRow con grid de 6 inputs etiquetados "DE LA RED {label}" con punto de color por red, placeholders con formato real (gmgn.ai/sol/token/TUCODIGO_{ca}, axiom.trade/t/{ca}/@usuario?chain=bnb), línea "Ejemplo redirección (Solana)" que resuelve {ca} en vivo, tip actualizado con los formatos GMGN/Axiom del usuario
+- live-chart ExternalLinksRow: usa platformLinkFor → cada token muestra solo plataformas con enlace para SU red; GMGN_SLUGS + robinhood
+- Guardados con los enlaces reales del usuario: GMGN (sol/bsc/robinhood con prefijo SPlAtXGW_) y Axiom (@erice0009 con chain=sol/bnb/robinhood, madre https://axiom.trade/@erice0009)
+
+Stage Summary:
+- El admin pega un enlace por red etiquetado "DE LA RED Solana/Base/Ethereum/BNB Chain/Tron/Robinhood"; los botones Comprar de cada token usan el de su red inyectando el {ca}
+- Verificado en navegador: LIGMA (SOL) → gmgn.ai/sol/token/SPlAtXGW_{CA} + axiom.trade/t/{CA}/@erice0009?chain=sol; MOONX (BSC) → gmgn.ai/bsc/... + chain=bnb; persistencia admin OK; datos de prueba limpiados (Photon restaurado)
+- Filtro RH visible en Radar; lint limpio; consola sin errores

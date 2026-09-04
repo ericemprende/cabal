@@ -385,7 +385,7 @@ export function useAdminSaveAffiliate(enabled: boolean) {
 export function useAdminCreateAffiliate(enabled: boolean) {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
-    mutationFn: (data: { name: string; url?: string }) =>
+    mutationFn: (data: { name: string; url?: string; links?: Record<string, string> }) =>
       jsonFetch<{ ok: boolean; id: string }>('/api/admin/affiliate', {
         method: 'POST',
         body: JSON.stringify(data),

@@ -131,12 +131,15 @@ model Setting {
 
 // Plataformas de trading afiliadas (GMGN, Axiom, Photon…). El admin pega el
 // enlace madre de referido; los botones "Comprar" redirigen allí. Soporta el
-// placeholder {ca} para inyectar el contrato del token al abrir.
+// placeholder {ca} para inyectar el contrato del token y {red} para la cadena.
+// "links" guarda un enlace de referido POR RED (JSON red→url), porque cada
+// plataforma usa rutas distintas: gmgn.ai/{red}/token/{ca}, axiom.trade/t/{ca}/…?chain={red}
 model AffiliatePlatform {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
   url       String   @default("")
+  links     String   @default("{}")
   active    Boolean  @default(false)
   order     Int      @default(0)
   createdAt DateTime @default(now())

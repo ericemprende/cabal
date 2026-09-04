@@ -131,12 +131,14 @@ export interface PointEventDTO {
   createdAt: string
 }
 
-/** Plataforma de trading afiliada. Pública solo si active && url. */
+/** Plataforma de trading afiliada. Pública solo si active && (url o links por red). */
 export interface AffiliatePlatformDTO {
   id: string
   name: string
   slug: string
   url: string
+  /** Enlace de referido por red: { solana: 'https://gmgn.ai/sol/token/…_{ca}', … } */
+  links: Record<string, string>
   active: boolean
   order: number
 }

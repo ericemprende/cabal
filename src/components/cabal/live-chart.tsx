@@ -4,7 +4,7 @@ import { ExternalLink, TrendingUp, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useAffiliates } from '@/lib/api-client'
-import { resolveAffiliateUrl } from '@/lib/affiliate'
+import { platformLinkFor } from '@/lib/affiliate'
 
 // Redes soportadas por el TV widget de Birdeye (tron NO soportado)
 const BIRDEYE_CHAINS: Record<string, string> = {
@@ -14,12 +14,13 @@ const BIRDEYE_CHAINS: Record<string, string> = {
   bsc: 'bsc',
 }
 
-// Slugs de GMGN por red (sin tron)
+// Slugs de GMGN por red (fallback cuando no hay enlace afiliado de la red)
 const GMGN_SLUGS: Record<string, string> = {
   solana: 'sol',
   ethereum: 'eth',
   base: 'base',
   bsc: 'bsc',
+  robinhood: 'robinhood',
 }
 
 // Slugs de DexScreener por red (todas, incluida tron)
@@ -119,15 +120,16 @@ export function LiveChart({ network, contract, height = 320 }: { network: string
 }
 
 /** Fila reutilizable de botones para comprar/tradear el token.
- *  Prioriza las plataformas afiliadas configuradas por el admin (enlace madre de
- *  referido, con soporte del placeholder {ca}); si no hay ninguna configurada,
+ *  Prioriza las plataformas afiliadas configuradas por el admin: usa el enlace
+ *  "DE LA RED {red}" del token (o el enlace madre general), con los placeholders
+ *  {ca} (contrato) y {red} (slug de la cadena). Si no hay ninguna configurada,
  *  muestra enlaces directos a las plataformas según la red del token. */
 export function ExternalLinksRow({ network, contract, className }: { network: string; contract: string; className?: string }) {
   const { data: affiliates } = useAffiliates()
 
   const affiliateLinks = (affiliates ?? [])
-    .filter((a) => a.url)
-    .map((a) => ({ label: a.name, url: resolveAffiliateUrl(a.url, contract) }))
+    .map((a) => ({ label: a.name, url: platformLinkFor(a, network, contract) }))
+    .filter((l): l is { label: string; url: string } => !!l.url)
 
   if (affiliateLinks.length > 0) {
     const [primary, ...rest] = affiliateLinks

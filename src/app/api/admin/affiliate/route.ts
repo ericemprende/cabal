@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
-import { ensureAffiliatePresets, isValidAffiliateUrl } from '@/lib/affiliate'
+import { ensureAffiliatePresets, isValidAffiliateUrl, parseAffiliateLinks, sanitizeAffiliateLinks } from '@/lib/affiliate'
 import type { AffiliatePlatformDTO } from '@/lib/types'
 
 const toDTO = (r: {
@@ -9,9 +9,18 @@ const toDTO = (r: {
   name: string
   slug: string
   url: string
+  links: string
   active: boolean
   order: number
-}): AffiliatePlatformDTO => ({ id: r.id, name: r.name, slug: r.slug, url: r.url, active: r.active, order: r.order })
+}): AffiliatePlatformDTO => ({
+  id: r.id,
+  name: r.name,
+  slug: r.slug,
+  url: r.url,
+  links: parseAffiliateLinks(r.links),
+  active: r.active,
+  order: r.order,
+})
 
 // GET admin: lista completa (incluye inactivas y sin url)
 export async function GET(req: Request) {
@@ -36,7 +45,7 @@ const cleanSlug = (v: string) =>
     .replace(/(^-|-$)/g, '')
     .slice(0, 24)
 
-// POST admin: crea una plataforma afiliada { name, url? }
+// POST admin: crea una plataforma afiliada { name, url?, links? }
 export async function POST(req: Request) {
   try {
     await requireAdmin(req)
@@ -47,6 +56,7 @@ export async function POST(req: Request) {
     if (url && !isValidAffiliateUrl(url)) {
       return NextResponse.json({ error: 'La URL debe empezar por https://' }, { status: 400 })
     }
+    const links = sanitizeAffiliateLinks(body.links)
     const base = cleanSlug(name) || 'plataforma'
     let slug = base
     for (let i = 2; ; i++) {
@@ -60,7 +70,8 @@ export async function POST(req: Request) {
         name,
         slug,
         url,
-        active: Boolean(body.active) && !!url,
+        links: JSON.stringify(links),
+        active: Boolean(body.active) && (!!url || Object.keys(links).length > 0),
         order: (last?.order ?? 0) + 1,
       },
     })
@@ -70,7 +81,7 @@ export async function POST(req: Request) {
   }
 }
 
-// PATCH admin: actualiza { id, name?, url?, active? }
+// PATCH admin: actualiza { id, name?, url?, links?, active? }
 export async function PATCH(req: Request) {
   try {
     await requireAdmin(req)
@@ -83,22 +94,33 @@ export async function PATCH(req: Request) {
 
     const data: Record<string, string | boolean> = {}
     if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim().slice(0, 40)
+    let nextLinks = parseAffiliateLinks(target.links)
+    if ('links' in body) {
+      nextLinks = sanitizeAffiliateLinks(body.links)
+      data.links = JSON.stringify(nextLinks)
+    }
     if ('url' in body) {
       const url = typeof body.url === 'string' ? body.url.trim().slice(0, 500) : ''
       if (url && !isValidAffiliateUrl(url)) {
         return NextResponse.json({ error: 'La URL debe empezar por https://' }, { status: 400 })
       }
       data.url = url
-      // Si vacían la URL, la plataforma deja de mostrarse aunque siga activa
-      if (!url) data.active = false
     }
+    // Si se queda sin ningún enlace (madre ni por red), deja de mostrarse aunque siga activa
     if (typeof body.active === 'boolean') {
-      data.active = body.active
-      // No se puede activar sin enlace configurado
-      if (body.active && !(data.url ?? target.url)) {
-        return NextResponse.json({ error: 'Pega el enlace de referido antes de activar' }, { status: 400 })
+      const nextUrl = typeof data.url === 'string' ? data.url : target.url
+      if (body.active && !nextUrl && Object.keys(nextLinks).length === 0) {
+        return NextResponse.json(
+          { error: 'Pega al menos un enlace de referido (general o DE LA RED …) antes de activar' },
+          { status: 400 }
+        )
       }
+      data.active = body.active
     }
+    const finalUrl = typeof data.url === 'string' ? data.url : target.url
+    const finalLinks = 'links' in data ? nextLinks : parseAffiliateLinks(target.links)
+    if (!finalUrl && Object.keys(finalLinks).length === 0) data.active = false
+
     await db.affiliatePlatform.update({ where: { id: body.id }, data })
     return NextResponse.json({ ok: true })
   } catch (e) {
