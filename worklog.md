@@ -303,3 +303,19 @@ Stage Summary:
 - Respuesta TZ: se guarda como instante absoluto UTC; cada usuario ve la fecha convertida a su zona horaria; la hora que ingresa el publicador se interpreta en SU dispositivo (fix aplicado a /publicar)
 - Robinhood: red completa para lanzamientos, color amarillo neón #DFFF3F, logo pluma; RH visible en picker/filtros/badges
 - Logos vectoriales propios para las 6 redes (sin dependencias externas); lint limpio, consola sin errores
+
+---
+Task ID: remove-example-tokens
+Agent: main (Z.ai Code)
+Task: Quitar todos los tokens/launches de ejemplo; dejar solo los 2 subidos por el usuario (Proyecto Sombra + Chop)
+
+Work Log:
+- Inventario DB: 12 launches (10 seed + 2 del usuario), 14 tokens (todos seed), 26 posts (todos seed), 2 votos (targets seed). No existe ningún launch "Cecripto" en la BD; las 2 subidas reales del usuario son "Proyecto Sombra" (privado) y "Chop"
+- Limpieza vía Prisma (script /tmp/cleanup.mjs): borrados 26 posts, 2 votos, 14 tokens, 10 launches de ejemplo. Conservados: usuarios (leaderboard + current user), point rules, plataformas afiliadas (GMGN/Axiom configuradas), point events del usuario
+- Fix colateral: la imagen de Chop tenía la URL concatenada 5 veces (artefacto del viejo bug del pegado en el logo) → restaurada a https://pbs.twimg.com/profile_images/2093830830011342848/WqJpGnAY_400x400.jpg; el logo y banner de Chop ahora renderizan
+- seed.ts reescrito (duradero): ya NO genera launches/tokens/posts de ejemplo; solo crea point rules, usuarios del leaderboard, follows y bono de bienvenida (+50 pts). Si la BD se resetea, el Radar arranca vacío
+- Ticker de Chop quedó como "NULL" (artefacto del bug viejo); no se tocó porque es contenido del usuario — pendiente de confirmar si quiere que sea "CHOP"
+
+Stage Summary:
+- Radar muestra únicamente: Chop ($NULL, destacado, logo+banner ok) y Proyecto Sombra (privado, EN VIVO); pestaña Tokens vacía; Feed vacío con compositor intacto
+- Verificado en navegador (desktop + mobile): sin errores de consola, dev.log limpio, leaderboard y sidebar funcionando; lint limpio
