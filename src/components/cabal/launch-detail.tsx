@@ -57,9 +57,9 @@ export function LaunchDetailDialog() {
               <DialogTitle className="flex items-start gap-3 text-left">
                 <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="xl" />
                 <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-display truncate text-xl font-bold">
-                      {launch.name}{' '}
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <h2 className="font-display flex min-w-0 flex-wrap items-center gap-x-2 text-xl font-bold">
+                      <span className="min-w-0 truncate">{launch.name}</span>
                       <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary" />
                     </h2>
                     <NetworkBadge network={launch.network} />

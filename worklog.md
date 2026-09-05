@@ -339,3 +339,21 @@ Stage Summary:
 - Verificado E2E: registro → foto por URL aplicada en vivo en header → logout → login → logout; contraseña incorrecta muestra toast; invitado ve botones Entrar/Crear cuenta; /admin intacto (login aparte admin/admin123@)
 - Admin editor de launches: 6 redes con logos (SOL/BASE/ETH/BSC/TRX/RH) confirmado con captura; las redes ya no pueden corromperse al guardar
 - Radar 2 columnas sin overlaps; hype funciona con feedback de error; lint limpio; consola sin errores
+
+---
+Task ID: compact-badges-readme
+Agent: main (Z.ai Code)
+Task: Reducir etiqueta "Privado" y cuenta atrás (se montaban una encima de otra en móvil) + crear README.md vivo del proyecto
+
+Work Log:
+- Diagnóstico con agent-browser (390px y 320px): scrollWidth 418 > clientWidth 390 → grid blowout: la LaunchCard crecía más allá de su columna; la píldora "EN VIVO" quedaba fuera/cortada y se montaba sobre "PRIVADO". Causa extra: cn() usa tailwind-merge y el className text-[15px] del ticker reemplazaba el text-[10px] base de la píldora Privado (medía 91px).
+- shared.tsx / TickerLabel: la píldora "Privado" ahora vive en un span interno con tamaño fijo (text-[9px], px-1.5 py-px, Lock h-2.5) que nunca hereda el font-size del contenedor.
+- shared.tsx / CountdownPill: nuevo tamaño "xs" (text-[10px] px-1 py-px, dot/icono más pequeños); tipo actualizado a 'xs' | 'sm' | 'md' | 'lg'.
+- radar-tab.tsx / LaunchCard: min-w-0 + overflow-hidden en el article (mata el grid blowout), min-w-0 en filas internas, nombre trunca, CountdownPill size="xs" compact, gap-2.5.
+- launch-detail.tsx y FeaturedLaunch (radar-tab): h2 reestructurado a flex-wrap con nombre en span truncate → la píldora Privado ya se recorta dentro de títulos con truncate (a 320px baja a la línea siguiente intacta).
+- README.md creado en la raíz del proyecto como documento vivo: descripción, estado, stack, estructura, features, design system, API, modelo de datos, comandos, patrones y changelog por fecha (se actualizará en cada evolución). El único README previo era download/README.md (placeholder del sistema de descargas, no documentación).
+- Verificación E2E con agent-browser: 390px (sin overflow 390=390, píldora dentro de tarjeta), 320px (sin overflow, nombre truncado, pill "En vivo" right 291 < card 308), modal de detalle a 320px correcto, desktop 1440px intacto. bun run lint limpio. dev.log sin errores.
+
+Stage Summary:
+- Etiquetas Privado y cuenta atrás compactas (9-10px) en toda la app; imposible que se monten entre sí o desborden el viewport (móvil 320-390px verificado).
+- Existe /home/z/my-project/README.md como fuente de verdad documental; actualizar en cada cambio (lleva changelog fechado).

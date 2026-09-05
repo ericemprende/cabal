@@ -295,16 +295,17 @@ export function TickerLabel({
   className?: string
 }) {
   if (isPrivate || !ticker) {
+    // La píldora vive en un span interno con tamaño fijo: así el className del
+    // padre (p. ej. text-[15px] del ticker) nunca la agranda ni rompe el layout.
     return (
       <span
-        className={cn(
-          'inline-flex items-center gap-1 rounded-md border border-amber-300/30 bg-amber-300/8 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300/90',
-          className
-        )}
+        className={cn('inline-flex shrink-0 items-center', className)}
         title="Ticker reservado · se revela en el lanzamiento"
       >
-        <Lock className="h-2.5 w-2.5" aria-hidden />
-        Privado
+        <span className="inline-flex items-center gap-1 rounded-md border border-amber-300/30 bg-amber-300/8 px-1.5 py-px text-[9px] font-bold uppercase leading-4 tracking-wide text-amber-300/90">
+          <Lock className="h-2.5 w-2.5" aria-hidden />
+          Privado
+        </span>
       </span>
     )
   }
@@ -364,7 +365,7 @@ export function CountdownPill({
   compact,
 }: {
   target: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
   /** Texto corto (2 unidades: "1d 12h") para tarjetas angostas. */
   compact?: boolean
@@ -372,18 +373,22 @@ export function CountdownPill({
   const c = useCountdown(target)
   const text = compact ? c.text.split(' ').slice(0, 2).join(' ') : c.text
   const cls =
-    size === 'sm'
-      ? 'text-[11px] px-1.5 py-0.5'
-      : size === 'lg'
-        ? 'text-base px-3 py-1.5'
-        : 'text-xs px-2 py-1'
+    size === 'xs'
+      ? 'gap-1 px-1 py-px text-[10px]'
+      : size === 'sm'
+        ? 'px-1.5 py-0.5 text-[11px]'
+        : size === 'lg'
+          ? 'px-3 py-1.5 text-base'
+          : 'px-2 py-1 text-xs'
+  const dotCls = size === 'xs' ? 'h-1 w-1' : 'h-1.5 w-1.5'
+  const iconCls = size === 'xs' ? 'h-2.5 w-2.5' : 'h-3 w-3'
   // Rojo: en vivo o a punto de lanzar (<45 min) · Ámbar: pocas horas (<6 h) · Oliva: con tiempo
   const urgent = c.totalMs < 45 * 60_000
   const soon = c.totalMs < 6 * 3600_000
   if (c.live)
     return (
-      <span className={cn('inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>
-        <span className="live-dot-red h-1.5 w-1.5 rounded-full bg-[#ff4d5e]" />
+      <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>
+        <span className={cn('live-dot-red shrink-0 rounded-full bg-[#ff4d5e]', dotCls)} />
         En vivo
       </span>
     )
@@ -408,9 +413,9 @@ export function CountdownPill({
       title={urgent ? 'Lanzamiento inminente' : 'Tiempo para el lanzamiento'}
     >
       {urgent ? (
-        <span className="live-dot-red h-1.5 w-1.5 rounded-full bg-[#ff4d5e]" aria-hidden />
+        <span className={cn('live-dot-red shrink-0 rounded-full bg-[#ff4d5e]', dotCls)} aria-hidden />
       ) : (
-        <Timer className="h-3 w-3" aria-hidden />
+        <Timer className={cn('shrink-0', iconCls)} aria-hidden />
       )}
       {text}
     </span>

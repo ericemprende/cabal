@@ -168,8 +168,8 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
               <Flame className="h-3.5 w-3.5" /> {launch.hype} hypes
             </span>
           </div>
-          <h2 className="font-display mt-1 truncate text-xl font-bold sm:text-2xl">
-            {launch.name}{' '}
+          <h2 className="font-display mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xl font-bold sm:text-2xl">
+            <span className="min-w-0 truncate">{launch.name}</span>
             <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary text-glow" />
           </h2>
           <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{launch.description}</p>
@@ -205,28 +205,28 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
     <article
       onClick={() => openLaunch(launch.id)}
       className={cn(
-        'card-surface group flex cursor-pointer flex-col gap-3 rounded-xl border p-4 transition-all hover:-translate-y-0.5',
+        'card-surface group flex min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-xl border p-4 transition-all hover:-translate-y-0.5',
         c.live || urgent
           ? 'border-[#ff4d5e]/40 shadow-[0_0_14px_rgba(255,77,94,0.08)] hover:border-[#ff4d5e]/60'
           : 'border-white/10 hover:border-[#8FA83F]/30'
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2.5">
         <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="lg" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex min-w-0 items-baseline gap-1.5">
             <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="shrink-0 font-display text-[15px] font-bold text-primary" />
-            <span className="truncate text-[13px] font-semibold text-foreground/80">{launch.name}</span>
+            <span className="min-w-0 truncate text-[13px] font-semibold text-foreground/80">{launch.name}</span>
           </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            <NetworkBadge network={launch.network} />
+          <div className="mt-1 flex min-w-0 items-center gap-1.5">
+            <NetworkBadge network={launch.network} className="shrink-0" />
             <RoleChip role={launch.submitterRole} />
-            <span className="truncate text-[11px] text-muted-foreground">
+            <span className="min-w-0 truncate text-[11px] text-muted-foreground">
               {timeAgo(launch.createdAt)} · @{launch.createdBy.handle}
             </span>
           </div>
         </div>
-        <CountdownPill target={launch.launchAt} compact size="sm" />
+        <CountdownPill target={launch.launchAt} compact size="xs" className="mt-0.5 shrink-0" />
       </div>
 
       <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{launch.description}</p>
