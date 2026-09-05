@@ -3,14 +3,14 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "bun scripts/auto-backup.mjs && next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
-    "db:push": "prisma db push --accept-data-loss",
+    "db:push": "bun scripts/safe-db-push.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "echo '⛔ PROHIBIDO: db:reset borra todos los datos. Usa bun run db:push (hace backup y conserva los datos).' && exit 1"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

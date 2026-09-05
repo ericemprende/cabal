@@ -185,13 +185,16 @@ Métodos principales (JSON; auth por cookie de sesión; admin por cookie propia)
 
 ```bash
 bun run dev         # Dev server en puerto 3000 (log: dev.log) — SIEMPRE en background
+                    # (antes arranca scripts/auto-backup.mjs: backup automático de la BD)
 bun run lint        # ESLint
-bun run db:push     # Aplicar cambios de schema.prisma a SQLite
+bun run db:push     # Aplicar cambios de schema a SQLite SIN perder datos
+                    # (scripts/safe-db-push.mjs: backup + push + auto-restauración de filas)
 bun run db:generate # Regenerar cliente Prisma
 ```
 
 - Preview: usar el **Panel de vista previa** del entorno (no localhost).
 - Admin: `/?admin=1` → usuario `admin` · password `admin123@`.
+- **NUNCA ejecutar `prisma migrate reset` ni `db:reset`** (bloqueado a propósito: borra todos los datos del usuario).
 
 ## 10. Patrones y decisiones importantes
 
@@ -203,12 +206,19 @@ bun run db:generate # Regenerar cliente Prisma
 - **Redes soportadas**: `solana`, `base`, `ethereum`, `bsc`, `tron`, `robinhood` (`NETWORKS` en `src/lib/cabal.ts`; logos en `NetworkIcon`).
 - **z-ai-web-dev-sdk**: solo en backend (skills de IA: imagen, búsqueda, etc.).
 - **Sin contenido de ejemplo**: el seed solo crea reglas de puntos, usuarios base y follows; los launches/tokens visibles son los que suba el usuario.
+- **Los datos son SAGRADOS**: el usuario sube contenido real (Ceocripto, Chop, Proyecto Sombra…) y no debe perderse jamás. Todo cambio de schema se aplica con `bun run db:push` (safe-db-push: backup en `db/backups/` + auto-restauración de filas borradas). Antes de cualquier operación riesgosa contra la BD, hacer copia en `db/backups/`.
 
 ## 11. Registro de cambios (changelog)
 
 > Añadir una entrada por cada cambio relevante, con fecha (zona horaria America/Bogota).
 
 ### 2026-09-05
+- **Datos persistentes (fix crítico)**: el launch de Ceocripto se borraba en cada actualización. Causas: `db:push --accept-data-loss` aplicaba cambios destructivos sin red de seguridad, y limpiezas de contenido demo se llevaron por error launches reales. Solución:
+  - `scripts/safe-db-push.mjs` (nuevo `db:push`): backup con timestamp en `db/backups/` → push del schema → comparación de conteos tabla a tabla → **auto-restauración de las filas borradas** desde el backup (columnas compatibles, `INSERT OR IGNORE`). Conserva los 20 últimos backups.
+  - `scripts/auto-backup.mjs`: backup automático de la BD al arrancar `bun run dev` (máx. 1/hora, conserva 30).
+  - `db:reset` bloqueado con mensaje (prohibido borrar datos).
+  - **Restaurado el launch Ceocripto** (privado, red Robinhood, LP bloqueada, mint revocado, Top10 25%, hype 1, tesis original) y **ticker de Chop corregido a `CHOP`** (estaba en `NULL` tras una pérdida). La imagen original de Ceocripto no sobrevivió: resubir desde el panel admin si se desea (el avatar muestra la inicial "C").
+  - Verificado E2E: los 3 launches visibles (Chop $CHOP, Proyecto Sombra, Ceocripto RH), el detalle de Ceocripto abre bien, lint limpio, sin errores en dev.log.
 - **Logo en el login del panel admin**: el logo de la plataforma (`/cabal-logo.png`) con glow sobre el wordmark en `/admin`, y versión pequeña en el header del dashboard (una sola línea en móvil).
 - **Zona horaria visible al elegir la fecha**: nuevo `TimezoneHint` (en `shared.tsx`) usado en `/publicar` y en el editor del admin: muestra la zona del dispositivo ("Hora de Bogotá (UTC-5)") y, al elegir hora, el equivalente UTC ("16:00 local · 21:00 UTC").
 - **Wallets + track record de dev en el perfil**:
