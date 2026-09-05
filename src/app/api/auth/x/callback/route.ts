@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
+import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
 import { X_TOKEN_URL, X_ME_URL, appOrigin, getXConfig } from '@/lib/oauth'
-import { linkProvider, SocialError } from '@/lib/social'
+import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
 
 /**
  * GET /api/auth/x/callback
  * Callback OAuth de X: valida state + PKCE, intercambia el código por un access
- * token, lee el perfil oficial (/2/users/me) y vincula el @usuario al perfil.
+ * token y lee el perfil oficial (/2/users/me).
+ * - Modo verificación (default): vincula el @usuario al perfil actual.
+ * - Modo login (?mode=login en start): inicia sesión o crea cuenta con esa
+ *   identidad de X y establece la cookie de sesión.
  */
 export async function GET(req: NextRequest) {
   const origin = appOrigin(req)
   const cfg = getXConfig()
   if (!cfg) return NextResponse.redirect(`${origin}/?connected=x&connect_error=no_config`)
 
+  const loginMode = req.cookies.get('cabal_ox_mode')?.value === 'login'
   const url = new URL(req.url)
   const providerError = url.searchParams.get('error')
   const code = url.searchParams.get('code')
@@ -24,6 +29,7 @@ export async function GET(req: NextRequest) {
     const res = NextResponse.redirect(`${origin}/?connected=x&${query}`)
     res.cookies.set('cabal_ox_state', '', { path: '/', maxAge: 0 })
     res.cookies.set('cabal_ox_verifier', '', { path: '/', maxAge: 0 })
+    res.cookies.set('cabal_ox_mode', '', { path: '/', maxAge: 0 })
     return res
   }
 
@@ -64,7 +70,15 @@ export async function GET(req: NextRequest) {
     const username = meJson.data?.username
     if (!username) return finish('connect_error=profile')
 
-    // 3. Vincular la cuenta verificada al usuario actual
+    // 3. Login social: entrar/crear cuenta con la identidad de X
+    if (loginMode) {
+      const { user, created } = await loginOrCreateSocial('x', username, meJson.data?.name)
+      const res = finish(created ? 'ok=1&login=1&created=1' : 'ok=1&login=1')
+      res.cookies.set(SESSION_COOKIE, createSessionValue(user.id), sessionCookieOptions())
+      return res
+    }
+
+    // 4. Modo verificación: vincular la cuenta al usuario actual
     const me = await getCurrentUser()
     await linkProvider(me.id, 'x', username)
     return finish('ok=1')

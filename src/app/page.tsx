@@ -47,7 +47,7 @@ export default function Home() {
     if (me?.isAdmin) setAdminOpen(true)
   }, [wantsAdmin, me?.isAdmin, setAdminOpen])
 
-  // Retorno del OAuth de X / Google: /?connected=x|google (&connect_error=)
+  // Retorno del OAuth de X / Google: /?connected=x|google (&connect_error=, &login=1, &created=1)
   const qc = useQueryClient()
   const [oauthReturn] = useState(() => {
     if (typeof window === 'undefined') return null
@@ -56,7 +56,12 @@ export default function Home() {
     const error = sp.get('connect_error')
     if (!provider && !error) return null
     window.history.replaceState(null, '', window.location.pathname)
-    return { provider, error }
+    return {
+      provider,
+      error,
+      isLogin: sp.get('login') === '1',
+      created: sp.get('created') === '1',
+    }
   })
 
   useEffect(() => {
@@ -72,7 +77,15 @@ export default function Home() {
         no_config: 'Las API keys del proveedor no están configuradas',
         server: 'Error inesperado durante la verificación',
       }
-      toast.error(msgs[oauthReturn.error] ?? 'No se pudo completar la verificación')
+      toast.error(msgs[oauthReturn.error] ?? 'No se pudo completar la operación')
+    } else if (oauthReturn.provider && oauthReturn.isLogin) {
+      // Vuelta de un login social real: la cookie de sesión ya está puesta
+      qc.invalidateQueries()
+      const prov = oauthReturn.provider === 'x' ? 'X' : 'Google'
+      toast.success(
+        oauthReturn.created ? `Cuenta creada con ${prov}` : `Sesión iniciada con ${prov}`,
+        { description: 'Identidad verificada · +5 puntos Cabal' }
+      )
     } else if (oauthReturn.provider) {
       toast.success(
         oauthReturn.provider === 'x' ? 'Cuenta de X verificada' : 'Cuenta de Google verificada',

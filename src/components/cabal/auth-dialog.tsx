@@ -8,22 +8,28 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { CabalWordmark } from '@/components/cabal/shared'
-import { useLogin, useRegister } from '@/lib/api-client'
+import { OAuthConsentDialog, XLogo, GoogleG } from '@/components/cabal/oauth-consent-dialog'
+import { useAuthStatus, useLogin, useRegister } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
 export type AuthMode = 'login' | 'register'
 
 /**
- * Diálogo de Iniciar sesión / Crear cuenta (credenciales: usuario + contraseña).
+ * Diálogo de Iniciar sesión / Crear cuenta.
+ * - Login social directo con X o Google (con API keys → OAuth real;
+ *   sin keys → consentimiento simulado que crea/entra con esa identidad).
+ * - O credenciales: usuario + contraseña.
  * Al entrar, toda la app cambia a esa cuenta (puntos, hypes, perfil).
  */
 export function AuthDialog() {
   const { authOpen, setAuthOpen, authMode, setAuthMode } = useUI()
   const login = useLogin()
   const register = useRegister()
+  const { data: authStatus } = useAuthStatus()
   const [handle, setHandle] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [demoProvider, setDemoProvider] = useState<'x' | 'google' | null>(null)
 
   const isLogin = authMode === 'login'
   const pending = login.isPending || register.isPending
@@ -53,7 +59,18 @@ export function AuthDialog() {
     }
   }
 
+  // Login social: con API keys → OAuth real por redirección; sin keys → consentimiento demo
+  const startSocial = (provider: 'x' | 'google') => {
+    const configured = provider === 'x' ? authStatus?.x.configured : authStatus?.google.configured
+    if (configured) {
+      window.location.assign(`/api/auth/${provider}/start?mode=login`)
+    } else {
+      setDemoProvider(provider)
+    }
+  }
+
   return (
+    <>
     <Dialog open={authOpen} onOpenChange={close}>
       <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-sm" aria-describedby={undefined}>
         <div className="p-6">
@@ -93,7 +110,35 @@ export function AuthDialog() {
             ))}
           </div>
 
-          <form onSubmit={submit} className="mt-4 space-y-3.5" aria-label={isLogin ? 'Iniciar sesión' : 'Crear cuenta'}>
+          {/* Login social directo con X / Google */}
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => startSocial('x')}
+              className="h-10 gap-2 rounded-xl border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
+            >
+              <XLogo className="h-3.5 w-3.5" aria-hidden />
+              X
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => startSocial('google')}
+              className="h-10 gap-2 rounded-xl border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
+            >
+              <GoogleG className="h-4 w-4" aria-hidden />
+              Google
+            </Button>
+          </div>
+
+          <div className="my-4 flex items-center gap-3" role="separator" aria-label="o con tus credenciales">
+            <span className="h-px flex-1 bg-white/8" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">o con tu usuario</span>
+            <span className="h-px flex-1 bg-white/8" />
+          </div>
+
+          <form onSubmit={submit} className="space-y-3.5" aria-label={isLogin ? 'Iniciar sesión' : 'Crear cuenta'}>
             <div className="space-y-1.5">
               <Label htmlFor="auth-handle" className="text-xs text-muted-foreground">Usuario</Label>
               <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] pl-3 focus-within:border-[#8FA83F]/40">
@@ -174,5 +219,14 @@ export function AuthDialog() {
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Consentimiento social simulado (modo demo, sin API keys) */}
+    <OAuthConsentDialog
+      mode="login"
+      provider={demoProvider}
+      appName="Cabal"
+      onOpenChange={(o) => !o && setDemoProvider(null)}
+    />
+    </>
   )
 }

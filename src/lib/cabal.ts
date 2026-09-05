@@ -56,7 +56,10 @@ export function timeAgo(date: string | Date): string {
 export function countdownParts(target: string | Date): {
   ended: boolean
   live: boolean
+  /** Texto completo: SIEMPRE incluye minutos y segundos (tiqueta en vivo). */
   text: string
+  /** Versión corta para píldoras de tarjetas (mantiene min+seg cuando queda <24h). */
+  compactText: string
   totalMs: number
 } {
   const t = typeof target === 'string' ? new Date(target).getTime() : target.getTime()
@@ -67,6 +70,7 @@ export function countdownParts(target: string | Date): {
       ended: since > 48 * 3600_000,
       live: since <= 48 * 3600_000,
       text: 'EN VIVO',
+      compactText: 'EN VIVO',
       totalMs: 0,
     }
   }
@@ -74,11 +78,20 @@ export function countdownParts(target: string | Date): {
   const hours = Math.floor((diff % (24 * 3600_000)) / 3600_000)
   const min = Math.floor((diff % 3600_000) / 60000)
   const sec = Math.floor((diff % 60000) / 1000)
+  const ss = String(sec).padStart(2, '0')
   let text: string
-  if (days > 0) text = `${days}d ${hours}h ${min}m`
-  else if (hours > 0) text = `${hours}h ${String(min).padStart(2, '0')}m ${String(sec).padStart(2, '0')}s`
-  else text = `${min}m ${String(sec).padStart(2, '0')}s`
-  return { ended: false, live: false, text, totalMs: diff }
+  let compactText: string
+  if (days > 0) {
+    text = `${days}d ${hours}h ${min}m ${ss}s`
+    compactText = `${days}d ${hours}h ${min}m`
+  } else if (hours > 0) {
+    text = `${hours}h ${String(min).padStart(2, '0')}m ${ss}s`
+    compactText = text
+  } else {
+    text = `${min}m ${ss}s`
+    compactText = text
+  }
+  return { ended: false, live: false, text, compactText, totalMs: diff }
 }
 
 export function safetyCheck(l: { lpLocked: boolean; mintRevoked: boolean; top10Pct: number }): {

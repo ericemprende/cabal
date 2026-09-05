@@ -357,3 +357,29 @@ Work Log:
 Stage Summary:
 - Etiquetas Privado y cuenta atrás compactas (9-10px) en toda la app; imposible que se monten entre sí o desborden el viewport (móvil 320-390px verificado).
 - Existe /home/z/my-project/README.md como fuente de verdad documental; actualizar en cada cambio (lleva changelog fechado).
+
+---
+Task ID: robinhood-filters-countdown-social-login
+Agent: main (Z.ai Code)
+Task: Red de Robinhood visible en filtros + cuenta atrás con min/seg + login social directo con X/Google (mobile-first)
+
+Work Log:
+- radar-tab.tsx: la fila de filtros de red pasó de scroll horizontal oculto (no-scrollbar overflow-x-auto) a flex-wrap → todas las redes (incluida RH/Robinhood) visibles en móvil y desktop, sin scroll escondido.
+- cabal.ts / countdownParts: el texto completo SIEMPRE incluye minutos y segundos ("1d 0h 45m 01s", ticta cada segundo); nuevo campo compactText para píldoras de tarjetas (mantiene min+seg cuando falta <24h: "10h 45m 30s"; con días: "1d 0h 45m").
+- shared.tsx / CountdownPill: usa compactText en modo compact.
+- Login social X/Google:
+  - social.ts: nuevo loginOrCreateSocial(provider, value, name) → busca usuario por xHandle/googleEmail; si no existe crea cuenta (handle único derivado con uniqueHandle: base, base2…; identidad verificada de serie; +5 pts bonus awardOnce).
+  - Nueva ruta POST /api/auth/social (login social demo sin API keys) → setea cookie de sesión cabal_session.
+  - /api/auth/{x,google}/start acepta ?mode=login → cookie cabal_ox_mode/cabal_og_mode; demo JSON incluye loginMode.
+  - /api/auth/{x,google}/callback: si modo login → loginOrCreateSocial + cookie de sesión en la redirección (/?connected=x&ok=1&login=1&created=1); si no, mantiene el modo verificación (link) existente.
+  - api-client.ts: useSocialLogin() (invalida queries + toasts "Cuenta creada/Sesión iniciada").
+  - oauth-consent-dialog.tsx: prop mode 'link'|'login'; en login los textos cambian ("Iniciar sesión con X", "se crea automáticamente") y usa useSocialLogin; cierra también el AuthDialog.
+  - auth-dialog.tsx: botones X y Google (logos de marca) sobre divisor "o con tu usuario"; con API keys redirige al OAuth real, sin keys abre consentimiento demo embebido.
+  - page.tsx: retorno OAuth maneja login=1/created=1 con toasts propios.
+- Verificación E2E (agent-browser): móvil 390/320px (filtros completos con wrap, auth dialog con botones sociales cabe, contador con segundos), desktop 1440px OK. Flujo demo completo probado: login con X (@test_degen) crea cuenta +5pts y entra; re-login created:false; Google (email) crea cuenta con handle derivado; API curl: session loggedIn:true con cookie. /api/auth/x/start?mode=login → {mode:'demo',loginMode:true}. Usuarios de prueba eliminados de la BD (quedan los 13 del seed). lint limpio, dev.log sin errores.
+
+Stage Summary:
+- Robinhood y todas las redes visibles sin scroll en el Radar (mobile-first).
+- Cuenta atrás con minutos y segundos en hero/sidebars siempre, y en tarjetas cuando falta <24h.
+- Login social directo con X/Google funcional en demo; listo para OAuth real configurando X_CLIENT_ID/X_CLIENT_SECRET y GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET.
+- README.md actualizado (auth social, filtros, countdown, changelog 2026-09-04 tarde).

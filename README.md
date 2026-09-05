@@ -80,9 +80,9 @@ public/uploads/               # Imágenes subidas (logos/banners)
 ## 5. Funcionalidades
 
 ### Radar (home)
-- **Hero destacado** con el próximo launch más hypeado y cuenta atrás en vivo.
-- **Grid de launches** con: glyph/logo, ticker (o etiqueta "Privado"), nombre, red, rol (DEV/SCOUT), cuenta atrás compacta, checks de seguridad (LP, mint, Top10) con nivel de riesgo, hype (fuegos) y contador de comentarios.
-- **Filtros por red**: todas, Solana, Base, Ethereum, BSC, Tron, Robinhood + orden (próximos / más hype).
+- **Hero destacado** con el próximo launch más hypeado y cuenta atrás en vivo **con minutos y segundos** (tiqueta cada segundo).
+- **Grid de launches** con: glyph/logo, ticker (o etiqueta "Privado"), nombre, red, rol (DEV/SCOUT), cuenta atrás compacta (incluye min+seg cuando queda <24h), checks de seguridad (LP, mint, Top10) con nivel de riesgo, hype (fuegos) y contador de comentarios.
+- **Filtros por red**: todas, Solana, Base, Ethereum, BSC, Tron, Robinhood + orden (próximos / más hype). Los chips hacen **wrap** (sin scroll horizontal oculto) para que todas las redes queden visibles en móvil.
 - Launches **privados**: ocultos del listado público según su flag; visibles para su autor/admin.
 
 ### Publicar launch (`/publicar`)
@@ -108,8 +108,12 @@ public/uploads/               # Imágenes subidas (logos/banners)
 
 ### Autenticación
 - **Registro/login por credenciales** (handle + password, scrypt). Sesión en cookie httpOnly firmada (`cabal_session`, 30 días).
+- **Login social directo con X / Google** (sept 2026): botones "X" y "Google" en el diálogo de entrar/crear cuenta.
+  - Con API keys (`X_CLIENT_ID`/`X_CLIENT_SECRET`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`) → OAuth 2.0 real vía `/api/auth/{provider}/start?mode=login`; el callback inicia sesión o crea la cuenta automáticamente con la identidad verificada.
+  - Sin API keys → pantalla de consentimiento simulada que hace lo mismo vía `POST /api/auth/social` (modo demo).
+  - Si la identidad social ya tiene cuenta → entra en ella; si no → la crea (handle único derivado del @usuario/email, +5 pts por verificación).
 - **Logout** desde el menú del avatar.
-- **Verificación de identidad** OAuth con X y Google (+5 puntos) con diálogo de consentimiento.
+- **Verificación de identidad** OAuth con X y Google (+5 puntos) con diálogo de consentimiento (modo link desde el perfil).
 - Sin sesión → modo invitado (usuario demo "Tú").
 
 ### Perfil ("Mi Cabal")
@@ -146,7 +150,8 @@ Métodos principales (JSON; auth por cookie de sesión; admin por cookie propia)
 | `GET /api/leaderboard` · `GET /api/feed` | Rankings · actividad |
 | `GET /api/me` · `POST /api/me/verify` | Perfil actual · iniciar verificación OAuth |
 | `POST /api/auth/register|login|logout` · `GET /api/auth/session|status` | Credenciales y sesión |
-| `GET /api/auth/x/start|callback` · `GET /api/auth/google/start|callback` | OAuth X / Google |
+| `POST /api/auth/social` | Login/registro social demo (sin API keys) |
+| `GET /api/auth/x/start|callback` · `GET /api/auth/google/start|callback` | OAuth X / Google (verificación y `?mode=login` para login social) |
 | `POST /api/follow/[id]` | Toggle seguir usuario |
 | `GET /api/points` | Historial de puntos |
 | `GET /api/affiliate` | Plataformas afiliadas activas |
@@ -186,6 +191,12 @@ bun run db:generate # Regenerar cliente Prisma
 ## 11. Registro de cambios (changelog)
 
 > Añadir una entrada por cada cambio relevante, con fecha (zona horaria America/Bogota).
+
+### 2026-09-04 (tarde)
+- **Login social con X / Google**: botones "X" y "Google" en el diálogo de iniciar sesión/crear cuenta. Con API keys corre OAuth 2.0 real (`/api/auth/{provider}/start?mode=login` + callbacks que crean sesión); sin keys usa el consentimiento simulado y `POST /api/auth/social`. La cuenta se crea automáticamente si la identidad no existe (handle único derivado, +5 pts de verificación). `OAuthConsentDialog` soporta `mode: link | login`.
+- **Filtros de red siempre visibles**: la fila de chips del Radar pasó de scroll horizontal oculto a `flex-wrap` — Robinhood (RH) y todas las redes se ven completas en móvil y desktop.
+- **Cuenta atrás con minutos y segundos**: `countdownParts` incluye siempre segundos (`1d 0h 45m 01s`); las píldoras compactas de las tarjetas muestran min+seg cuando falta <24h. El hero y las barras laterales tictan cada segundo.
+- **Mobile-first**: verificado a 320/390px (auth, filtros, tarjetas, modales) pensando en la futura app nativa.
 
 ### 2026-09-04
 - **UI — etiquetas compactas**: la píldora "Privado" (`TickerLabel`) ahora tiene tamaño fijo interno (9px) y nunca hereda el tamaño del texto del contenedor (antes el `text-[15px]` de la tarjeta la agrandaba a ~91px). `CountdownPill` estrena tamaño `xs` (10px) y se usa en las tarjetas del Radar.

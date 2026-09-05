@@ -15,11 +15,14 @@ import {
  * - Con credenciales configuradas → redirige a la pantalla real de autorización de X.
  * - Sin credenciales → responde { mode: 'demo' } para que el frontend muestre
  *   la pantalla de consentimiento simulada.
+ * - ?mode=login → el callback iniciará sesión / creará cuenta con la identidad
+ *   de X (en vez de solo vincularla al usuario actual).
  */
 export async function GET(req: NextRequest) {
+  const loginMode = req.nextUrl.searchParams.get('mode') === 'login'
   const cfg = getXConfig()
   if (!cfg) {
-    return NextResponse.json({ mode: 'demo', provider: 'x' })
+    return NextResponse.json({ mode: 'demo', provider: 'x', loginMode })
   }
 
   const origin = appOrigin(req)
@@ -40,5 +43,6 @@ export async function GET(req: NextRequest) {
   const opts = oauthCookieOptions(req)
   res.cookies.set('cabal_ox_state', state, opts)
   res.cookies.set('cabal_ox_verifier', verifier, opts)
+  if (loginMode) res.cookies.set('cabal_ox_mode', 'login', opts)
   return res
 }

@@ -13,11 +13,14 @@ import {
  * Inicia el flujo OAuth 2.0 de Google (OpenID Connect) para verificar el email.
  * - Con credenciales → redirige a la pantalla real de Google.
  * - Sin credenciales → responde { mode: 'demo' }.
+ * - ?mode=login → el callback iniciará sesión / creará cuenta con el email
+ *   de Google (en vez de solo vincularlo al usuario actual).
  */
 export async function GET(req: NextRequest) {
+  const loginMode = req.nextUrl.searchParams.get('mode') === 'login'
   const cfg = getGoogleConfig()
   if (!cfg) {
-    return NextResponse.json({ mode: 'demo', provider: 'google' })
+    return NextResponse.json({ mode: 'demo', provider: 'google', loginMode })
   }
 
   const origin = appOrigin(req)
@@ -35,5 +38,6 @@ export async function GET(req: NextRequest) {
 
   const res = NextResponse.redirect(`${GOOGLE_AUTH_URL}?${params.toString()}`)
   res.cookies.set('cabal_og_state', state, oauthCookieOptions(req))
+  if (loginMode) res.cookies.set('cabal_og_mode', 'login', oauthCookieOptions(req))
   return res
 }

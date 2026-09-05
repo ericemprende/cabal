@@ -123,6 +123,30 @@ export function useAuthStatus() {
   })
 }
 
+/**
+ * Login/registro social en modo demo (sin API keys): crea la sesión con la
+ * identidad social vía /api/auth/social. Con keys reales el flujo es por
+ * redirección a /api/auth/{provider}/start?mode=login.
+ */
+export function useSocialLogin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { provider: 'x' | 'google'; value: string; name?: string }) =>
+      jsonFetch<{ ok: boolean; created: boolean }>('/api/auth/social', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res) => {
+      qc.invalidateQueries()
+      toast.success(
+        res.created ? 'Cuenta creada · bienvenida al Cabal' : 'Sesión iniciada',
+        { description: 'Identidad verificada · +5 puntos Cabal' }
+      )
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useLaunches() {
   return useQuery<LaunchDTO[]>({ queryKey: qk.launches, queryFn: () => jsonFetch('/api/launches') })
 }

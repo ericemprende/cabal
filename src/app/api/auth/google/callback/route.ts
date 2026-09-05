@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
+import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
 import { GOOGLE_TOKEN_URL, GOOGLE_USERINFO_URL, appOrigin, getGoogleConfig } from '@/lib/oauth'
-import { linkProvider, SocialError } from '@/lib/social'
+import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
 
 /**
  * GET /api/auth/google/callback
- * Callback OAuth de Google: valida state, intercambia el código, lee el perfil
- * OpenID (email) y lo vincula como cuenta verificada.
+ * Callback OAuth de Google: valida state, intercambia el código y lee el perfil
+ * OpenID (email verificado por Google).
+ * - Modo verificación (default): vincula el email al perfil actual.
+ * - Modo login (?mode=login en start): inicia sesión o crea cuenta con ese
+ *   email y establece la cookie de sesión.
  */
 export async function GET(req: NextRequest) {
   const origin = appOrigin(req)
   const cfg = getGoogleConfig()
   if (!cfg) return NextResponse.redirect(`${origin}/?connected=google&connect_error=no_config`)
 
+  const loginMode = req.cookies.get('cabal_og_mode')?.value === 'login'
   const url = new URL(req.url)
   const providerError = url.searchParams.get('error')
   const code = url.searchParams.get('code')
@@ -22,6 +27,7 @@ export async function GET(req: NextRequest) {
   const finish = (query: string) => {
     const res = NextResponse.redirect(`${origin}/?connected=google&${query}`)
     res.cookies.set('cabal_og_state', '', { path: '/', maxAge: 0 })
+    res.cookies.set('cabal_og_mode', '', { path: '/', maxAge: 0 })
     return res
   }
 
@@ -50,10 +56,18 @@ export async function GET(req: NextRequest) {
     const uiRes = await fetch(GOOGLE_USERINFO_URL, {
       headers: { Authorization: `Bearer ${tokenJson.access_token}` },
     })
-    const uiJson = (await uiRes.json().catch(() => ({}))) as { email?: string }
+    const uiJson = (await uiRes.json().catch(() => ({}))) as { email?: string; name?: string }
     if (!uiJson.email) return finish('connect_error=profile')
 
-    // 3. Vincular la cuenta verificada
+    // 3. Login social: entrar/crear cuenta con el email de Google
+    if (loginMode) {
+      const { user, created } = await loginOrCreateSocial('google', uiJson.email, uiJson.name)
+      const res = finish(created ? 'ok=1&login=1&created=1' : 'ok=1&login=1')
+      res.cookies.set(SESSION_COOKIE, createSessionValue(user.id), sessionCookieOptions())
+      return res
+    }
+
+    // 4. Modo verificación: vincular la cuenta verificada
     const me = await getCurrentUser()
     await linkProvider(me.id, 'google', uiJson.email)
     return finish('ok=1')

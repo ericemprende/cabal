@@ -367,11 +367,12 @@ export function CountdownPill({
   target: string
   size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
-  /** Texto corto (2 unidades: "1d 12h") para tarjetas angostas. */
+  /** Cuenta atrás corta para tarjetas angostas (con min+seg si queda <24h). */
   compact?: boolean
 }) {
   const c = useCountdown(target)
-  const text = compact ? c.text.split(' ').slice(0, 2).join(' ') : c.text
+  // Compacto: cuenta atrás corta para tarjetas — incluye min+seg cuando queda <24h
+  const text = compact ? c.compactText : c.text
   const cls =
     size === 'xs'
       ? 'gap-1 px-1 py-px text-[10px]'

@@ -5,33 +5,41 @@ import { ShieldCheck, X as CloseIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useVerifyProvider } from '@/lib/api-client'
+import { useSocialLogin, useVerifyProvider } from '@/lib/api-client'
+import { useUI } from '@/lib/store'
+
+type ConsentMode = 'link' | 'login'
 
 /**
  * Pantalla de consentimiento simulada (modo demo, sin API keys).
  * Imita la pantalla real de autorización del proveedor para que el flujo se
  * sienta idéntico. En producción, con las API keys configuradas, el usuario
  * es redirigido a la pantalla real de X / Google vía OAuth 2.0.
+ *
+ * mode='link'  → vincula la identidad al usuario ya logueado (perfil).
+ * mode='login' → inicia sesión / crea cuenta con esa identidad (login social).
  */
 export function OAuthConsentDialog({
   provider,
   appName,
   onOpenChange,
+  mode = 'link',
 }: {
   provider: 'x' | 'google' | null
   appName: string
   onOpenChange: (open: boolean) => void
+  mode?: ConsentMode
 }) {
   return (
     <Dialog open={provider !== null} onOpenChange={onOpenChange}>
       {provider === 'x' && (
         <DialogContent className="border-white/10 bg-black p-0 sm:max-w-md" aria-describedby={undefined}>
-          <XConsent appName={appName} onOpenChange={onOpenChange} />
+          <XConsent appName={appName} onOpenChange={onOpenChange} mode={mode} />
         </DialogContent>
       )}
       {provider === 'google' && (
         <DialogContent className="border-white/10 bg-white p-0 text-zinc-900 sm:max-w-md" aria-describedby={undefined}>
-          <GoogleConsent appName={appName} onOpenChange={onOpenChange} />
+          <GoogleConsent appName={appName} onOpenChange={onOpenChange} mode={mode} />
         </DialogContent>
       )}
     </Dialog>
@@ -41,16 +49,31 @@ export function OAuthConsentDialog({
 function XConsent({
   appName,
   onOpenChange,
+  mode,
 }: {
   appName: string
   onOpenChange: (open: boolean) => void
+  mode: ConsentMode
 }) {
   const verify = useVerifyProvider()
+  const socialLogin = useSocialLogin()
+  const setAuthOpen = useUI((s) => s.setAuthOpen)
   const [handle, setHandle] = useState('')
+  const isLogin = mode === 'login'
+  const pending = verify.isPending || socialLogin.isPending
 
   useEffect(() => {
-    if (verify.isSuccess) onOpenChange(false)
-  }, [verify.isSuccess, onOpenChange])
+    if (verify.isSuccess || socialLogin.isSuccess) {
+      if (isLogin) setAuthOpen(false) // cierra también el diálogo de auth
+      onOpenChange(false)
+    }
+  }, [verify.isSuccess, socialLogin.isSuccess, isLogin, setAuthOpen, onOpenChange])
+
+  const submit = () => {
+    if (!handle.trim()) return
+    if (isLogin) socialLogin.mutate({ provider: 'x', value: handle.trim() })
+    else verify.mutate({ provider: 'x', value: handle.trim() })
+  }
 
   return (
     <div className="p-6 sm:p-8">
@@ -65,10 +88,22 @@ function XConsent({
         </button>
       </div>
 
-      <DialogTitle className="mt-6 text-2xl font-extrabold text-white">Autorizar {appName}</DialogTitle>
+      <DialogTitle className="mt-6 text-2xl font-extrabold text-white">
+        {isLogin ? 'Iniciar sesión con X' : `Autorizar ${appName}`}
+      </DialogTitle>
       <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-        Autorizarás a <span className="font-bold text-white">{appName}</span> a leer tu perfil
-        público de X: tu nombre y tu @usuario. Así tu calls quedan firmados con identidad verificada.
+        {isLogin ? (
+          <>
+            Accederás a <span className="font-bold text-white">{appName}</span> con tu cuenta de X:
+            tu nombre y tu @usuario. Si no tienes cuenta, se crea automáticamente con tu identidad
+            verificada.
+          </>
+        ) : (
+          <>
+            Autorizarás a <span className="font-bold text-white">{appName}</span> a leer tu perfil
+            público de X: tu nombre y tu @usuario. Así tu calls quedan firmados con identidad verificada.
+          </>
+        )}
       </p>
 
       <div className="mt-5 space-y-2">
@@ -83,7 +118,7 @@ function XConsent({
           placeholder="@tu_usuario"
           className="h-11 border-white/15 bg-zinc-950 text-white placeholder:text-zinc-600"
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && handle.trim()) verify.mutate({ provider: 'x', value: handle.trim() })
+            if (e.key === 'Enter' && handle.trim()) submit()
           }}
         />
       </div>
@@ -103,11 +138,11 @@ function XConsent({
           Cancelar
         </Button>
         <Button
-          disabled={!handle.trim() || verify.isPending}
-          onClick={() => verify.mutate({ provider: 'x', value: handle.trim() })}
+          disabled={!handle.trim() || pending}
+          onClick={submit}
           className="h-11 flex-1 rounded-full bg-white font-bold text-black hover:bg-zinc-200"
         >
-          {verify.isPending ? 'Conectando…' : 'Autorizar'}
+          {pending ? 'Conectando…' : isLogin ? 'Continuar' : 'Autorizar'}
         </Button>
       </div>
     </div>
@@ -117,16 +152,31 @@ function XConsent({
 function GoogleConsent({
   appName,
   onOpenChange,
+  mode,
 }: {
   appName: string
   onOpenChange: (open: boolean) => void
+  mode: ConsentMode
 }) {
   const verify = useVerifyProvider()
+  const socialLogin = useSocialLogin()
+  const setAuthOpen = useUI((s) => s.setAuthOpen)
   const [email, setEmail] = useState('')
+  const isLogin = mode === 'login'
+  const pending = verify.isPending || socialLogin.isPending
 
   useEffect(() => {
-    if (verify.isSuccess) onOpenChange(false)
-  }, [verify.isSuccess, onOpenChange])
+    if (verify.isSuccess || socialLogin.isSuccess) {
+      if (isLogin) setAuthOpen(false)
+      onOpenChange(false)
+    }
+  }, [verify.isSuccess, socialLogin.isSuccess, isLogin, setAuthOpen, onOpenChange])
+
+  const submit = () => {
+    if (!email.trim()) return
+    if (isLogin) socialLogin.mutate({ provider: 'google', value: email.trim() })
+    else verify.mutate({ provider: 'google', value: email.trim() })
+  }
 
   return (
     <div className="px-6 py-8 sm:px-10">
@@ -137,8 +187,17 @@ function GoogleConsent({
         Acceder con Google
       </DialogTitle>
       <p className="mt-2 text-center text-sm text-zinc-600">
-        Para continuar con <span className="font-medium text-zinc-900">{appName}</span>, confirma tu
-        cuenta de Google. Tu email queda verificado en tu perfil.
+        {isLogin ? (
+          <>
+            Para continuar con <span className="font-medium text-zinc-900">{appName}</span>, accede
+            con tu cuenta de Google. Si no tienes cuenta, se crea automáticamente.
+          </>
+        ) : (
+          <>
+            Para continuar con <span className="font-medium text-zinc-900">{appName}</span>, confirma tu
+            cuenta de Google. Tu email queda verificado en tu perfil.
+          </>
+        )}
       </p>
 
       <div className="mt-6 space-y-2">
@@ -154,7 +213,7 @@ function GoogleConsent({
           placeholder="tu@gmail.com"
           className="h-11 border-zinc-300 bg-white text-zinc-900 placeholder:text-zinc-400"
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && email.trim()) verify.mutate({ provider: 'google', value: email.trim() })
+            if (e.key === 'Enter' && email.trim()) submit()
           }}
         />
       </div>
@@ -174,11 +233,11 @@ function GoogleConsent({
           Cancelar
         </Button>
         <Button
-          disabled={!email.trim() || verify.isPending}
-          onClick={() => verify.mutate({ provider: 'google', value: email.trim() })}
+          disabled={!email.trim() || pending}
+          onClick={submit}
           className="h-10 rounded-full bg-[#1a73e8] px-6 text-[13px] font-medium text-white hover:bg-[#1765cc]"
         >
-          {verify.isPending ? 'Conectando…' : 'Siguiente'}
+          {pending ? 'Conectando…' : 'Siguiente'}
         </Button>
       </div>
     </div>

@@ -58,7 +58,8 @@ export function RadarTab() {
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="no-scrollbar flex flex-1 items-center gap-1.5 overflow-x-auto">
+        {/* Chips con wrap: todas las redes visibles sin scroll oculto (móvil incluido) */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {NETWORK_FILTERS.map((n) => (
             <button
               key={n}
