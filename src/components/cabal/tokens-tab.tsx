@@ -119,7 +119,7 @@ export function TokensTab() {
               <p className="hidden text-right text-xs text-muted-foreground md:block md:w-16">{fmtNum(t.holders)}</p>
               <p className="hidden text-right text-xs text-muted-foreground md:block md:w-20">{fmtMc(t.volume24h)}</p>
               <div className="ml-auto flex items-center gap-1.5 md:w-32 md:justify-end">
-                <UserAvatar name={t.dev.name} size="xs" verified={t.dev.walletVerified} ring={false} />
+                <UserAvatar name={t.dev.name} src={t.dev.avatar} size="xs" verified={t.dev.walletVerified} ring={false} />
                 <span className="hidden truncate text-[11px] text-muted-foreground lg:block">@{t.dev.handle}</span>
                 <span className="rounded-md bg-[#8FA83F]/8 px-1.5 py-0.5 text-[10px] font-bold text-primary group-hover:bg-[#8FA83F]/15">
                   <MessageSquare className="h-3 w-3" aria-hidden /> {t.postsCount}

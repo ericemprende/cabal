@@ -58,7 +58,13 @@ export async function PATCH(req: Request) {
     const data: Record<string, string | boolean> = {}
     if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim().slice(0, 40)
     if (typeof body.bio === 'string') data.bio = body.bio.slice(0, 200)
-    if (typeof body.avatar === 'string' && body.avatar.length <= 8) data.avatar = body.avatar
+    // Avatar: emoji corto O URL de imagen (https://, /uploads/, /seed/)
+    if (typeof body.avatar === 'string') {
+      const a = body.avatar.trim()
+      const isUrl = /^https:\/\/\S+$/i.test(a) || a.startsWith('/uploads/') || a.startsWith('/seed/')
+      if (isUrl && a.length <= 500) data.avatar = a
+      else if (!isUrl && a.length > 0 && a.length <= 8) data.avatar = a
+    }
     if (typeof body.wallet === 'string') {
       const w = body.wallet.trim()
       data.wallet = w.length >= 20 ? w : null

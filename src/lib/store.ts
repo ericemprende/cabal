@@ -1,6 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
+import type { AuthMode } from '@/components/cabal/auth-dialog'
 
 export type TabKey = 'radar' | 'tokens' | 'feed' | 'leaderboard'
 
@@ -19,6 +20,11 @@ interface UIState {
   setSearchOpen: (v: boolean) => void
   composerOpen: boolean
   setComposerOpen: (v: boolean) => void
+  authOpen: boolean
+  setAuthOpen: (v: boolean) => void
+  authMode: AuthMode
+  setAuthMode: (m: AuthMode) => void
+  openAuth: (mode?: AuthMode) => void
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -36,4 +42,9 @@ export const useUI = create<UIState>((set) => ({
   setSearchOpen: (searchOpen) => set({ searchOpen }),
   composerOpen: false,
   setComposerOpen: (composerOpen) => set({ composerOpen }),
+  authOpen: false,
+  setAuthOpen: (authOpen) => set({ authOpen }),
+  authMode: 'login',
+  setAuthMode: (authMode) => set({ authMode }),
+  openAuth: (mode) => set({ authOpen: true, ...(mode ? { authMode: mode } : {}) }),
 }))

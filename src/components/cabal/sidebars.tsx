@@ -119,7 +119,7 @@ export function RightRail() {
                 <span className={cn('w-4 text-center text-[11px] font-bold', i === 0 ? 'text-amber-300' : 'text-muted-foreground')}>
                   {i + 1}
                 </span>
-                <UserAvatar name={c.user.name} handle={c.user.handle} size="xs" verified={c.user.walletVerified} />
+                <UserAvatar name={c.user.name} handle={c.user.handle} src={c.user.avatar} size="xs" verified={c.user.walletVerified} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-semibold">{c.user.name}</p>
                   <p className="truncate text-[10px] text-muted-foreground">{fmtNum(c.user.followers)} seguidores</p>

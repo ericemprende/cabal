@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, Plus, Search, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { Bell, ChevronDown, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -20,16 +20,20 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { CabalWordmark, CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
-import { useLaunches, useLeaderboard, useMe, useTokens } from '@/lib/api-client'
+import { AuthDialog } from '@/components/cabal/auth-dialog'
+import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { timeAgo } from '@/lib/cabal'
 
 export function Header() {
   const { data: me } = useMe()
+  const { data: session } = useSession()
   const { data: launches } = useLaunches()
   const { data: leaderboard } = useLeaderboard()
   const router = useRouter()
-  const { setSearchOpen, setProfileOpen, setAdminOpen, setTab, openLaunch } = useUI()
+  const logout = useLogout()
+  const { setSearchOpen, setProfileOpen, setAdminOpen, setTab, openLaunch, openAuth } = useUI()
+  const loggedIn = !!session?.loggedIn
 
   const soon = useMemo(() => {
     if (!launches) return []
@@ -118,43 +122,88 @@ export function Header() {
             </PopoverContent>
           </Popover>
 
-          {/* User menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1.5 rounded-full outline-none" aria-label="Menú de usuario">
-                <UserAvatar name={me?.name} handle={me?.handle} size="sm" verified={me?.walletVerified} />
-                <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 border-white/10 bg-popover">
-              <DropdownMenuLabel className="flex items-center gap-2.5 pb-2">
-                <UserAvatar name={me?.name} handle={me?.handle} size="sm" />
-                <div>
-                  <p className="text-sm font-semibold">{me?.name ?? 'Tú'}</p>
-                  <p className="text-xs text-muted-foreground">@{me?.handle ?? 'tu'}</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
-              {me && (
-                <div className="flex items-center justify-between px-2 py-1.5 text-xs">
-                  <span className="text-muted-foreground">Puntos Cabal</span>
-                  <PointsPill points={me.points} />
-                </div>
-              )}
-              <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
-              <DropdownMenuItem onClick={() => setProfileOpen(true)} className="gap-2 text-[13px]">
-                <UserRound className="h-4 w-4" /> Mi Cabal (perfil)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSearchOpen(true)} className="gap-2 text-[13px] md:hidden">
-                <Search className="h-4 w-4" /> Buscar
-              </DropdownMenuItem>
-              {me?.isAdmin && (
-                <DropdownMenuItem onClick={() => setAdminOpen(true)} className="gap-2 text-[13px] text-primary focus:text-primary">
-                  <ShieldCheck className="h-4 w-4" /> Dashboard Admin
+          {/* Autenticación */}
+          {loggedIn ? (
+            /* Cuenta logueada: menú con cerrar sesión */
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 rounded-full outline-none" aria-label="Menú de usuario">
+                  <UserAvatar name={me?.name} handle={me?.handle} src={me?.avatar} size="sm" verified={me?.walletVerified} />
+                  <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 border-white/10 bg-popover">
+                <DropdownMenuLabel className="flex items-center gap-2.5 pb-2">
+                  <UserAvatar name={me?.name} handle={me?.handle} src={me?.avatar} size="sm" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{me?.name ?? 'Tú'}</p>
+                    <p className="truncate text-xs text-muted-foreground">@{me?.handle ?? 'tu'}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
+                {me && (
+                  <div className="flex items-center justify-between px-2 py-1.5 text-xs">
+                    <span className="text-muted-foreground">Puntos Cabal</span>
+                    <PointsPill points={me.points} />
+                  </div>
+                )}
+                <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
+                <DropdownMenuItem onClick={() => setProfileOpen(true)} className="gap-2 text-[13px]">
+                  <UserRound className="h-4 w-4" /> Mi Cabal (perfil)
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSearchOpen(true)} className="gap-2 text-[13px] md:hidden">
+                  <Search className="h-4 w-4" /> Buscar
+                </DropdownMenuItem>
+                {me?.isAdmin && (
+                  <DropdownMenuItem onClick={() => setAdminOpen(true)} className="gap-2 text-[13px] text-primary focus:text-primary">
+                    <ShieldCheck className="h-4 w-4" /> Dashboard Admin
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
+                <DropdownMenuItem
+                  onClick={() => logout.mutate()}
+                  disabled={logout.isPending}
+                  className="gap-2 text-[13px] text-[#ff8080] focus:text-[#ff8080]"
+                >
+                  <LogOut className="h-4 w-4" /> {logout.isPending ? 'Cerrando…' : 'Cerrar sesión'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            /* Invitado: botones de iniciar sesión / registro */
+            <div className="flex items-center gap-1.5">
+              {me?.isAdmin && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setAdminOpen(true)}
+                  className="h-9 w-9 text-muted-foreground hover:text-primary"
+                  aria-label="Dashboard Admin"
+                  title="Dashboard Admin"
+                >
+                  <ShieldCheck className="h-[18px] w-[18px]" />
+                </Button>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => openAuth('login')}
+                className="h-9 gap-1.5 rounded-lg border border-white/10 px-2.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground sm:px-3"
+              >
+                <LogIn className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline">Iniciar sesión</span>
+                <span className="sm:hidden">Entrar</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => openAuth('register')}
+                className="hidden h-9 gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-bold text-primary-foreground hover:bg-[#8FA83F] md:inline-flex"
+              >
+                <UserPlus className="h-4 w-4" aria-hidden />
+                Crear cuenta
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -163,6 +212,7 @@ export function Header() {
         users={leaderboard?.callers.map((c) => c.user) ?? []}
         onOpenLaunch={openLaunch}
       />
+      <AuthDialog />
     </header>
   )
 }

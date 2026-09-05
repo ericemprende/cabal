@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/seed'
 import { isAdminRequest } from '@/lib/admin-auth'
+import { sessionUserIdFromCookies } from '@/lib/auth'
 
 // ---------- POINTS ENGINE ----------
 export const POINT_RULE_KEYS = [
@@ -79,6 +80,13 @@ export class ForbiddenError extends Error {
 
 export async function getCurrentUser() {
   await ensureSeeded()
+  // 1) Si hay sesión de usuario (cookie), esa es la cuenta activa
+  const sessionUserId = await sessionUserIdFromCookies()
+  if (sessionUserId) {
+    const sessionUser = await db.user.findUnique({ where: { id: sessionUserId } })
+    if (sessionUser) return sessionUser
+  }
+  // 2) Modo invitado: el usuario demo de la app
   const user = await db.user.findFirst({ where: { isCurrentUser: true } })
   if (!user) throw new Error('No current user')
   return user

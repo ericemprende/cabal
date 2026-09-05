@@ -29,7 +29,7 @@ export function PostCard({
       )}
     >
       <div className="flex items-start gap-2.5">
-        <UserAvatar name={post.user.name} handle={post.user.handle} size={compact ? 'sm' : 'md'} verified={post.user.walletVerified} />
+        <UserAvatar name={post.user.name} handle={post.user.handle} src={post.user.avatar} size={compact ? 'sm' : 'md'} verified={post.user.walletVerified} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
             <span className={cn('truncate font-semibold', compact ? 'text-[13px]' : 'text-sm')}>{post.user.name}</span>

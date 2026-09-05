@@ -38,7 +38,7 @@ export function FeedTab() {
       {/* Composer */}
       <div className="card-surface rounded-xl border border-white/10 p-3.5">
         <div className="flex gap-3">
-          <UserAvatar name={me?.name} handle={me?.handle} size="md" />
+          <UserAvatar name={me?.name} handle={me?.handle} src={me?.avatar} size="md" />
           <div className="flex-1">
             <Textarea
               value={content}

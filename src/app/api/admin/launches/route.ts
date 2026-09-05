@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
+import { NETWORKS } from '@/lib/cabal'
 import { toUserDTO } from '@/lib/serializers'
 import type { LaunchDTO } from '@/lib/types'
 
@@ -72,7 +73,8 @@ export async function PATCH(req: Request) {
       const t = typeof body.ticker === 'string' ? body.ticker.trim().slice(0, 12).toUpperCase() : ''
       data.ticker = t || null
     }
-    if (typeof body.network === 'string' && body.network) data.network = body.network
+    // Solo redes soportadas; cualquier otro valor no toca el campo (evita redes corruptas)
+    if (typeof body.network === 'string' && body.network in NETWORKS) data.network = body.network
     if (typeof body.launchAt === 'string' && body.launchAt) {
       const when = new Date(body.launchAt)
       if (isNaN(when.getTime())) {

@@ -319,3 +319,23 @@ Work Log:
 Stage Summary:
 - Radar muestra únicamente: Chop ($NULL, destacado, logo+banner ok) y Proyecto Sombra (privado, EN VIVO); pestaña Tokens vacía; Feed vacío con compositor intacto
 - Verificado en navegador (desktop + mobile): sin errores de consola, dev.log limpio, leaderboard y sidebar funcionando; lint limpio
+
+---
+Task ID: admin-networks-auth-avatar
+Agent: main (Z.ai Code)
+Task: Redes faltantes en admin + launch privado que cambia de red/al otro launch + botón hype + login/registro/logout + foto de perfil
+
+Work Log:
+- Investigación: el editor de launches del admin YA tenía las 6 redes con logos (verificado en /admin logueado); el "Robin Hood Test (RHT)" del usuario se creó 21:27 pero ya no está en la BD (borrado probablemente desde el admin tras la confusión). Los síntomas (clic cambia a otro launch/red base) cuadran con bundle viejo cacheado durante hot-reloads; el código actual usa IDs en todos los openLaunch (verificado con grep) y el clic abre el launch correcto (E2E con launch privado RH: abre "Robin Privado Test PRIVADO RH")
+- Hardening: POST /api/launches ahora valida network contra NETWORKS (inválido → solana); PATCH admin launches IGNORA redes inválidas (ya no puede corromper la red de un launch); useHypeToggle/useLikeToggle muestran toast de error si fallan (antes fallaba en silencio)
+- Botón hype: probado E2E — funciona (POST 200, hype 0→1→visualización en tarjeta y detalle); el "no funciona" era el launch borrado
+- AUTH NUEVA: schema User.passwordHash (scrypt, bunx prisma db push + reinicio limpio con rm -rf .next); src/lib/auth.ts (hash/verify scrypt + cookie firmada HMAC cabal_session 30 días); rutas /api/auth/register|login|logout|session; getCurrentUser() prioriza cookie de sesión y cae al usuario demo "Tú" (modo invitado)
+- Frontend auth: AuthDialog con tabs Iniciar sesión/Crear cuenta (handle+password, validaciones, toasts de error "Usuario o contraseña incorrectos"); Header: invitado → botones "Iniciar sesión"+"Crear cuenta" (+escudo admin si el invitado es admin), logueado → avatar con menú y "Cerrar sesión"; store: authOpen/authMode/openAuth; hooks useSession/useLogin/useRegister/useLogout (invalidan todo el cache al cambiar de cuenta)
+- FOTO DE PERFIL: UserAvatar acepta src (foto con next/image + fallback a iniciales si falla); /api/me PATCH acepta avatar URL (https///uploads//seed, ≤500) además de emoji; profile-dialog: AvatarEditor (subir archivo → /api/upload, pegar URL, quitar foto) que aplica al instante; src propagado a todos los avatares (header, perfil, feed, posts, detalle, leaderboard, sidebars, admin, tokens)
+- Fix visual colateral: CountdownPill shrink-0 whitespace-nowrap + modo compact ("1d 12h"); grid del Radar 3→2 columnas — la tarjeta de 198px dejaba la columna del ticker en 0px y el countdown montaba sobre el ticker (bug preexistente)
+- Limpieza: launch de prueba "Robin Privado Test" y cuenta "degen_test" eliminados; BD final = Proyecto Sombra (base) + Chop (solana)
+
+Stage Summary:
+- Verificado E2E: registro → foto por URL aplicada en vivo en header → logout → login → logout; contraseña incorrecta muestra toast; invitado ve botones Entrar/Crear cuenta; /admin intacto (login aparte admin/admin123@)
+- Admin editor de launches: 6 redes con logos (SOL/BASE/ETH/BSC/TRX/RH) confirmado con captura; las redes ya no pueden corromperse al guardar
+- Radar 2 columnas sin overlaps; hype funciona con feedback de error; lint limpio; consola sin errores

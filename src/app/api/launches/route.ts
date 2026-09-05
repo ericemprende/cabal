@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { awardPoints, computeLaunchStatus, getCurrentUser } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
+import { NETWORKS } from '@/lib/cabal'
 import type { LaunchDTO } from '@/lib/types'
 
 export async function GET() {
@@ -84,6 +85,8 @@ export async function POST(req: Request) {
     const role = submitterRole === 'dev' ? 'dev' : 'community'
     const cleanContract =
       typeof contract === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim()) ? contract.trim() : null
+    // La red debe ser una de las soportadas; si llega algo inválido cae a Solana
+    const safeNetwork = typeof network === 'string' && network in NETWORKS ? network : 'solana'
     const launch = await db.launch.create({
       data: {
         name: String(name).slice(0, 60),
@@ -94,7 +97,7 @@ export async function POST(req: Request) {
         isPrivate: priv,
         submitterRole: role,
         contract: cleanContract,
-        network,
+        network: safeNetwork,
         launchAt: when,
         description: String(description || '').slice(0, 800),
         website: website || null,

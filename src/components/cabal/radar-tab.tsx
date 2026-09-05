@@ -112,8 +112,8 @@ export function RadarTab() {
 
       {/* Grid */}
       {isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[...Array(4)].map((_, i) => (
             <div key={i} className="h-52 animate-pulse rounded-xl border border-white/8 bg-[#121410]" />
           ))}
         </div>
@@ -129,7 +129,7 @@ export function RadarTab() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {filtered.map((l) => (
             <LaunchCard key={l.id} launch={l} />
           ))}
@@ -226,7 +226,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
             </span>
           </div>
         </div>
-        <CountdownPill target={launch.launchAt} />
+        <CountdownPill target={launch.launchAt} compact size="sm" />
       </div>
 
       <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{launch.description}</p>

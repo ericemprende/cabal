@@ -43,6 +43,7 @@ const AVATAR_TONES = [
 export function UserAvatar({
   name,
   handle,
+  src,
   size = 'md',
   verified,
   className,
@@ -50,6 +51,8 @@ export function UserAvatar({
 }: {
   name?: string | null
   handle?: string | null
+  /** URL de foto de perfil (https://, /uploads/). Si hay, se muestra la foto en vez de las iniciales. */
+  src?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   verified?: boolean
   className?: string
@@ -66,20 +69,36 @@ export function UserAvatar({
           : size === 'lg'
             ? 'h-12 w-12 text-sm'
             : 'h-16 w-16 text-lg'
+  const [imgOk, setImgOk] = useState(true)
+  const showImg = !!src && imgOk
   return (
     <div className="relative shrink-0">
-      <div
-        className={cn(
-          'flex items-center justify-center rounded-full bg-gradient-to-br font-machina font-bold',
-          tone,
-          ring && 'ring-1 ring-white/10',
-          dims,
-          className
-        )}
-        aria-hidden
-      >
-        {initialOf(name ?? handle)}
-      </div>
+      {showImg ? (
+        <div className={cn('relative overflow-hidden rounded-full', ring && 'ring-1 ring-white/10', dims, className)}>
+          <Image
+            src={src!}
+            alt={`Foto de ${name ?? handle ?? 'usuario'}`}
+            fill
+            sizes="64px"
+            className="object-cover"
+            unoptimized
+            onError={() => setImgOk(false)}
+          />
+        </div>
+      ) : (
+        <div
+          className={cn(
+            'flex items-center justify-center rounded-full bg-gradient-to-br font-machina font-bold',
+            tone,
+            ring && 'ring-1 ring-white/10',
+            dims,
+            className
+          )}
+          aria-hidden
+        >
+          {initialOf(name ?? handle)}
+        </div>
+      )}
       {verified && (
         <span
           className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#0a0b08]"
@@ -342,12 +361,16 @@ export function CountdownPill({
   target,
   size = 'md',
   className,
+  compact,
 }: {
   target: string
   size?: 'sm' | 'md' | 'lg'
   className?: string
+  /** Texto corto (2 unidades: "1d 12h") para tarjetas angostas. */
+  compact?: boolean
 }) {
   const c = useCountdown(target)
+  const text = compact ? c.text.split(' ').slice(0, 2).join(' ') : c.text
   const cls =
     size === 'sm'
       ? 'text-[11px] px-1.5 py-0.5'
@@ -359,21 +382,21 @@ export function CountdownPill({
   const soon = c.totalMs < 6 * 3600_000
   if (c.live)
     return (
-      <span className={cn('inline-flex items-center gap-1.5 rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>
+      <span className={cn('inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>
         <span className="live-dot-red h-1.5 w-1.5 rounded-full bg-[#ff4d5e]" />
         En vivo
       </span>
     )
   if (c.ended)
     return (
-      <span className={cn('inline-flex items-center rounded-md border border-zinc-500/30 bg-zinc-500/10 font-semibold text-zinc-400', cls, className)}>
+      <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-zinc-500/30 bg-zinc-500/10 font-semibold text-zinc-400', cls, className)}>
         Finalizado
       </span>
     )
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border font-mono font-bold tabular-nums',
+        'inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border font-mono font-bold tabular-nums',
         urgent
           ? 'border-[#ff4d5e]/50 bg-[#ff4d5e]/10 text-[#ff6b7a]'
           : soon
@@ -389,7 +412,7 @@ export function CountdownPill({
       ) : (
         <Timer className="h-3 w-3" aria-hidden />
       )}
-      {c.text}
+      {text}
     </span>
   )
 }

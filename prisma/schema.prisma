@@ -14,6 +14,7 @@ model User {
   avatar        String   @default("🐺")
   bio           String?
   wallet        String?
+  passwordHash  String?  // hash scrypt (login/registro por credenciales; null = cuenta demo/sin password)
   walletVerified Boolean @default(false)
   xHandle       String?
   xVerified     Boolean  @default(false)

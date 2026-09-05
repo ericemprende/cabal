@@ -91,7 +91,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
       <span className={cn('w-8 shrink-0 text-center font-machina text-sm font-bold', rank <= 3 ? 'text-primary' : 'text-muted-foreground')}>
         {String(rank).padStart(2, '0')}
       </span>
-      <UserAvatar name={user.name} handle={user.handle} size="md" verified={user.walletVerified} />
+      <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-1.5 truncate text-sm font-bold">
           {user.name}

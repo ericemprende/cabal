@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   AtSign,
   BadgeCheck,
@@ -11,11 +11,13 @@ import {
   Gift,
   GraduationCap,
   Heart,
+  ImagePlus,
   KeyRound,
   Mail,
   MessageSquare,
   RefreshCw,
   Rocket,
+  Trash2,
   Wallet,
   Zap,
 } from 'lucide-react'
@@ -28,7 +30,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { timeAgo } from '@/lib/cabal'
-import { useAuthStatus, useMe, useUpdateMe, useVerifyProvider, type AuthStatusDTO } from '@/lib/api-client'
+import { uploadImage, useAuthStatus, useMe, useUpdateMe, useVerifyProvider, type AuthStatusDTO } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 
@@ -66,6 +68,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
   const [name, setName] = useState(me.name)
   const [bio, setBio] = useState(me.bio ?? '')
   const [wallet, setWallet] = useState(me.wallet ?? '')
+  const [avatar, setAvatar] = useState(me.avatar)
 
   /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo si no. */
   const connect = (provider: 'x' | 'google') => {
@@ -80,7 +83,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
     updateMe.mutate({
       name,
       bio,
-      avatar: me.avatar,
+      avatar,
       wallet: wallet.trim() && wallet.trim().length >= 20 ? wallet.trim() : (me.wallet ?? ''),
     })
     setProfileOpen(false)
@@ -91,7 +94,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
         <div className="relative border-b border-white/10 p-5">
           <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#8FA83F]/8 blur-3xl" />
           <div className="relative flex items-center gap-4">
-            <UserAvatar name={me?.name} handle={me?.handle} size="xl" verified={me?.walletVerified} />
+            <UserAvatar name={me?.name} handle={me?.handle} src={avatar} size="xl" verified={me?.walletVerified} />
             <div className="min-w-0">
               <DialogTitle className="font-display truncate text-xl font-bold">{me?.name}</DialogTitle>
               <p className="text-sm text-muted-foreground">@{me?.handle}</p>
@@ -192,6 +195,18 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
         {/* Edit profile */}
         <div className="space-y-3.5 p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editar perfil</p>
+
+          {/* Foto de perfil: subir archivo o pegar URL */}
+          <AvatarEditor
+            avatar={avatar}
+            name={me.name}
+            onApply={(url) => {
+              setAvatar(url)
+              updateMe.mutate({ avatar: url })
+            }}
+            busy={updateMe.isPending}
+          />
+
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="pf-name" className="text-xs text-muted-foreground">Nombre</Label>
@@ -420,6 +435,116 @@ function CallbackUrl({ url, onCopy }: { url?: string; onCopy: () => void }) {
       >
         <Copy className="h-3 w-3" aria-hidden />
       </button>
+    </div>
+  )
+}
+
+/**
+ * Editor de foto de perfil: subir archivo (→ /api/upload) o pegar URL.
+ * Aplica de inmediato (PATCH /api/me) para verla en el header al instante.
+ */
+function AvatarEditor({
+  avatar,
+  name,
+  onApply,
+  busy,
+}: {
+  avatar: string
+  name: string
+  onApply: (url: string) => void
+  busy?: boolean
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [urlDraft, setUrlDraft] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const isUrl = /^https:\/\/\S+$/i.test(avatar) || avatar.startsWith('/uploads/') || avatar.startsWith('/seed/')
+
+  const pickFile = async (file: File | undefined) => {
+    if (!file) return
+    try {
+      setUploading(true)
+      const url = await uploadImage(file)
+      onApply(url)
+      toast.success('Foto de perfil actualizada')
+    } catch (e) {
+      toast.error((e as Error).message || 'No se pudo subir la imagen')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const applyUrl = () => {
+    const u = urlDraft.trim()
+    if (!/^https:\/\/\S+$/i.test(u)) {
+      toast.error('Pega una URL https:// válida')
+      return
+    }
+    onApply(u)
+    setUrlDraft('')
+    toast.success('Foto de perfil actualizada')
+  }
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <div className="flex items-center gap-3">
+        <UserAvatar name={name} src={isUrl ? avatar : null} size="lg" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-bold">Foto de perfil</p>
+          <p className="text-[11px] text-muted-foreground">JPG o PNG, máx. 2.5 MB</p>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => pickFile(e.target.files?.[0])}
+          aria-label="Subir foto de perfil"
+        />
+        <Button
+          size="sm"
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading || busy}
+          className="h-8 shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+        >
+          <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+          {uploading ? 'Subiendo…' : 'Subir foto'}
+        </Button>
+        {isUrl && (
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onApply('🐺')}
+            disabled={busy}
+            className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:text-[#ff8080]"
+            aria-label="Quitar foto"
+            title="Quitar foto"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+      <div className="mt-2.5 flex items-center gap-1.5">
+        <Input
+          value={urlDraft}
+          onChange={(e) => setUrlDraft(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyUrl())}
+          placeholder="…o pega la URL de la imagen (https://…)"
+          inputMode="url"
+          spellCheck={false}
+          aria-label="URL de la foto de perfil"
+          className="h-8 bg-[#121410] font-mono text-[12px]"
+        />
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={applyUrl}
+          disabled={busy || !urlDraft.trim()}
+          className="h-8 shrink-0 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+        >
+          Usar
+        </Button>
+      </div>
     </div>
   )
 }

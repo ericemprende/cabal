@@ -92,7 +92,7 @@ export function LaunchDetailDialog() {
 
               <div className="mt-4 flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <UserAvatar name={launch.createdBy.name} handle={launch.createdBy.handle} size="sm" verified={launch.createdBy.walletVerified} />
+                  <UserAvatar name={launch.createdBy.name} handle={launch.createdBy.handle} src={launch.createdBy.avatar} size="sm" verified={launch.createdBy.walletVerified} />
                   <div>
                     <p className="text-[13px] font-semibold">{launch.createdBy.name}</p>
                     <button

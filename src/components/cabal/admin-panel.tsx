@@ -302,7 +302,7 @@ export function AdminPanel({
                   {(overview.data?.topEarners ?? []).map((t, i) => (
                     <div key={t.user.id} className="flex items-center gap-2 text-[13px]">
                       <span className="w-4 text-muted-foreground">{i + 1}.</span>
-                      <UserAvatar name={t.user.name} handle={t.user.handle} size="xs" ring={false} />
+                      <UserAvatar name={t.user.name} handle={t.user.handle} src={t.user.avatar} size="xs" ring={false} />
                       <span className="flex-1 truncate font-medium">{t.user.name}</span>
                       <PointsPill points={t.points} />
                     </div>
@@ -338,7 +338,7 @@ export function AdminPanel({
               <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
                 {(overview.data?.recentEvents ?? []).map((e) => (
                   <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-white/4">
-                    <UserAvatar name={e.user.name} handle={e.user.handle} size="xs" ring={false} />
+                    <UserAvatar name={e.user.name} handle={e.user.handle} src={e.user.avatar} size="xs" ring={false} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px]">
                         <span className="font-semibold">{e.user.name}</span> <span className="text-muted-foreground">· {e.note}</span>
@@ -420,7 +420,7 @@ function AdminUserRow({
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
       <div className="flex flex-wrap items-center gap-2.5">
-        <UserAvatar name={user.name} handle={user.handle} size="md" verified={user.walletVerified} />
+        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">
             {user.name}

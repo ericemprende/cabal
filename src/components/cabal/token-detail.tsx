@@ -173,7 +173,7 @@ export function TokenDetailDialog() {
               </p>
               <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-2.5">
-                  <UserAvatar name={token.dev.name} handle={token.dev.handle} size="lg" verified={token.dev.walletVerified} />
+                  <UserAvatar name={token.dev.name} handle={token.dev.handle} src={token.dev.avatar} size="lg" verified={token.dev.walletVerified} />
                   <div>
                     <p className="flex items-center gap-1 text-sm font-bold">
                       {token.dev.name}

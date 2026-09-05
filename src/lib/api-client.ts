@@ -32,8 +32,14 @@ export type AuthStatusDTO = {
   google: { configured: boolean; callbackUrl: string }
 }
 
+export type SessionDTO = {
+  loggedIn: boolean
+  user?: UserDTO
+}
+
 export const qk = {
   me: ['me'] as const,
+  session: ['session'] as const,
   authStatus: ['authStatus'] as const,
   launches: ['launches'] as const,
   launch: (id: string) => ['launch', id] as const,
@@ -53,6 +59,59 @@ export const qk = {
 
 export function useMe() {
   return useQuery<MeDTO>({ queryKey: qk.me, queryFn: () => jsonFetch('/api/me') })
+}
+
+/** Sesión de usuario: ¿hay cuenta logueada o modo invitado? */
+export function useSession() {
+  return useQuery<SessionDTO>({
+    queryKey: qk.session,
+    queryFn: () => jsonFetch('/api/auth/session'),
+    staleTime: 30_000,
+  })
+}
+
+export function useLogin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { handle: string; password: string }) =>
+      jsonFetch<{ ok: boolean; user: UserDTO }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries()
+      toast.success('Sesión iniciada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useRegister() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { handle: string; name?: string; password: string }) =>
+      jsonFetch<{ ok: boolean; user: UserDTO }>('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries()
+      toast.success('Cuenta creada · bienvenida al Cabal')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useLogout() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => jsonFetch<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
+    onSuccess: () => {
+      qc.invalidateQueries()
+      toast.success('Sesión cerrada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
 }
 
 /** Estado de configuración OAuth (API keys reales) de X y Google. */
@@ -175,6 +234,7 @@ export function useHypeToggle() {
         method: 'POST',
       }),
     onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message || 'No se pudo dar hype'),
   })
 }
 
@@ -186,6 +246,7 @@ export function useLikeToggle() {
         method: 'POST',
       }),
     onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message || 'No se pudo dar like'),
   })
 }
 
