@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { CabalWordmark, NetworkIcon } from '@/components/cabal/shared'
+import { CabalWordmark, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { cn } from '@/lib/utils'
 import { NETWORKS } from '@/lib/cabal'
@@ -280,9 +280,7 @@ export default function PublicarLaunchPage() {
                   onChange={(e) => set('launchAt', e.target.value)}
                   className="h-10 max-w-sm bg-[#0a0b08] [color-scheme:dark]"
                 />
-                <p className="text-[10px] leading-relaxed text-muted-foreground">
-                  Es la hora de tu dispositivo. Cada usuario la ve convertida a su propia zona horaria.
-                </p>
+                <TimezoneHint value={form.launchAt} className="max-w-sm" />
               </div>
 
               {/* Identidad visual: imagen del token + banner */}

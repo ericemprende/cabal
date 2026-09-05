@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser, getPointRules } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
-import type { MeDTO } from '@/lib/types'
+import type { DevClaimStats, MeDTO } from '@/lib/types'
 
 export async function GET() {
   try {
     const me = await getCurrentUser()
-    const [followed, pointEvents, rules, postCount, launchCount, hypes, likesReceived] =
+    const [followed, pointEvents, rules, postCount, launchCount, hypes, likesReceived, wallets, devClaims] =
       await Promise.all([
         db.follow.findMany({ where: { userId: me.id } }),
         db.pointEvent.findMany({
@@ -20,6 +20,8 @@ export async function GET() {
         db.launch.count({ where: { createdById: me.id } }),
         db.vote.count({ where: { userId: me.id, target: 'launch' } }),
         db.post.aggregate({ where: { userId: me.id }, _sum: { likes: true } }),
+        db.walletLink.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),
+        db.devClaim.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),
       ])
     const followedIds = new Set(followed.map((f) => f.targetId))
 
@@ -44,10 +46,41 @@ export async function GET() {
         hypesGiven: hypes,
         likesReceived: likesReceived._sum.likes ?? 0,
       },
+      wallets: wallets.map((w) => ({
+        id: w.id,
+        network: w.network,
+        address: w.address,
+        label: w.label,
+        signature: w.signature,
+        createdAt: w.createdAt.toISOString(),
+      })),
+      devClaims: devClaims.map((c) => ({
+        id: c.id,
+        network: c.network,
+        contract: c.contract,
+        walletAddress: c.walletAddress,
+        name: c.name,
+        symbol: c.symbol,
+        status: c.status,
+        note: c.note,
+        stats: parseClaimStats(c.stats),
+        source: c.source,
+        createdAt: c.createdAt.toISOString(),
+        verifiedAt: c.verifiedAt?.toISOString() ?? null,
+      })),
     }
     return NextResponse.json(dto)
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
+}
+
+function parseClaimStats(raw: string): DevClaimStats | null {
+  try {
+    const obj = JSON.parse(raw) as DevClaimStats
+    return obj && Object.keys(obj).length > 0 ? obj : null
+  } catch {
+    return null
   }
 }
 

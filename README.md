@@ -53,7 +53,8 @@ src/
 │   ├── leaderboard-tab.tsx   # Callers, devs y puntos
 │   ├── launch-detail.tsx     # Modal de launch: tesis, comentarios, hype, gráfico si hay CA
 │   ├── token-detail.tsx      # Modal de token: gráfico, stats, track record del dev
-│   ├── profile-dialog.tsx    # "Mi Cabal": puntos, historial, editar perfil (foto, bio…)
+│   ├── profile-dialog.tsx    # "Mi Cabal": puntos, historial, wallets conectadas,
+│   │                         # verificación de tokens como dev (track record), editar perfil
 │   ├── auth-dialog.tsx       # Login / registro por credenciales
 │   ├── oauth-consent-dialog.tsx  # Consentimiento para verificar X / Google
 │   ├── admin-panel.tsx       # Panel admin: launches, usuarios, reglas de puntos, afiliados
@@ -67,7 +68,9 @@ src/
 │   ├── store.ts              # Zustand (tab activa, modales, búsqueda)
 │   ├── auth.ts               # Sesión usuario (scrypt + cookie firmada)
 │   ├── admin-auth.ts         # Sesión admin (cookie aparte)
-│   ├── oauth.ts · social.ts  # Verificación X / Google
+│   ├── oauth.ts · social.ts  # Verificación y login X / Google
+│   ├── chain-stats.ts        # Datos on-chain reales (DexScreener + ATH GeckoTerminal + RPC Solana)
+│   ├── wallet-verify.ts      # Verificación criptográfica de firmas (ed25519 / personal_sign)
 │   ├── affiliate.ts          # Enlaces de referido por red ({ca}, {red})
 │   ├── seed.ts               # Seed mínimo (reglas de puntos + usuarios base) — sin contenido demo
 │   ├── serializers.ts · types.ts · utils.ts
@@ -88,6 +91,7 @@ public/uploads/               # Imágenes subidas (logos/banners)
 ### Publicar launch (`/publicar`)
 - Página completa (no popup): nombre, ticker opcional, privado, red, fecha/hora, descripción, imagen (logo) y banner, redes sociales, CA opcional, checks de seguridad, rol (dev/scout).
 - Subida de imágenes con preview (dropzone + por URL).
+- **Zona horaria explícita**: bajo el campo de fecha se muestra la zona del dispositivo (ej. "Hora de Bogotá (UTC-5)") y, al elegir hora, el equivalente en UTC ("16:00 local · 21:00 UTC") para evitar confusiones. El mismo hint (compacto) existe en el editor de launches del admin.
 
 ### Detalle de launch
 - Tesis y comentarios de la comunidad (+puntos), hype, seguir al autor, socials, checks de seguridad y **gráfico en vivo** (si el launch tiene CA del token) con enlaces externos GMGN/Axiom.
@@ -118,9 +122,14 @@ public/uploads/               # Imágenes subidas (logos/banners)
 
 ### Perfil ("Mi Cabal")
 - Editar **foto de perfil** (upload), nombre, bio; ver balance, historial de puntos y follows.
+- **Wallets conectadas** (sept 2026): por red (Solana, EVM, Tron, Robinhood…). Dos formas: con wallet del navegador (Phantom en Solana, MetaMask en EVM) o pegando la dirección a mano.
+- **Verificación de posesión por firma**: mensaje firmado con la wallet (ed25519 en Solana vía tweetnacl; `personal_sign` en EVM vía ecrecover de ethers) → badge "Firmada" y **+10 pts (una vez)**.
+- **Track record de dev**: el dev reclama el CA de un token antiguo + su wallet de despliegue; el backend consulta **DexScreener** (par principal: MC, FDV, liquidez, volumen 24h, Δ24h, edad del par), **GeckoTerminal OHLCV** (ATH histórico y su fecha) y el **RPC de Solana** (concentración top-10 del supply, mejor esfuerzo). El token queda "Verificado" con sus métricas reales en el perfil (badge **DEV** en el header) o "Pendiente" si no tiene par activo, con botón reintentar.
+- Las verificaciones otorgan `isDev` al usuario y se listan en `MeDTO.wallets` / `MeDTO.devClaims`.
 
 ### Panel admin (`/?admin=1`, creds `admin` / `admin123@`)
-- Editar/crear/ocultar launches (todas las redes, fechas, privado, CA…).
+- **Login con el logo de la plataforma** (glow oliva) y logo pequeño en el header del panel.
+- Editar/crear/ocultar launches (todas las redes, fechas, privado, CA…) con hint de zona horaria.
 - Gestionar usuarios (puntos +/-, isDev, verificado).
 - Reglas de puntos editables.
 - **Plataformas afiliadas** (GMGN, Axiom…): enlace madre de referido por red con placeholders `{ca}` y `{red}`; etiqueta "DE LA RED {red}".
@@ -148,7 +157,10 @@ Métodos principales (JSON; auth por cookie de sesión; admin por cookie propia)
 | `GET /api/tokens` · `GET /api/tokens/[id]` | Listado (sort/network) · detalle |
 | `GET/POST /api/posts` · `POST /api/posts/[id]/like` | Feed · crear post · like |
 | `GET /api/leaderboard` · `GET /api/feed` | Rankings · actividad |
-| `GET /api/me` · `POST /api/me/verify` | Perfil actual · iniciar verificación OAuth |
+| `GET /api/me` · `POST /api/me/verify` | Perfil actual (incluye wallets y devClaims) · iniciar verificación OAuth |
+| `GET/POST/DELETE /api/me/wallets` | Wallets conectadas del usuario |
+| `POST /api/me/wallets/verify` | Verificar posesión por firma (+10 pts una vez) |
+| `GET/POST/DELETE /api/me/claims` | Verificación de tokens antiguos como dev (métricas on-chain reales) |
 | `POST /api/auth/register|login|logout` · `GET /api/auth/session|status` | Credenciales y sesión |
 | `POST /api/auth/social` | Login/registro social demo (sin API keys) |
 | `GET /api/auth/x/start|callback` · `GET /api/auth/google/start|callback` | OAuth X / Google (verificación y `?mode=login` para login social) |
@@ -162,6 +174,8 @@ Métodos principales (JSON; auth por cookie de sesión; admin por cookie propia)
 ## 8. Modelo de datos (Prisma/SQLite)
 
 - **User**: handle, nombre, avatar (URL de foto o emoji), bio, wallet, `passwordHash`, verificaciones (wallet/X/Google), `isDev`, `isAdmin`, `isCurrentUser`, puntos (`points`, `lifetimePoints`), followers, stats de calls.
+- **WalletLink**: wallet conectada por red (`network`, `address`, `label`, `signature` si la firma fue verificada). Único por (usuario, red, dirección).
+- **DevClaim**: reclamo "fui el dev de este token" (`network`, `contract`, `walletAddress`, `status` verified/pending, `stats` JSON con métricas on-chain reales, `verifiedAt`). Único por (usuario, red, CA).
 - **Launch**: nombre, ticker opcional, `isPrivate`, `hidden`, `submitterRole` (dev/community), imagen/banner, `network`, `launchAt`, descripción, socials, `contract` (CA), checks (`lpLocked`, `mintRevoked`, `top10Pct`), `hype`, estado.
 - **Token**: datos de mercado (price, mc, change24h, volume24h, holders, top10Pct), `contract`, dev, `isRug`, ATH.
 - **Post**: kind (thesis/comment/call/trade), contenido, likes, link opcional a launch/token, PnL.
@@ -184,6 +198,8 @@ bun run db:generate # Regenerar cliente Prisma
 - **Booleans desde FormData**: parsear con `x === true || x === 'true'` (nunca `Boolean(str)`).
 - **`cn()` usa tailwind-merge**: el último `text-[Npx]` gana; por eso los componentes de píldoras fijan su tamaño en un span interno para no heredar tamaños del padre.
 - **Tarjetas del grid**: llevar `min-w-0` en el elemento raíz para evitar el "grid blowout" (que la tarjeta crezca más allá del viewport en móvil).
+- **DialogContent es un grid de pista auto**: un hijo con max-content grande (ej. un CA en `font-mono`) estira TODAS las filas y desborda el diálogo en móvil. En diálogos con contenido variable añadir `grid-cols-[minmax(0,1fr)]` + `min-w-0`/`truncate` en las filas internas.
+- **Avatares**: `UserAvatar` solo renderiza `<Image>` si el src es URL real (`https://`, `/uploads/`, `/seed/`); los emojis se pintan como texto (evita peticiones 404 a `/{emoji}`).
 - **Redes soportadas**: `solana`, `base`, `ethereum`, `bsc`, `tron`, `robinhood` (`NETWORKS` en `src/lib/cabal.ts`; logos en `NetworkIcon`).
 - **z-ai-web-dev-sdk**: solo en backend (skills de IA: imagen, búsqueda, etc.).
 - **Sin contenido de ejemplo**: el seed solo crea reglas de puntos, usuarios base y follows; los launches/tokens visibles son los que suba el usuario.
@@ -191,6 +207,17 @@ bun run db:generate # Regenerar cliente Prisma
 ## 11. Registro de cambios (changelog)
 
 > Añadir una entrada por cada cambio relevante, con fecha (zona horaria America/Bogota).
+
+### 2026-09-05
+- **Logo en el login del panel admin**: el logo de la plataforma (`/cabal-logo.png`) con glow sobre el wordmark en `/admin`, y versión pequeña en el header del dashboard (una sola línea en móvil).
+- **Zona horaria visible al elegir la fecha**: nuevo `TimezoneHint` (en `shared.tsx`) usado en `/publicar` y en el editor del admin: muestra la zona del dispositivo ("Hora de Bogotá (UTC-5)") y, al elegir hora, el equivalente UTC ("16:00 local · 21:00 UTC").
+- **Wallets + track record de dev en el perfil**:
+  - Nuevos modelos `WalletLink` y `DevClaim`; `MeDTO` incluye `wallets` y `devClaims`.
+  - Conectar wallets por red (Phantom/MetaMask si hay extensión, o dirección pegada) con verificación de posesión por firma real (ed25519/personal_sign → +10 pts una vez, badge "Firmada").
+  - Verificación de tokens antiguos como dev: el backend trae métricas reales de DexScreener (MC, FDV, liquidez, volumen, Δ24h, edad), ATH histórico de GeckoTerminal OHLCV y top-10% del supply vía RPC de Solana (mejor esfuerzo). Badge **DEV** en el perfil; tokens sin par activo quedan "Pendientes" con reintento.
+  - Nuevas rutas: `/api/me/wallets`, `/api/me/wallets/verify`, `/api/me/claims`; libs `chain-stats.ts` y `wallet-verify.ts`; deps `tweetnacl`, `bs58`, `ethers`.
+- **Fixes de overflow/rendimiento**: `DialogContent` con `grid-cols-[minmax(0,1fr)]` en el perfil (un CA largo estiraba todo el diálogo), blob del header recortado (`overflow-hidden`), y `UserAvatar` ya no trata emojis como `<Image src>` (eliminaba 404s a `/{emoji}`).
+- Verificado E2E (agent-browser con TZ America/Bogota): login admin con logo, hints de zona en `/publicar` y admin (390/1280px), flujo completo de wallet+firma+claim con datos reales (Bonk/WIF) sin overflow a 390px; lint limpio.
 
 ### 2026-09-04 (tarde)
 - **Login social con X / Google**: botones "X" y "Google" en el diálogo de iniciar sesión/crear cuenta. Con API keys corre OAuth 2.0 real (`/api/auth/{provider}/start?mode=login` + callbacks que crean sesión); sin keys usa el consentimiento simulado y `POST /api/auth/social`. La cuenta se crea automáticamente si la identidad no existe (handle único derivado, +5 pts de verificación). `OAuthConsentDialog` soporta `mode: link | login`.

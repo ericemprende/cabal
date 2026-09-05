@@ -383,3 +383,26 @@ Stage Summary:
 - Cuenta atrás con minutos y segundos en hero/sidebars siempre, y en tarjetas cuando falta <24h.
 - Login social directo con X/Google funcional en demo; listo para OAuth real configurando X_CLIENT_ID/X_CLIENT_SECRET y GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET.
 - README.md actualizado (auth social, filtros, countdown, changelog 2026-09-04 tarde).
+
+---
+Task ID: admin-logo-tz-wallet-dev-verify
+Agent: main (Z.ai Code)
+Task: Logo en el login admin + zona horaria en el selector de fecha + wallets y verificación de dev en el perfil
+
+Work Log:
+- admin/page.tsx: logo /cabal-logo.png (next/image, glow oliva) sobre el wordmark en el login del panel; versión 28px en el header del dashboard con truncate para 1 sola línea en móvil.
+- shared.tsx: nuevo TimezoneHint (+timezoneInfo): muestra "Hora de {ciudad} ({offset})" con Intl.resolvedOptions y, si hay fecha elegida, "{HH:MM} local · {HH:MM} UTC" (hourCycle h23). setState async (setTimeout) para evitar cascada/cascade lint error. Usado en /publicar (max-w-sm) y en el editor de launches del admin (compact).
+- prisma/schema.prisma: modelos WalletLink (userId+network+address únicos, flag signature) y DevClaim (userId+network+contract únicos, stats JSON, status verified/pending). db:push OK. IMPORTANTE: tras regenerar el cliente Prisma hay que REINICIAR el dev server (el proceso viejo no ve walletLink/devClaim y /api/me daba 500).
+- src/lib/chain-stats.ts: fetchTokenStats(network, ca) → DexScreener (par con más liquidez del CA: price, fdv, marketCap, liquidity, volume h24, change24h, pairCreatedAt, dexId, url) + ATH vía GeckoTerminal OHLCV day (athPrice, athAt, athFdv = athPrice × fdv/price) + top10Pct vía RPC Solana (getTokenLargestAccounts+getTokenSupply, best-effort, el RPC público suele dar 429). isValidNetwork/isValidContract por red.
+- src/lib/wallet-verify.ts: walletMessage(address) + verifyWalletSignature: Solana ed25519-detached (tweetnacl + bs58), EVM personal_sign (ethers verifyMessage). Deps nuevas: tweetnacl, bs58, ethers (solo lado servidor ethers/nacl).
+- API: /api/me/wallets (GET/POST upsert/DELETE propio), /api/me/wallets/verify (POST {id, message, signature} → firma correcta → signature=true, user.wallet+walletVerified, awardOnce verify_wallet +10), /api/me/claims (GET/POST upsert con fetchTokenStats → verified setea user.isDev / pending con note / DELETE propio). PointReason += 'verify_wallet'. /api/me GET ahora incluye wallets y devClaims (stats parseados).
+- api-client.ts: tipos PhantomProvider/EvmProvider + declare global window, injectedWalletFor(network), requestWalletSignature (phantom.signMessage → bs58 | personal_sign → hex), hooks useAddWallet/useVerifyWalletSignature/useRemoveWallet/useVerifyDevToken/useRemoveDevToken (invalidan ['me']).
+- profile-dialog.tsx: sección "Wallets y track record de dev" con WalletManager (chips de red + botón Phantom/MetaMask si hay inyección + input dirección), WalletRow (copiar/firmar/eliminar, badge Firmada/Sin firmar), DevClaimForm (red + CA + wallet) y ClaimCard (badge Verificado/Pendiente, grid de métricas MC/ATH/Liquidez/Vol/Δ24h/Top-10/Edad/ATH-fecha, link DexScreener, reintentar, eliminar). Badge DEV en el header del perfil; input wallet simple eliminado de "Editar perfil"; REASON_META += verify_wallet.
+- FIXES de overflow detectados en E2E: (1) ClaimCard: grid de métricas + labels sin min-w-0 estiraban el dialog (581px en viewport 390) → min-w-0+truncate en labels, overflow-hidden en cards; (2) DialogContent es grid de pista auto → un CA mono largo estiraba TODAS las filas → grid-cols-[minmax(0,1fr)] en el dialog de perfil; (3) blob decorativo del header (-right-12) creaba scroll horizontal → overflow-hidden en el header; (4) UserAvatar renderizaba <Image> con emojis (src="🐺") → 404s a /{emoji} en cada carga → guard isUrl (https//, /uploads/, /seed/), emojis vuelven a ser texto.
+- Verificación E2E (agent-browser): login admin con logo (desktop 1280 + móvil 390), hint TZ en /publicar con TZ=America/Bogota ("Hora de Bogota (UTC-5)", 16:00 local · 21:00 UTC) y en el editor admin (14:30 local · 19:30 UTC), flujo completo de wallet (añadida desde UI) + firma (API con ed25519 real → +10 pts) + claims de BONK y WIF con métricas REALES (Bonk MC $285M, ATH FDV $823M, liq $300K; WIF verificado), tarjetas sin overflow a 390px, leaderboard sin emojis como img y 0 peticiones 404. Datos de prueba eliminados (BD queda con los 13 usuarios del seed, 0 wallets, 0 claims). bun run lint limpio; dev.log sin errores.
+
+Stage Summary:
+- /admin ahora muestra el logo de la plataforma en el login y en el header del panel.
+- Elegir fecha/hora ya no confunde: la app muestra la zona del usuario (Bogotá UTC-5) y el equivalente UTC, en /publicar y en el admin.
+- El perfil tiene wallets conectadas por red con verificación por firma real (+10 pts) y track record de dev con métricas on-chain reales (MC, ATH, liquidez, volumen, top-10, edad) vía DexScreener/GeckoTerminal/RPC Solana; badge DEV en el perfil.
+- Arreglos transversales de overflow móvil en el dialog de perfil y eliminados los 404 de emojis como imagen.

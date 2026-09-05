@@ -178,6 +178,52 @@ export interface MeDTO extends UserDTO {
   pointEvents: PointEventDTO[]
   pointRules: Record<string, number>
   stats: { postsCount: number; launchesCount: number; hypesGiven: number; likesReceived: number }
+  wallets: WalletLinkDTO[]
+  devClaims: DevClaimDTO[]
+}
+
+export interface WalletLinkDTO {
+  id: string
+  network: string
+  address: string
+  label: string
+  signature: boolean
+  createdAt: string
+}
+
+/** Métricas on-chain reales de un token verificado (DexScreener/GeckoTerminal/RPC). */
+export interface DevClaimStats {
+  found: boolean
+  name: string
+  symbol: string
+  priceUsd: number | null
+  fdv: number | null
+  marketCap: number | null
+  liquidityUsd: number | null
+  volume24h: number | null
+  change24h: number | null
+  pairCreatedAt: number | null
+  dexId: string
+  pairUrl: string
+  athPrice: number | null
+  athAt: number | null
+  athFdv: number | null
+  top10Pct: number | null
+}
+
+export interface DevClaimDTO {
+  id: string
+  network: string
+  contract: string
+  walletAddress: string
+  name: string
+  symbol: string
+  status: 'verified' | 'pending' | string
+  note: string
+  stats: DevClaimStats | null
+  source: string
+  createdAt: string
+  verifiedAt: string | null
 }
 
 export interface AdminOverviewDTO {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Check, CheckCircle2, Copy, Lock, Timer, XCircle, Zap } from 'lucide-react'
+import { Check, CheckCircle2, Copy, Globe2, Lock, Timer, XCircle, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
 
@@ -19,6 +19,82 @@ export function CabalWordmark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
     >
       Cabal
     </span>
+  )
+}
+
+// ---------- Zona horaria del selector de fecha ----------
+// Ej: "Bogotá · UTC-5" y, si hay hora elegida, "16:00 (local) · 21:00 UTC".
+// Evita confusiones: datetime-local SIEMPRE se interpreta en la hora del dispositivo.
+export type TzInfo = { city: string; offsetLabel: string }
+
+export function timezoneInfo(): TzInfo {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    const city = tz.split('/').pop()?.replace(/_/g, ' ') ?? tz
+    // "GMT-5" / "GMT+2" / "GMT" → "UTC-5" / "UTC+2" / "UTC±0"
+    const parts = new Intl.DateTimeFormat('en', { timeZoneName: 'shortOffset' }).formatToParts(new Date())
+    const raw = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT'
+    const offsetLabel = raw === 'GMT' ? 'UTC+0' : raw.replace('GMT', 'UTC')
+    return { city, offsetLabel }
+  } catch {
+    return { city: 'UTC', offsetLabel: 'UTC+0' }
+  }
+}
+
+export function TimezoneHint({
+  value,
+  className,
+  compact,
+}: {
+  /** Valor del input datetime-local (ej: "2026-09-10T16:00") */
+  value?: string
+  className?: string
+  compact?: boolean
+}) {
+  const [tz, setTz] = useState<TzInfo | null>(null)
+  useEffect(() => {
+    // async: evita cascada de renders y mismatch de hidratación SSR/cliente
+    const t = setTimeout(() => setTz(timezoneInfo()), 0)
+    return () => clearTimeout(t)
+  }, [])
+
+  const local = value ? new Date(value) : null
+  const valid = local && !Number.isNaN(local.getTime())
+
+  return (
+    <p
+      className={cn(
+        'flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] leading-relaxed text-muted-foreground',
+        className
+      )}
+    >
+      <Globe2 className="h-3 w-3 shrink-0 text-primary/60" aria-hidden />
+      <span>
+        {tz ? (
+          <>
+            Hora de <span className="font-semibold text-zinc-300">{tz.city}</span> ({tz.offsetLabel})
+          </>
+        ) : (
+          'Detectando zona horaria…'
+        )}
+      </span>
+      {valid && (
+        <span className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 rounded bg-white/5 px-1.5 py-px font-medium text-zinc-300">
+          <span className="tabular-nums">
+            {local!.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })} local
+          </span>
+          <span aria-hidden className="text-zinc-600">·</span>
+          <span className="tabular-nums">
+            {local!.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'UTC' })} UTC
+          </span>
+        </span>
+      )}
+      {!compact && (
+        <span className="basis-full">
+          La hora elegida es la de tu dispositivo; cada usuario la ve convertida a su zona.
+        </span>
+      )}
+    </p>
   )
 }
 
@@ -70,7 +146,11 @@ export function UserAvatar({
             ? 'h-12 w-12 text-sm'
             : 'h-16 w-16 text-lg'
   const [imgOk, setImgOk] = useState(true)
-  const showImg = !!src && imgOk
+  // Solo es imagen si es una URL real (https, /uploads/, /seed/);
+  // los emojis (avatar por defecto) se muestran como texto, no como <img>.
+  const isUrl =
+    !!src && (/^https:\/\/\S+$/i.test(src) || src.startsWith('/uploads/') || src.startsWith('/seed/'))
+  const showImg = isUrl && imgOk
   return (
     <div className="relative shrink-0">
       {showImg ? (

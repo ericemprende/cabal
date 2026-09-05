@@ -1,11 +1,13 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import bs58 from 'bs58'
 import { toast } from 'sonner'
 import type {
   AdminOverviewDTO,
   AdminUserRowDTO,
   AffiliatePlatformDTO,
+  DevClaimDTO,
   LaunchDetailDTO,
   LaunchDTO,
   LeaderboardDTO,
@@ -35,6 +37,62 @@ export type AuthStatusDTO = {
 export type SessionDTO = {
   loggedIn: boolean
   user?: UserDTO
+}
+
+// ---------- Proveedores de wallet del navegador ----------
+type PhantomProvider = {
+  connect?: () => Promise<{ publicKey: { toString(): string } }>
+  signMessage?: (msg: Uint8Array, enc: 'utf8') => Promise<{ signature: Uint8Array }>
+}
+
+type EvmProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+}
+
+declare global {
+  interface Window {
+    phantom?: { solana?: PhantomProvider }
+    solana?: PhantomProvider
+    ethereum?: EvmProvider
+  }
+}
+
+/** ¿Hay wallet del navegador disponible para esta red? */
+export function injectedWalletFor(network: string): 'phantom' | 'evm' | null {
+  if (typeof window === 'undefined') return null
+  const solana = ['solana'].includes(network)
+  if (solana && (window.phantom?.solana || window.solana)) return 'phantom'
+  if (['ethereum', 'base', 'bsc', 'robinhood'].includes(network) && window.ethereum) return 'evm'
+  return null
+}
+
+/**
+ * Pide la firma del mensaje de verificación con la wallet del navegador:
+ * - Solana: phantom.solana.signMessage → base58 (verificada con tweetnacl).
+ * - EVM: personal_sign → verificada con ecrecover (ethers) en el backend.
+ */
+export async function requestWalletSignature(
+  network: string,
+  address: string,
+  message: string
+): Promise<string> {
+  if (network === 'solana') {
+    const provider = window.phantom?.solana ?? window.solana
+    if (!provider?.signMessage) throw new Error('No se detectó Phantom. Instala la extensión o pega la dirección.')
+    const encoded = new TextEncoder().encode(message)
+    const res = await provider.signMessage(encoded, 'utf8')
+    return bs58.encode(res.signature)
+  }
+  const ethereum = window.ethereum
+  if (!ethereum) throw new Error('No se detectó MetaMask. Instala la extensión o pega la dirección.')
+  await ethereum.request({ method: 'eth_requestAccounts' })
+  const hexMessage =
+    '0x' +
+    Array.from(new TextEncoder().encode(message))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
+  const sig = await ethereum.request({ method: 'personal_sign', params: [hexMessage, address] })
+  return String(sig)
 }
 
 export const qk = {
@@ -354,6 +412,97 @@ export function useVerifyProvider() {
           { description: vars.provider === 'x' ? 'Cuenta de X conectada' : 'Cuenta de Google conectada' }
         )
       }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ---------- Wallets y verificación de dev ----------
+
+export function useAddWallet() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { network: string; address: string; label?: string }) =>
+      jsonFetch<{ id: string }>('/api/me/wallets', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Wallet conectada', { description: 'Fírmala para verificar que eres el dueño' })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+/** Firma la posesión de la wallet con el proveedor del navegador y la verifica en el backend. */
+export function useVerifyWalletSignature() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: async (data: { id: string; network: string; address: string }) => {
+      const message = `Cabal: verifico que soy el dueño de la wallet ${data.address}\nFirmar este mensaje es seguro y no da acceso a tus fondos.`
+      const signature = await requestWalletSignature(data.network, data.address, message)
+      return jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/me/wallets/verify', {
+        method: 'POST',
+        body: JSON.stringify({ id: data.id, message, signature }),
+      })
+    },
+    onSuccess: (res) => {
+      invalidate()
+      toast.success(
+        res.pointsEarned > 0 ? `Wallet verificada · +${res.pointsEarned} puntos Cabal` : 'Wallet verificada',
+        { description: 'Firma comprobada criptográficamente' }
+      )
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useRemoveWallet() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (id: string) =>
+      jsonFetch<{ ok: boolean }>(`/api/me/wallets?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Wallet desconectada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useVerifyDevToken() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { network: string; contract: string; walletAddress: string }) =>
+      jsonFetch<{ ok: boolean; verified: boolean; claim: DevClaimDTO }>('/api/me/claims', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res) => {
+      invalidate()
+      if (res.verified) {
+        toast.success('Token verificado on-chain', {
+          description: 'Tus métricas como dev ya aparecen en tu perfil',
+        })
+      } else {
+        toast.warning('Token guardado como pendiente', {
+          description: 'No encontramos un par activo para ese CA; reinténtalo más tarde.',
+        })
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useRemoveDevToken() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (id: string) =>
+      jsonFetch<{ ok: boolean }>(`/api/me/claims?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Token eliminado del track record')
     },
     onError: (e: Error) => toast.error(e.message),
   })

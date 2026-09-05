@@ -1,12 +1,15 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import {
+  Activity,
   AtSign,
   BadgeCheck,
   CalendarDays,
   ChevronDown,
   Copy,
+  Droplets,
+  ExternalLink,
   Flame,
   Gift,
   GraduationCap,
@@ -17,7 +20,10 @@ import {
   MessageSquare,
   RefreshCw,
   Rocket,
+  ShieldCheck,
   Trash2,
+  TrendingUp,
+  Users,
   Wallet,
   Zap,
 } from 'lucide-react'
@@ -28,9 +34,23 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { PointsPill, UserAvatar } from '@/components/cabal/shared'
-import { timeAgo } from '@/lib/cabal'
-import { uploadImage, useAuthStatus, useMe, useUpdateMe, useVerifyProvider, type AuthStatusDTO } from '@/lib/api-client'
+import { NETWORKS, shortWallet, timeAgo } from '@/lib/cabal'
+import { PointsPill, UserAvatar, NetworkIcon } from '@/components/cabal/shared'
+import {
+  injectedWalletFor,
+  uploadImage,
+  useAddWallet,
+  useAuthStatus,
+  useMe,
+  useRemoveDevToken,
+  useRemoveWallet,
+  useUpdateMe,
+  useVerifyDevToken,
+  useVerifyProvider,
+  useVerifyWalletSignature,
+  type AuthStatusDTO,
+} from '@/lib/api-client'
+import type { DevClaimDTO, MeDTO, WalletLinkDTO } from '@/lib/types'
 import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 
@@ -45,6 +65,7 @@ const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   redeem: { label: 'Canje', icon: RefreshCw },
   verify_x: { label: 'Cuenta de X verificada', icon: AtSign },
   verify_google: { label: 'Cuenta de Google verificada', icon: Mail },
+  verify_wallet: { label: 'Wallet verificada con firma', icon: ShieldCheck },
 }
 
 export function ProfileDialog() {
@@ -53,7 +74,7 @@ export function ProfileDialog() {
 
   return (
     <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+      <DialogContent className="max-h-[88vh] grid-cols-[minmax(0,1fr)] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
         {me && <ProfileContent me={me} />}
       </DialogContent>
     </Dialog>
@@ -67,7 +88,6 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
   const [consent, setConsent] = useState<'x' | 'google' | null>(null)
   const [name, setName] = useState(me.name)
   const [bio, setBio] = useState(me.bio ?? '')
-  const [wallet, setWallet] = useState(me.wallet ?? '')
   const [avatar, setAvatar] = useState(me.avatar)
 
   /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo si no. */
@@ -84,14 +104,13 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
       name,
       bio,
       avatar,
-      wallet: wallet.trim() && wallet.trim().length >= 20 ? wallet.trim() : (me.wallet ?? ''),
     })
     setProfileOpen(false)
   }
 
   return (
     <>
-        <div className="relative border-b border-white/10 p-5">
+        <div className="relative overflow-hidden border-b border-white/10 p-5">
           <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#8FA83F]/8 blur-3xl" />
           <div className="relative flex items-center gap-4">
             <UserAvatar name={me?.name} handle={me?.handle} src={avatar} size="xl" verified={me?.walletVerified} />
@@ -103,6 +122,11 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
                 <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-muted-foreground">
                   Rank #{me?.pointsRank} por puntos
                 </span>
+                {me?.isDev && (
+                  <span className="flex items-center gap-1 rounded-full border border-[#8FA83F]/30 bg-[#8FA83F]/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                    <ShieldCheck className="h-3 w-3" aria-hidden /> DEV
+                  </span>
+                )}
                 {me?.isAdmin && (
                   <span className="rounded-full bg-[#8FA83F]/12 px-2 py-0.5 text-[11px] font-bold text-primary">ADMIN</span>
                 )}
@@ -192,6 +216,12 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           <ApiSetupHelp status={authStatus} />
         </div>
 
+        {/* Wallets conectadas + verificación de tokens como dev */}
+        <div className="space-y-2.5 border-b border-white/10 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallets y track record de dev</p>
+          <WalletManager me={me} />
+        </div>
+
         {/* Edit profile */}
         <div className="space-y-3.5 p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editar perfil</p>
@@ -207,23 +237,9 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             busy={updateMe.isPending}
           />
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="pf-name" className="text-xs text-muted-foreground">Nombre</Label>
-              <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} className="h-9 bg-[#0a0b08]" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pf-wallet" className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Wallet className="h-3 w-3" /> Wallet {me?.walletVerified && <BadgeCheck className="h-3 w-3 text-primary" />}
-              </Label>
-              <Input
-                id="pf-wallet"
-                value={wallet}
-                onChange={(e) => setWallet(e.target.value)}
-                placeholder="Conecta tu wallet (0x…)"
-                className="h-9 bg-[#0a0b08] font-mono text-xs"
-              />
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pf-name" className="text-xs text-muted-foreground">Nombre</Label>
+            <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} className="h-9 bg-[#0a0b08]" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pf-bio" className="text-xs text-muted-foreground">Bio</Label>
@@ -435,6 +451,510 @@ function CallbackUrl({ url, onCopy }: { url?: string; onCopy: () => void }) {
       >
         <Copy className="h-3 w-3" aria-hidden />
       </button>
+    </div>
+  )
+}
+
+// ================= WALLET + TRACK RECORD DE DEV =================
+
+const fmtCompact = new Intl.NumberFormat('es', { notation: 'compact', maximumFractionDigits: 2 })
+const fmtUsd = (n: number | null | undefined) =>
+  n == null ? '—' : `$${fmtCompact.format(n)}`
+const fmtPct = (n: number | null | undefined) => (n == null ? '—' : `${n}%`)
+const ageOf = (ms: number | null | undefined) =>
+  ms == null ? '—' : timeAgo(new Date(ms).toISOString())
+
+/**
+ * Gestor de wallets conectadas + verificación de tokens antiguos como dev.
+ * - Conectar: wallet inyectada (Phantom/MetaMask) o dirección pegada a mano.
+ * - Verificar posesión: firma criptográfica (ed25519 / personal_sign).
+ * - Track record: reclama un CA y el backend trae métricas reales on-chain
+ *   (MC, ATH, liquidez, volumen, concentración) vía DexScreener/GeckoTerminal.
+ */
+function WalletManager({ me }: { me: MeDTO }) {
+  const [network, setNetwork] = useState('solana')
+  const [address, setAddress] = useState('')
+  const [walletKind, setWalletKind] = useState<'phantom' | 'evm' | null>(null)
+
+  useEffect(() => {
+    // async: las wallets inyectadas solo existen en el cliente
+    const t = setTimeout(() => setWalletKind(injectedWalletFor(network)), 0)
+    return () => clearTimeout(t)
+  }, [network])
+
+  const addWallet = useAddWallet()
+  const verifySig = useVerifyWalletSignature()
+  const removeWallet = useRemoveWallet()
+  const verifyToken = useVerifyDevToken()
+  const removeClaim = useRemoveDevToken()
+
+  const connectInjected = async () => {
+    try {
+      if (walletKind === 'phantom') {
+        const provider = window.phantom?.solana ?? window.solana
+        if (!provider?.connect) throw new Error('No se detectó Phantom')
+        const res = await provider.connect()
+        setAddress(res.publicKey.toString())
+      } else if (walletKind === 'evm') {
+        const accounts = (await window.ethereum?.request({ method: 'eth_requestAccounts' })) as
+          | string[]
+          | undefined
+        if (accounts?.[0]) setAddress(accounts[0])
+      } else {
+        toast.error('No hay wallet del navegador para esta red; pega la dirección a mano')
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Conexión rechazada')
+    }
+  }
+
+  const add = () => {
+    const a = address.trim()
+    if (!a) {
+      toast.error('Pega la dirección de tu wallet')
+      return
+    }
+    addWallet.mutate(
+      {
+        network,
+        address: a,
+        label: walletKind === 'phantom' ? 'Phantom' : walletKind === 'evm' ? 'MetaMask' : 'Manual',
+      },
+      { onSuccess: () => setAddress('') }
+    )
+  }
+
+  const unsigned = me.wallets.filter((w) => !w.signature)
+
+  return (
+    <div className="space-y-3">
+      {/* Wallets conectadas */}
+      {me.wallets.length > 0 && (
+        <div className="space-y-1.5">
+          {me.wallets.map((w) => (
+            <WalletRow
+              key={w.id}
+              wallet={w}
+              onRemove={() => removeWallet.mutate(w.id)}
+              onVerify={() => verifySig.mutate({ id: w.id, network: w.network, address: w.address })}
+              verifying={verifySig.isPending}
+              busy={removeWallet.isPending}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Conectar nueva wallet */}
+      <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+        <p className="flex items-center gap-1.5 text-[13px] font-bold">
+          <Wallet className="h-3.5 w-3.5 text-primary" aria-hidden /> Conectar wallet
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Red de la wallet">
+          {Object.entries(NETWORKS).map(([key, meta]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setNetwork(key)}
+              aria-pressed={network === key}
+              className={cn(
+                'flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
+                network === key
+                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                  : 'border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground'
+              )}
+            >
+              <NetworkIcon network={key} className="h-3 w-3" />
+              {meta.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <Input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder={`Dirección ${NETWORKS[network as keyof typeof NETWORKS]?.label ?? network}…`}
+            inputMode="text"
+            spellCheck={false}
+            autoComplete="off"
+            aria-label={`Dirección de wallet en ${network}`}
+            className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-xs"
+          />
+          {walletKind && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={connectInjected}
+              className="h-9 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+            >
+              {walletKind === 'phantom' ? 'Phantom' : 'MetaMask'}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={add}
+            disabled={addWallet.isPending}
+            className="h-9 shrink-0 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+          >
+            {addWallet.isPending ? '…' : 'Conectar'}
+          </Button>
+        </div>
+        {unsigned.length > 0 && (
+          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+            Firma la wallet para probar que eres el dueño (+10 pts, una vez). Si no tienes la
+            extensión a mano, la dirección queda guardada igualmente.
+          </p>
+        )}
+      </div>
+
+      {/* Verificar tokens antiguos como dev */}
+      <DevClaimForm
+        me={me}
+        onVerify={(data) => verifyToken.mutate(data)}
+        verifying={verifyToken.isPending}
+      />
+
+      {/* Track record */}
+      {me.devClaims.length > 0 ? (
+        <div className="space-y-2">
+          {me.devClaims.map((claim) => (
+            <ClaimCard
+              key={claim.id}
+              claim={claim}
+              onRetry={() =>
+                verifyToken.mutate({
+                  network: claim.network,
+                  contract: claim.contract,
+                  walletAddress: claim.walletAddress,
+                })
+              }
+              onDelete={() => removeClaim.mutate(claim.id)}
+              busy={verifyToken.isPending || removeClaim.isPending}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-xl border border-dashed border-white/10 px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
+          Lanzaste tokens antes de Cabal? Pega el CA y verifica on-chain que fuiste el dev:
+          tu perfil mostrará el ATH, la liquidez y la concentración real de esos tokens.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function WalletRow({
+  wallet,
+  onRemove,
+  onVerify,
+  verifying,
+  busy,
+}: {
+  wallet: WalletLinkDTO
+  onRemove: () => void
+  onVerify: () => void
+  verifying?: boolean
+  busy?: boolean
+}) {
+  const copy = () => {
+    navigator.clipboard?.writeText(wallet.address).then(
+      () => toast.success('Dirección copiada'),
+      () => toast.error('No se pudo copiar')
+    )
+  }
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#0a0b08] p-2.5">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5" aria-hidden>
+        <NetworkIcon network={wallet.network} className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5 text-[12px] font-bold">
+          <span className="truncate">{shortWallet(wallet.address)}</span>
+          {wallet.signature ? (
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[#8FA83F]/15 px-1 py-px text-[9px] font-black uppercase text-primary">
+              <BadgeCheck className="h-2.5 w-2.5" aria-hidden /> Firmada
+            </span>
+          ) : (
+            <span className="shrink-0 rounded bg-white/8 px-1 py-px text-[9px] font-black uppercase text-zinc-400">
+              Sin firmar
+            </span>
+          )}
+        </p>
+        <p className="truncate text-[10px] text-muted-foreground">
+          {NETWORKS[wallet.network as keyof typeof NETWORKS]?.label ?? wallet.network}
+          {wallet.label ? ` · ${wallet.label}` : ''}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={copy}
+          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+          aria-label="Copiar dirección"
+        >
+          <Copy className="h-3 w-3" />
+        </Button>
+        {!wallet.signature && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onVerify}
+            disabled={verifying}
+            className="h-7 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2 text-[10px] font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+          >
+            {verifying ? 'Firmando…' : 'Firmar'}
+          </Button>
+        )}
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={onRemove}
+          disabled={busy}
+          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-[#ff8080]"
+          aria-label="Desconectar wallet"
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** Formulario para reclamar un token antiguo (CA) como dev. */
+function DevClaimForm({
+  me,
+  onVerify,
+  verifying,
+}: {
+  me: MeDTO
+  onVerify: (data: { network: string; contract: string; walletAddress: string }) => void
+  verifying?: boolean
+}) {
+  const [network, setNetwork] = useState('solana')
+  const [contract, setContract] = useState('')
+  const [walletAddress, setWalletAddress] = useState(me.wallet ?? me.wallets[0]?.address ?? '')
+
+  const submit = () => {
+    const ca = contract.trim()
+    const w = walletAddress.trim()
+    if (!ca) {
+      toast.error('Pega el CA del token')
+      return
+    }
+    if (!w) {
+      toast.error('Conecta o pega la wallet con la que lanzaste el token')
+      return
+    }
+    onVerify({ network, contract: ca, walletAddress: w })
+    setContract('')
+  }
+
+  return (
+    <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/8 to-transparent p-3">
+      <p className="flex items-center gap-1.5 text-[13px] font-bold">
+        <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden /> Verificar token como dev
+      </p>
+      <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Red del token">
+        {Object.entries(NETWORKS).map(([key, meta]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setNetwork(key)}
+            aria-pressed={network === key}
+            className={cn(
+              'flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
+              network === key
+                ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                : 'border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground'
+            )}
+          >
+            <NetworkIcon network={key} className="h-3 w-3" />
+            {meta.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2.5 space-y-2">
+        <Input
+          value={contract}
+          onChange={(e) => setContract(e.target.value)}
+          placeholder="CA / dirección del contrato del token"
+          inputMode="text"
+          spellCheck={false}
+          autoComplete="off"
+          aria-label="CA del token"
+          className="h-9 bg-[#0a0b08] font-mono text-xs"
+        />
+        <Input
+          value={walletAddress}
+          onChange={(e) => setWalletAddress(e.target.value)}
+          placeholder="Tu wallet de despliegue (la que firmó el deploy)"
+          inputMode="text"
+          spellCheck={false}
+          autoComplete="off"
+          aria-label="Wallet de despliegue"
+          className="h-9 bg-[#0a0b08] font-mono text-xs"
+        />
+        <Button
+          onClick={submit}
+          disabled={verifying}
+          className="h-9 w-full gap-1.5 rounded-lg bg-primary text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+        >
+          <TrendingUp className="h-3.5 w-3.5" aria-hidden />
+          {verifying ? 'Consultando on-chain…' : 'Verificar on-chain'}
+        </Button>
+        <p className="text-[10px] leading-relaxed text-muted-foreground">
+          Consultamos DexScreener y GeckoTerminal: si el token tiene par activo, tu perfil
+          mostrará el market cap, el ATH, la liquidez y la concentración top-10 reales.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/** Tarjeta de un token verificado (o pendiente) del track record del dev. */
+function ClaimCard({
+  claim,
+  onRetry,
+  onDelete,
+  busy,
+}: {
+  claim: DevClaimDTO
+  onRetry: () => void
+  onDelete: () => void
+  busy?: boolean
+}) {
+  const s = claim.stats
+  const verified = claim.status === 'verified' && s?.found
+  return (
+    <div
+      className={cn(
+        'min-w-0 space-y-2 rounded-xl border p-3',
+        verified ? 'border-[#8FA83F]/25 bg-[#8FA83F]/5' : 'border-amber-300/25 bg-amber-300/5'
+      )}
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5" aria-hidden>
+          <NetworkIcon network={claim.network} className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 text-[13px] font-bold">
+            <span className="min-w-0 truncate">{claim.name || claim.contract}</span>
+            {claim.symbol && (
+              <span className="shrink-0 font-mono text-[11px] text-primary">${claim.symbol}</span>
+            )}
+          </p>
+          <p className="truncate font-mono text-[10px] text-muted-foreground" title={claim.contract}>
+            {claim.contract}
+          </p>
+        </div>
+        {verified ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#8FA83F]/15 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary">
+            <BadgeCheck className="h-3 w-3" aria-hidden /> Verificado
+          </span>
+        ) : (
+          <span className="shrink-0 rounded-md bg-amber-300/12 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-300">
+            Pendiente
+          </span>
+        )}
+      </div>
+
+      {verified && s && (
+        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:grid-cols-3">
+          <Metric icon={<Activity className="h-3 w-3" />} label="MC actual" value={fmtUsd(s.marketCap ?? s.fdv)} />
+          <Metric
+            icon={<TrendingUp className="h-3 w-3" />}
+            label="ATH (FDV est.)"
+            value={fmtUsd(s.athFdv ?? s.athPrice)}
+            highlight
+          />
+          <Metric icon={<Droplets className="h-3 w-3" />} label="Liquidez" value={fmtUsd(s.liquidityUsd)} />
+          <Metric icon={<Activity className="h-3 w-3" />} label="Vol 24h" value={fmtUsd(s.volume24h)} />
+          <Metric
+            icon={<TrendingUp className="h-3 w-3" />}
+            label="Δ 24h"
+            value={s.change24h == null ? '—' : `${s.change24h > 0 ? '+' : ''}${s.change24h.toFixed(1)}%`}
+            tone={s.change24h == null ? undefined : s.change24h >= 0 ? 'up' : 'down'}
+          />
+          <Metric icon={<Users className="h-3 w-3" />} label="Top-10 supply" value={fmtPct(s.top10Pct)} />
+          <Metric icon={<CalendarDays className="h-3 w-3" />} label="Edad del par" value={ageOf(s.pairCreatedAt)} />
+          <Metric icon={<TrendingUp className="h-3 w-3" />} label="ATH fecha" value={ageOf(s.athAt)} />
+        </div>
+      )}
+      {!verified && claim.note && (
+        <p className="text-[11px] leading-relaxed text-amber-300/80">{claim.note}</p>
+      )}
+
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
+          wallet: {shortWallet(claim.walletAddress)}
+        </span>
+        <span className="ml-auto flex shrink-0 items-center gap-1">
+          {s?.pairUrl && (
+            <a
+              href={s.pairUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-7 items-center gap-1 rounded-lg border border-white/10 px-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ExternalLink className="h-3 w-3" aria-hidden /> DexScreener
+            </a>
+          )}
+          {!verified && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onRetry}
+              disabled={busy}
+              className="h-7 gap-1 rounded-lg border border-white/10 px-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className={cn('h-3 w-3', busy && 'animate-spin')} aria-hidden /> Reintentar
+            </Button>
+          )}
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onDelete}
+            disabled={busy}
+            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-[#ff8080]"
+            aria-label="Eliminar token del track record"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function Metric({
+  icon,
+  label,
+  value,
+  highlight,
+  tone,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  highlight?: boolean
+  tone?: 'up' | 'down'
+}) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-lg border border-white/8 bg-[#0a0b08]/70 px-2 py-1.5">
+      <p className="flex min-w-0 items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+        {icon}
+        <span className="min-w-0 truncate">{label}</span>
+      </p>
+      <p
+        className={cn(
+          'truncate text-[13px] font-bold tabular-nums',
+          highlight && 'text-primary',
+          tone === 'up' && 'text-primary',
+          tone === 'down' && 'text-[#ff8080]'
+        )}
+      >
+        {value}
+      </p>
     </div>
   )
 }

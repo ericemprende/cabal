@@ -38,6 +38,8 @@ model User {
   followersRel  Follow[] @relation("followTarget")
   followingRel  Follow[] @relation("followUser")
   pointEvents   PointEvent[]
+  wallets       WalletLink[]
+  devClaims     DevClaim[]
 }
 
 model Launch {
@@ -153,4 +155,42 @@ model Follow {
   targetId String
   target   User   @relation("followTarget", fields: [targetId], references: [id])
   @@unique([userId, targetId])
+}
+
+// Wallets conectadas por el usuario (Phantom/MetaMask/dirección pegada).
+// "signature" = la firma del mensaje fue verificada criptográficamente
+// (Solana ed25519 con tweetnacl; EVM personal_sign con ecrecover de ethers).
+model WalletLink {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  network   String // solana | ethereum | base | bsc | tron | robinhood
+  address   String
+  label     String   @default("") // Phantom, MetaMask, manual…
+  signature Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, network, address])
+}
+
+// Verificación de "fui el dev de ese token": el usuario reclama un CA
+// antiguo; el backend consulta DexScreener/GeckoTerminal y guarda las
+// métricas reales (MC, ATH, liquidez, volumen) en "stats" (JSON).
+model DevClaim {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  network       String
+  contract      String
+  walletAddress String
+  name          String    @default("")
+  symbol        String    @default("")
+  status        String    @default("pending") // verified | pending
+  note          String    @default("")
+  stats         String    @default("{}")
+  source        String    @default("dexscreener")
+  createdAt     DateTime  @default(now())
+  verifiedAt    DateTime?
+
+  @@unique([userId, network, contract])
 }

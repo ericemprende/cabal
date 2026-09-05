@@ -42,7 +42,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { NETWORKS, timeAgo } from '@/lib/cabal'
 import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
-import { PointsPill, TokenGlyph, UserAvatar, NetworkIcon } from '@/components/cabal/shared'
+import { PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import {
   jsonFetch,
@@ -663,6 +663,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
             <div className="space-y-1">
               <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fecha y hora</Label>
               <Input type="datetime-local" value={form.launchAt} onChange={(e) => set('launchAt', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px] [color-scheme:dark]" />
+              <TimezoneHint value={form.launchAt} compact />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>

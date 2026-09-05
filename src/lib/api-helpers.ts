@@ -24,6 +24,7 @@ export type PointReason =
   | 'redeem'
   | 'verify_x'
   | 'verify_google'
+  | 'verify_wallet'
 
 const REASON_TO_KEY: Record<string, string> = {
   thesis: 'points_thesis',
