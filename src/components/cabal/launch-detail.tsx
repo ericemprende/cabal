@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Image from 'next/image'
-import { Flame, Globe, Send, Twitter, Zap } from 'lucide-react'
+import { Flame, Globe, MonitorPlay, Send, Twitter, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -137,6 +137,30 @@ export function LaunchDetailDialog() {
               </div>
             </div>
 
+            {/* Transmisión en vivo (el admin/dev marcó el launch como live y pegó el link del stream) */}
+            {launch.isLive && launch.liveUrl && (
+              <section className="border-b border-white/10 p-4" aria-label="Transmisión en vivo del lanzamiento">
+                <div className="mb-2.5 flex items-center gap-2">
+                  <span className="relative flex h-2 w-2" aria-hidden>
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d5e] opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[#ff4d5e]" />
+                  </span>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    En vivo ahora
+                  </p>
+                  <a
+                    href={launch.liveUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-auto text-[11px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    Abrir en la plataforma original ↗
+                  </a>
+                </div>
+                <LiveEmbed url={launch.liveUrl} title={`Transmisión en vivo de ${launch.name}`} />
+              </section>
+            )}
+
             {/* Gráfico en vivo (solo si el launch tiene CA del token desplegado) */}
             {launch.contract && (
               <section className="border-b border-white/10 p-4" aria-label="Gráfico en vivo del token">
@@ -194,6 +218,81 @@ export function LaunchDetailDialog() {
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Convierte el link del stream a URL de reproductor embebible.
+ * Soporta YouTube (watch, live, youtu.be, shorts), Vimeo y Twitch.
+ * Devuelve null si la plataforma no tiene embed conocido → se muestra un botón de enlace.
+ */
+export function toEmbedUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw)
+    const host = u.hostname.replace(/^www\./, '').replace(/^m\./, '')
+    // YouTube: /watch?v=ID, /live/ID, /embed/ID, /shorts/ID, youtu.be/ID
+    if (host === 'youtube.com' || host === 'youtu.be') {
+      let id = ''
+      if (host === 'youtu.be') {
+        id = u.pathname.slice(1).split('/')[0]
+      } else if (u.pathname.startsWith('/live/') || u.pathname.startsWith('/embed/') || u.pathname.startsWith('/shorts/')) {
+        id = u.pathname.split('/')[2] ?? ''
+      } else if (u.pathname === '/watch') {
+        id = u.searchParams.get('v') ?? ''
+      }
+      if (!id) return null
+      // autoplay silenciado (permitido por los navegadores) · el usuario destapa el audio desde el reproductor
+      return `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&mute=1&rel=0`
+    }
+    // Vimeo: vimeo.com/ID
+    if (host === 'vimeo.com') {
+      const id = u.pathname.split('/')[1]
+      return id && /^\d+$/.test(id) ? `https://player.vimeo.com/video/${id}?autoplay=1&muted=1` : null
+    }
+    // Twitch: twitch.tv/CANAL (el parent es obligatorio)
+    if (host === 'twitch.tv') {
+      const channel = u.pathname.split('/')[1]
+      if (!channel) return null
+      if (typeof window === 'undefined') return null
+      return `https://player.twitch.tv/?channel=${encodeURIComponent(channel)}&parent=${window.location.hostname}&autoplay=true&muted=true`
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Reproductor de la transmisión en vivo: iframe 16:9 para plataformas con embed
+ * (YouTube/Vimeo/Twitch) o tarjeta con botón para abrir el link en una pestaña nueva.
+ */
+function LiveEmbed({ url, title }: { url: string; title: string }) {
+  const embed = useMemo(() => toEmbedUrl(url), [url])
+  if (!embed) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#0a0b08] text-center transition-colors hover:border-[#8FA83F]/40"
+      >
+        <MonitorPlay className="h-8 w-8 text-primary" aria-hidden />
+        <span className="text-sm font-bold">Ver transmisión en vivo</span>
+        <span className="text-[11px] text-muted-foreground">Se abre en una pestaña nueva ↗</span>
+      </a>
+    )
+  }
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-white/10 bg-black">
+      <iframe
+        src={embed}
+        title={title}
+        className="absolute inset-0 h-full w-full"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+      />
+    </div>
   )
 }
 

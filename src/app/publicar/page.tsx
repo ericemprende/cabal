@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CalendarClock, CheckCircle2, Code2, EyeOff, Hash, Radar, Rocket, Zap } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CheckCircle2, Code2, EyeOff, Hash, MonitorPlay, Radar, Rocket, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +27,7 @@ const EMPTY_FORM = {
   telegram: '',
   image: '',
   banner: '',
+  liveUrl: '',
 }
 
 export default function PublicarLaunchPage() {
@@ -34,6 +35,7 @@ export default function PublicarLaunchPage() {
   const createLaunch = useCreateLaunch()
   const [form, setForm] = useState(EMPTY_FORM)
   const [isPrivate, setIsPrivate] = useState(false)
+  const [isLive, setIsLive] = useState(false)
   const [submitterRole, setSubmitterRole] = useState<'dev' | 'community'>('community')
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -71,6 +73,11 @@ export default function PublicarLaunchPage() {
       setError('El CA/contrato solo admite letras, números y : _ - (2 a 80 caracteres)')
       return
     }
+    const liveUrl = form.liveUrl.trim()
+    if (isLive && !/^https:\/\//.test(liveUrl)) {
+      setError('El link de la transmisión en vivo debe empezar con https://')
+      return
+    }
     // datetime-local se interpreta en la zona horaria del dispositivo del publicador;
     // se convierte a instante absoluto (ISO UTC) para que cada usuario lo vea en su hora local
     const launchAtIso = new Date(form.launchAt).toISOString()
@@ -83,6 +90,8 @@ export default function PublicarLaunchPage() {
         image: form.image === 'uploading' ? '' : form.image,
         banner: form.banner === 'uploading' ? '' : form.banner,
         isPrivate: String(isPrivate),
+        isLive: String(isLive),
+        liveUrl: isLive ? liveUrl : '',
       },
       {
         onSuccess: (data) => {
@@ -102,6 +111,7 @@ export default function PublicarLaunchPage() {
   const reset = () => {
     setForm(EMPTY_FORM)
     setIsPrivate(false)
+    setIsLive(false)
     setSubmitterRole('community')
     setError('')
     setDone(false)
@@ -227,6 +237,61 @@ export default function PublicarLaunchPage() {
                   </span>
                 </span>
               </button>
+
+              {/* Lanzamiento en vivo: streaming del launch (YouTube, Twitch…) */}
+              <div
+                className={cn(
+                  'rounded-xl border p-3 transition-all',
+                  isLive ? 'border-[#8FA83F]/40 bg-[#8FA83F]/8' : 'border-white/10 bg-[#0a0b08] hover:border-white/20'
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsLive((v) => !v)}
+                  aria-pressed={isLive}
+                  className="flex w-full items-start gap-3 text-left"
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full border px-0.5 transition-colors',
+                      isLive ? 'border-[#8FA83F]/50 bg-[#8FA83F]/25' : 'border-white/15 bg-white/5'
+                    )}
+                    aria-hidden
+                  >
+                    <span
+                      className={cn(
+                        'h-3.5 w-3.5 rounded-full transition-transform',
+                        isLive ? 'translate-x-4 bg-[#8FA83F]' : 'translate-x-0 bg-zinc-400'
+                      )}
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span className={cn('flex items-center gap-1.5 text-[13px] font-bold', isLive ? 'text-primary' : 'text-foreground')}>
+                      <MonitorPlay className="h-3.5 w-3.5" aria-hidden /> Lanzamiento en vivo
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
+                      El proyecto se lanza con transmisión en directo: la ficha incrusta el video para que la comunidad lo vea sin salir de Cabal.
+                    </span>
+                  </span>
+                </button>
+                {isLive && (
+                  <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3">
+                    <Label htmlFor="pl-live" className="text-xs font-semibold">Link de la transmisión</Label>
+                    <Input
+                      id="pl-live"
+                      value={form.liveUrl}
+                      onChange={(e) => set('liveUrl', e.target.value)}
+                      placeholder="https://www.youtube.com/live/…"
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="h-10 bg-[#0a0b08] text-sm"
+                    />
+                    <p className="text-[10px] leading-relaxed text-muted-foreground">
+                      YouTube, Twitch, Vimeo o cualquier link del directo. Se incrusta automáticamente en el pop-up del launch.
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* Red */}
               <div className="space-y-1.5">

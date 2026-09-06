@@ -38,6 +38,8 @@ export async function GET(req: Request) {
       website: l.website,
       twitter: l.twitter,
       telegram: l.telegram,
+      isLive: l.isLive,
+      liveUrl: l.liveUrl,
       status: l.status,
       hype: l.hype,
       hyped: false,
@@ -90,6 +92,9 @@ export async function PATCH(req: Request) {
     if ('image' in body) data.image = safeUrl(body.image)
     if ('banner' in body) data.banner = safeUrl(body.banner)
     if ('contract' in body) data.contract = safeContract(body.contract)
+    // Streaming en vivo: toggle + link del stream (YouTube, Twitch, Vimeo…)
+    if (typeof body.isLive === 'boolean') data.isLive = body.isLive
+    if ('liveUrl' in body) data.liveUrl = body.isLive === false ? null : safeUrl(body.liveUrl)
     if (typeof body.isPrivate === 'boolean') data.isPrivate = body.isPrivate
     if (typeof body.hidden === 'boolean') data.hidden = body.hidden
     if (body.submitterRole === 'dev' || body.submitterRole === 'community') {

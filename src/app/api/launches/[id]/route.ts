@@ -48,6 +48,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       website: launch.website,
       twitter: launch.twitter,
       telegram: launch.telegram,
+      isLive: launch.isLive,
+      liveUrl: launch.liveUrl,
       status: computeLaunchStatus(launch.launchAt),
       hype: launch.hype,
       hyped: votes.some((v) => v.target === 'launch' && v.targetId === launch.id),

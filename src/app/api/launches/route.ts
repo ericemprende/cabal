@@ -39,6 +39,8 @@ export async function GET() {
       website: l.website,
       twitter: l.twitter,
       telegram: l.telegram,
+      isLive: l.isLive,
+      liveUrl: l.liveUrl,
       status: computeLaunchStatus(l.launchAt),
       hype: l.hype,
       hyped: hypedIds.has(l.id),
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
   try {
     const me = await getCurrentUser()
     const body = await req.json()
-    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram, image, banner, isPrivate, submitterRole, contract } = body
+    const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram, image, banner, isPrivate, submitterRole, contract, isLive, liveUrl } = body
     if (!name || !network || !launchAt) {
       return NextResponse.json({ error: 'Faltan campos requeridos (nombre, red y fecha)' }, { status: 400 })
     }
@@ -87,6 +89,8 @@ export async function POST(req: Request) {
       typeof contract === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim()) ? contract.trim() : null
     // La red debe ser una de las soportadas; si llega algo inválido cae a Solana
     const safeNetwork = typeof network === 'string' && network in NETWORKS ? network : 'solana'
+    // Streaming en vivo: el creador puede marcar que se emitirá en vivo y pegar el link del stream
+    const live = isLive === true || isLive === 'true'
     const launch = await db.launch.create({
       data: {
         name: String(name).slice(0, 60),
@@ -103,6 +107,8 @@ export async function POST(req: Request) {
         website: website || null,
         twitter: twitter || null,
         telegram: telegram || null,
+        isLive: live,
+        liveUrl: live ? safeUrl(liveUrl) : null,
         createdById: me.id,
       },
       include: { createdBy: true },

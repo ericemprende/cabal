@@ -524,7 +524,7 @@ function AdminLaunches({ enabled }: { enabled: boolean }) {
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
-        Corrige cualquier dato de un lanzamiento: nombre, ticker, fecha, red, imágenes, redes sociales, contrato, privacidad, visibilidad y checks de seguridad.
+        Corrige cualquier dato de un lanzamiento: nombre, ticker, fecha, red, imágenes, redes sociales, contrato, privacidad, visibilidad, checks de seguridad y el stream en vivo.
       </p>
       {launches.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
       {(launches.data ?? []).map((l) => (
@@ -551,6 +551,8 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
     twitter: launch.twitter ?? '',
     telegram: launch.telegram ?? '',
     contract: launch.contract ?? '',
+    isLive: launch.isLive ?? false,
+    liveUrl: launch.liveUrl ?? '',
     hidden: launch.hidden ?? false,
     submitterRole: launch.submitterRole,
     lpLocked: launch.lpLocked,
@@ -584,6 +586,8 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
         twitter: form.twitter.trim(),
         telegram: form.telegram.trim(),
         contract: form.contract.trim(),
+        isLive: form.isLive,
+        liveUrl: form.isLive ? form.liveUrl.trim() : '',
         hidden: form.hidden,
         submitterRole: form.submitterRole,
         lpLocked: form.lpLocked,
@@ -742,6 +746,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
               onChange={(v) => set('submitterRole', v ? 'dev' : 'community')}
               okIcon={false}
             />
+            <ChipToggle label="En vivo (streaming)" checked={form.isLive} onChange={(v) => set('isLive', v)} />
             <ChipToggle label="LP bloqueada" checked={form.lpLocked} onChange={(v) => set('lpLocked', v)} />
             <ChipToggle label="Mint revocado" checked={form.mintRevoked} onChange={(v) => set('mintRevoked', v)} />
             <span className="ml-auto flex items-center gap-1.5">
@@ -756,6 +761,21 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
               />
             </span>
           </div>
+
+          {form.isLive && (
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Link del stream en vivo (YouTube, Twitch, Vimeo…)</Label>
+              <Input
+                value={form.liveUrl}
+                onChange={(e) => set('liveUrl', e.target.value)}
+                placeholder="https://www.youtube.com/live/…"
+                autoComplete="off"
+                spellCheck={false}
+                className="h-8 bg-[#0a0b08] text-[13px]"
+              />
+              <p className="text-[10px] text-muted-foreground">Se incrusta el video en el pop-up del launch mientras esté marcado como en vivo.</p>
+            </div>
+          )}
 
           <div className="flex justify-end">
             <Button

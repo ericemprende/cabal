@@ -475,3 +475,23 @@ Stage Summary:
 - Login único: un botón → modal con ambas pestañas.
 - Token GAY restaurado con datos reales; imagen pendiente de re-upload.
 - Pendiente VPS: usuario debe crear .env en el VPS y actualizar código; push a GitHub pendiente de token nuevo.
+
+---
+Task ID: launch-live-stream
+Agent: Z.ai Code (main)
+Task: Incrustar el video del stream en el pop-up del launch cuando esté en vivo; toggle + link en el formulario; aplicado al launch de Chop con el link de YouTube dado
+
+Work Log:
+- Schema: Launch.isLive Boolean @default(false) + Launch.liveUrl String?. bun run db:push (safe: backup custom-2026-09-06T20-08-48.db, sin pérdidas) + db:generate + restart del server (patrón setsid).
+- types.ts: LaunchDTO añade isLive + liveUrl (LaunchDetailDTO hereda).
+- APIs: GET /api/launches y GET /api/launches/[id] exponen los campos; POST /api/launches acepta isLive ("true"/boolean) + liveUrl (safeUrl, solo si live); admin GET expone campos y PATCH acepta isLive boolean + liveUrl (si isLive===false se limpia el link).
+- launch-detail.tsx: sección "EN VIVO AHORA" (punto rojo pulsante + link "Abrir en la plataforma original") con LiveEmbed: iframe 16:9 (autoplay silenciado). toEmbedUrl soporta YouTube (watch/live/youtu.be/shorts), Vimeo y Twitch (parent=hostname); fallback → tarjeta "Ver transmisión en vivo".
+- /publicar: tarjeta conmutable "Lanzamiento en vivo" (mismo patrón que "Lanzamiento privado") que despliega "Link de la transmisión"; valida https://; submit envía isLive/liveUrl; reset los limpia.
+- admin-panel.tsx: chip "En vivo (streaming)" que despliega input del link; save envía isLive/liveUrl (liveUrl '' si off); descripción de la vista actualizada.
+- Chop (cmtnde8kv0005jlgzpv812c2h): isLive=true, liveUrl=https://www.youtube.com/live/xgNR6hxEtGA (link limpio, sin ?si=).
+- E2E (agent-browser): pop-up de Chop muestra "EN VIVO AHORA" + reproductor de YouTube reproduciendo (desktop y móvil 390px); admin: toggle activo con link, guardar→toast "Launch actualizado", apagar→input se oculta y DB isLive=false/liveUrl=null, encender+URL→DB restaurada; /publicar: toggle despliega input. Lint limpio, dev.log sin errores.
+
+Stage Summary:
+- El launch en vivo incrusta el stream (YouTube/Twitch/Vimeo o botón de enlace) en su ficha; controlado por el toggle "En vivo (streaming)" (admin) o la tarjeta "Lanzamiento en vivo" (/publicar).
+- Chop $CHOP ya está transmitiendo su stream de YouTube dentro del pop-up.
+- Sin regresiones: los otros 2 launches sin cambios, datos intactos, lint limpio. Commit local "launch-live-stream" (push pendiente de token GitHub).

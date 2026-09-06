@@ -212,6 +212,14 @@ bun run db:generate # Regenerar cliente Prisma
 
 > Añadir una entrada por cada cambio relevante, con fecha (zona horaria America/Bogota).
 
+### 2026-09-06 (tarde II) — Transmisión en vivo incrustada en el launch
+- **Video en vivo en el pop-up del launch**: si el launch está marcado como "en vivo" y tiene link de stream, el detalle muestra la sección "EN VIVO AHORA" (punto rojo pulsante + "Abrir en la plataforma original ↗") con el **reproductor incrustado** (16:9, autoplay silenciado).
+- **Conversión automática de embeds** (`toEmbedUrl` en `launch-detail.tsx`): YouTube (`/watch?v=`, `/live/`, `youtu.be`, `/shorts/`), Vimeo y Twitch (con `parent=hostname`). Plataformas sin embed conocido → tarjeta con botón "Ver transmisión en vivo" que abre el link.
+- **Formulario de publicar (`/publicar`)**: nueva tarjeta conmutable "Lanzamiento en vivo" (bajo "Lanzamiento privado") que despliega el campo "Link de la transmisión" (valida `https://`). Se envía con el launch (`isLive` + `liveUrl`).
+- **Panel admin → Proyectos (launches)**: chip nuevo "En vivo (streaming)" que despliega "Link del stream en vivo"; el PATCH acepta `isLive`/`liveUrl` (al desmarcar se limpia el link).
+- **Schema**: `Launch.isLive Boolean @default(false)` + `Launch.liveUrl String?` (aplicado con safe `db:push`, datos intactos). Campos expuestos en `LaunchDTO` y en las 3 rutas (`GET /api/launches`, `GET /api/launches/[id]`, admin GET/PATCH, y `POST /api/launches` para crear).
+- **Chop `$CHOP` ya está en vivo** con el stream de YouTube incrustado (`https://www.youtube.com/live/xgNR6hxEtGA`). Verificado E2E en desktop y móvil: embed reproduce dentro del pop-up, toggle admin apaga/enciende y guarda, lint limpio.
+
 ### 2026-09-06 (tarde I) — Login único, referidos 10% y reclamo de proyectos con wallet
 - **Un solo botón de acceso** (header): se quitó "Crear cuenta"; queda "Iniciar sesión" que abre el modal con pestañas (dentro se puede crear la cuenta o entrar). Registro desde UI verificado E2E.
 - **Códigos de invitación + 10% de puntos**: `User.referralCode` (auto-generado, ej. `BMM392`) + `User.referredById`. `awardPoints()` paga al invitador `floor(10%)` de lo que gane el invitado, sin cascada (reason `referral`). El registro acepta `referralCode` (input opcional en "Crear cuenta"). Perfil: sección "Invita y gana" (código + copiar + invitados + puntos ganados). **% configurable** en Admin → Reglas de puntos → "Referidos (% del equipo)" (Setting `points_referral_percent`, default 10). Verificado E2E: launch de 40 pts → invitador +4.

@@ -64,6 +64,8 @@ model Launch {
   website       String?
   twitter       String?
   telegram      String?
+  isLive        Boolean  @default(false) // el launch se emite/emitirá en vivo (streaming): activa el video incrustado en la ficha
+  liveUrl       String? // link del stream (YouTube, Twitch, Vimeo…) para incrustar en el detalle
   status        String   @default("upcoming")
   hype          Int      @default(0)
   lpLocked      Boolean  @default(false)

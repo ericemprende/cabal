@@ -74,6 +74,8 @@ export interface LaunchDTO {
   website?: string | null
   twitter?: string | null
   telegram?: string | null
+  isLive: boolean // el launch se emite en vivo (streaming)
+  liveUrl?: string | null // link del stream (YouTube, Twitch…) para incrustar en el detalle
   status: string // computed: upcoming | live | ended
   hype: number
   hyped: boolean
