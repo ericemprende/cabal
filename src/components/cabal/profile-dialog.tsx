@@ -41,7 +41,10 @@ import {
   uploadImage,
   useAddWallet,
   useAuthStatus,
+  useClaimProject,
   useMe,
+  useProjectClaims,
+  useReferral,
   useRemoveDevToken,
   useRemoveWallet,
   useUpdateMe,
@@ -66,6 +69,7 @@ const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   verify_x: { label: 'Cuenta de X verificada', icon: AtSign },
   verify_google: { label: 'Cuenta de Google verificada', icon: Mail },
   verify_wallet: { label: 'Wallet verificada con firma', icon: ShieldCheck },
+  referral: { label: 'Puntos por referidos', icon: Users },
 }
 
 export function ProfileDialog() {
@@ -188,6 +192,9 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           </div>
         </div>
 
+        {/* Invita y gana: código de referido */}
+        <ReferralSection />
+
         {/* Conexiones: X y Google (OAuth 2.0 real con fallback demo) */}
         <div className="space-y-2 border-b border-white/10 p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conexiones y verificación</p>
@@ -220,6 +227,12 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
         <div className="space-y-2.5 border-b border-white/10 p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallets y track record de dev</p>
           <WalletManager me={me} />
+        </div>
+
+        {/* Opciones avanzadas: reclamar proyectos como propios */}
+        <div className="space-y-2.5 border-b border-white/10 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Opciones avanzadas · Reclamar proyecto</p>
+          <ClaimProjectSection />
         </div>
 
         {/* Edit profile */}
@@ -268,6 +281,236 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
         <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
       </div>
       <p className="mt-0.5 text-sm font-bold tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+// ── Invita y gana: código de referido del usuario ──────────────────────────
+// Cada persona que se registra con este código deja el points_referral_percent%
+// de los puntos que genere (configurable desde el panel admin).
+function ReferralSection() {
+  const { data: ref } = useReferral()
+  const [copied, setCopied] = useState(false)
+  if (!ref) return null
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(ref.code)
+      setCopied(true)
+      toast.success('Código copiado')
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      toast.error('No se pudo copiar el código')
+    }
+  }
+
+  return (
+    <div className="space-y-2 border-b border-white/10 p-4">
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Invita y gana</p>
+      <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-3.5">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          Comparte tu código: quien se registre con él te deja el{' '}
+          <span className="font-bold text-primary">{ref.percent}%</span> de los puntos que genere en el Cabal.
+        </p>
+        <div className="mt-2.5 flex items-center gap-1.5">
+          <div className="flex h-10 min-w-0 flex-1 items-center rounded-lg border border-white/10 bg-[#0a0b08] px-3">
+            <span className="truncate font-mono text-sm font-bold tracking-[0.2em] text-primary">
+              {ref.code || '···'}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={copy}
+            className="h-10 shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+          >
+            <Copy className="h-3.5 w-3.5" aria-hidden />
+            {copied ? '¡Copiado!' : 'Copiar'}
+          </Button>
+        </div>
+        <div className="mt-2.5 grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Invitados</p>
+            <p className="text-base font-bold tabular-nums">{ref.referrals}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Puntos por referidos</p>
+            <p className="text-base font-bold tabular-nums text-primary">+{ref.earned}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Opciones avanzadas: reclamar la propiedad de un proyecto ───────────────
+// El usuario pega el CA del token, conecta su wallet y el backend verifica
+// on-chain (Solana: mint authority o creador del mint). Si no se puede
+// comprobar automáticamente queda "en revisión" para el admin.
+const CLAIM_STATUS_META: Record<string, { label: string; cls: string }> = {
+  verified: { label: 'VERIFICADO', cls: 'border-[#8FA83F]/40 bg-[#8FA83F]/12 text-primary' },
+  pending: { label: 'EN REVISIÓN', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
+  rejected: { label: 'RECHAZADO', cls: 'border-[#ff8080]/30 bg-[#ff8080]/10 text-[#ff8080]' },
+}
+
+function ClaimProjectSection() {
+  const claim = useClaimProject()
+  const { data: claimsData, isLoading } = useProjectClaims()
+  const [network, setNetwork] = useState('solana')
+  const [contract, setContract] = useState('')
+  const [wallet, setWallet] = useState('')
+  const [walletKind, setWalletKind] = useState<'phantom' | 'evm' | null>(null)
+
+  useEffect(() => {
+    const t = setTimeout(() => setWalletKind(injectedWalletFor(network)), 0)
+    return () => clearTimeout(t)
+  }, [network])
+
+  const connectInjected = async () => {
+    try {
+      if (walletKind === 'phantom') {
+        const provider = window.phantom?.solana ?? window.solana
+        if (!provider?.connect) throw new Error('No se detectó Phantom')
+        const res = await provider.connect()
+        setWallet(res.publicKey.toString())
+      } else if (walletKind === 'evm') {
+        const accounts = (await window.ethereum?.request({ method: 'eth_requestAccounts' })) as
+          | string[]
+          | undefined
+        if (accounts?.[0]) setWallet(accounts[0])
+      } else {
+        toast.error('No hay wallet del navegador para esta red; pega la dirección a mano')
+      }
+    } catch (e) {
+      toast.error((e as Error).message || 'Conexión rechazada')
+    }
+  }
+
+  const submit = () => {
+    if (!contract.trim()) {
+      toast.error('Pega el contrato (CA) del token')
+      return
+    }
+    if (!wallet.trim()) {
+      toast.error('Conecta tu wallet o pega tu dirección')
+      return
+    }
+    claim.mutate({ contract: contract.trim(), network, wallet: wallet.trim() })
+  }
+
+  const claims = claimsData?.claims ?? []
+
+  return (
+    <div className="space-y-3">
+      <p className="text-[12px] leading-relaxed text-muted-foreground">
+        ¿Eres el dev de un proyecto publicado aquí? Pega su CA, conecta tu wallet y verificamos
+        on-chain que es tuyo. Al confirmarlo, el proyecto queda vinculado a tu perfil.
+      </p>
+
+      {/* Formulario de reclamo */}
+      <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Red del proyecto">
+          {Object.entries(NETWORKS).map(([key, meta]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setNetwork(key)}
+              aria-pressed={network === key}
+              className={cn(
+                'flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
+                network === key
+                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                  : 'border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground'
+              )}
+            >
+              <NetworkIcon network={key} className="h-3 w-3" />
+              {meta.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2.5 space-y-1.5">
+          <Label htmlFor="claim-ca" className="text-xs text-muted-foreground">Contrato del token (CA)</Label>
+          <Input
+            id="claim-ca"
+            value={contract}
+            onChange={(e) => setContract(e.target.value)}
+            placeholder={network === 'solana' ? '6iz4scC…pump' : '0x…'}
+            spellCheck={false}
+            autoComplete="off"
+            className="h-9 bg-[#121410] font-mono text-xs"
+          />
+        </div>
+
+        <div className="mt-2.5 space-y-1.5">
+          <Label htmlFor="claim-wallet" className="text-xs text-muted-foreground">Tu wallet (creador del token)</Label>
+          <div className="flex items-center gap-1.5">
+            <Input
+              id="claim-wallet"
+              value={wallet}
+              onChange={(e) => setWallet(e.target.value)}
+              placeholder="Dirección de tu wallet…"
+              spellCheck={false}
+              autoComplete="off"
+              className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-xs"
+            />
+            {walletKind && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={connectInjected}
+                className="h-9 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+              >
+                {walletKind === 'phantom' ? 'Phantom' : 'MetaMask'}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <Button
+          size="sm"
+          onClick={submit}
+          disabled={claim.isPending}
+          className="mt-3 h-9 w-full gap-1.5 rounded-lg bg-primary text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+        >
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+          {claim.isPending ? 'Verificando on-chain…' : 'Verificar y reclamar'}
+        </Button>
+        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground/70">
+          Verificación automática en Solana (mint authority o creador del mint). Otras redes pasan
+          a revisión del equipo Cabal.
+        </p>
+      </div>
+
+      {/* Mis reclamos */}
+      {isLoading ? (
+        <p className="py-2 text-center text-xs text-muted-foreground">Cargando reclamos…</p>
+      ) : claims.length > 0 ? (
+        <div className="space-y-1.5">
+          {claims.map((c) => {
+            const meta = CLAIM_STATUS_META[c.status] ?? CLAIM_STATUS_META.pending
+            return (
+              <div key={c.id} className="rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-[13px] font-bold">
+                    {c.projectName}
+                    {c.projectTicker ? <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">${c.projectTicker}</span> : null}
+                  </p>
+                  <span className={cn('shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wider', meta.cls)}>
+                    {meta.label}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">{c.contract}</p>
+                {(c.note || c.verifiedAt) && (
+                  <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground/80">
+                    {c.note}
+                    {c.verifiedAt ? ` · ${timeAgo(c.verifiedAt)}` : ''}
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 }

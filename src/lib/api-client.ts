@@ -13,6 +13,8 @@ import type {
   LeaderboardDTO,
   MeDTO,
   PostDTO,
+  ProjectClaimDTO,
+  ReferralDTO,
   TokenDTO,
   TokenDetailDTO,
 } from '@/lib/types'
@@ -113,10 +115,46 @@ export const qk = {
   adminTokens: ['admin', 'tokens'] as const,
   affiliates: ['affiliates'] as const,
   adminAffiliates: ['admin', 'affiliates'] as const,
+  referral: ['me', 'referral'] as const,
+  projectClaims: ['me', 'project-claims'] as const,
 }
 
 export function useMe() {
   return useQuery<MeDTO>({ queryKey: qk.me, queryFn: () => jsonFetch('/api/me') })
+}
+
+/** Código de invitación + estadísticas de referidos. */
+export function useReferral() {
+  return useQuery<ReferralDTO>({ queryKey: qk.referral, queryFn: () => jsonFetch('/api/me/referral') })
+}
+
+/** Mis reclamos de propiedad de proyectos. */
+export function useProjectClaims() {
+  return useQuery<{ claims: ProjectClaimDTO[] }>({
+    queryKey: qk.projectClaims,
+    queryFn: () => jsonFetch('/api/claims'),
+  })
+}
+
+/** Reclamar un proyecto por su CA (verificación on-chain en Solana; resto → revisión). */
+export function useClaimProject() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { contract: string; network: string; wallet: string }) =>
+      jsonFetch<{ ok: boolean; verified: boolean; note: string; claim: ProjectClaimDTO }>('/api/claims', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res) => {
+      invalidate()
+      if (res.verified) {
+        toast.success('¡Proyecto verificado como tuyo!', { description: res.note })
+      } else {
+        toast.warning('Reclamo enviado a revisión', { description: res.note })
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
 }
 
 /** Sesión de usuario: ¿hay cuenta logueada o modo invitado? */
@@ -147,7 +185,7 @@ export function useLogin() {
 export function useRegister() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { handle: string; name?: string; password: string }) =>
+    mutationFn: (data: { handle: string; name?: string; password: string; referralCode?: string }) =>
       jsonFetch<{ ok: boolean; user: UserDTO }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),

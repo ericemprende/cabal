@@ -5,6 +5,7 @@ import { toUserDTO } from '@/lib/serializers'
 import { SESSION_COOKIE, createSessionValue, hashPassword, sessionCookieOptions } from '@/lib/auth'
 
 // POST /api/auth/register — crea una cuenta (handle + password) y entra con ella
+// Acepta `referralCode` opcional: vincula al invitador (gana % de los puntos del invitado)
 export async function POST(req: Request) {
   try {
     await ensureSeeded()
@@ -12,6 +13,7 @@ export async function POST(req: Request) {
     const handle = String(body.handle ?? '').trim().toLowerCase()
     const password = String(body.password ?? '')
     const name = String(body.name ?? '').trim()
+    const referralCode = String(body.referralCode ?? '').trim().toUpperCase()
 
     if (!/^[a-z0-9_]{3,20}$/.test(handle)) {
       return NextResponse.json(
@@ -27,11 +29,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Ese usuario ya existe. Prueba con otro.' }, { status: 409 })
     }
 
+    // Código de invitación (opcional)
+    let referredById: string | undefined
+    if (referralCode) {
+      const referrer = await db.user.findUnique({ where: { referralCode } })
+      if (!referrer) {
+        return NextResponse.json({ error: 'El código de invitación no es válido' }, { status: 400 })
+      }
+      referredById = referrer.id
+    }
+
     const user = await db.user.create({
       data: {
         handle,
         name: (name || handle).slice(0, 40),
         passwordHash: hashPassword(password),
+        ...(referredById ? { referredById } : {}),
       },
     })
 

@@ -1,0 +1,1071 @@
+     1→'use client'
+     2→
+     3→import { useRef, useState, useEffect } from 'react'
+     4→import {
+     5→  Activity,
+     6→  AtSign,
+     7→  BadgeCheck,
+     8→  CalendarDays,
+     9→  ChevronDown,
+    10→  Copy,
+    11→  Droplets,
+    12→  ExternalLink,
+    13→  Flame,
+    14→  Gift,
+    15→  GraduationCap,
+    16→  Heart,
+    17→  ImagePlus,
+    18→  KeyRound,
+    19→  Mail,
+    20→  MessageSquare,
+    21→  RefreshCw,
+    22→  Rocket,
+    23→  ShieldCheck,
+    24→  Trash2,
+    25→  TrendingUp,
+    26→  Users,
+    27→  Wallet,
+    28→  Zap,
+    29→} from 'lucide-react'
+    30→import { toast } from 'sonner'
+    31→import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+    32→import { Input } from '@/components/ui/input'
+    33→import { Textarea } from '@/components/ui/textarea'
+    34→import { Button } from '@/components/ui/button'
+    35→import { Label } from '@/components/ui/label'
+    36→import { cn } from '@/lib/utils'
+    37→import { NETWORKS, shortWallet, timeAgo } from '@/lib/cabal'
+    38→import { PointsPill, UserAvatar, NetworkIcon } from '@/components/cabal/shared'
+    39→import {
+    40→  injectedWalletFor,
+    41→  uploadImage,
+    42→  useAddWallet,
+    43→  useAuthStatus,
+    44→  useMe,
+    45→  useRemoveDevToken,
+    46→  useRemoveWallet,
+    47→  useUpdateMe,
+    48→  useVerifyDevToken,
+    49→  useVerifyProvider,
+    50→  useVerifyWalletSignature,
+    51→  type AuthStatusDTO,
+    52→} from '@/lib/api-client'
+    53→import type { DevClaimDTO, MeDTO, WalletLinkDTO } from '@/lib/types'
+    54→import { useUI } from '@/lib/store'
+    55→import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
+    56→
+    57→const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
+    58→  thesis: { label: 'Tesis publicada', icon: GraduationCap },
+    59→  comment: { label: 'Comentario', icon: MessageSquare },
+    60→  launch: { label: 'Launch publicado', icon: Rocket },
+    61→  like_received: { label: 'Likes recibidos', icon: Heart },
+    62→  hype_received: { label: 'Hype recibido', icon: Flame },
+    63→  daily_visit: { label: 'Visita diaria', icon: CalendarDays },
+    64→  admin_adjust: { label: 'Bonus del Cabal', icon: Gift },
+    65→  redeem: { label: 'Canje', icon: RefreshCw },
+    66→  verify_x: { label: 'Cuenta de X verificada', icon: AtSign },
+    67→  verify_google: { label: 'Cuenta de Google verificada', icon: Mail },
+    68→  verify_wallet: { label: 'Wallet verificada con firma', icon: ShieldCheck },
+    69→}
+    70→
+    71→export function ProfileDialog() {
+    72→  const { profileOpen, setProfileOpen } = useUI()
+    73→  const { data: me } = useMe()
+    74→
+    75→  return (
+    76→    <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+    77→      <DialogContent className="max-h-[88vh] grid-cols-[minmax(0,1fr)] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+    78→        {me && <ProfileContent me={me} />}
+    79→      </DialogContent>
+    80→    </Dialog>
+    81→  )
+    82→}
+    83→
+    84→function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data']> }) {
+    85→  const { setProfileOpen } = useUI()
+    86→  const updateMe = useUpdateMe()
+    87→  const { data: authStatus } = useAuthStatus()
+    88→  const [consent, setConsent] = useState<'x' | 'google' | null>(null)
+    89→  const [name, setName] = useState(me.name)
+    90→  const [bio, setBio] = useState(me.bio ?? '')
+    91→  const [avatar, setAvatar] = useState(me.avatar)
+    92→
+    93→  /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo si no. */
+    94→  const connect = (provider: 'x' | 'google') => {
+    95→    if (authStatus?.[provider]?.configured) {
+    96→      window.location.assign(`/api/auth/${provider}/start`)
+    97→    } else {
+    98→      setConsent(provider)
+    99→    }
+   100→  }
+   101→
+   102→  const save = () => {
+   103→    updateMe.mutate({
+   104→      name,
+   105→      bio,
+   106→      avatar,
+   107→    })
+   108→    setProfileOpen(false)
+   109→  }
+   110→
+   111→  return (
+   112→    <>
+   113→        <div className="relative overflow-hidden border-b border-white/10 p-5">
+   114→          <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#8FA83F]/8 blur-3xl" />
+   115→          <div className="relative flex items-center gap-4">
+   116→            <UserAvatar name={me?.name} handle={me?.handle} src={avatar} size="xl" verified={me?.walletVerified} />
+   117→            <div className="min-w-0">
+   118→              <DialogTitle className="font-display truncate text-xl font-bold">{me?.name}</DialogTitle>
+   119→              <p className="text-sm text-muted-foreground">@{me?.handle}</p>
+   120→              <div className="mt-2 flex flex-wrap items-center gap-2">
+   121→                <PointsPill points={me?.points ?? 0} />
+   122→                <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-muted-foreground">
+   123→                  Rank #{me?.pointsRank} por puntos
+   124→                </span>
+   125→                {me?.isDev && (
+   126→                  <span className="flex items-center gap-1 rounded-full border border-[#8FA83F]/30 bg-[#8FA83F]/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+   127→                    <ShieldCheck className="h-3 w-3" aria-hidden /> DEV
+   128→                  </span>
+   129→                )}
+   130→                {me?.isAdmin && (
+   131→                  <span className="rounded-full bg-[#8FA83F]/12 px-2 py-0.5 text-[11px] font-bold text-primary">ADMIN</span>
+   132→                )}
+   133→              </div>
+   134→            </div>
+   135→          </div>
+   136→        </div>
+   137→
+   138→        {/* Stats */}
+   139→        <div className="grid grid-cols-4 gap-2 border-b border-white/10 p-4">
+   140→          <Stat icon={<MessageSquare className="h-3.5 w-3.5" />} label="Posts" value={me?.stats.postsCount ?? 0} />
+   141→          <Stat icon={<Rocket className="h-3.5 w-3.5" />} label="Launches" value={me?.stats.launchesCount ?? 0} />
+   142→          <Stat icon={<Flame className="h-3.5 w-3.5" />} label="Hypes" value={me?.stats.hypesGiven ?? 0} />
+   143→          <Stat icon={<Zap className="h-3.5 w-3.5" />} label="Lifetime" value={me?.lifetimePoints ?? 0} />
+   144→        </div>
+   145→
+   146→        {/* Points wallet */}
+   147→        <div className="border-b border-white/10 p-4">
+   148→          <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
+   149→            <div className="flex items-center justify-between">
+   150→              <div>
+   151→                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Balance de puntos Cabal</p>
+   152→                <p className="font-machina mt-1 flex items-center gap-2 text-3xl font-bold text-primary">
+   153→                  {(me?.points ?? 0).toLocaleString('es')}
+   154→                  <Zap className="h-5 w-5 text-primary/80" aria-hidden />
+   155→                </p>
+   156→              </div>
+   157→              <Gift className="h-10 w-10 text-primary/30" aria-hidden />
+   158→            </div>
+   159→            <p className="mt-2.5 rounded-lg bg-[#0a0b08]/70 px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
+   160→              Cuando lancemos <span className="font-bold text-primary">$CABAL</span>, tus puntos se canjean por tokens del airdrop comunitario. 1 punto = 1 cupo del pool comunitario.
+   161→            </p>
+   162→          </div>
+   163→
+   164→          {/* history */}
+   165→          <p className="pb-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Historial de puntos</p>
+   166→          <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
+   167→            {(me?.pointEvents ?? []).length === 0 && (
+   168→              <p className="py-4 text-center text-sm text-muted-foreground">Publica tesis o launches para ganar puntos</p>
+   169→            )}
+   170→            {(me?.pointEvents ?? []).map((e) => {
+   171→              const meta = REASON_META[e.reason]
+   172→              const Icon = meta?.icon ?? Zap
+   173→              return (
+   174→                <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-white/4">
+   175→                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/8 bg-white/5 text-zinc-400" aria-hidden>
+   176→                    <Icon className="h-3.5 w-3.5" />
+   177→                  </span>
+   178→                  <div className="min-w-0 flex-1">
+   179→                    <p className="truncate text-[13px] font-medium">{e.note ?? meta?.label ?? e.reason}</p>
+   180→                    <p className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</p>
+   181→                  </div>
+   182→                  <span className={cn('font-mono text-[13px] font-bold', e.amount >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+   183→                    {e.amount >= 0 ? '+' : ''}{e.amount}
+   184→                  </span>
+   185→                </div>
+   186→              )
+   187→            })}
+   188→          </div>
+   189→        </div>
+   190→
+   191→        {/* Conexiones: X y Google (OAuth 2.0 real con fallback demo) */}
+   192→        <div className="space-y-2 border-b border-white/10 p-4">
+   193→          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conexiones y verificación</p>
+   194→          <ConnectionRow
+   195→            icon={<AtSign className="h-4 w-4" />}
+   196→            title="Cuenta de X"
+   197→            subtitle="Verifica tu identidad con tu cuenta de X · +5 puntos"
+   198→            verified={me?.xVerified ?? false}
+   199→            verifiedLabel={me?.xHandle ? `@${me.xHandle}` : 'Verificada'}
+   200→            provider="x"
+   201→            cta="Conectar con X"
+   202→            configured={authStatus?.x.configured ?? false}
+   203→            onConnect={() => connect('x')}
+   204→          />
+   205→          <ConnectionRow
+   206→            icon={<Mail className="h-4 w-4" />}
+   207→            title="Cuenta de Google"
+   208→            subtitle="Confirma tu email con Google · +5 puntos"
+   209→            verified={me?.googleVerified ?? false}
+   210→            verifiedLabel={me?.googleEmail ?? 'Verificada'}
+   211→            provider="google"
+   212→            cta="Conectar con Google"
+   213→            configured={authStatus?.google.configured ?? false}
+   214→            onConnect={() => connect('google')}
+   215→          />
+   216→          <ApiSetupHelp status={authStatus} />
+   217→        </div>
+   218→
+   219→        {/* Wallets conectadas + verificación de tokens como dev */}
+   220→        <div className="space-y-2.5 border-b border-white/10 p-4">
+   221→          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallets y track record de dev</p>
+   222→          <WalletManager me={me} />
+   223→        </div>
+   224→
+   225→        {/* Edit profile */}
+   226→        <div className="space-y-3.5 p-4">
+   227→          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editar perfil</p>
+   228→
+   229→          {/* Foto de perfil: subir archivo o pegar URL */}
+   230→          <AvatarEditor
+   231→            avatar={avatar}
+   232→            name={me.name}
+   233→            onApply={(url) => {
+   234→              setAvatar(url)
+   235→              updateMe.mutate({ avatar: url })
+   236→            }}
+   237→            busy={updateMe.isPending}
+   238→          />
+   239→
+   240→          <div className="space-y-1.5">
+   241→            <Label htmlFor="pf-name" className="text-xs text-muted-foreground">Nombre</Label>
+   242→            <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} className="h-9 bg-[#0a0b08]" />
+   243→          </div>
+   244→          <div className="space-y-1.5">
+   245→            <Label htmlFor="pf-bio" className="text-xs text-muted-foreground">Bio</Label>
+   246→            <Textarea id="pf-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[56px] resize-none bg-[#0a0b08]" />
+   247→          </div>
+   248→          <Button
+   249→            onClick={save}
+   250→            disabled={updateMe.isPending}
+   251→            className="h-10 w-full rounded-xl bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   252→          >
+   253→            {updateMe.isPending ? 'Guardando…' : 'Guardar perfil'}
+   254→          </Button>
+   255→        </div>
+   256→
+   257→      {/* Pantalla de consentimiento simulada (modo demo, sin API keys) */}
+   258→      <OAuthConsentDialog provider={consent} appName="Cabal" onOpenChange={(o) => !o && setConsent(null)} />
+   259→    </>
+   260→  )
+   261→}
+   262→
+   263→function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+   264→  return (
+   265→    <div className="rounded-lg border border-white/10 bg-[#0a0b08] px-2.5 py-2 text-center">
+   266→      <div className="mx-auto flex w-fit items-center gap-1 text-zinc-400">
+   267→        {icon}
+   268→        <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
+   269→      </div>
+   270→      <p className="mt-0.5 text-sm font-bold tabular-nums">{value}</p>
+   271→    </div>
+   272→  )
+   273→}
+   274→
+   275→// Fila de conexión con proveedor externo (X / Google)
+   276→// - Con API keys: redirige al flujo OAuth 2.0 real del proveedor.
+   277→// - Sin API keys: abre la pantalla de consentimiento simulada (demo).
+   278→function ConnectionRow({
+   279→  icon,
+   280→  title,
+   281→  subtitle,
+   282→  verified,
+   283→  verifiedLabel,
+   284→  provider,
+   285→  cta,
+   286→  configured,
+   287→  onConnect,
+   288→}: {
+   289→  icon: React.ReactNode
+   290→  title: string
+   291→  subtitle: string
+   292→  verified: boolean
+   293→  verifiedLabel: string
+   294→  provider: 'x' | 'google'
+   295→  cta: string
+   296→  configured: boolean
+   297→  onConnect: () => void
+   298→}) {
+   299→  const verify = useVerifyProvider()
+   300→
+   301→  if (verified) {
+   302→    return (
+   303→      <div className="flex items-center gap-3 rounded-xl border border-[#8FA83F]/20 bg-[#8FA83F]/6 p-3">
+   304→        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#8FA83F]/25 bg-[#8FA83F]/10 text-primary" aria-hidden>
+   305→          {icon}
+   306→        </span>
+   307→        <div className="min-w-0 flex-1">
+   308→          <p className="flex items-center gap-1.5 text-[13px] font-bold">
+   309→            {title}
+   310→            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Verificada" />
+   311→          </p>
+   312→          <p className="truncate text-[11px] text-muted-foreground">{verifiedLabel}</p>
+   313→        </div>
+   314→        <button
+   315→          onClick={() => verify.mutate({ provider, disconnect: true })}
+   316→          disabled={verify.isPending}
+   317→          className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-destructive/40 hover:text-[#ff8080]"
+   318→        >
+   319→          Desconectar
+   320→        </button>
+   321→      </div>
+   322→    )
+   323→  }
+   324→
+   325→  return (
+   326→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   327→      <div className="flex items-center gap-3">
+   328→        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400" aria-hidden>
+   329→          {icon}
+   330→        </span>
+   331→        <div className="min-w-0 flex-1">
+   332→          <p className="flex items-center gap-1.5 text-[13px] font-bold">
+   333→            {title}
+   334→            <span
+   335→              className={cn(
+   336→                'rounded px-1 py-px text-[9px] font-black tracking-wide',
+   337→                configured ? 'bg-[#8FA83F]/15 text-primary' : 'bg-white/8 text-zinc-400'
+   338→              )}
+   339→            >
+   340→              {configured ? 'OAUTH 2.0' : 'DEMO'}
+   341→            </span>
+   342→          </p>
+   343→          <p className="truncate text-[11px] text-muted-foreground">{subtitle}</p>
+   344→        </div>
+   345→        <Button
+   346→          size="sm"
+   347→          onClick={onConnect}
+   348→          className="h-8 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+   349→          variant="ghost"
+   350→        >
+   351→          {cta}
+   352→        </Button>
+   353→      </div>
+   354→      {!configured && (
+   355→        <p className="mt-2 pl-12 text-[10px] leading-relaxed text-muted-foreground/70">
+   356→          Sin credenciales del proveedor: se abre una pantalla de autorización simulada.
+   357→          Configura las API keys para usar el OAuth real.
+   358→        </p>
+   359→      )}
+   360→    </div>
+   361→  )
+   362→}
+   363→
+   364→/** Guía plegable para configurar las credenciales OAuth reales. */
+   365→function ApiSetupHelp({ status }: { status: AuthStatusDTO | undefined }) {
+   366→  const [open, setOpen] = useState(false)
+   367→
+   368→  const copy = (url: string | undefined, label: string) => {
+   369→    if (!url) return
+   370→    navigator.clipboard?.writeText(url).then(
+   371→      () => toast.success(`${label} copiada`),
+   372→      () => toast.error('No se pudo copiar')
+   373→    )
+   374→  }
+   375→
+   376→  return (
+   377→    <div className="rounded-xl border border-white/10 bg-[#0d0f0b]">
+   378→      <button
+   379→        type="button"
+   380→        onClick={() => setOpen((v) => !v)}
+   381→        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+   382→        aria-expanded={open}
+   383→      >
+   384→        <span className="flex items-center gap-2 text-[12px] font-semibold text-zinc-300">
+   385→          <KeyRound className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+   386→          Conectar las APIs reales (OAuth 2.0)
+   387→        </span>
+   388→        <ChevronDown className={cn('h-4 w-4 shrink-0 text-zinc-500 transition-transform', open && 'rotate-180')} aria-hidden />
+   389→      </button>
+   390→
+   391→      {open && (
+   392→        <div className="space-y-3 border-t border-white/10 px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
+   393→          {/* X */}
+   394→          <div className="space-y-1.5">
+   395→            <p className="text-[11px] font-bold text-zinc-200">X (Twitter)</p>
+   396→            <ol className="list-decimal space-y-0.5 pl-4">
+   397→              <li>
+   398→                En <span className="font-mono text-zinc-300">developer.x.com</span> crea un Project + App y
+   399→                activa <span className="text-zinc-300">User authentication settings</span> → OAuth 2.0 → Web App.
+   400→              </li>
+   401→              <li>Registra esta Callback URI:</li>
+   402→            </ol>
+   403→            <CallbackUrl url={status?.x.callbackUrl} onCopy={() => copy(status?.x.callbackUrl, 'Callback URI de X')} />
+   404→            <p>
+   405→              Guarda las variables de entorno{' '}
+   406→              <span className="font-mono text-zinc-300">X_CLIENT_ID</span> y{' '}
+   407→              <span className="font-mono text-zinc-300">X_CLIENT_SECRET</span>.
+   408→            </p>
+   409→          </div>
+   410→
+   411→          {/* Google */}
+   412→          <div className="space-y-1.5">
+   413→            <p className="text-[11px] font-bold text-zinc-200">Google</p>
+   414→            <ol className="list-decimal space-y-0.5 pl-4">
+   415→              <li>
+   416→                En <span className="font-mono text-zinc-300">console.cloud.google.com</span> configura la pantalla
+   417→                de consentimiento (Externa) y crea credenciales → ID de cliente OAuth → Aplicación web.
+   418→              </li>
+   419→              <li>Registra esta URI de redirección autorizada:</li>
+   420→            </ol>
+   421→            <CallbackUrl
+   422→              url={status?.google.callbackUrl}
+   423→              onCopy={() => copy(status?.google.callbackUrl, 'URI de redirección de Google')}
+   424→            />
+   425→            <p>
+   426→              Guarda <span className="font-mono text-zinc-300">GOOGLE_CLIENT_ID</span> y{' '}
+   427→              <span className="font-mono text-zinc-300">GOOGLE_CLIENT_SECRET</span>.
+   428→            </p>
+   429→          </div>
+   430→
+   431→          <p className="rounded-lg bg-white/4 px-2.5 py-1.5 text-[10px]">
+   432→            Tras guardar las variables, reinicia el servidor: los botones pasarán
+   433→            automáticamente al flujo real con la pantalla oficial de X / Google.
+   434→          </p>
+   435→        </div>
+   436→      )}
+   437→    </div>
+   438→  )
+   439→}
+   440→
+   441→function CallbackUrl({ url, onCopy }: { url?: string; onCopy: () => void }) {
+   442→  return (
+   443→    <div className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-[#0a0b08] px-2 py-1.5">
+   444→      <code className="min-w-0 flex-1 truncate font-mono text-[10px] text-zinc-300">{url ?? 'Cargando…'}</code>
+   445→      <button
+   446→        type="button"
+   447→        onClick={onCopy}
+   448→        disabled={!url}
+   449→        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/10 text-zinc-400 transition-colors hover:text-primary"
+   450→        aria-label="Copiar URL"
+   451→      >
+   452→        <Copy className="h-3 w-3" aria-hidden />
+   453→      </button>
+   454→    </div>
+   455→  )
+   456→}
+   457→
+   458→// ================= WALLET + TRACK RECORD DE DEV =================
+   459→
+   460→const fmtCompact = new Intl.NumberFormat('es', { notation: 'compact', maximumFractionDigits: 2 })
+   461→const fmtUsd = (n: number | null | undefined) =>
+   462→  n == null ? '—' : `$${fmtCompact.format(n)}`
+   463→const fmtPct = (n: number | null | undefined) => (n == null ? '—' : `${n}%`)
+   464→const ageOf = (ms: number | null | undefined) =>
+   465→  ms == null ? '—' : timeAgo(new Date(ms).toISOString())
+   466→
+   467→/**
+   468→ * Gestor de wallets conectadas + verificación de tokens antiguos como dev.
+   469→ * - Conectar: wallet inyectada (Phantom/MetaMask) o dirección pegada a mano.
+   470→ * - Verificar posesión: firma criptográfica (ed25519 / personal_sign).
+   471→ * - Track record: reclama un CA y el backend trae métricas reales on-chain
+   472→ *   (MC, ATH, liquidez, volumen, concentración) vía DexScreener/GeckoTerminal.
+   473→ */
+   474→function WalletManager({ me }: { me: MeDTO }) {
+   475→  const [network, setNetwork] = useState('solana')
+   476→  const [address, setAddress] = useState('')
+   477→  const [walletKind, setWalletKind] = useState<'phantom' | 'evm' | null>(null)
+   478→
+   479→  useEffect(() => {
+   480→    // async: las wallets inyectadas solo existen en el cliente
+   481→    const t = setTimeout(() => setWalletKind(injectedWalletFor(network)), 0)
+   482→    return () => clearTimeout(t)
+   483→  }, [network])
+   484→
+   485→  const addWallet = useAddWallet()
+   486→  const verifySig = useVerifyWalletSignature()
+   487→  const removeWallet = useRemoveWallet()
+   488→  const verifyToken = useVerifyDevToken()
+   489→  const removeClaim = useRemoveDevToken()
+   490→
+   491→  const connectInjected = async () => {
+   492→    try {
+   493→      if (walletKind === 'phantom') {
+   494→        const provider = window.phantom?.solana ?? window.solana
+   495→        if (!provider?.connect) throw new Error('No se detectó Phantom')
+   496→        const res = await provider.connect()
+   497→        setAddress(res.publicKey.toString())
+   498→      } else if (walletKind === 'evm') {
+   499→        const accounts = (await window.ethereum?.request({ method: 'eth_requestAccounts' })) as
+   500→          | string[]
+   501→          | undefined
+   502→        if (accounts?.[0]) setAddress(accounts[0])
+   503→      } else {
+   504→        toast.error('No hay wallet del navegador para esta red; pega la dirección a mano')
+   505→      }
+   506→    } catch (e) {
+   507→      toast.error((e as Error).message || 'Conexión rechazada')
+   508→    }
+   509→  }
+   510→
+   511→  const add = () => {
+   512→    const a = address.trim()
+   513→    if (!a) {
+   514→      toast.error('Pega la dirección de tu wallet')
+   515→      return
+   516→    }
+   517→    addWallet.mutate(
+   518→      {
+   519→        network,
+   520→        address: a,
+   521→        label: walletKind === 'phantom' ? 'Phantom' : walletKind === 'evm' ? 'MetaMask' : 'Manual',
+   522→      },
+   523→      { onSuccess: () => setAddress('') }
+   524→    )
+   525→  }
+   526→
+   527→  const unsigned = me.wallets.filter((w) => !w.signature)
+   528→
+   529→  return (
+   530→    <div className="space-y-3">
+   531→      {/* Wallets conectadas */}
+   532→      {me.wallets.length > 0 && (
+   533→        <div className="space-y-1.5">
+   534→          {me.wallets.map((w) => (
+   535→            <WalletRow
+   536→              key={w.id}
+   537→              wallet={w}
+   538→              onRemove={() => removeWallet.mutate(w.id)}
+   539→              onVerify={() => verifySig.mutate({ id: w.id, network: w.network, address: w.address })}
+   540→              verifying={verifySig.isPending}
+   541→              busy={removeWallet.isPending}
+   542→            />
+   543→          ))}
+   544→        </div>
+   545→      )}
+   546→
+   547→      {/* Conectar nueva wallet */}
+   548→      <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   549→        <p className="flex items-center gap-1.5 text-[13px] font-bold">
+   550→          <Wallet className="h-3.5 w-3.5 text-primary" aria-hidden /> Conectar wallet
+   551→        </p>
+   552→        <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Red de la wallet">
+   553→          {Object.entries(NETWORKS).map(([key, meta]) => (
+   554→            <button
+   555→              key={key}
+   556→              type="button"
+   557→              onClick={() => setNetwork(key)}
+   558→              aria-pressed={network === key}
+   559→              className={cn(
+   560→                'flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
+   561→                network === key
+   562→                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+   563→                  : 'border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground'
+   564→              )}
+   565→            >
+   566→              <NetworkIcon network={key} className="h-3 w-3" />
+   567→              {meta.label}
+   568→            </button>
+   569→          ))}
+   570→        </div>
+   571→        <div className="mt-2.5 flex items-center gap-1.5">
+   572→          <Input
+   573→            value={address}
+   574→            onChange={(e) => setAddress(e.target.value)}
+   575→            placeholder={`Dirección ${NETWORKS[network as keyof typeof NETWORKS]?.label ?? network}…`}
+   576→            inputMode="text"
+   577→            spellCheck={false}
+   578→            autoComplete="off"
+   579→            aria-label={`Dirección de wallet en ${network}`}
+   580→            className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-xs"
+   581→          />
+   582→          {walletKind && (
+   583→            <Button
+   584→              size="sm"
+   585→              variant="ghost"
+   586→              onClick={connectInjected}
+   587→              className="h-9 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+   588→            >
+   589→              {walletKind === 'phantom' ? 'Phantom' : 'MetaMask'}
+   590→            </Button>
+   591→          )}
+   592→          <Button
+   593→            size="sm"
+   594→            onClick={add}
+   595→            disabled={addWallet.isPending}
+   596→            className="h-9 shrink-0 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   597→          >
+   598→            {addWallet.isPending ? '…' : 'Conectar'}
+   599→          </Button>
+   600→        </div>
+   601→        {unsigned.length > 0 && (
+   602→          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+   603→            Firma la wallet para probar que eres el dueño (+10 pts, una vez). Si no tienes la
+   604→            extensión a mano, la dirección queda guardada igualmente.
+   605→          </p>
+   606→        )}
+   607→      </div>
+   608→
+   609→      {/* Verificar tokens antiguos como dev */}
+   610→      <DevClaimForm
+   611→        me={me}
+   612→        onVerify={(data) => verifyToken.mutate(data)}
+   613→        verifying={verifyToken.isPending}
+   614→      />
+   615→
+   616→      {/* Track record */}
+   617→      {me.devClaims.length > 0 ? (
+   618→        <div className="space-y-2">
+   619→          {me.devClaims.map((claim) => (
+   620→            <ClaimCard
+   621→              key={claim.id}
+   622→              claim={claim}
+   623→              onRetry={() =>
+   624→                verifyToken.mutate({
+   625→                  network: claim.network,
+   626→                  contract: claim.contract,
+   627→                  walletAddress: claim.walletAddress,
+   628→                })
+   629→              }
+   630→              onDelete={() => removeClaim.mutate(claim.id)}
+   631→              busy={verifyToken.isPending || removeClaim.isPending}
+   632→            />
+   633→          ))}
+   634→        </div>
+   635→      ) : (
+   636→        <p className="rounded-xl border border-dashed border-white/10 px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
+   637→          Lanzaste tokens antes de Cabal? Pega el CA y verifica on-chain que fuiste el dev:
+   638→          tu perfil mostrará el ATH, la liquidez y la concentración real de esos tokens.
+   639→        </p>
+   640→      )}
+   641→    </div>
+   642→  )
+   643→}
+   644→
+   645→function WalletRow({
+   646→  wallet,
+   647→  onRemove,
+   648→  onVerify,
+   649→  verifying,
+   650→  busy,
+   651→}: {
+   652→  wallet: WalletLinkDTO
+   653→  onRemove: () => void
+   654→  onVerify: () => void
+   655→  verifying?: boolean
+   656→  busy?: boolean
+   657→}) {
+   658→  const copy = () => {
+   659→    navigator.clipboard?.writeText(wallet.address).then(
+   660→      () => toast.success('Dirección copiada'),
+   661→      () => toast.error('No se pudo copiar')
+   662→    )
+   663→  }
+   664→  return (
+   665→    <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#0a0b08] p-2.5">
+   666→      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5" aria-hidden>
+   667→        <NetworkIcon network={wallet.network} className="h-4 w-4" />
+   668→      </span>
+   669→      <div className="min-w-0 flex-1">
+   670→        <p className="flex items-center gap-1.5 text-[12px] font-bold">
+   671→          <span className="truncate">{shortWallet(wallet.address)}</span>
+   672→          {wallet.signature ? (
+   673→            <span className="inline-flex shrink-0 items-center gap-0.5 rounded bg-[#8FA83F]/15 px-1 py-px text-[9px] font-black uppercase text-primary">
+   674→              <BadgeCheck className="h-2.5 w-2.5" aria-hidden /> Firmada
+   675→            </span>
+   676→          ) : (
+   677→            <span className="shrink-0 rounded bg-white/8 px-1 py-px text-[9px] font-black uppercase text-zinc-400">
+   678→              Sin firmar
+   679→            </span>
+   680→          )}
+   681→        </p>
+   682→        <p className="truncate text-[10px] text-muted-foreground">
+   683→          {NETWORKS[wallet.network as keyof typeof NETWORKS]?.label ?? wallet.network}
+   684→          {wallet.label ? ` · ${wallet.label}` : ''}
+   685→        </p>
+   686→      </div>
+   687→      <div className="flex shrink-0 items-center gap-1">
+   688→        <Button
+   689→          size="icon"
+   690→          variant="ghost"
+   691→          onClick={copy}
+   692→          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+   693→          aria-label="Copiar dirección"
+   694→        >
+   695→          <Copy className="h-3 w-3" />
+   696→        </Button>
+   697→        {!wallet.signature && (
+   698→          <Button
+   699→            size="sm"
+   700→            variant="ghost"
+   701→            onClick={onVerify}
+   702→            disabled={verifying}
+   703→            className="h-7 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2 text-[10px] font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+   704→          >
+   705→            {verifying ? 'Firmando…' : 'Firmar'}
+   706→          </Button>
+   707→        )}
+   708→        <Button
+   709→          size="icon"
+   710→          variant="ghost"
+   711→          onClick={onRemove}
+   712→          disabled={busy}
+   713→          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-[#ff8080]"
+   714→          aria-label="Desconectar wallet"
+   715→        >
+   716→          <Trash2 className="h-3 w-3" />
+   717→        </Button>
+   718→      </div>
+   719→    </div>
+   720→  )
+   721→}
+   722→
+   723→/** Formulario para reclamar un token antiguo (CA) como dev. */
+   724→function DevClaimForm({
+   725→  me,
+   726→  onVerify,
+   727→  verifying,
+   728→}: {
+   729→  me: MeDTO
+   730→  onVerify: (data: { network: string; contract: string; walletAddress: string }) => void
+   731→  verifying?: boolean
+   732→}) {
+   733→  const [network, setNetwork] = useState('solana')
+   734→  const [contract, setContract] = useState('')
+   735→  const [walletAddress, setWalletAddress] = useState(me.wallet ?? me.wallets[0]?.address ?? '')
+   736→
+   737→  const submit = () => {
+   738→    const ca = contract.trim()
+   739→    const w = walletAddress.trim()
+   740→    if (!ca) {
+   741→      toast.error('Pega el CA del token')
+   742→      return
+   743→    }
+   744→    if (!w) {
+   745→      toast.error('Conecta o pega la wallet con la que lanzaste el token')
+   746→      return
+   747→    }
+   748→    onVerify({ network, contract: ca, walletAddress: w })
+   749→    setContract('')
+   750→  }
+   751→
+   752→  return (
+   753→    <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/8 to-transparent p-3">
+   754→      <p className="flex items-center gap-1.5 text-[13px] font-bold">
+   755→        <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden /> Verificar token como dev
+   756→      </p>
+   757→      <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Red del token">
+   758→        {Object.entries(NETWORKS).map(([key, meta]) => (
+   759→          <button
+   760→            key={key}
+   761→            type="button"
+   762→            onClick={() => setNetwork(key)}
+   763→            aria-pressed={network === key}
+   764→            className={cn(
+   765→              'flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
+   766→              network === key
+   767→                ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+   768→                : 'border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground'
+   769→            )}
+   770→          >
+   771→            <NetworkIcon network={key} className="h-3 w-3" />
+   772→            {meta.label}
+   773→          </button>
+   774→        ))}
+   775→      </div>
+   776→      <div className="mt-2.5 space-y-2">
+   777→        <Input
+   778→          value={contract}
+   779→          onChange={(e) => setContract(e.target.value)}
+   780→          placeholder="CA / dirección del contrato del token"
+   781→          inputMode="text"
+   782→          spellCheck={false}
+   783→          autoComplete="off"
+   784→          aria-label="CA del token"
+   785→          className="h-9 bg-[#0a0b08] font-mono text-xs"
+   786→        />
+   787→        <Input
+   788→          value={walletAddress}
+   789→          onChange={(e) => setWalletAddress(e.target.value)}
+   790→          placeholder="Tu wallet de despliegue (la que firmó el deploy)"
+   791→          inputMode="text"
+   792→          spellCheck={false}
+   793→          autoComplete="off"
+   794→          aria-label="Wallet de despliegue"
+   795→          className="h-9 bg-[#0a0b08] font-mono text-xs"
+   796→        />
+   797→        <Button
+   798→          onClick={submit}
+   799→          disabled={verifying}
+   800→          className="h-9 w-full gap-1.5 rounded-lg bg-primary text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   801→        >
+   802→          <TrendingUp className="h-3.5 w-3.5" aria-hidden />
+   803→          {verifying ? 'Consultando on-chain…' : 'Verificar on-chain'}
+   804→        </Button>
+   805→        <p className="text-[10px] leading-relaxed text-muted-foreground">
+   806→          Consultamos DexScreener y GeckoTerminal: si el token tiene par activo, tu perfil
+   807→          mostrará el market cap, el ATH, la liquidez y la concentración top-10 reales.
+   808→        </p>
+   809→      </div>
+   810→    </div>
+   811→  )
+   812→}
+   813→
+   814→/** Tarjeta de un token verificado (o pendiente) del track record del dev. */
+   815→function ClaimCard({
+   816→  claim,
+   817→  onRetry,
+   818→  onDelete,
+   819→  busy,
+   820→}: {
+   821→  claim: DevClaimDTO
+   822→  onRetry: () => void
+   823→  onDelete: () => void
+   824→  busy?: boolean
+   825→}) {
+   826→  const s = claim.stats
+   827→  const verified = claim.status === 'verified' && s?.found
+   828→  return (
+   829→    <div
+   830→      className={cn(
+   831→        'min-w-0 space-y-2 rounded-xl border p-3',
+   832→        verified ? 'border-[#8FA83F]/25 bg-[#8FA83F]/5' : 'border-amber-300/25 bg-amber-300/5'
+   833→      )}
+   834→    >
+   835→      <div className="flex min-w-0 flex-wrap items-center gap-2">
+   836→        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5" aria-hidden>
+   837→          <NetworkIcon network={claim.network} className="h-4 w-4" />
+   838→        </span>
+   839→        <div className="min-w-0 flex-1">
+   840→          <p className="flex items-center gap-1.5 text-[13px] font-bold">
+   841→            <span className="min-w-0 truncate">{claim.name || claim.contract}</span>
+   842→            {claim.symbol && (
+   843→              <span className="shrink-0 font-mono text-[11px] text-primary">${claim.symbol}</span>
+   844→            )}
+   845→          </p>
+   846→          <p className="truncate font-mono text-[10px] text-muted-foreground" title={claim.contract}>
+   847→            {claim.contract}
+   848→          </p>
+   849→        </div>
+   850→        {verified ? (
+   851→          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#8FA83F]/15 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-primary">
+   852→            <BadgeCheck className="h-3 w-3" aria-hidden /> Verificado
+   853→          </span>
+   854→        ) : (
+   855→          <span className="shrink-0 rounded-md bg-amber-300/12 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-300">
+   856→            Pendiente
+   857→          </span>
+   858→        )}
+   859→      </div>
+   860→
+   861→      {verified && s && (
+   862→        <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:grid-cols-3">
+   863→          <Metric icon={<Activity className="h-3 w-3" />} label="MC actual" value={fmtUsd(s.marketCap ?? s.fdv)} />
+   864→          <Metric
+   865→            icon={<TrendingUp className="h-3 w-3" />}
+   866→            label="ATH (FDV est.)"
+   867→            value={fmtUsd(s.athFdv ?? s.athPrice)}
+   868→            highlight
+   869→          />
+   870→          <Metric icon={<Droplets className="h-3 w-3" />} label="Liquidez" value={fmtUsd(s.liquidityUsd)} />
+   871→          <Metric icon={<Activity className="h-3 w-3" />} label="Vol 24h" value={fmtUsd(s.volume24h)} />
+   872→          <Metric
+   873→            icon={<TrendingUp className="h-3 w-3" />}
+   874→            label="Δ 24h"
+   875→            value={s.change24h == null ? '—' : `${s.change24h > 0 ? '+' : ''}${s.change24h.toFixed(1)}%`}
+   876→            tone={s.change24h == null ? undefined : s.change24h >= 0 ? 'up' : 'down'}
+   877→          />
+   878→          <Metric icon={<Users className="h-3 w-3" />} label="Top-10 supply" value={fmtPct(s.top10Pct)} />
+   879→          <Metric icon={<CalendarDays className="h-3 w-3" />} label="Edad del par" value={ageOf(s.pairCreatedAt)} />
+   880→          <Metric icon={<TrendingUp className="h-3 w-3" />} label="ATH fecha" value={ageOf(s.athAt)} />
+   881→        </div>
+   882→      )}
+   883→      {!verified && claim.note && (
+   884→        <p className="text-[11px] leading-relaxed text-amber-300/80">{claim.note}</p>
+   885→      )}
+   886→
+   887→      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+   888→        <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
+   889→          wallet: {shortWallet(claim.walletAddress)}
+   890→        </span>
+   891→        <span className="ml-auto flex shrink-0 items-center gap-1">
+   892→          {s?.pairUrl && (
+   893→            <a
+   894→              href={s.pairUrl}
+   895→              target="_blank"
+   896→              rel="noreferrer"
+   897→              className="flex h-7 items-center gap-1 rounded-lg border border-white/10 px-2 text-[10px] font-semibold text-muted-foreground transition-colors hover:text-primary"
+   898→            >
+   899→              <ExternalLink className="h-3 w-3" aria-hidden /> DexScreener
+   900→            </a>
+   901→          )}
+   902→          {!verified && (
+   903→            <Button
+   904→              size="sm"
+   905→              variant="ghost"
+   906→              onClick={onRetry}
+   907→              disabled={busy}
+   908→              className="h-7 gap-1 rounded-lg border border-white/10 px-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+   909→            >
+   910→              <RefreshCw className={cn('h-3 w-3', busy && 'animate-spin')} aria-hidden /> Reintentar
+   911→            </Button>
+   912→          )}
+   913→          <Button
+   914→            size="icon"
+   915→            variant="ghost"
+   916→            onClick={onDelete}
+   917→            disabled={busy}
+   918→            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-[#ff8080]"
+   919→            aria-label="Eliminar token del track record"
+   920→          >
+   921→            <Trash2 className="h-3 w-3" />
+   922→          </Button>
+   923→        </span>
+   924→      </div>
+   925→    </div>
+   926→  )
+   927→}
+   928→
+   929→function Metric({
+   930→  icon,
+   931→  label,
+   932→  value,
+   933→  highlight,
+   934→  tone,
+   935→}: {
+   936→  icon: React.ReactNode
+   937→  label: string
+   938→  value: string
+   939→  highlight?: boolean
+   940→  tone?: 'up' | 'down'
+   941→}) {
+   942→  return (
+   943→    <div className="min-w-0 overflow-hidden rounded-lg border border-white/8 bg-[#0a0b08]/70 px-2 py-1.5">
+   944→      <p className="flex min-w-0 items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+   945→        {icon}
+   946→        <span className="min-w-0 truncate">{label}</span>
+   947→      </p>
+   948→      <p
+   949→        className={cn(
+   950→          'truncate text-[13px] font-bold tabular-nums',
+   951→          highlight && 'text-primary',
+   952→          tone === 'up' && 'text-primary',
+   953→          tone === 'down' && 'text-[#ff8080]'
+   954→        )}
+   955→      >
+   956→        {value}
+   957→      </p>
+   958→    </div>
+   959→  )
+   960→}
+   961→
+   962→/**
+   963→ * Editor de foto de perfil: subir archivo (→ /api/upload) o pegar URL.
+   964→ * Aplica de inmediato (PATCH /api/me) para verla en el header al instante.
+   965→ */
+   966→function AvatarEditor({
+   967→  avatar,
+   968→  name,
+   969→  onApply,
+   970→  busy,
+   971→}: {
+   972→  avatar: string
+   973→  name: string
+   974→  onApply: (url: string) => void
+   975→  busy?: boolean
+   976→}) {
+   977→  const fileRef = useRef<HTMLInputElement>(null)
+   978→  const [urlDraft, setUrlDraft] = useState('')
+   979→  const [uploading, setUploading] = useState(false)
+   980→  const isUrl = /^https:\/\/\S+$/i.test(avatar) || avatar.startsWith('/uploads/') || avatar.startsWith('/seed/')
+   981→
+   982→  const pickFile = async (file: File | undefined) => {
+   983→    if (!file) return
+   984→    try {
+   985→      setUploading(true)
+   986→      const url = await uploadImage(file)
+   987→      onApply(url)
+   988→      toast.success('Foto de perfil actualizada')
+   989→    } catch (e) {
+   990→      toast.error((e as Error).message || 'No se pudo subir la imagen')
+   991→    } finally {
+   992→      setUploading(false)
+   993→      if (fileRef.current) fileRef.current.value = ''
+   994→    }
+   995→  }
+   996→
+   997→  const applyUrl = () => {
+   998→    const u = urlDraft.trim()
+   999→    if (!/^https:\/\/\S+$/i.test(u)) {
+  1000→      toast.error('Pega una URL https:// válida')
+  1001→      return
+  1002→    }
+  1003→    onApply(u)
+  1004→    setUrlDraft('')
+  1005→    toast.success('Foto de perfil actualizada')
+  1006→  }
+  1007→
+  1008→  return (
+  1009→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+  1010→      <div className="flex items-center gap-3">
+  1011→        <UserAvatar name={name} src={isUrl ? avatar : null} size="lg" />
+  1012→        <div className="min-w-0 flex-1">
+  1013→          <p className="text-[13px] font-bold">Foto de perfil</p>
+  1014→          <p className="text-[11px] text-muted-foreground">JPG o PNG, máx. 2.5 MB</p>
+  1015→        </div>
+  1016→        <input
+  1017→          ref={fileRef}
+  1018→          type="file"
+  1019→          accept="image/png,image/jpeg,image/webp,image/gif"
+  1020→          className="hidden"
+  1021→          onChange={(e) => pickFile(e.target.files?.[0])}
+  1022→          aria-label="Subir foto de perfil"
+  1023→        />
+  1024→        <Button
+  1025→          size="sm"
+  1026→          onClick={() => fileRef.current?.click()}
+  1027→          disabled={uploading || busy}
+  1028→          className="h-8 shrink-0 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+  1029→        >
+  1030→          <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+  1031→          {uploading ? 'Subiendo…' : 'Subir foto'}
+  1032→        </Button>
+  1033→        {isUrl && (
+  1034→          <Button
+  1035→            size="icon"
+  1036→            variant="ghost"
+  1037→            onClick={() => onApply('🐺')}
+  1038→            disabled={busy}
+  1039→            className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:text-[#ff8080]"
+  1040→            aria-label="Quitar foto"
+  1041→            title="Quitar foto"
+  1042→          >
+  1043→            <Trash2 className="h-3.5 w-3.5" />
+  1044→          </Button>
+  1045→        )}
+  1046→      </div>
+  1047→      <div className="mt-2.5 flex items-center gap-1.5">
+  1048→        <Input
+  1049→          value={urlDraft}
+  1050→          onChange={(e) => setUrlDraft(e.target.value)}
+  1051→          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), applyUrl())}
+  1052→          placeholder="…o pega la URL de la imagen (https://…)"
+  1053→          inputMode="url"
+  1054→          spellCheck={false}
+  1055→          aria-label="URL de la foto de perfil"
+  1056→          className="h-8 bg-[#121410] font-mono text-[12px]"
+  1057→        />
+  1058→        <Button
+  1059→          size="sm"
+  1060→          variant="ghost"
+  1061→          onClick={applyUrl}
+  1062→          disabled={busy || !urlDraft.trim()}
+  1063→          className="h-8 shrink-0 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+  1064→        >
+  1065→          Usar
+  1066→        </Button>
+  1067→      </div>
+  1068→    </div>
+  1069→  )
+  1070→}
+  1071→

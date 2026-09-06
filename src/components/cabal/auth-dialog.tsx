@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { AtSign, KeyRound, LogIn, UserPlus } from 'lucide-react'
+import { AtSign, Gift, KeyRound, LogIn, UserPlus } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,7 @@ export function AuthDialog() {
   const [handle, setHandle] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [referralCode, setReferralCode] = useState('')
   const [demoProvider, setDemoProvider] = useState<'x' | 'google' | null>(null)
 
   const isLogin = authMode === 'login'
@@ -40,6 +41,7 @@ export function AuthDialog() {
       setPassword('')
       setHandle('')
       setName('')
+      setReferralCode('')
     }
   }
 
@@ -53,7 +55,12 @@ export function AuthDialog() {
       )
     } else {
       register.mutate(
-        { handle: handle.trim(), name: name.trim() || undefined, password },
+        {
+          handle: handle.trim(),
+          name: name.trim() || undefined,
+          password,
+          referralCode: referralCode.trim() || undefined,
+        },
         { onSuccess: () => close(false) }
       )
     }
@@ -166,6 +173,22 @@ export function AuthDialog() {
                   autoComplete="name"
                   className="h-10 border-white/10 bg-[#0a0b08] text-sm"
                 />
+              </div>
+            )}
+
+            {!isLogin && (
+              <div className="space-y-1.5">
+                <Label htmlFor="auth-referral" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Gift className="h-3.5 w-3.5" aria-hidden /> Código de invitación (opcional)
+                </Label>
+                <Input
+                  id="auth-referral"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  placeholder="CABAL-XXXXXX"
+                  className="h-10 border-white/10 bg-[#0a0b08] font-mono text-sm uppercase tracking-wider"
+                />
+                <p className="text-[10px] text-muted-foreground/70">Quien te invitó gana puntos por tu actividad.</p>
               </div>
             )}
 

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, UserPlus } from 'lucide-react'
+import { Bell, ChevronDown, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -170,7 +170,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            /* Invitado: botones de iniciar sesión / registro */
+            /* Invitado: un solo botón → abre el acceso (dentro se puede iniciar sesión o crear cuenta) */
             <div className="flex items-center gap-1.5">
               {me?.isAdmin && (
                 <Button
@@ -185,22 +185,13 @@ export function Header() {
                 </Button>
               )}
               <Button
-                variant="ghost"
                 size="sm"
                 onClick={() => openAuth('login')}
-                className="h-9 gap-1.5 rounded-lg border border-white/10 px-2.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground sm:px-3"
+                className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
               >
                 <LogIn className="h-4 w-4" aria-hidden />
                 <span className="hidden sm:inline">Iniciar sesión</span>
                 <span className="sm:hidden">Entrar</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => openAuth('register')}
-                className="hidden h-9 gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-bold text-primary-foreground hover:bg-[#8FA83F] md:inline-flex"
-              >
-                <UserPlus className="h-4 w-4" aria-hidden />
-                Crear cuenta
               </Button>
             </div>
           )}

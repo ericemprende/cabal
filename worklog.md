@@ -425,3 +425,53 @@ Stage Summary:
 - A partir de ahora ningún `db push` puede perder datos: backup previo + auto-restauración. `db:reset` bloqueado. Backups en `db/backups/`.
 - La imagen original de Ceocripto no sobrevivió a la pérdida anterior; el usuario puede resubirla desde el panel admin (avatar muestra "C").
 - Verificado E2E con agent-browser (radar con 3 launches, detalle OK), lint limpio, dev.log sin errores.
+
+---
+Task ID: 0-recon
+Agent: Explore
+Task: Mapa del código para features (login único, referidos 10%, reclamar proyecto, diagnóstico VPS)
+
+Work Log:
+- Leído worklog.md (contexto: auth por credenciales + login social X/Google demo/real, wallets con firma, DevClaims, seed sin contenido, safe-db-push).
+- Trazados los 3 flujos de auth UI: header.tsx (botones invitado) → auth-dialog.tsx (tabs + sociales) → oauth-consent-dialog.tsx (demo); perfil → profile-dialog.tsx (ConnectionRow "Conectar con X/Google").
+- Verificado la condición de OAuth: GET /api/auth/status → getXConfig/getGoogleConfig (src/lib/oauth.ts:27-39, env X_CLIENT_ID/X_CLIENT_SECRET, GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET). El flag `configured` SOLO elige OAuth real vs consentimiento demo; NINGÚN botón se oculta por env vars. No hay next-auth, ni filas Setting para OAuth.
+- Inventariados TODOS los puntos de otorgamiento (awardPoints en api-helpers.ts:46-67 y llamadas en posts, launches, hype, like, wallets/verify, social.ts awardOnce, admin/points, seed).
+- Leído schema.prisma completo (User/Launch/Token/PointEvent/Setting + WalletLink/DevClaim/AffiliatePlatform): Launch tiene createdById, Token tiene devId; User NO tiene referralCode/referredBy.
+- Mapeado admin-panel.tsx (6 vistas) y el único canal de Settings existente (claves points_* vía GET/PUT /api/admin/rules, filtro por prefijo points_).
+- Confirmado por grep: NO existe ninguna UI/sección llamada "Datos" en src/.
+- Confirmado que registro acepta solo {handle, password, name?} y que daily_visit tiene regla pero nunca se otorga.
+
+Stage Summary:
+- Botones sociales X/Google SIEMPRE visibles (auth-dialog.tsx:114-133 y profile-dialog.tsx:194-215); `configured` (env vars vía /api/auth/status) solo cambia OAuth real vs demo → si en el VPS no aparecen, es build/cache vieja, no configuración.
+- awardPoints central en src/lib/api-helpers.ts:46-67; otorgan puntos: posts:27, launches:110, hype:27, like:27, wallets/verify:48, social.ts:33/45/86/105, admin/points:19-32 (directo), seed.ts:252.
+- Registro /api/auth/register acepta solo handle+password+name; cookie cabal_session en src/lib/auth.ts (no existe account.ts).
+- Schema: Launch.createdById y Token.devId existen; User sin referralCode/referredBy → referidos 10% requiere migración nueva.
+- Sin sección "Datos" en el código; candidatas a lo que ve el usuario: tab "Estadísticas" del admin (/api/admin/overview) o historial de puntos del perfil.
+
+---
+Task ID: features-login-referrals-claims
+Agent: Z.ai Code (main)
+Task: 4 pedidos del usuario — (1) un solo botón de acceso, (2) diagnóstico VPS, (3) reclamar proyectos con wallet+CA, (4) códigos de invitación con 10% de puntos configurable
+
+Work Log:
+- Recon con Explore agent: mapa de auth UI, OAuth gating, puntos, perfil, admin, schema.
+- Schema: User.referralCode/referredById (self-relación "ReferralTree") + modelo ProjectClaim. db:push safe (datos intactos) + prisma generate + restart del server (cliente viejo en memoria daba "Unknown argument referralCode").
+- awardPoints() (api-helpers): bonus al invitador = floor(amount × points_referral_percent/100), reason 'referral', sin cascada, nunca rompe el otorgamiento principal. getReferralPercent() default 10.
+- POST /api/auth/register acepta referralCode (valida existencia, setea referredById).
+- GET /api/me/referral: genera código (alfabeto sin 0/O/1/I, 6 chars) + stats (invitados, earned, percent).
+- GET+POST /api/claims: busca proyecto por CA+red (token primero, luego launch); bloquea si ya verificado por otro; verifyProjectOwnership (chain-verify.ts): Solana → mint authority (getAccountInfo bytes 4..36) o creador (getSignaturesForAddress último → getTransaction primer signer, cortado a 1000 sigs); EVM/robinhood → manual. Coincide → verified + Token.devId=user.
+- GET+POST /api/admin/claims: cola con enriched names; approve → verified+devId; reject → rejected.
+- UI: header sin botón "Crear cuenta" (UserPlus removido de imports); auth-dialog con input "Código de invitación" en registro; profile-dialog con ReferralSection (código+copiar+stats) y ClaimProjectSection (chips de red, CA, wallet + Phantom/MetaMask, lista de mis reclamos con badges); admin-panel con tab "Reclamos de proyectos" (AdminClaims con Aprobar/Rechazar) + "Referidos (% del equipo)" en reglas.
+- E2E API: registro con código ✓, launch 40 pts → invitador +4 ✓, claim GAY con wallet ajena → pending con nota del check RPC ✓, approve → devId vinculado ✓, reject ✓.
+- E2E browser (agent-browser): header un solo botón ✓, modal con tabs + campo invitación ✓, registro UI ✓, perfil muestra "Invita y gana" (código 47U3TZ) + reclamo yesgay "EN REVISIÓN" ✓, admin cola con Aprobar/Rechazar ✓, reglas con Referidos=10 ✓, móvil OK.
+- Limpieza: launch de prueba borrado, -40/-4 pts revertidos, reclamos borrados/rechazados, usuarios refer_test y ui_test eliminados (13 usuarios como antes). Código BMM392 del demo user conservado.
+- RECUPERACIÓN: Token GAY faltaba en BD (reversión borró también /home/z/backup-safe). No estaba en git/backups → recreado con CA real 6iz4scC…pump y métricas DexScreener (price 0.000002553, MC 2426). Logo perdido → re-upload por admin.
+- Hallazgo: /api/admin/tokens no tiene POST → ABM creación de tokens pendiente.
+- .env.example ampliado (SOLANA_RPC_URL, OAuth X/Google). README changelog 2026-09-06 (tarde I). Lint limpio.
+
+Stage Summary:
+- Referidos: 10% configurable por admin, automático en TODOS los puntos que pasan por awardPoints (thesis/comment/launch/likes/hype/verificaciones). Admin directos no pagan bonus.
+- Reclamos: verificación on-chain real en Solana; admin aprueba el resto. Proyecto vinculado al perfil del dev.
+- Login único: un botón → modal con ambas pestañas.
+- Token GAY restaurado con datos reales; imagen pendiente de re-upload.
+- Pendiente VPS: usuario debe crear .env en el VPS y actualizar código; push a GitHub pendiente de token nuevo.

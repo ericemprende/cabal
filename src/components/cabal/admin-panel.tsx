@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   BarChart3,
+  BadgeCheck,
   CheckCircle2,
   Coins,
   Globe,
@@ -37,7 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { NETWORKS, timeAgo } from '@/lib/cabal'
@@ -63,7 +64,7 @@ import {
   useAdminUpdateUser,
   useAdminUsers,
 } from '@/lib/api-client'
-import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, TokenDTO } from '@/lib/types'
+import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, ProjectClaimDTO, TokenDTO } from '@/lib/types'
 
 /** Placeholder de ejemplo por red, con el formato real de GMGN/Axiom. */
 const NETWORK_PLACEHOLDER: Record<string, string> = {
@@ -82,6 +83,7 @@ const RULE_LABELS: Record<string, string> = {
   points_like_received: 'Like recibido',
   points_hype_received: 'Hype en tu launch',
   points_daily_visit: 'Visita diaria',
+  points_referral_percent: 'Referidos (% del equipo)',
 }
 
 const REASON_COLORS: Record<string, string> = {
@@ -96,7 +98,7 @@ const REASON_COLORS: Record<string, string> = {
   verify_google: '#8A92B2',
 }
 
-type AdminView = 'usuarios' | 'reglas' | 'proyectos' | 'tokens' | 'afiliados' | 'stats'
+type AdminView = 'usuarios' | 'reclamos' | 'reglas' | 'proyectos' | 'tokens' | 'afiliados' | 'stats'
 
 function toInputDateTime(iso: string): string {
   const d = new Date(iso)
@@ -198,6 +200,7 @@ export function AdminPanel({
           {(
             [
               { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
+              { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
               { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
               { key: 'tokens', label: 'Tokens', icon: Coins },
               { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
@@ -239,6 +242,8 @@ export function AdminPanel({
             ))}
           </div>
         )}
+
+        {view === 'reclamos' && <AdminClaims enabled={enabled} />}
 
         {view === 'proyectos' && <AdminLaunches enabled={enabled} />}
 
@@ -1158,6 +1163,120 @@ function Kpi({ label, value, icon }: { label: string; value: number; icon?: Reac
         {icon} {label}
       </p>
       <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
+    </div>
+  )
+}
+
+// ── Reclamos de proyectos: cola de aprobación ─────────────────────────────
+// Los usuarios reclaman la propiedad de un launch/token por CA + wallet.
+// Solana se verifica on-chain automáticamente; el resto queda pendiente y el
+// admin aprueba o rechaza desde aquí.
+type AdminClaimRow = ProjectClaimDTO & {
+  userName: string
+  userHandle: string
+  projectName: string
+  projectTicker: string | null
+}
+
+const ADMIN_CLAIM_STATUS: Record<string, { label: string; cls: string }> = {
+  verified: { label: 'VERIFICADO', cls: 'border-[#8FA83F]/40 bg-[#8FA83F]/12 text-primary' },
+  pending: { label: 'PENDIENTE', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
+  rejected: { label: 'RECHAZADO', cls: 'border-[#ff8080]/30 bg-[#ff8080]/10 text-[#ff8080]' },
+}
+
+function AdminClaims({ enabled }: { enabled: boolean }) {
+  const qc = useQueryClient()
+  const claimsQ = useQuery<{ claims: AdminClaimRow[] }>({
+    queryKey: ['admin', 'claims'] as const,
+    queryFn: () => jsonFetch('/api/admin/claims'),
+    enabled,
+  })
+
+  const act = useMutation({
+    mutationFn: (data: { id: string; action: 'approve' | 'reject' }) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/claims', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries()
+      toast.success(vars.action === 'approve' ? 'Reclamo aprobado · proyecto vinculado al usuario' : 'Reclamo rechazado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const claims = claimsQ.data?.claims ?? []
+  const pending = claims.filter((c) => c.status === 'pending').length
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Reclamos de propiedad de proyectos. Solana se verifica solo (mint authority / creador);
+        las demás redes requieren tu aprobación manual.
+        {pending > 0 && <span className="ml-1 font-bold text-primary">{pending} pendiente{pending === 1 ? '' : 's'}</span>}
+      </p>
+
+      {claimsQ.isLoading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+
+      {!claimsQ.isLoading && claims.length === 0 && (
+        <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-muted-foreground">
+          Todavía no hay reclamos de proyectos
+        </p>
+      )}
+
+      {claims.map((c) => {
+        const meta = ADMIN_CLAIM_STATUS[c.status] ?? ADMIN_CLAIM_STATUS.pending
+        return (
+          <div key={c.id} className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-bold">
+                  <span className="truncate">{c.projectName}</span>
+                  {c.projectTicker && (
+                    <span className="font-mono text-[11px] font-normal text-muted-foreground">${c.projectTicker}</span>
+                  )}
+                  <span className="flex shrink-0 items-center gap-1 text-[10px] font-normal text-muted-foreground">
+                    <NetworkIcon network={c.network} className="h-3 w-3" />
+                    {NETWORKS[c.network as keyof typeof NETWORKS]?.label ?? c.network}
+                  </span>
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  por {c.userName} (@{c.userHandle}) · {timeAgo(c.createdAt)}
+                </p>
+                <p className="truncate font-mono text-[10px] text-muted-foreground/80">CA: {c.contract}</p>
+                <p className="truncate font-mono text-[10px] text-muted-foreground/80">Wallet: {c.wallet}</p>
+                {c.note && <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground/70">{c.note}</p>}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span className={cn('rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wider', meta.cls)}>
+                  {meta.label}
+                </span>
+                {c.status === 'pending' && (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => act.mutate({ id: c.id, action: 'approve' })}
+                      disabled={act.isPending}
+                      className="h-8 gap-1 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                    >
+                      <CheckCircle2 className="h-3 w-3" aria-hidden /> Aprobar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => act.mutate({ id: c.id, action: 'reject' })}
+                      disabled={act.isPending}
+                      className="h-8 gap-1 rounded-lg border border-[#ff8080]/30 px-2.5 text-[11px] font-bold text-[#ff8080] hover:bg-[#ff8080]/10"
+                    >
+                      <XCircle className="h-3 w-3" aria-hidden /> Rechazar
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

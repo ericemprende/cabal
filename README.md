@@ -212,6 +212,14 @@ bun run db:generate # Regenerar cliente Prisma
 
 > Añadir una entrada por cada cambio relevante, con fecha (zona horaria America/Bogota).
 
+### 2026-09-06 (tarde I) — Login único, referidos 10% y reclamo de proyectos con wallet
+- **Un solo botón de acceso** (header): se quitó "Crear cuenta"; queda "Iniciar sesión" que abre el modal con pestañas (dentro se puede crear la cuenta o entrar). Registro desde UI verificado E2E.
+- **Códigos de invitación + 10% de puntos**: `User.referralCode` (auto-generado, ej. `BMM392`) + `User.referredById`. `awardPoints()` paga al invitador `floor(10%)` de lo que gane el invitado, sin cascada (reason `referral`). El registro acepta `referralCode` (input opcional en "Crear cuenta"). Perfil: sección "Invita y gana" (código + copiar + invitados + puntos ganados). **% configurable** en Admin → Reglas de puntos → "Referidos (% del equipo)" (Setting `points_referral_percent`, default 10). Verificado E2E: launch de 40 pts → invitador +4.
+- **Reclamar proyecto (opciones avanzadas del perfil)**: modelo nuevo `ProjectClaim` (targetType launch|token, CA, wallet, status verified|pending|rejected, method onchain|admin|manual). El usuario pega el CA + conecta su wallet (Phantom/MetaMask o pegada a mano). **Verificación on-chain Solana** (`src/lib/chain-verify.ts` + `src/lib/base58.ts`, sin dependencias): mint authority (bytes 4..36 del SPL Mint) o creador del mint (primera firma: getSignaturesForAddress → getTransaction). Si coincide → verificado y `Token.devId` = usuario; si no (u otra red) → pendiente. Cola nueva en Admin → "Reclamos de proyectos" con Aprobar/Rechazar (`/api/admin/claims`); al aprobar se vincula el dev. RPC override con `SOLANA_RPC_URL`. Verificado E2E con el CA real de $GAY.
+- **Recuperación**: el token **$GAY (yesgay)** volvió a desaparecer de la BD (reversión del sandbox que además borró `/home/z/backup-safe/`). No estaba en git ni backups → **recreado con su CA real** `6iz4scC…pump` y métricas on-chain reales de DexScreener (pumpswap: price 0.000002553 · MC 2426 · liq 2510). Su logo se perdió: resúbelo desde el admin cuando quieras.
+- **Pendiente detectado**: no existe endpoint de CREACIÓN de tokens (`/api/admin/tokens` solo GET/PATCH) — el ABM completo de tokens desde admin sigue abierto.
+- `.env.example` ampliado: `SOLANA_RPC_URL` + vars OAuth (X/Google) documentadas.
+
 ### 2026-09-05
 - **Datos persistentes (fix crítico)**: el launch de Ceocripto se borraba en cada actualización. Causas: `db:push --accept-data-loss` aplicaba cambios destructivos sin red de seguridad, y limpiezas de contenido demo se llevaron por error launches reales. Solución:
   - `scripts/safe-db-push.mjs` (nuevo `db:push`): backup con timestamp en `db/backups/` → push del schema → comparación de conteos tabla a tabla → **auto-restauración de las filas borradas** desde el backup (columnas compatibles, `INSERT OR IGNORE`). Conserva los 20 últimos backups.

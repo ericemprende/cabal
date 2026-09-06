@@ -1,0 +1,1164 @@
+     1→'use client'
+     2→
+     3→import { useState, type ReactNode } from 'react'
+     4→import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+     5→import {
+     6→  BarChart3,
+     7→  CheckCircle2,
+     8→  Coins,
+     9→  Globe,
+    10→  Heart,
+    11→  Link2,
+    12→  Minus,
+    13→  Pencil,
+    14→  Plus,
+    15→  Rocket,
+    16→  Save,
+    17→  Settings2,
+    18→  ShieldCheck,
+    19→  Trash2,
+    20→  Users,
+    21→  XCircle,
+    22→  Zap,
+    23→} from 'lucide-react'
+    24→import { Input } from '@/components/ui/input'
+    25→import { Textarea } from '@/components/ui/textarea'
+    26→import { Button } from '@/components/ui/button'
+    27→import { Label } from '@/components/ui/label'
+    28→import { Skeleton } from '@/components/ui/skeleton'
+    29→import {
+    30→  AlertDialog,
+    31→  AlertDialogAction,
+    32→  AlertDialogCancel,
+    33→  AlertDialogContent,
+    34→  AlertDialogDescription,
+    35→  AlertDialogFooter,
+    36→  AlertDialogHeader,
+    37→  AlertDialogTitle,
+    38→  AlertDialogTrigger,
+    39→} from '@/components/ui/alert-dialog'
+    40→import { useQuery } from '@tanstack/react-query'
+    41→import { toast } from 'sonner'
+    42→import { cn } from '@/lib/utils'
+    43→import { NETWORKS, timeAgo } from '@/lib/cabal'
+    44→import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
+    45→import { PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
+    46→import { ImageDrop } from '@/components/cabal/image-drop'
+    47→import {
+    48→  jsonFetch,
+    49→  qk,
+    50→  uploadImage,
+    51→  useAdminAdjustPoints,
+    52→  useAdminAffiliates,
+    53→  useAdminCreateAffiliate,
+    54→  useAdminDeleteAffiliate,
+    55→  useAdminDeleteLaunch,
+    56→  useAdminLaunches,
+    57→  useAdminOverview,
+    58→  useAdminRules,
+    59→  useAdminSaveAffiliate,
+    60→  useAdminTokens,
+    61→  useAdminUpdateLaunch,
+    62→  useAdminUpdateToken,
+    63→  useAdminUpdateUser,
+    64→  useAdminUsers,
+    65→} from '@/lib/api-client'
+    66→import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, TokenDTO } from '@/lib/types'
+    67→
+    68→/** Placeholder de ejemplo por red, con el formato real de GMGN/Axiom. */
+    69→const NETWORK_PLACEHOLDER: Record<string, string> = {
+    70→  solana: 'https://gmgn.ai/sol/token/TUCODIGO_{ca}',
+    71→  base: 'https://gmgn.ai/base/token/TUCODIGO_{ca}',
+    72→  ethereum: 'https://gmgn.ai/eth/token/TUCODIGO_{ca}',
+    73→  bsc: 'https://axiom.trade/t/{ca}/@usuario?chain=bnb',
+    74→  tron: 'https://…/token/{ca}',
+    75→  robinhood: 'https://axiom.trade/t/{ca}/@usuario?chain=robinhood',
+    76→}
+    77→
+    78→const RULE_LABELS: Record<string, string> = {
+    79→  points_thesis: 'Tesis publicada',
+    80→  points_comment: 'Comentario',
+    81→  points_launch: 'Launch publicado',
+    82→  points_like_received: 'Like recibido',
+    83→  points_hype_received: 'Hype en tu launch',
+    84→  points_daily_visit: 'Visita diaria',
+    85→}
+    86→
+    87→const REASON_COLORS: Record<string, string> = {
+    88→  launch: '#8FA83F',
+    89→  thesis: '#a5bd55',
+    90→  comment: '#cdd9a3',
+    91→  like_received: '#ffb020',
+    92→  hype_received: '#ffe08a',
+    93→  admin_adjust: '#7d9340',
+    94→  redeem: '#ff4d5e',
+    95→  verify_x: '#9945FF',
+    96→  verify_google: '#8A92B2',
+    97→}
+    98→
+    99→type AdminView = 'usuarios' | 'reglas' | 'proyectos' | 'tokens' | 'afiliados' | 'stats'
+   100→
+   101→function toInputDateTime(iso: string): string {
+   102→  const d = new Date(iso)
+   103→  const pad = (n: number) => String(n).padStart(2, '0')
+   104→  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+   105→}
+   106→
+   107→// Toggle pequeño tipo chip para campos booleanos
+   108→function ChipToggle({
+   109→  label,
+   110→  checked,
+   111→  onChange,
+   112→  okIcon = true,
+   113→}: {
+   114→  label: string
+   115→  checked: boolean
+   116→  onChange: (v: boolean) => void
+   117→  okIcon?: boolean
+   118→}) {
+   119→  return (
+   120→    <button
+   121→      type="button"
+   122→      onClick={() => onChange(!checked)}
+   123→      aria-pressed={checked}
+   124→      className={cn(
+   125→        'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition-all',
+   126→        checked
+   127→          ? 'border-[#8FA83F]/45 bg-[#8FA83F]/12 text-primary'
+   128→          : 'border-white/10 bg-[#121410] text-muted-foreground hover:border-white/25'
+   129→      )}
+   130→    >
+   131→      {okIcon &&
+   132→        (checked ? (
+   133→          <CheckCircle2 className="h-3 w-3" aria-hidden />
+   134→        ) : (
+   135→          <XCircle className="h-3 w-3" aria-hidden />
+   136→        ))}
+   137→      {label}
+   138→    </button>
+   139→  )
+   140→}
+   141→
+   142→/**
+   143→ * Contenido completo del dashboard de administración.
+   144→ * Reutilizado por AdminDialog (modal de la app) y por la página standalone /admin.
+   145→ */
+   146→export function AdminPanel({
+   147→  enabled = true,
+   148→  stickyHeader = true,
+   149→  onClose,
+   150→}: {
+   151→  /** Activa las queries del panel (en el diálogo solo cuando está abierto). */
+   152→  enabled?: boolean
+   153→  /** Header pegajoso. En /admin el header de la página ya es sticky, así que se desactiva. */
+   154→  stickyHeader?: boolean
+   155→  /** Acción opcional de cierre (muestra un botón "Cerrar" junto al título). */
+   156→  onClose?: () => void
+   157→}) {
+   158→  const [view, setView] = useState<AdminView>('usuarios')
+   159→  const overview = useAdminOverview(enabled)
+   160→  const users = useAdminUsers(enabled)
+   161→  const rulesQ = useQuery<Record<string, number>>({
+   162→    queryKey: qk.adminRules,
+   163→    queryFn: () => jsonFetch('/api/admin/rules'),
+   164→    enabled,
+   165→  })
+   166→  const saveRules = useAdminRules(enabled)
+   167→  const adjust = useAdminAdjustPoints(enabled)
+   168→
+   169→  // draft edits over the server rules — no effect needed
+   170→  const [draft, setDraft] = useState<Record<string, number>>({})
+   171→  const ruleValue = (key: string) => draft[key] ?? rulesQ.data?.[key] ?? 0
+   172→  const setRule = (key: string, v: number) => setDraft((d) => ({ ...d, [key]: v }))
+   173→  const rulesToSave = () => ({ ...(rulesQ.data ?? {}), ...draft })
+   174→
+   175→  const dist = (overview.data?.distribution ?? [])
+   176→    .filter((d) => d.total > 0)
+   177→    .map((d) => ({ name: RULE_LABELS[`points_${d.reason}`] ?? d.reason, value: d.total, key: d.reason }))
+   178→
+   179→  return (
+   180→    <div>
+   181→      <div className={cn('z-10 border-b border-white/10 bg-[#121410] p-4', stickyHeader && 'sticky top-0')}>
+   182→        <div className="flex items-center gap-2">
+   183→          <h2 className="flex items-center gap-2 font-display text-lg font-bold">
+   184→            <ShieldCheck className="h-5 w-5 text-primary" /> Dashboard Admin
+   185→          </h2>
+   186→          {onClose && (
+   187→            <Button
+   188→              size="sm"
+   189→              variant="ghost"
+   190→              onClick={onClose}
+   191→              className="ml-auto h-8 rounded-lg border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   192→            >
+   193→              Cerrar
+   194→            </Button>
+   195→          )}
+   196→        </div>
+   197→        <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto">
+   198→          {(
+   199→            [
+   200→              { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
+   201→              { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
+   202→              { key: 'tokens', label: 'Tokens', icon: Coins },
+   203→              { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
+   204→              { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
+   205→              { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
+   206→            ] as { key: AdminView; label: string; icon: typeof Zap }[]
+   207→          ).map((v) => (
+   208→            <button
+   209→              key={v.key}
+   210→              onClick={() => setView(v.key)}
+   211→              className={cn(
+   212→                'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+   213→                view === v.key
+   214→                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+   215→                  : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
+   216→              )}
+   217→            >
+   218→              <v.icon className="h-3.5 w-3.5" aria-hidden />
+   219→              {v.label}
+   220→            </button>
+   221→          ))}
+   222→        </div>
+   223→      </div>
+   224→
+   225→      <div className="p-4">
+   226→        {view === 'usuarios' && (
+   227→          <div className="space-y-2">
+   228→            <p className="text-xs text-muted-foreground">
+   229→              Ajusta puntos, edita perfiles (X, Telegram, Google) y gestiona insignias y roles. Cada cambio queda registrado.
+   230→            </p>
+   231→            {users.isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+   232→            {(users.data ?? []).map((u) => (
+   233→              <AdminUserRow
+   234→                key={u.id}
+   235→                user={u}
+   236→                enabled={enabled}
+   237→                onAdjust={(amount, note) => adjust.mutate({ userId: u.id, amount, note })}
+   238→              />
+   239→            ))}
+   240→          </div>
+   241→        )}
+   242→
+   243→        {view === 'proyectos' && <AdminLaunches enabled={enabled} />}
+   244→
+   245→        {view === 'tokens' && <AdminTokens enabled={enabled} />}
+   246→
+   247→        {view === 'afiliados' && <AdminAffiliates enabled={enabled} />}
+   248→
+   249→        {view === 'reglas' && (
+   250→          <div className="space-y-3">
+   251→            <p className="text-xs text-muted-foreground">
+   252→              Define cuántos puntos gana cada acción. Se aplica de inmediato para toda la comunidad.
+   253→            </p>
+   254→            <div className="grid gap-2.5 sm:grid-cols-2">
+   255→              {Object.entries(RULE_LABELS).map(([key, label]) => (
+   256→                <div key={key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+   257→                  <span className="flex-1 text-[13px] font-semibold">{label}</span>
+   258→                  <Input
+   259→                    type="number"
+   260→                    min={0}
+   261→                    max={10000}
+   262→                    value={ruleValue(key)}
+   263→                    onChange={(e) => setRule(key, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+   264→                    className="h-9 w-20 border-white/10 bg-[#121410] text-center font-mono font-bold text-primary"
+   265→                    aria-label={label}
+   266→                  />
+   267→                  <Zap className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+   268→                </div>
+   269→              ))}
+   270→            </div>
+   271→            <Button
+   272→              onClick={() => saveRules.mutate(rulesToSave())}
+   273→              disabled={saveRules.isPending}
+   274→              className="h-10 gap-2 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   275→            >
+   276→              <Save className="h-4 w-4" /> Guardar reglas
+   277→            </Button>
+   278→          </div>
+   279→        )}
+   280→
+   281→        {view === 'stats' && (
+   282→          <div className="space-y-4">
+   283→            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+   284→              <Kpi label="Miembros" value={overview.data?.totalUsers ?? 0} icon={<Users className="h-4 w-4" />} />
+   285→              <Kpi label="Posts" value={overview.data?.totalPosts ?? 0} />
+   286→              <Kpi label="Launches" value={overview.data?.totalLaunches ?? 0} />
+   287→              <Kpi label="Tokens" value={overview.data?.totalTokens ?? 0} />
+   288→            </div>
+   289→            <div className="grid gap-3 md:grid-cols-2">
+   290→              <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   291→                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Puntos en circulación</p>
+   292→                <p className="font-machina mt-1 text-3xl font-bold text-primary">
+   293→                  {(overview.data?.pointsInCirculation ?? 0).toLocaleString('es')}
+   294→                </p>
+   295→                <p className="mt-1 text-xs text-muted-foreground">
+   296→                  Emitidos históricos: {(overview.data?.pointsIssuedTotal ?? 0).toLocaleString('es')}
+   297→                </p>
+   298→              </div>
+   299→              <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   300→                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Top earners</p>
+   301→                <div className="mt-2 space-y-1.5">
+   302→                  {(overview.data?.topEarners ?? []).map((t, i) => (
+   303→                    <div key={t.user.id} className="flex items-center gap-2 text-[13px]">
+   304→                      <span className="w-4 text-muted-foreground">{i + 1}.</span>
+   305→                      <UserAvatar name={t.user.name} handle={t.user.handle} src={t.user.avatar} size="xs" ring={false} />
+   306→                      <span className="flex-1 truncate font-medium">{t.user.name}</span>
+   307→                      <PointsPill points={t.points} />
+   308→                    </div>
+   309→                  ))}
+   310→                </div>
+   311→              </div>
+   312→            </div>
+   313→
+   314→            <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   315→              <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Distribución de puntos por actividad</p>
+   316→              <div className="h-52">
+   317→                <ResponsiveContainer width="100%" height="100%">
+   318→                  <BarChart data={dist} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
+   319→                    <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
+   320→                    <XAxis dataKey="name" tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} interval={0} />
+   321→                    <YAxis tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} />
+   322→                    <Tooltip
+   323→                      cursor={{ fill: 'rgba(143,168,63,0.05)' }}
+   324→                      contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
+   325→                    />
+   326→                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+   327→                      {dist.map((d) => (
+   328→                        <Cell key={d.key} fill={REASON_COLORS[d.key] ?? '#8FA83F'} fillOpacity={0.85} />
+   329→                      ))}
+   330→                    </Bar>
+   331→                  </BarChart>
+   332→                </ResponsiveContainer>
+   333→              </div>
+   334→            </div>
+   335→
+   336→            <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+   337→              <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad reciente de puntos</p>
+   338→              <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+   339→                {(overview.data?.recentEvents ?? []).map((e) => (
+   340→                  <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-white/4">
+   341→                    <UserAvatar name={e.user.name} handle={e.user.handle} src={e.user.avatar} size="xs" ring={false} />
+   342→                    <div className="min-w-0 flex-1">
+   343→                      <p className="truncate text-[13px]">
+   344→                        <span className="font-semibold">{e.user.name}</span> <span className="text-muted-foreground">· {e.note}</span>
+   345→                      </p>
+   346→                      <p className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</p>
+   347→                    </div>
+   348→                    <span className={cn('font-mono text-[13px] font-bold', e.amount >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+   349→                      {e.amount >= 0 ? '+' : ''}{e.amount}
+   350→                    </span>
+   351→                  </div>
+   352→                ))}
+   353→              </div>
+   354→            </div>
+   355→          </div>
+   356→        )}
+   357→      </div>
+   358→    </div>
+   359→  )
+   360→}
+   361→
+   362→// ---------------- Usuarios: puntos + edición de perfil ----------------
+   363→function AdminUserRow({
+   364→  user,
+   365→  enabled,
+   366→  onAdjust,
+   367→}: {
+   368→  user: AdminUserRowDTO
+   369→  enabled: boolean
+   370→  onAdjust: (amount: number, note?: string) => void
+   371→}) {
+   372→  const updateUser = useAdminUpdateUser(enabled)
+   373→  const [amount, setAmount] = useState('50')
+   374→  const [note, setNote] = useState('')
+   375→  const [editing, setEditing] = useState(false)
+   376→  const [form, setForm] = useState({
+   377→    name: user.name,
+   378→    handle: user.handle,
+   379→    xHandle: user.xHandle ?? '',
+   380→    tgHandle: user.tgHandle ?? '',
+   381→    googleEmail: user.googleEmail ?? '',
+   382→    walletVerified: user.walletVerified,
+   383→    xVerified: user.xVerified,
+   384→    googleVerified: user.googleVerified,
+   385→    isDev: user.isDev,
+   386→    isAdmin: user.isAdmin ?? false,
+   387→  })
+   388→  const amt = parseInt(amount, 10) || 0
+   389→  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+   390→
+   391→  const doAdjust = (sign: 1 | -1) => {
+   392→    if (amt <= 0) {
+   393→      toast.error('Ingresa un monto mayor a 0')
+   394→      return
+   395→    }
+   396→    onAdjust(sign * amt, note.trim() || undefined)
+   397→    setNote('')
+   398→    toast.success(`${sign > 0 ? '+' : '-'}${amt} puntos para @${user.handle}`)
+   399→  }
+   400→
+   401→  const save = () => {
+   402→    updateUser.mutate(
+   403→      {
+   404→        id: user.id,
+   405→        name: form.name,
+   406→        handle: form.handle,
+   407→        xHandle: form.xHandle,
+   408→        tgHandle: form.tgHandle,
+   409→        googleEmail: form.googleEmail,
+   410→        walletVerified: form.walletVerified,
+   411→        xVerified: form.xVerified,
+   412→        googleVerified: form.googleVerified,
+   413→        isDev: form.isDev,
+   414→        isAdmin: form.isAdmin,
+   415→      },
+   416→      { onSuccess: () => setEditing(false) }
+   417→    )
+   418→  }
+   419→
+   420→  return (
+   421→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   422→      <div className="flex flex-wrap items-center gap-2.5">
+   423→        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
+   424→        <div className="min-w-0 flex-1">
+   425→          <p className="truncate text-sm font-bold">
+   426→            {user.name}
+   427→            {user.isAdmin && <span className="ml-1.5 rounded bg-[#8FA83F]/12 px-1 py-px text-[9px] font-black text-primary">ADMIN</span>}
+   428→            {user.xVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">X</span>}
+   429→            {user.googleVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">G</span>}
+   430→          </p>
+   431→          <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+   432→            @{user.handle} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
+   433→            <Heart className="h-3 w-3" aria-hidden />
+   434→          </p>
+   435→        </div>
+   436→        <PointsPill points={user.points} />
+   437→        <Button
+   438→          size="sm"
+   439→          variant="ghost"
+   440→          onClick={() => setEditing((v) => !v)}
+   441→          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   442→        >
+   443→          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
+   444→        </Button>
+   445→        <div className="flex items-center gap-1.5">
+   446→          <Input
+   447→            value={note}
+   448→            onChange={(e) => setNote(e.target.value)}
+   449→            placeholder="Motivo (opcional)"
+   450→            className="h-8 w-32 border-white/10 bg-[#121410] text-xs"
+   451→            aria-label="Motivo del ajuste"
+   452→          />
+   453→          <Input
+   454→            type="number"
+   455→            value={amount}
+   456→            onChange={(e) => setAmount(e.target.value)}
+   457→            className="h-8 w-16 border-white/10 bg-[#121410] text-center font-mono text-xs font-bold"
+   458→            aria-label="Monto"
+   459→          />
+   460→          <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-[#8FA83F]" aria-label="Añadir puntos">
+   461→            <Plus className="h-4 w-4" strokeWidth={3} />
+   462→          </Button>
+   463→          <Button size="icon" variant="secondary" onClick={() => doAdjust(-1)} className="h-8 w-8 rounded-lg text-[#ff8080] hover:bg-destructive/15" aria-label="Quitar puntos">
+   464→            <Minus className="h-4 w-4" strokeWidth={3} />
+   465→          </Button>
+   466→        </div>
+   467→      </div>
+   468→
+   469→      {editing && (
+   470→        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+   471→          <div className="grid gap-2.5 sm:grid-cols-2">
+   472→            <div className="space-y-1">
+   473→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+   474→              <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+   475→            </div>
+   476→            <div className="space-y-1">
+   477→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Handle</Label>
+   478→              <Input value={form.handle} onChange={(e) => set('handle', e.target.value)} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+   479→            </div>
+   480→            <div className="space-y-1">
+   481→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">X (Twitter)</Label>
+   482→              <Input value={form.xHandle} onChange={(e) => set('xHandle', e.target.value)} placeholder="@usuario" className="h-8 bg-[#0a0b08] text-[13px]" />
+   483→            </div>
+   484→            <div className="space-y-1">
+   485→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Telegram</Label>
+   486→              <Input value={form.tgHandle} onChange={(e) => set('tgHandle', e.target.value)} placeholder="@usuario" className="h-8 bg-[#0a0b08] text-[13px]" />
+   487→            </div>
+   488→            <div className="space-y-1 sm:col-span-2">
+   489→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Google (email)</Label>
+   490→              <Input value={form.googleEmail} onChange={(e) => set('googleEmail', e.target.value)} placeholder="usuario@gmail.com" className="h-8 bg-[#0a0b08] text-[13px]" />
+   491→            </div>
+   492→          </div>
+   493→          <div className="flex flex-wrap gap-1.5">
+   494→            <ChipToggle label="Wallet verificada" checked={form.walletVerified} onChange={(v) => set('walletVerified', v)} />
+   495→            <ChipToggle label="X verificada" checked={form.xVerified} onChange={(v) => set('xVerified', v)} />
+   496→            <ChipToggle label="Google verificada" checked={form.googleVerified} onChange={(v) => set('googleVerified', v)} />
+   497→            <ChipToggle label="Dev" checked={form.isDev} onChange={(v) => set('isDev', v)} okIcon={false} />
+   498→            <ChipToggle label="Admin" checked={form.isAdmin} onChange={(v) => set('isAdmin', v)} okIcon={false} />
+   499→          </div>
+   500→          <div className="flex justify-end">
+   501→            <Button
+   502→              size="sm"
+   503→              onClick={save}
+   504→              disabled={updateUser.isPending}
+   505→              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   506→            >
+   507→              <Save className="h-3.5 w-3.5" /> {updateUser.isPending ? 'Guardando…' : 'Guardar perfil'}
+   508→            </Button>
+   509→          </div>
+   510→        </div>
+   511→      )}
+   512→    </div>
+   513→  )
+   514→}
+   515→
+   516→// ---------------- Proyectos (launches) ----------------
+   517→function AdminLaunches({ enabled }: { enabled: boolean }) {
+   518→  const launches = useAdminLaunches(enabled)
+   519→  return (
+   520→    <div className="space-y-2">
+   521→      <p className="text-xs text-muted-foreground">
+   522→        Corrige cualquier dato de un lanzamiento: nombre, ticker, fecha, red, imágenes, redes sociales, contrato, privacidad, visibilidad y checks de seguridad.
+   523→      </p>
+   524→      {launches.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+   525→      {(launches.data ?? []).map((l) => (
+   526→        <AdminLaunchRow key={l.id} launch={l} enabled={enabled} />
+   527→      ))}
+   528→    </div>
+   529→  )
+   530→}
+   531→
+   532→function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boolean }) {
+   533→  const updateLaunch = useAdminUpdateLaunch(enabled)
+   534→  const deleteLaunch = useAdminDeleteLaunch(enabled)
+   535→  const [editing, setEditing] = useState(false)
+   536→  const [form, setForm] = useState({
+   537→    name: launch.name,
+   538→    ticker: launch.ticker ?? '',
+   539→    isPrivate: launch.isPrivate,
+   540→    network: launch.network,
+   541→    launchAt: toInputDateTime(launch.launchAt),
+   542→    description: launch.description,
+   543→    image: launch.image ?? '',
+   544→    banner: launch.banner ?? '',
+   545→    website: launch.website ?? '',
+   546→    twitter: launch.twitter ?? '',
+   547→    telegram: launch.telegram ?? '',
+   548→    contract: launch.contract ?? '',
+   549→    hidden: launch.hidden ?? false,
+   550→    submitterRole: launch.submitterRole,
+   551→    lpLocked: launch.lpLocked,
+   552→    mintRevoked: launch.mintRevoked,
+   553→    top10Pct: String(launch.top10Pct),
+   554→  })
+   555→  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+   556→
+   557→  const pick = (key: 'image' | 'banner') => async (file: File) => {
+   558→    try {
+   559→      const url = await uploadImage(file)
+   560→      set(key, url)
+   561→    } catch (e) {
+   562→      toast.error((e as Error).message)
+   563→    }
+   564→  }
+   565→
+   566→  const save = () => {
+   567→    updateLaunch.mutate(
+   568→      {
+   569→        id: launch.id,
+   570→        name: form.name,
+   571→        ticker: form.ticker,
+   572→        isPrivate: form.isPrivate,
+   573→        network: form.network,
+   574→        launchAt: new Date(form.launchAt).toISOString(),
+   575→        description: form.description,
+   576→        image: form.image,
+   577→        banner: form.banner,
+   578→        website: form.website.trim(),
+   579→        twitter: form.twitter.trim(),
+   580→        telegram: form.telegram.trim(),
+   581→        contract: form.contract.trim(),
+   582→        hidden: form.hidden,
+   583→        submitterRole: form.submitterRole,
+   584→        lpLocked: form.lpLocked,
+   585→        mintRevoked: form.mintRevoked,
+   586→        top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
+   587→      },
+   588→      { onSuccess: () => setEditing(false) }
+   589→    )
+   590→  }
+   591→
+   592→  return (
+   593→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   594→      <div className="flex flex-wrap items-center gap-2.5">
+   595→        <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="md" />
+   596→        <div className="min-w-0 flex-1">
+   597→          <p className="truncate text-sm font-bold">
+   598→            {launch.name}{' '}
+   599→            <span className="font-mono text-xs text-primary">{launch.ticker ? `$${launch.ticker}` : ''}</span>
+   600→            {launch.isPrivate && (
+   601→              <span className="ml-1.5 rounded bg-amber-300/12 px-1 py-px text-[9px] font-black uppercase text-amber-300">Privado</span>
+   602→            )}
+   603→            {launch.hidden && (
+   604→              <span className="ml-1.5 rounded bg-amber-300/12 px-1 py-px text-[9px] font-black uppercase text-amber-300">Oculto</span>
+   605→            )}
+   606→          </p>
+   607→          <p className="truncate text-xs text-muted-foreground">
+   608→            {NETWORKS[launch.network as keyof typeof NETWORKS]?.label ?? launch.network} ·{' '}
+   609→            {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · hype {launch.hype}
+   610→          </p>
+   611→        </div>
+   612→        <Button
+   613→          size="sm"
+   614→          variant="ghost"
+   615→          onClick={() => setEditing((v) => !v)}
+   616→          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+   617→        >
+   618→          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
+   619→        </Button>
+   620→        <AlertDialog>
+   621→          <AlertDialogTrigger asChild>
+   622→            <Button
+   623→              size="icon"
+   624→              variant="ghost"
+   625→              disabled={deleteLaunch.isPending}
+   626→              className="h-8 w-8 rounded-lg border border-white/10 text-[#ff8080] hover:bg-destructive/15"
+   627→              aria-label="Eliminar launch"
+   628→            >
+   629→              <Trash2 className="h-3.5 w-3.5" />
+   630→            </Button>
+   631→          </AlertDialogTrigger>
+   632→          <AlertDialogContent className="border-white/12 bg-[#121410]">
+   633→            <AlertDialogHeader>
+   634→              <AlertDialogTitle className="font-display">¿Eliminar este launch?</AlertDialogTitle>
+   635→              <AlertDialogDescription>
+   636→                Los comentarios se conservarán sin proyecto asociado. Esta acción no se puede deshacer.
+   637→              </AlertDialogDescription>
+   638→            </AlertDialogHeader>
+   639→            <AlertDialogFooter>
+   640→              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+   641→              <AlertDialogAction
+   642→                onClick={() => deleteLaunch.mutate(launch.id)}
+   643→                className="bg-[#ff4d5e] text-white hover:bg-[#ff4d5e]/85"
+   644→              >
+   645→                Eliminar
+   646→              </AlertDialogAction>
+   647→            </AlertDialogFooter>
+   648→          </AlertDialogContent>
+   649→        </AlertDialog>
+   650→      </div>
+   651→
+   652→      {editing && (
+   653→        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+   654→          <div className="grid gap-2.5 sm:grid-cols-2">
+   655→            <div className="space-y-1">
+   656→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+   657→              <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+   658→            </div>
+   659→            <div className="space-y-1">
+   660→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Ticker (opcional)</Label>
+   661→              <Input value={form.ticker} onChange={(e) => set('ticker', e.target.value.toUpperCase())} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+   662→            </div>
+   663→            <div className="space-y-1">
+   664→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fecha y hora</Label>
+   665→              <Input type="datetime-local" value={form.launchAt} onChange={(e) => set('launchAt', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px] [color-scheme:dark]" />
+   666→              <TimezoneHint value={form.launchAt} compact />
+   667→            </div>
+   668→            <div className="space-y-1">
+   669→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>
+   670→              <div className="flex flex-wrap gap-1">
+   671→                {Object.entries(NETWORKS).map(([key, meta]) => (
+   672→                  <button
+   673→                    key={key}
+   674→                    type="button"
+   675→                    onClick={() => set('network', key)}
+   676→                    className={cn(
+   677→                      'flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold',
+   678→                      form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
+   679→                    )}
+   680→                  >
+   681→                    <NetworkIcon network={key} className="h-3 w-3" />
+   682→                    {meta.short}
+   683→                  </button>
+   684→                ))}
+   685→              </div>
+   686→            </div>
+   687→            <div className="space-y-1">
+   688→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Website</Label>
+   689→              <Input value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="https://…" className="h-8 bg-[#0a0b08] text-[13px]" />
+   690→            </div>
+   691→            <div className="space-y-1">
+   692→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Twitter / X</Label>
+   693→              <Input value={form.twitter} onChange={(e) => set('twitter', e.target.value)} placeholder="https://x.com/…" className="h-8 bg-[#0a0b08] text-[13px]" />
+   694→            </div>
+   695→            <div className="space-y-1">
+   696→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Telegram</Label>
+   697→              <Input value={form.telegram} onChange={(e) => set('telegram', e.target.value)} placeholder="https://t.me/…" className="h-8 bg-[#0a0b08] text-[13px]" />
+   698→            </div>
+   699→            <div className="space-y-1">
+   700→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">CA / Contrato del token (opcional)</Label>
+   701→              <Input value={form.contract} onChange={(e) => set('contract', e.target.value)} placeholder="0x… / dirección del contrato" className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+   702→            </div>
+   703→          </div>
+   704→
+   705→          <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+   706→            <ImageDrop
+   707→              url={form.image}
+   708→              onSelect={pick('image')}
+   709→              onPickUrl={(u) => set('image', u)}
+   710→              onRemove={() => set('image', '')}
+   711→              aspect="square"
+   712→              label="Logo / imagen"
+   713→              hint="Subir logo"
+   714→            />
+   715→            <ImageDrop
+   716→              url={form.banner}
+   717→              onSelect={pick('banner')}
+   718→              onPickUrl={(u) => set('banner', u)}
+   719→              onRemove={() => set('banner', '')}
+   720→              aspect="video"
+   721→              label="Banner"
+   722→              hint="Sube un banner (16:9)"
+   723→            />
+   724→          </div>
+   725→
+   726→          <div className="space-y-1">
+   727→            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Descripción</Label>
+   728→            <Textarea value={form.description} onChange={(e) => set('description', e.target.value)} className="min-h-[56px] resize-none bg-[#0a0b08] text-[13px]" />
+   729→          </div>
+   730→
+   731→          <div className="flex flex-wrap items-center gap-1.5">
+   732→            <ChipToggle label="Ticker privado" checked={form.isPrivate} onChange={(v) => set('isPrivate', v)} okIcon={false} />
+   733→            <ChipToggle label="Oculto del radar" checked={form.hidden} onChange={(v) => set('hidden', v)} />
+   734→            <ChipToggle
+   735→              label="Es el dev"
+   736→              checked={form.submitterRole === 'dev'}
+   737→              onChange={(v) => set('submitterRole', v ? 'dev' : 'community')}
+   738→              okIcon={false}
+   739→            />
+   740→            <ChipToggle label="LP bloqueada" checked={form.lpLocked} onChange={(v) => set('lpLocked', v)} />
+   741→            <ChipToggle label="Mint revocado" checked={form.mintRevoked} onChange={(v) => set('mintRevoked', v)} />
+   742→            <span className="ml-auto flex items-center gap-1.5">
+   743→              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Top10 %</Label>
+   744→              <Input
+   745→                type="number"
+   746→                min={0}
+   747→                max={100}
+   748→                value={form.top10Pct}
+   749→                onChange={(e) => set('top10Pct', e.target.value)}
+   750→                className="h-8 w-16 border-white/10 bg-[#0a0b08] text-center font-mono text-[13px]"
+   751→              />
+   752→            </span>
+   753→          </div>
+   754→
+   755→          <div className="flex justify-end">
+   756→            <Button
+   757→              size="sm"
+   758→              onClick={save}
+   759→              disabled={updateLaunch.isPending}
+   760→              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   761→            >
+   762→              <Save className="h-3.5 w-3.5" /> {updateLaunch.isPending ? 'Guardando…' : 'Guardar launch'}
+   763→            </Button>
+   764→          </div>
+   765→        </div>
+   766→      )}
+   767→    </div>
+   768→  )
+   769→}
+   770→
+   771→// ---------------- Tokens (logo, métricas) ----------------
+   772→function AdminTokens({ enabled }: { enabled: boolean }) {
+   773→  const tokens = useAdminTokens(enabled)
+   774→  return (
+   775→    <div className="space-y-2">
+   776→      <p className="text-xs text-muted-foreground">
+   777→        Edita tokens en vivo: logo, nombre, ticker, red y métricas. Ej: actualiza el logo del Cabal Coin aquí.
+   778→      </p>
+   779→      {tokens.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+   780→      {(tokens.data ?? []).map((t) => (
+   781→        <AdminTokenRow key={t.id} token={t} enabled={enabled} />
+   782→      ))}
+   783→    </div>
+   784→  )
+   785→}
+   786→
+   787→// ---------------- Plataformas afiliadas (enlace madre de referido) ----------------
+   788→function AdminAffiliates({ enabled }: { enabled: boolean }) {
+   789→  const list = useAdminAffiliates(enabled)
+   790→  const create = useAdminCreateAffiliate(enabled)
+   791→  const [newName, setNewName] = useState('')
+   792→  const [newUrl, setNewUrl] = useState('')
+   793→
+   794→  const addPlatform = () => {
+   795→    if (!newName.trim()) {
+   796→      toast.error('Ponle un nombre a la plataforma')
+   797→      return
+   798→    }
+   799→    create.mutate(
+   800→      { name: newName.trim(), url: newUrl.trim() || undefined },
+   801→      { onSuccess: () => {
+   802→          setNewName('')
+   803→          setNewUrl('')
+   804→        } }
+   805→    )
+   806→  }
+   807→
+   808→  return (
+   809→    <div className="space-y-3">
+   810→      <p className="text-xs text-muted-foreground">
+   811→        Define tus plataformas de trading como afiliado. Pega el <span className="font-semibold text-foreground">enlace de referido DE LA RED</span> que
+   812→        corresponda en cada plataforma: la comunidad es redirigida allí al presionar “Comprar”, con el contrato del token ya inyectado.
+   813→      </p>
+   814→
+   815→      <div className="rounded-xl border border-[#8FA83F]/25 bg-[#8FA83F]/6 px-3.5 py-2.5">
+   816→        <p className="flex items-start gap-2 text-[11px] leading-relaxed text-foreground/80">
+   817→          <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+   818→          <span>
+   819→            Usa <code className="rounded bg-black/30 px-1 font-mono text-primary">{'{ca}'}</code> donde va el contrato: se reemplaza solo al abrir.
+   820→            Ejemplos — GMGN Solana:{' '}
+   821→            <code className="rounded bg-black/30 px-1 font-mono text-primary">https://gmgn.ai/sol/token/TUCODIGO_&#123;ca&#125;</code> · Axiom BNB:{' '}
+   822→            <code className="rounded bg-black/30 px-1 font-mono text-primary">https://axiom.trade/t/&#123;ca&#125;/@usuario?chain=bnb</code>. El enlace
+   823→            madre general (ej. <code className="rounded bg-black/30 px-1 font-mono text-primary">https://axiom.trade/@usuario</code>) se usa cuando no
+   824→            hay enlace de la red del token.
+   825→          </span>
+   826→        </p>
+   827→      </div>
+   828→
+   829→      {list.isLoading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+   830→      <div className="space-y-2">
+   831→        {(list.data ?? []).map((p, i) => (
+   832→          <AffiliateRow key={p.id} platform={p} enabled={enabled} primary={i === 0} />
+   833→        ))}
+   834→        {!list.isLoading && (list.data ?? []).length === 0 && (
+   835→          <p className="rounded-xl border border-dashed border-white/12 py-6 text-center text-xs text-muted-foreground">
+   836→            Aún no hay plataformas. Añade la primera abajo.
+   837→          </p>
+   838→        )}
+   839→      </div>
+   840→
+   841→      {/* Añadir plataforma */}
+   842→      <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+   843→        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Añadir plataforma</p>
+   844→        <div className="grid gap-2 sm:grid-cols-[160px_1fr_auto]">
+   845→          <Input
+   846→            value={newName}
+   847→            onChange={(e) => setNewName(e.target.value)}
+   848→            placeholder="Nombre (ej: Photon)"
+   849→            aria-label="Nombre de la plataforma"
+   850→            className="h-9 bg-[#121410] text-[13px]"
+   851→          />
+   852→          <Input
+   853→            value={newUrl}
+   854→            onChange={(e) => setNewUrl(e.target.value)}
+   855→            placeholder="https://…/?ref=TU_CODIGO"
+   856→            inputMode="url"
+   857→            spellCheck={false}
+   858→            aria-label="Enlace de referido"
+   859→            className="h-9 bg-[#121410] font-mono text-[12px]"
+   860→          />
+   861→          <Button
+   862→            onClick={addPlatform}
+   863→            disabled={create.isPending || !newName.trim()}
+   864→            className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   865→          >
+   866→            <Plus className="h-3.5 w-3.5" /> Añadir
+   867→          </Button>
+   868→        </div>
+   869→      </div>
+   870→    </div>
+   871→  )
+   872→}
+   873→
+   874→function AffiliateRow({
+   875→  platform,
+   876→  enabled,
+   877→  primary,
+   878→}: {
+   879→  platform: AffiliatePlatformDTO
+   880→  enabled: boolean
+   881→  primary: boolean
+   882→}) {
+   883→  const save = useAdminSaveAffiliate(enabled)
+   884→  const remove = useAdminDeleteAffiliate(enabled)
+   885→  const [name, setName] = useState(platform.name)
+   886→  const [url, setUrl] = useState(platform.url)
+   887→  const [links, setLinks] = useState<Record<string, string>>(platform.links ?? {})
+   888→  const dirty =
+   889→    name !== platform.name || url !== platform.url || AFFILIATE_NETWORKS.some((n) => (links[n] ?? '') !== (platform.links?.[n] ?? ''))
+   890→
+   891→  const setLink = (network: string, v: string) => setLinks((f) => ({ ...f, [network]: v }))
+   892→
+   893→  const saveAll = () => save.mutate({ id: platform.id, name, url, links })
+   894→
+   895→  return (
+   896→    <div className={cn('rounded-xl border bg-[#0a0b08] p-3', platform.active ? 'border-[#8FA83F]/30' : 'border-white/10')}>
+   897→      <div className="flex flex-wrap items-center gap-2">
+   898→        <span className="font-machina w-5 shrink-0 text-center text-xs font-bold text-muted-foreground">{primary ? '1' : ''}</span>
+   899→        <Input
+   900→          value={name}
+   901→          onChange={(e) => setName(e.target.value)}
+   902→          aria-label={`Nombre de ${platform.name}`}
+   903→          className="h-9 w-36 shrink-0 bg-[#121410] text-[13px] font-bold"
+   904→        />
+   905→        <Input
+   906→          value={url}
+   907→          onChange={(e) => setUrl(e.target.value)}
+   908→          placeholder="Enlace madre general · https://axiom.trade/@usuario (opcional)"
+   909→          inputMode="url"
+   910→          spellCheck={false}
+   911→          aria-label={`Enlace madre general de ${platform.name}`}
+   912→          className="h-9 min-w-[180px] flex-1 bg-[#121410] font-mono text-[12px]"
+   913→        />
+   914→        <ChipToggle
+   915→          label={platform.active ? 'Activa' : 'Inactiva'}
+   916→          checked={platform.active}
+   917→          onChange={(v) => save.mutate({ id: platform.id, name, url, links, active: v })}
+   918→        />
+   919→        {dirty && (
+   920→          <Button
+   921→            size="sm"
+   922→            onClick={saveAll}
+   923→            disabled={save.isPending}
+   924→            className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+   925→          >
+   926→            <Save className="h-3.5 w-3.5" /> Guardar
+   927→          </Button>
+   928→        )}
+   929→        <AlertDialog>
+   930→          <AlertDialogTrigger asChild>
+   931→            <Button
+   932→              size="sm"
+   933→              variant="ghost"
+   934→              disabled={enabled === false}
+   935→              className="h-9 w-9 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-[#ff8080]"
+   936→              aria-label={`Eliminar ${platform.name}`}
+   937→            >
+   938→              <Trash2 className="h-3.5 w-3.5" />
+   939→            </Button>
+   940→          </AlertDialogTrigger>
+   941→          <AlertDialogContent className="border-white/10 bg-[#121410]">
+   942→            <AlertDialogHeader>
+   943→              <AlertDialogTitle>¿Eliminar {platform.name}?</AlertDialogTitle>
+   944→              <AlertDialogDescription>
+   945→                Los botones “Comprar” dejarán de llevar a esta plataforma. Puedes volver a añadirla después.
+   946→              </AlertDialogDescription>
+   947→            </AlertDialogHeader>
+   948→            <AlertDialogFooter>
+   949→              <AlertDialogCancel className="border-white/10 bg-transparent">Cancelar</AlertDialogCancel>
+   950→              <AlertDialogAction
+   951→                onClick={() => remove.mutate(platform.id)}
+   952→                className="bg-[#ff4d5e] text-white hover:bg-[#ff6675]"
+   953→              >
+   954→                Eliminar
+   955→              </AlertDialogAction>
+   956→            </AlertDialogFooter>
+   957→          </AlertDialogContent>
+   958→        </AlertDialog>
+   959→      </div>
+   960→
+   961→      {/* Enlaces de referido DE LA RED {red}: uno por cadena, con soporte {ca} */}
+   962→      <p className="mb-1.5 mt-3 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+   963→        <Globe className="h-3 w-3" aria-hidden /> Enlace de referido DE LA RED — pega el de cada cadena (usa{' '}
+   964→        <code className="rounded bg-black/30 px-1 font-mono text-primary">{'{ca}'}</code> donde va el contrato)
+   965→      </p>
+   966→      <div className="grid gap-1.5 sm:grid-cols-2">
+   967→        {AFFILIATE_NETWORKS.map((n) => {
+   968→          const meta = NETWORKS[n]
+   969→          return (
+   970→            <div key={n} className="flex items-center gap-1.5">
+   971→              <span
+   972→                className="flex h-9 w-[104px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-[#121410] px-2 text-[10px] font-bold text-muted-foreground"
+   973→                title={`Enlace de ${platform.name} DE LA RED ${meta.label}`}
+   974→              >
+   975→                <NetworkIcon network={n} className="h-3 w-3" />
+   976→                {meta.label}
+   977→              </span>
+   978→              <Input
+   979→                value={links[n] ?? ''}
+   980→                onChange={(e) => setLink(n, e.target.value)}
+   981→                placeholder={NETWORK_PLACEHOLDER[n]}
+   982→                inputMode="url"
+   983→                spellCheck={false}
+   984→                aria-label={`Enlace de ${platform.name} DE LA RED ${meta.label}`}
+   985→                className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-[11px]"
+   986→              />
+   987→            </div>
+   988→          )
+   989→        })}
+   990→      </div>
+   991→
+   992→      {platform.active && (
+   993→        <p className="mt-1.5 truncate pl-1 text-[10px] text-muted-foreground">
+   994→          Ejemplo redirección (Solana):{' '}
+   995→          <span className="font-mono text-primary/90">
+   996→            {platformLinkFor({ url, links }, 'solana', '2oFGkSFgkHS65ejE8eGU5nC749yw6UvmWQe9eNyspump') ?? '— pega un enlace arriba —'}
+   997→          </span>
+   998→        </p>
+   999→      )}
+  1000→    </div>
+  1001→  )
+  1002→}
+  1003→
+  1004→function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }) {
+  1005→  const updateToken = useAdminUpdateToken(enabled)
+  1006→  const [editing, setEditing] = useState(false)
+  1007→  const [form, setForm] = useState({
+  1008→    name: token.name,
+  1009→    ticker: token.ticker,
+  1010→    network: token.network,
+  1011→    image: token.image ?? '',
+  1012→    price: String(token.price),
+  1013→    mc: String(token.mc),
+  1014→    change24h: String(token.change24h),
+  1015→    volume24h: String(token.volume24h),
+  1016→    holders: String(token.holders),
+  1017→    top10Pct: String(token.top10Pct),
+  1018→    isRug: token.isRug,
+  1019→  })
+  1020→  const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
+  1021→
+  1022→  const save = () => {
+  1023→    updateToken.mutate(
+  1024→      {
+  1025→        id: token.id,
+  1026→        name: form.name,
+  1027→        ticker: form.ticker,
+  1028→        network: form.network,
+  1029→        image: form.image,
+  1030→        price: Number(form.price) || 0,
+  1031→        mc: Number(form.mc) || 0,
+  1032→        change24h: Number(form.change24h) || 0,
+  1033→        volume24h: Number(form.volume24h) || 0,
+  1034→        holders: Math.max(0, Math.round(Number(form.holders) || 0)),
+  1035→        top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
+  1036→        isRug: form.isRug,
+  1037→      },
+  1038→      { onSuccess: () => setEditing(false) }
+  1039→    )
+  1040→  }
+  1041→
+  1042→  const numField = (key: keyof typeof form, label: string, step = 'any') => (
+  1043→    <div className="space-y-1">
+  1044→      <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</Label>
+  1045→      <Input
+  1046→        type="number"
+  1047→        step={step}
+  1048→        value={form[key] as string}
+  1049→        onChange={(e) => set(key, e.target.value)}
+  1050→        className="h-8 bg-[#0a0b08] font-mono text-[13px]"
+  1051→      />
+  1052→    </div>
+  1053→  )
+  1054→
+  1055→  return (
+  1056→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+  1057→      <div className="flex flex-wrap items-center gap-2.5">
+  1058→        <TokenGlyph src={token.image} ticker={token.ticker} size="md" />
+  1059→        <div className="min-w-0 flex-1">
+  1060→          <p className="truncate text-sm font-bold">
+  1061→            {token.name} <span className="font-mono text-xs text-primary">${token.ticker}</span>
+  1062→            {token.isRug && <span className="ml-1.5 rounded bg-[#ff4d5e]/12 px-1 py-px text-[9px] font-black uppercase text-[#ff8080]">Rug</span>}
+  1063→          </p>
+  1064→          <p className="truncate text-xs text-muted-foreground">
+  1065→            {NETWORKS[token.network as keyof typeof NETWORKS]?.label ?? token.network} · ${token.mc.toLocaleString('es')} MC · {token.change24h > 0 ? '+' : ''}{token.change24h}% 24h
+  1066→          </p>
+  1067→        </div>
+  1068→        <Button
+  1069→          size="sm"
+  1070→          variant="ghost"
+  1071→          onClick={() => setEditing((v) => !v)}
+  1072→          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+  1073→        >
+  1074→          <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
+  1075→        </Button>
+  1076→      </div>
+  1077→
+  1078→      {editing && (
+  1079→        <div className="mt-3 space-y-3 rounded-lg border border-white/8 bg-[#121410] p-3">
+  1080→          <div className="grid gap-3 sm:grid-cols-[auto_1fr]">
+  1081→            <ImageDrop
+  1082→              url={form.image}
+  1083→              onSelect={async (file) => {
+  1084→                try {
+  1085→                  const url = await uploadImage(file)
+  1086→                  set('image', url)
+  1087→                } catch (e) {
+  1088→                  toast.error((e as Error).message)
+  1089→                }
+  1090→              }}
+  1091→              onPickUrl={(u) => set('image', u)}
+  1092→              onRemove={() => set('image', '')}
+  1093→              aspect="square"
+  1094→              label="Logo del token"
+  1095→              hint="Subir logo"
+  1096→            />
+  1097→            <div className="grid gap-2.5 sm:grid-cols-2">
+  1098→              <div className="space-y-1">
+  1099→                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Nombre</Label>
+  1100→                <Input value={form.name} onChange={(e) => set('name', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px]" />
+  1101→              </div>
+  1102→              <div className="space-y-1">
+  1103→                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Ticker</Label>
+  1104→                <Input value={form.ticker} onChange={(e) => set('ticker', e.target.value.toUpperCase())} className="h-8 bg-[#0a0b08] font-mono text-[13px]" />
+  1105→              </div>
+  1106→              <div className="space-y-1 sm:col-span-2">
+  1107→                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>
+  1108→                <div className="flex flex-wrap gap-1">
+  1109→                  {Object.entries(NETWORKS).map(([key, meta]) => (
+  1110→                    <button
+  1111→                      key={key}
+  1112→                      type="button"
+  1113→                      onClick={() => set('network', key)}
+  1114→                      className={cn(
+  1115→                        'flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-bold',
+  1116→                        form.network === key ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
+  1117→                      )}
+  1118→                    >
+  1119→                      <NetworkIcon network={key} className="h-3 w-3" />
+  1120→                      {meta.short}
+  1121→                    </button>
+  1122→                  ))}
+  1123→                </div>
+  1124→              </div>
+  1125→            </div>
+  1126→          </div>
+  1127→
+  1128→          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+  1129→            {numField('price', 'Precio USD')}
+  1130→            {numField('mc', 'Market cap')}
+  1131→            {numField('change24h', 'Cambio 24h %')}
+  1132→            {numField('volume24h', 'Volumen 24h')}
+  1133→            {numField('holders', 'Holders', '1')}
+  1134→            {numField('top10Pct', 'Top10 %', '1')}
+  1135→          </div>
+  1136→
+  1137→          <div className="flex flex-wrap items-center justify-between gap-2">
+  1138→            <ChipToggle label="Marcado como rug" checked={form.isRug} onChange={(v) => set('isRug', v)} okIcon={false} />
+  1139→            <Button
+  1140→              size="sm"
+  1141→              onClick={save}
+  1142→              disabled={updateToken.isPending}
+  1143→              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+  1144→            >
+  1145→              <Save className="h-3.5 w-3.5" /> {updateToken.isPending ? 'Guardando…' : 'Guardar token'}
+  1146→            </Button>
+  1147→          </div>
+  1148→        </div>
+  1149→      )}
+  1150→    </div>
+  1151→  )
+  1152→}
+  1153→
+  1154→function Kpi({ label, value, icon }: { label: string; value: number; icon?: ReactNode }) {
+  1155→  return (
+  1156→    <div className="rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+  1157→      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+  1158→        {icon} {label}
+  1159→      </p>
+  1160→      <p className="mt-1 text-xl font-bold tabular-nums">{value}</p>
+  1161→    </div>
+  1162→  )
+  1163→}
+  1164→

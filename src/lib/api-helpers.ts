@@ -11,6 +11,7 @@ export const POINT_RULE_KEYS = [
   'points_like_received',
   'points_hype_received',
   'points_daily_visit',
+  'points_referral_percent',
 ] as const
 
 export type PointReason =
@@ -25,6 +26,7 @@ export type PointReason =
   | 'verify_x'
   | 'verify_google'
   | 'verify_wallet'
+  | 'referral'
 
 const REASON_TO_KEY: Record<string, string> = {
   thesis: 'points_thesis',
@@ -42,7 +44,18 @@ export async function getPointRules(): Promise<Record<string, number>> {
   return rules
 }
 
-/** Awards points to a user according to the configured rule. Returns points awarded (0 if rule = 0). */
+/** Porcentaje de referidos (Setting points_referral_percent, default 10). */
+export async function getReferralPercent(): Promise<number> {
+  const s = await db.setting.findUnique({ where: { key: 'points_referral_percent' } })
+  const pct = s ? parseInt(s.value, 10) : 10
+  return Number.isFinite(pct) && pct > 0 ? pct : 10
+}
+
+/**
+ * Awards points to a user according to the configured rule. Returns points awarded (0 if rule = 0).
+ * Si el usuario fue invitado por alguien (referido), el invitador gana el
+ * points_referral_percent% de estos puntos (no se propaga en cascada).
+ */
 export async function awardPoints(
   userId: string,
   reason: PointReason,
@@ -63,6 +76,22 @@ export async function awardPoints(
       },
     }),
   ])
+
+  // ── Referidos: el que invitó gana el % configurado ──
+  if (reason !== 'referral' && amount > 0) {
+    try {
+      const earner = await db.user.findUnique({ where: { id: userId }, select: { referredById: true } })
+      if (earner?.referredById) {
+        const pct = await getReferralPercent()
+        const bonus = Math.floor((amount * pct) / 100)
+        if (bonus > 0) {
+          await awardPoints(earner.referredById, 'referral', note ? `${pct}% referido · ${note}` : `${pct}% de puntos de tu invitado`, bonus)
+        }
+      }
+    } catch {
+      /* el bonus de referido nunca rompe el otorgamiento principal */
+    }
+  }
   return amount
 }
 

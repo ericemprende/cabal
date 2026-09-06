@@ -30,6 +30,10 @@ model User {
   isAdmin       Boolean  @default(false)
   points        Int      @default(0)
   lifetimePoints Int     @default(0)
+  referralCode  String?  @unique
+  referredById  String?
+  referredBy    User?    @relation("ReferralTree", fields: [referredById], references: [id])
+  referrals     User[]   @relation("ReferralTree")
   createdAt     DateTime @default(now())
   posts         Post[]
   launches      Launch[]
@@ -40,6 +44,7 @@ model User {
   pointEvents   PointEvent[]
   wallets       WalletLink[]
   devClaims     DevClaim[]
+  projectClaims ProjectClaim[]
 }
 
 model Launch {
@@ -193,4 +198,26 @@ model DevClaim {
   verifiedAt    DateTime?
 
   @@unique([userId, network, contract])
+}
+
+// Reclamo de propiedad de un proyecto de la plataforma (launch o token).
+// El usuario pega el CA, conecta su wallet y el backend verifica on-chain
+// (Solana: mint authority / Metaplex update authority). Si no se puede
+// verificar automáticamente, queda "pending" para revisión del admin.
+model ProjectClaim {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  targetType String // "launch" | "token"
+  targetId   String
+  network    String
+  contract   String
+  wallet     String
+  status     String    @default("pending") // verified | pending | rejected
+  method     String    @default("manual") // onchain | admin | manual
+  note       String    @default("")
+  createdAt  DateTime  @default(now())
+  verifiedAt DateTime?
+
+  @@unique([userId, targetType, targetId])
 }

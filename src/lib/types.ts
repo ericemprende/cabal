@@ -226,6 +226,31 @@ export interface DevClaimDTO {
   verifiedAt: string | null
 }
 
+/** Código de invitación + estadísticas de referidos del usuario. */
+export interface ReferralDTO {
+  code: string
+  referrals: number
+  earned: number
+  percent: number
+}
+
+/** Reclamo de propiedad de un proyecto de la plataforma (launch o token). */
+export interface ProjectClaimDTO {
+  id: string
+  targetType: 'launch' | 'token' | string
+  targetId: string
+  network: string
+  contract: string
+  wallet: string
+  status: 'verified' | 'pending' | 'rejected' | string
+  method: 'onchain' | 'admin' | 'manual' | string
+  note: string
+  createdAt: string
+  verifiedAt: string | null
+  projectName?: string
+  projectTicker?: string | null
+}
+
 export interface AdminOverviewDTO {
   totalUsers: number
   totalPosts: number

@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ForbiddenError, getPointRules, requireAdmin } from '@/lib/api-helpers'
 
+// Defaults mostrados cuando la Setting aún no existe en la BD
+const RULE_DEFAULTS: Record<string, number> = {
+  points_referral_percent: 10,
+}
+
 export async function GET(req: Request) {
   try {
     await requireAdmin(req)
     const rules = await getPointRules()
-    return NextResponse.json(rules)
+    return NextResponse.json({ ...RULE_DEFAULTS, ...rules })
   } catch (e) {
     if (e instanceof ForbiddenError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })
