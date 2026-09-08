@@ -1,0 +1,86 @@
+# Infraestructura de datos para Cabal (docs/PRD-postgres-redis.md).
+#   docker compose up -d
+# La app sigue corriendo fuera de compose (bun run dev / bun run start).
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: cabal-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cabal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cabal_dev}
+      POSTGRES_DB: cabal
+    ports:
+      - '5432:5432'   # conexión DIRECTA -> DIRECT_URL (prisma migrate)
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    command:
+      # Valores de partida para un servidor pequeño (~2 GB RAM). Ajustar al host real.
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=8MB
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cabal -d cabal']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: cabal-pgbouncer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: cabal
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-cabal_dev}
+      DB_NAME: cabal
+      # Modo transaction: la conexión se devuelve al pool al cerrar cada
+      # transacción, que es lo que permite servir miles de clientes con pocas
+      # conexiones reales. Obliga a pgbouncer=true en DATABASE_URL para que
+      # Prisma no use prepared statements.
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      AUTH_TYPE: scram-sha-256
+    ports:
+      - '6432:5432'   # conexión POOLED -> DATABASE_URL (la app)
+
+  redis:
+    image: redis:7-alpine
+    container_name: cabal-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    command:
+      # Caché y contadores: si se llena, expulsamos lo menos usado en vez de
+      # devolver errores de escritura. Los deltas de contadores se vuelcan a
+      # Postgres cada pocos segundos, así que la pérdida es acotada.
+      - redis-server
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --appendonly
+      - 'yes'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:

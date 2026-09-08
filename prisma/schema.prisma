@@ -45,6 +45,10 @@ model User {
   wallets       WalletLink[]
   devClaims     DevClaim[]
   projectClaims ProjectClaim[]
+
+  @@index([points])
+  @@index([referredById])
+  @@index([createdAt])
 }
 
 model Launch {
@@ -75,6 +79,10 @@ model Launch {
   createdAt     DateTime @default(now())
   createdBy     User     @relation(fields: [createdById], references: [id])
   posts         Post[]
+
+  @@index([status, launchAt])
+  @@index([createdById])
+  @@index([contract])
 }
 
 model Token {
@@ -97,6 +105,10 @@ model Token {
   athMc      Float    @default(0)
   isRug      Boolean  @default(false)
   posts      Post[]
+
+  @@index([devId])
+  @@index([contract])
+  @@index([launchedAt])
 }
 
 model Post {
@@ -112,6 +124,11 @@ model Post {
   likes     Int      @default(0)
   pnl       Float?
   createdAt DateTime @default(now())
+
+  @@index([launchId, createdAt])
+  @@index([tokenId, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 model Vote {
@@ -122,6 +139,8 @@ model Vote {
   targetId String
 
   @@unique([userId, target, targetId])
+
+  @@index([target, targetId])
 }
 
 model PointEvent {
@@ -132,6 +151,9 @@ model PointEvent {
   reason    String   // thesis | comment | launch | like_received | hype_received | admin_adjust | redeem
   note      String?
   createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 model Setting {
@@ -162,6 +184,8 @@ model Follow {
   targetId String
   target   User   @relation("followTarget", fields: [targetId], references: [id])
   @@unique([userId, targetId])
+
+  @@index([targetId])
 }
 
 // Wallets conectadas por el usuario (Phantom/MetaMask/dirección pegada).
@@ -200,6 +224,9 @@ model DevClaim {
   verifiedAt    DateTime?
 
   @@unique([userId, network, contract])
+
+  @@index([userId])
+  @@index([status])
 }
 
 // Reclamo de propiedad de un proyecto de la plataforma (launch o token).
@@ -222,4 +249,7 @@ model ProjectClaim {
   verifiedAt DateTime?
 
   @@unique([userId, targetType, targetId])
+
+  @@index([targetType, targetId])
+  @@index([status])
 }

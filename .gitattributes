@@ -1,0 +1,8 @@
+# Normalizar finales de linea a LF en todo el repo
+* text=auto eol=lf
+
+# Binarios: no tocar
+*.png binary
+*.woff binary
+*.db binary
+*.zip binary
