@@ -13,6 +13,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
+# ---------- 1b. Dependencias de produccion ----------
+# Arbol sin devDependencies, para el runtime. `prisma` esta en dependencies,
+# asi que aqui viene el CLI con TODAS sus transitivas resueltas por bun
+# (@prisma/config arrastra effect, c12, ...): copiarlas a mano se rompe en
+# cada actualizacion de Prisma.
+FROM oven/bun:1-debian AS proddeps
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production
+
 # ---------- 2. Build ----------
 FROM oven/bun:1-debian AS builder
 WORKDIR /app
@@ -46,11 +58,10 @@ ENV HOSTNAME=0.0.0.0
 # `next build` (script del proyecto) ya copió static/ y public/ dentro de standalone.
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/prisma ./prisma
-# prisma CLI + engines para poder ejecutar `migrate deploy` al arrancar.
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# CLI de prisma y sus dependencias, para ejecutar `migrate deploy` al arrancar.
+COPY --from=proddeps /app/node_modules ./node_modules
+# El cliente generado sale del build (`prisma generate`), no del install.
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/.bin ./node_modules/.bin
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
