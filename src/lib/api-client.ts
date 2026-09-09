@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import type {
   AdminOverviewDTO,
   AdminUserRowDTO,
+  AdminWaitlistDTO,
   AffiliatePlatformDTO,
   DevClaimDTO,
   LaunchDetailDTO,
@@ -115,6 +116,8 @@ export const qk = {
   adminTokens: ['admin', 'tokens'] as const,
   affiliates: ['affiliates'] as const,
   adminAffiliates: ['admin', 'affiliates'] as const,
+  adminWaitlist: ['admin', 'waitlist'] as const,
+  waitlistMe: ['waitlist', 'me'] as const,
   referral: ['me', 'referral'] as const,
   projectClaims: ['me', 'project-claims'] as const,
 }
@@ -680,6 +683,51 @@ export function useAdminDeleteAffiliate(enabled: boolean) {
     onSuccess: () => {
       invalidate()
       toast.success('Plataforma eliminada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ---------- Lista de espera (whitelist) ----------
+export function useAdminWaitlist(enabled: boolean, filters?: { status?: string; q?: string; all?: boolean }) {
+  const params = new URLSearchParams()
+  if (filters?.status && filters.status !== 'all') params.set('status', filters.status)
+  if (filters?.q) params.set('q', filters.q)
+  if (filters?.all) params.set('all', '1')
+  const qs = params.toString()
+  return useQuery<AdminWaitlistDTO>({
+    queryKey: [...qk.adminWaitlist, qs],
+    queryFn: () => jsonFetch(`/api/admin/waitlist${qs ? `?${qs}` : ''}`),
+    enabled,
+  })
+}
+
+export function useAdminUpdateWaitlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { id?: string; ids?: string[]; status?: string; note?: string }) =>
+      jsonFetch<{ ok: boolean; updated: number }>('/api/admin/waitlist', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminWaitlist })
+      toast.success('Lista de espera actualizada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminDeleteWaitlist() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      jsonFetch<{ ok: boolean }>(`/api/admin/waitlist?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.adminWaitlist })
+      toast.success('Entrada eliminada')
     },
     onError: (e: Error) => toast.error(e.message),
   })

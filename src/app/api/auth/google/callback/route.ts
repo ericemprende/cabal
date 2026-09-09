@@ -15,7 +15,7 @@ import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
 export async function GET(req: NextRequest) {
   const origin = appOrigin(req)
   const cfg = getGoogleConfig()
-  if (!cfg) return NextResponse.redirect(`${origin}/?connected=google&connect_error=no_config`)
+  if (!cfg) return NextResponse.redirect(`${origin}/app?connected=google&connect_error=no_config`)
 
   const loginMode = req.cookies.get('cabal_og_mode')?.value === 'login'
   const url = new URL(req.url)
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const savedState = req.cookies.get('cabal_og_state')?.value
 
   const finish = (query: string) => {
-    const res = NextResponse.redirect(`${origin}/?connected=google&${query}`)
+    const res = NextResponse.redirect(`${origin}/app?connected=google&${query}`)
     res.cookies.set('cabal_og_state', '', { path: '/', maxAge: 0 })
     res.cookies.set('cabal_og_mode', '', { path: '/', maxAge: 0 })
     return res

@@ -3,8 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Conexión directa para `prisma migrate`: las migraciones necesitan una
+  // sesión persistente y no funcionan a través de PgBouncer en modo transaction.
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -252,4 +255,47 @@ model ProjectClaim {
 
   @@index([targetType, targetId])
   @@index([status])
+}
+
+// Lista de espera (whitelist) previa al lanzamiento público de cabal.army.
+// El usuario entra en /whitelist, autoriza con su cuenta de X (OAuth 2.0 +
+// PKCE, mismo flujo que /api/auth/x) y queda registrado aquí. El admin ve
+// todas las entradas en el panel y habilita manualmente a quien quiera
+// (approved = true). "userId" apunta a la cuenta Cabal creada de paso, para
+// que el aprobado ya pueda entrar el día del lanzamiento sin registrarse.
+model WaitlistEntry {
+  id          String    @id @default(cuid())
+  xId         String    @unique // id numérico estable de X (el @handle puede cambiar)
+  xHandle     String
+  xName       String    @default("")
+  xAvatar     String?
+  xFollowers  Int       @default(0)
+  xVerified   Boolean   @default(false) // badge azul en X, no "verificado por nosotros"
+  xCreatedAt  DateTime? // antigüedad de la cuenta de X: señal anti-bot
+  userId      String?   @unique
+  // Datos del formulario que el usuario completa DESPUÉS de autenticarse con X.
+  // El email no lo entrega la API de X con OAuth 2.0 (solo OAuth 1.0a con
+  // permiso elevado), así que lo escribe la persona; nombre y @handle llegan
+  // prellenados del perfil real y el handle no es editable.
+  email       String    @default("")
+  telegram    String    @default("")
+  wallet      String    @default("")
+  country     String    @default("")
+  reason      String    @default("") // "por qué quieres entrar" (texto libre)
+  completed   Boolean   @default(false) // ya envió el formulario
+  completedAt DateTime?
+  status      String    @default("pending") // pending | approved | rejected
+  shared      Boolean   @default(false) // pulsó "Compartir en X" al menos una vez
+  sharedAt    DateTime?
+  referredBy  String? // handle de quien lo invitó (?ref= en la landing)
+  note        String    @default("") // notas internas del admin
+  ip          String    @default("")
+  userAgent   String    @default("")
+  createdAt   DateTime  @default(now())
+  approvedAt  DateTime?
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([xHandle])
+  @@index([completed])
 }

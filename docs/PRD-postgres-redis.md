@@ -176,30 +176,55 @@ Definidas en `.env.example`. Ver ese archivo para los valores de referencia.
 
 ## 8. Estado de implementación
 
+SQLite queda **retirado**: no había datos reales que conservar, así que se cortó
+directamente a PostgreSQL en vez de migrar por fases.
+
+### Entorno activo (local)
+
+| Pieza | Detalle |
+|---|---|
+| PostgreSQL 17 | Cluster propio en `C:/Users/ERICK/AppData/Local/cabal-pg/data`, puerto 5432, usuario y base `cabal` |
+| Redis 7 | Servicio de Windows ya existente, puerto 6379 |
+| PgBouncer | **No desplegado en local.** `docker-compose.yml` lo deja listo para producción |
+
+El cluster de DBngin que había instalado no arrancaba: su directorio de datos
+(`C:/Users/ERICK/.antigravity/plataforma para vender extreming 2.9`) no existe.
+Se creó uno nuevo con sus mismos binarios en vez de reparar el servicio.
+
 ### Entregado
 
 | Fase | Artefacto |
 |---|---|
-| F1 | 21 índices añadidos a `prisma/schema.prisma` (esquema validado en SQLite y en Postgres) |
-| F2 | `scripts/db-provider.mjs` — conmuta el datasource: `bun run db:use-postgres` / `db:use-sqlite` |
-| F4 | `scripts/db-transfer.mjs` — `db:export` / `db:import`, con reconexión diferida de `User.referredById` |
-| F5 | `docker-compose.yml` — Postgres 17, PgBouncer en modo transaction (:6432) y Redis 7 |
-| F6 | `src/lib/redis.ts`, `src/lib/cache.ts`, `src/lib/rate-limit.ts` |
-| F7 | `src/lib/counters.ts` + `scripts/counters-flush.mjs` (`counters:flush` / `counters:watch`) |
-| F8 | `publish()` / `subscriber()` en `src/lib/redis.ts` (base de Pub/Sub) |
+| F1 | 21 índices en `prisma/schema.prisma`, verificados en Postgres (42 índices totales, 13 tablas) |
+| F2 | `provider = "postgresql"` con `directUrl`; el conmutador SQLite ya no hace falta |
+| F3 | Migración inicial `prisma/migrations/20260908220547_init` aplicada |
+| F4 | Sin volcado de datos: se partió de base vacía |
+| F5 | `docker-compose.yml` con Postgres + PgBouncer (transaction) + Redis, para producción |
+| F6 | `cached()` en feed, leaderboard y lista de launches; `rateLimit()` en hype, like, posts, login y registro |
+| F7 | `bump()` / `pending()` sustituyen los `UPDATE` de `Launch.hype` y `Post.likes`; volcado con `counters:watch` |
+| F8 | `publish()` / `subscriber()` listos en `src/lib/redis.ts` (sin rutas WebSocket todavía) |
 
-Todos los módulos de Redis degradan sin `REDIS_URL`: la app funciona igual,
-sirviendo directamente desde la base de datos. Verificado en ejecución.
+**Criterio de caché:** solo se cachea lo compartido entre usuarios (lista de
+posts, tabla de usuarios, launches visibles). Los votos y follows son personales
+y se leen siempre en fresco — cachearlos filtraría los likes de un usuario a otro.
+
+### Retirado
+
+Eliminados `scripts/auto-backup.mjs`, `scripts/safe-db-push.mjs`, `db/custom.db`
+y sus backups. El respaldo ahora es `scripts/pg-backup.mjs` (`bun run db:backup`,
+formato `-Fc` restaurable con `pg_restore`), verificado en ejecución.
+
+También se corrigió `src/lib/seed.ts`: creaba el usuario `elprofe` sin asignarlo
+a una variable, y el seed abortaba a media ejecución. En SQLite no se notaba
+porque la base ya estaba poblada; contra un Postgres vacío rompía toda la API.
 
 ### Pendiente
 
-- **Aplicar los índices a la base existente**: `bun run db:push`.
-- **Ejecutar el corte a Postgres** (F2→F4): requiere Docker, no disponible en la
-  máquina donde se implementó esto. Sin ejecutar y sin verificar de extremo a extremo.
-- **Sustituir los `UPDATE` de contadores por `bump()`** en las rutas que tocan
-  `Launch.hype` y `Post.likes`. La librería está lista pero aún no está enchufada:
-  hasta que se haga, F7 no surte efecto.
-- **Aplicar `cached()` y `rateLimit()`** a las rutas de leaderboard, feeds y
-  escritura. Igual que arriba: la librería existe, falta el cableado.
-- **Reemplazar `scripts/auto-backup.mjs`** (copia de archivo) por `pg_dump`
-  cuando Postgres esté activo.
+- **Modelo `WaitlistEntry`**: las rutas de `src/app/api/waitlist/` y
+  `src/lib/waitlist.ts` usan `db.waitlistEntry`, que no existe en el esquema.
+  Esas rutas devolverán error 500. Es trabajo aparte, ajeno a esta migración.
+- **PgBouncer en producción**: en local la app va directa a Postgres. Sin pooler,
+  el límite práctico son las ~100 conexiones del cluster.
+- **`counters:watch` como servicio**: hoy hay que lanzarlo a mano. Si no corre,
+  los contadores se acumulan en Redis y no llegan a Postgres.
+- **WebSockets sobre Pub/Sub** (F8): la base está, faltan las rutas.

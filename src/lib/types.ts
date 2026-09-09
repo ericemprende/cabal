@@ -272,3 +272,43 @@ export interface AdminUserRowDTO extends UserDTO {
   likesReceived: number
   lastActivity?: string | null
 }
+
+// ---------- Lista de espera (whitelist) ----------
+export interface WaitlistEntryDTO {
+  id: string
+  position: number
+  xId: string
+  xHandle: string
+  xName: string
+  xAvatar: string | null
+  xFollowers: number
+  xVerified: boolean
+  xCreatedAt: string | null
+  userId: string | null
+  email: string
+  telegram: string
+  wallet: string
+  country: string
+  reason: string
+  completed: boolean
+  completedAt: string | null
+  status: string
+  shared: boolean
+  sharedAt: string | null
+  referredBy: string | null
+  note: string
+  createdAt: string
+  approvedAt: string | null
+}
+
+export interface AdminWaitlistDTO {
+  entries: WaitlistEntryDTO[]
+  stats: {
+    total: number
+    pending: number
+    approved: number
+    rejected: number
+    shared: number
+    incomplete: number
+  }
+}

@@ -13,10 +13,16 @@ function create(): Redis | null {
   const url = process.env.REDIS_URL
   if (!url) return null
   const client = new Redis(url, {
-    // No reintentar para siempre: si Redis cae, preferimos servir desde
-    // Postgres antes que acumular comandos en memoria.
-    maxRetriesPerRequest: 2,
-    enableOfflineQueue: false,
+    // La conexión se establece de forma asíncrona: la cola offline debe quedar
+    // activa o los comandos emitidos durante el arranque se rechazan y el
+    // primer request tras el boot nunca vería la caché.
+    enableOfflineQueue: true,
+    connectTimeout: 2000,
+    // Cota superior de latencia: si Redis no responde en 1 s, el comando falla
+    // y `safeRedis` sirve desde Postgres. Sin esto, un Redis colgado bloquea
+    // el request en vez de degradar.
+    commandTimeout: 1000,
+    maxRetriesPerRequest: 1,
     lazyConnect: false,
   })
   client.on('error', (err) => {

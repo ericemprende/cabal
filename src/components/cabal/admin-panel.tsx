@@ -17,6 +17,7 @@ import {
   Save,
   Settings2,
   ShieldCheck,
+  Ticket,
   Trash2,
   Users,
   XCircle,
@@ -45,6 +46,7 @@ import { NETWORKS, timeAgo } from '@/lib/cabal'
 import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
 import { PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
+import { AdminWaitlist } from '@/components/cabal/admin-waitlist'
 import {
   jsonFetch,
   qk,
@@ -84,6 +86,7 @@ const RULE_LABELS: Record<string, string> = {
   points_hype_received: 'Hype en tu launch',
   points_daily_visit: 'Visita diaria',
   points_referral_percent: 'Referidos (% del equipo)',
+  points_share_x: 'Compartir tarjeta en X',
 }
 
 const REASON_COLORS: Record<string, string> = {
@@ -96,9 +99,18 @@ const REASON_COLORS: Record<string, string> = {
   redeem: '#ff4d5e',
   verify_x: '#9945FF',
   verify_google: '#8A92B2',
+  share_x: '#1d9bf0',
 }
 
-type AdminView = 'usuarios' | 'reclamos' | 'reglas' | 'proyectos' | 'tokens' | 'afiliados' | 'stats'
+type AdminView =
+  | 'whitelist'
+  | 'usuarios'
+  | 'reclamos'
+  | 'reglas'
+  | 'proyectos'
+  | 'tokens'
+  | 'afiliados'
+  | 'stats'
 
 function toInputDateTime(iso: string): string {
   const d = new Date(iso)
@@ -157,7 +169,7 @@ export function AdminPanel({
   /** Acción opcional de cierre (muestra un botón "Cerrar" junto al título). */
   onClose?: () => void
 }) {
-  const [view, setView] = useState<AdminView>('usuarios')
+  const [view, setView] = useState<AdminView>('whitelist')
   const overview = useAdminOverview(enabled)
   const users = useAdminUsers(enabled)
   const rulesQ = useQuery<Record<string, number>>({
@@ -199,6 +211,7 @@ export function AdminPanel({
         <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto">
           {(
             [
+              { key: 'whitelist', label: 'Lista de espera', icon: Ticket },
               { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
               { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
               { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
@@ -242,6 +255,8 @@ export function AdminPanel({
             ))}
           </div>
         )}
+
+        {view === 'whitelist' && <AdminWaitlist enabled={enabled} />}
 
         {view === 'reclamos' && <AdminClaims enabled={enabled} />}
 

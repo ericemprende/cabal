@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/seed'
 import { toUserDTO } from '@/lib/serializers'
@@ -8,6 +9,10 @@ import { SESSION_COOKIE, createSessionValue, hashPassword, sessionCookieOptions 
 // Acepta `referralCode` opcional: vincula al invitador (gana % de los puntos del invitado)
 export async function POST(req: Request) {
   try {
+    // Fuerza bruta: 5 intentos por IP y minuto.
+    const limit = await rateLimit(`register:${clientIp(req)}`, 5, 60)
+    if (!limit.ok) return tooManyRequests(limit)
+
     await ensureSeeded()
     const body = await req.json()
     const handle = String(body.handle ?? '').trim().toLowerCase()

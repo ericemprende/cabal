@@ -15,7 +15,7 @@ import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
 export async function GET(req: NextRequest) {
   const origin = appOrigin(req)
   const cfg = getXConfig()
-  if (!cfg) return NextResponse.redirect(`${origin}/?connected=x&connect_error=no_config`)
+  if (!cfg) return NextResponse.redirect(`${origin}/app?connected=x&connect_error=no_config`)
 
   const loginMode = req.cookies.get('cabal_ox_mode')?.value === 'login'
   const url = new URL(req.url)
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const verifier = req.cookies.get('cabal_ox_verifier')?.value
 
   const finish = (query: string) => {
-    const res = NextResponse.redirect(`${origin}/?connected=x&${query}`)
+    const res = NextResponse.redirect(`${origin}/app?connected=x&${query}`)
     res.cookies.set('cabal_ox_state', '', { path: '/', maxAge: 0 })
     res.cookies.set('cabal_ox_verifier', '', { path: '/', maxAge: 0 })
     res.cookies.set('cabal_ox_mode', '', { path: '/', maxAge: 0 })

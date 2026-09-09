@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/api-helpers'
+import { cached, CACHE_TTL } from '@/lib/cache'
 import { toUserDTO } from '@/lib/serializers'
 import type { ClanDTO, LeaderboardDTO, LeaderboardEntryDTO } from '@/lib/types'
 
@@ -15,8 +16,12 @@ const CLANS: ClanDTO[] = [
 export async function GET() {
   try {
     const me = await getCurrentUser()
+    // Solo se cachea la tabla de usuarios, que es idéntica para todos. Los
+    // follows son por usuario y se consultan siempre en fresco.
     const [users, follows] = await Promise.all([
-      db.user.findMany({ orderBy: { cabalScore: 'desc' } }),
+      cached('leaderboard:users', CACHE_TTL.leaderboard, () =>
+        db.user.findMany({ orderBy: { cabalScore: 'desc' } }),
+      ),
       db.follow.findMany({ where: { userId: me.id } }),
     ])
     const followedIds = new Set(follows.map((f) => f.targetId))

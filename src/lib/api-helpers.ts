@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/seed'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { sessionUserIdFromCookies } from '@/lib/auth'
+import { invalidate } from '@/lib/cache'
 
 // ---------- POINTS ENGINE ----------
 export const POINT_RULE_KEYS = [
@@ -12,6 +13,7 @@ export const POINT_RULE_KEYS = [
   'points_hype_received',
   'points_daily_visit',
   'points_referral_percent',
+  'points_share_x',
 ] as const
 
 export type PointReason =
@@ -27,6 +29,7 @@ export type PointReason =
   | 'verify_google'
   | 'verify_wallet'
   | 'referral'
+  | 'share_x'
 
 const REASON_TO_KEY: Record<string, string> = {
   thesis: 'points_thesis',
@@ -35,6 +38,7 @@ const REASON_TO_KEY: Record<string, string> = {
   like_received: 'points_like_received',
   hype_received: 'points_hype_received',
   daily_visit: 'points_daily_visit',
+  share_x: 'points_share_x',
 }
 
 export async function getPointRules(): Promise<Record<string, number>> {
@@ -76,6 +80,9 @@ export async function awardPoints(
       },
     }),
   ])
+
+  // Los puntos acaban de cambiar: la tabla cacheada del leaderboard ya no vale.
+  await invalidate('leaderboard:*')
 
   // ── Referidos: el que invitó gana el % configurado ──
   if (reason !== 'referral' && amount > 0) {

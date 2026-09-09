@@ -54,3 +54,8 @@ prompt
 server.log
 # Skills directory
 /skills/
+# Tarjetas de la lista de espera generadas al vuelo (caché, se regeneran solas)
+upload/cards/
+
+# Volcados de base de datos: contienen datos reales, no van al repo
+db/backups/

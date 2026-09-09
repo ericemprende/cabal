@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { computeLaunchStatus, getCurrentUser } from '@/lib/api-helpers'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { toPostDTO, toUserDTO } from '@/lib/serializers'
+import { pending } from '@/lib/counters'
 import type { LaunchDetailDTO, PostDTO } from '@/lib/types'
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -51,7 +52,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       isLive: launch.isLive,
       liveUrl: launch.liveUrl,
       status: computeLaunchStatus(launch.launchAt),
-      hype: launch.hype,
+      hype: launch.hype + (await pending('launch:hype', launch.id)),
       hyped: votes.some((v) => v.target === 'launch' && v.targetId === launch.id),
       lpLocked: launch.lpLocked,
       mintRevoked: launch.mintRevoked,

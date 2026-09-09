@@ -3,21 +3,18 @@
   "version": "0.2.1",
   "private": true,
   "scripts": {
-    "dev": "bun scripts/auto-backup.mjs && next dev -p 3000 2>&1 | tee dev.log",
+    "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
-    "db:push": "bun scripts/safe-db-push.mjs",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:use-postgres": "bun scripts/db-provider.mjs postgresql",
-    "db:use-sqlite": "bun scripts/db-provider.mjs sqlite",
-    "db:export": "bun scripts/db-transfer.mjs export",
-    "db:import": "bun scripts/db-transfer.mjs import",
     "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:backup": "bun scripts/pg-backup.mjs",
     "counters:flush": "bun scripts/counters-flush.mjs",
     "counters:watch": "bun scripts/counters-flush.mjs --watch",
-    "db:reset": "echo '⛔ PROHIBIDO: db:reset borra todos los datos. Usa bun run db:push (hace backup y conserva los datos).' && exit 1"
+    "db:reset": "echo 'PROHIBIDO: db:reset borra todos los datos. Usa bun run db:migrate.' && exit 1"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

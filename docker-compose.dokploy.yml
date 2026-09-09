@@ -1,0 +1,152 @@
+# ---------------------------------------------------------------
+# Cabal - stack completo para Dokploy (Compose).
+#
+# En Dokploy: Create > Compose, apunta a este repo y pon
+#   Compose Path: ./docker-compose.dokploy.yml
+# Luego en Environment pega las variables (ver .env.example) y en
+# Domains añade el dominio al servicio `app`, puerto 3000.
+#
+# Nada se publica en el host: sólo Traefik (el proxy de Dokploy) llega a la
+# app. Postgres y Redis quedan en la red interna.
+# ---------------------------------------------------------------
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* se inlinea en el bundle: tiene que estar en build time.
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://cabal.army}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_started
+    environment:
+      # La app va por PgBouncer; las migraciones, directas a Postgres.
+      DATABASE_URL: postgresql://cabal:${POSTGRES_PASSWORD}@pgbouncer:5432/cabal?schema=public&pgbouncer=true&connection_limit=10
+      DIRECT_URL: postgresql://cabal:${POSTGRES_PASSWORD}@postgres:5432/cabal?schema=public
+      REDIS_URL: redis://redis:6379
+      AUTH_SECRET: ${AUTH_SECRET}
+      APP_ORIGIN: ${APP_ORIGIN}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://cabal.army}
+      ADMIN_USER: ${ADMIN_USER:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_SECRET: ${ADMIN_SECRET:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      X_CLIENT_ID: ${X_CLIENT_ID:-}
+      X_CLIENT_SECRET: ${X_CLIENT_SECRET:-}
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-}
+    networks:
+      - cabal
+      - dokploy-network
+    labels:
+      # Dokploy suele generar estas labels desde la pestaña Domains. Si prefieres
+      # gestionarlo a mano, descomenta y ajusta el dominio.
+      # - traefik.enable=true
+      # - traefik.http.routers.cabal.rule=Host(`cabal.army`)
+      # - traefik.http.routers.cabal.entrypoints=websecure
+      # - traefik.http.routers.cabal.tls.certresolver=letsencrypt
+      # - traefik.http.services.cabal.loadbalancer.server.port=3000
+      - dokploy.managed=true
+
+  # Volcado periódico de contadores de Redis a Postgres (hype/likes).
+  counters:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: counters
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://cabal:${POSTGRES_PASSWORD}@pgbouncer:5432/cabal?schema=public&pgbouncer=true&connection_limit=5
+      DIRECT_URL: postgresql://cabal:${POSTGRES_PASSWORD}@postgres:5432/cabal?schema=public
+      REDIS_URL: redis://redis:6379
+      FLUSH_INTERVAL: ${FLUSH_INTERVAL:-15}
+    networks:
+      - cabal
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cabal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: cabal
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    command:
+      # Valores de partida para un VPS pequeño (~2 GB RAM). Ajustar al host real.
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=8MB
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U cabal -d cabal']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cabal
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: cabal
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: cabal
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      AUTH_TYPE: scram-sha-256
+    networks:
+      - cabal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --appendonly
+      - 'yes'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cabal
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  cabal:
+  # Red que crea Dokploy para que Traefik alcance los contenedores.
+  dokploy-network:
+    external: true

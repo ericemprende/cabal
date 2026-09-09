@@ -262,3 +262,153 @@
 .animate-float-slow {
   animation: float-slow 5s ease-in-out infinite;
 }
+
+/* ---------- Landing de la lista de espera ---------- */
+
+/* Barrido del radar del hero: gira como la aguja del logo de Cabal. */
+@keyframes radar-sweep {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+/* Deriva del marco que va detras del escuadron: se mueve apenas, en un ciclo
+   largo y desfasado del resto, para que el hero respire sin distraer. */
+@keyframes mockup-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.02);
+  }
+  33% {
+    transform: translate3d(-1.4%, -1.1%, 0) scale(1.045);
+  }
+  66% {
+    transform: translate3d(1.2%, 0.9%, 0) scale(1.03);
+  }
+}
+.animate-mockup-drift {
+  animation: mockup-drift 22s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+/* Tambaleo del escuadron: una inclinacion minima, como si respiraran en
+   formacion. Va en otro ciclo que la deriva del marco, para que las dos capas
+   nunca queden sincronizadas. */
+@keyframes squad-sway {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-0.45deg);
+  }
+  50% {
+    transform: translate3d(0, -0.9%, 0) rotate(0.45deg);
+  }
+}
+.animate-squad-sway {
+  animation: squad-sway 9s ease-in-out infinite;
+  transform-origin: 50% 85%;
+  will-change: transform;
+}
+
+/* Anillos que se expanden desde el centro, como un eco del radar. */
+@keyframes radar-ping {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.55;
+  }
+  80% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+.animate-radar-ping {
+  animation: radar-ping 4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  transform-origin: 50% 50%;
+}
+
+/* Contactos detectados por el radar: parpadean al pasar la aguja. */
+@keyframes radar-blip {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.animate-radar-blip {
+  animation: radar-blip 4s ease-in-out infinite;
+}
+
+/* Botón principal: latido de luz para que llame la atención. */
+@keyframes cta-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(143, 168, 63, 0.45),
+      0 0 22px 2px rgba(143, 168, 63, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(143, 168, 63, 0),
+      0 0 38px 6px rgba(143, 168, 63, 0.6);
+  }
+}
+.animate-cta-glow {
+  animation: cta-glow 2.2s ease-in-out infinite;
+}
+
+/* Brillo que recorre el botón de lado a lado. */
+@keyframes cta-shine {
+  0% {
+    transform: translateX(-120%);
+  }
+  60%,
+  100% {
+    transform: translateX(220%);
+  }
+}
+.animate-cta-shine {
+  animation: cta-shine 2.8s ease-in-out infinite;
+}
+
+/* Quien prefiere menos movimiento no ve ninguna de estas animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-radar-sweep,
+  .animate-mockup-drift,
+  .animate-squad-sway,
+  .animate-radar-ping,
+  .animate-radar-blip,
+  .animate-cta-glow,
+  .animate-cta-shine {
+    animation: none;
+  }
+}
+
+/* Tipografía de los documentos legales (/terminos, /privacidad). */
+.legal-body ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.legal-body li {
+  margin-top: 0.375rem;
+}
+.legal-body a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal-body strong {
+  color: var(--foreground);
+  font-weight: 600;
+}

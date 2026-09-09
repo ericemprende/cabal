@@ -124,12 +124,12 @@ export default function PublicarLaunchPage() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0b08]/85 backdrop-blur-md">
         <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-3 px-3 sm:px-4">
           <Link
-            href="/"
+            href="/app"
             className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden /> Volver
           </Link>
-          <Link href="/" className="ml-1 flex items-center outline-none" aria-label="Ir al inicio">
+          <Link href="/app" className="ml-1 flex items-center outline-none" aria-label="Ir al inicio">
             <CabalWordmark />
           </Link>
           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-2.5 py-1 text-xs font-semibold text-primary">
@@ -144,7 +144,7 @@ export default function PublicarLaunchPage() {
             earned={earned}
             ticker={form.ticker}
             onReset={reset}
-            onGoRadar={() => router.push('/')}
+            onGoRadar={() => router.push('/app')}
           />
         ) : (
           <>

@@ -26,6 +26,7 @@ async function seed(): Promise<void> {
       { key: 'points_like_received', value: '2' },
       { key: 'points_hype_received', value: '1' },
       { key: 'points_daily_visit', value: '3' },
+      { key: 'points_share_x', value: '10' },
     ],
   })
 
@@ -180,7 +181,7 @@ async function seed(): Promise<void> {
     points: 690,
     lifetimePoints: 780,
   })
-  await u({
+  const elprofe = await u({
     handle: 'elprofe',
     name: 'El Profe',
     avatar: '🎓',
