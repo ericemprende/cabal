@@ -21,6 +21,11 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  // Sin esto, Next resuelve las imágenes relativas (/og-cabal.png) contra
+  // localhost:3000, y cualquier página que herede estos metadatos le daba a X
+  // una imagen imposible de descargar. Es la misma URL que siteUrl() de
+  // lib/waitlist, repetida aquí para no cargar la base de datos en el layout.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://cabal.army"),
   title: "Cabal — Radar de Memecoins",
   description:
     "La plataforma social donde descubres los memecoins ANTES de que salgan. Lanzamientos posteados por la comunidad, tesis, historial de devs verificados y puntos canjeables por tokens.",

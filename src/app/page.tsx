@@ -55,7 +55,13 @@ export async function generateMetadata({
     title,
     description,
     metadataBase: new URL(siteUrl()),
-    alternates: { canonical: '/' },
+    // El enlace de referido tiene que ser canónico de SÍ MISMO. Antes todos
+    // declaraban la home como canónica, y X, al publicar, usaba la tarjeta que
+    // tenía guardada para la home en vez de la de cada persona. Esa tarjeta era
+    // de cuando la home era la app: "Cabal — Radar de Memecoins" con la imagen
+    // apuntando a localhost, así que todos los posts salían sin imagen aunque
+    // el compositor de X, que previsualiza la URL real, sí la enseñara.
+    alternates: { canonical: valid ? shareRefUrl(valid, locale) : '/' },
     openGraph: {
       title: ogTitle,
       description: ogDescription,
