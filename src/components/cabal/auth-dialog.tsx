@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AtSign, Gift, KeyRound, LogIn, UserPlus } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,8 @@ import { useAuthStatus, useLogin, useRegister } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
 export type AuthMode = 'login' | 'register'
+
+const REF_KEY = 'cabal_ref'
 
 /**
  * Diálogo de Iniciar sesión / Crear cuenta.
@@ -31,6 +33,22 @@ export function AuthDialog() {
   const [password, setPassword] = useState('')
   const [referralCode, setReferralCode] = useState('')
   const [demoProvider, setDemoProvider] = useState<'x' | 'google' | null>(null)
+
+  // Enlace de invitación (/app?ref=CODIGO): se guarda para prellenar el registro
+  // aunque el visitante tarde en abrir el diálogo o recargue la página.
+  useEffect(() => {
+    try {
+      const fromUrl = new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase()
+      if (fromUrl && /^[A-Z0-9]{4,12}$/.test(fromUrl)) localStorage.setItem(REF_KEY, fromUrl)
+    } catch {}
+  }, [])
+  useEffect(() => {
+    if (!authOpen) return
+    try {
+      const saved = localStorage.getItem(REF_KEY)
+      if (saved) setReferralCode((c) => c || saved)
+    } catch {}
+  }, [authOpen])
 
   const isLogin = authMode === 'login'
   const pending = login.isPending || register.isPending

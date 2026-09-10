@@ -192,6 +192,112 @@ async function fetchTop10Solana(ca: string): Promise<number | null> {
   }
 }
 
+// ── Ficha pública del token (para autocompletar el formulario de publicar) ──
+
+export type TokenMeta = {
+  found: boolean
+  /** 'dexscreener' si ya cotiza; 'pumpfun' si aún está en la curva de pump.fun */
+  source: 'dexscreener' | 'pumpfun' | ''
+  network: string
+  name: string
+  symbol: string
+  image: string
+  banner: string
+  description: string
+  website: string
+  twitter: string
+  telegram: string
+}
+
+type DexInfoPair = DexPair & {
+  info?: {
+    imageUrl?: string
+    header?: string
+    websites?: { url?: string; label?: string }[]
+    socials?: { type?: string; url?: string }[]
+  }
+}
+
+const NETWORK_BY_DEX_CHAIN: Record<string, string> = Object.fromEntries(
+  Object.entries(DEX_CHAIN).map(([net, chain]) => [chain, net])
+)
+
+/** Solo URLs https (evita javascript:, http plano, etc.) */
+function safeUrl(u: unknown): string {
+  return typeof u === 'string' && /^https:\/\/\S+$/i.test(u) && u.length <= 500 ? u : ''
+}
+
+function socialUrl(type: string, u: unknown): string {
+  if (typeof u !== 'string' || !u.trim()) return ''
+  const v = u.trim()
+  if (/^https:\/\//i.test(v)) return safeUrl(v)
+  // pump.fun a veces guarda solo el @ o el dominio sin esquema
+  const clean = v.replace(/^@+/, '').replace(/^https?:\/\//i, '')
+  if (type === 'twitter' && /^[\w]{1,15}$/.test(clean)) return `https://x.com/${clean}`
+  if (type === 'telegram' && /^[\w]{4,40}$/.test(clean)) return `https://t.me/${clean}`
+  return safeUrl(`https://${clean}`)
+}
+
+/**
+ * Nombre, ticker, imagen, banner, descripción y redes de un token a partir de
+ * su CA. Primero DexScreener (cualquier red, detecta la red sola); si no cotiza
+ * y parece Solana, prueba pump.fun (tokens aún en la curva). Nunca lanza.
+ */
+export async function fetchTokenMeta(ca: string): Promise<TokenMeta> {
+  const meta: TokenMeta = {
+    found: false, source: '', network: '', name: '', symbol: '', image: '',
+    banner: '', description: '', website: '', twitter: '', telegram: '',
+  }
+
+  const json = await fetchJson<{ pairs?: DexInfoPair[] }>(
+    `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(ca)}`,
+    8000
+  )
+  const pair = pickPair(json?.pairs ?? [], ca) as DexInfoPair | null
+  if (pair) {
+    meta.found = true
+    meta.source = 'dexscreener'
+    meta.network = NETWORK_BY_DEX_CHAIN[pair.chainId] ?? ''
+    meta.name = pair.baseToken?.name ?? ''
+    meta.symbol = pair.baseToken?.symbol ?? ''
+    meta.image = safeUrl(pair.info?.imageUrl)
+    meta.banner = safeUrl(pair.info?.header)
+    meta.website = safeUrl(pair.info?.websites?.[0]?.url)
+    for (const s of pair.info?.socials ?? []) {
+      const type = (s.type ?? '').toLowerCase()
+      if ((type === 'twitter' || type === 'x') && !meta.twitter) meta.twitter = socialUrl('twitter', s.url)
+      if (type === 'telegram' && !meta.telegram) meta.telegram = socialUrl('telegram', s.url)
+    }
+  }
+
+  // pump.fun: completa lo que falte (o todo si aún no cotiza en un DEX)
+  if (isValidContract('solana', ca) && (!pair || pair.chainId === 'solana')) {
+    const pf = await fetchJson<{
+      name?: string; symbol?: string; description?: string; image_uri?: string
+      banner_uri?: string; twitter?: string; telegram?: string; website?: string
+    }>(`https://frontend-api-v3.pump.fun/coins/${encodeURIComponent(ca)}`, 6000)
+    if (pf && (pf.name || pf.symbol)) {
+      if (!meta.found) {
+        meta.found = true
+        meta.source = 'pumpfun'
+        meta.network = 'solana'
+      }
+      meta.name ||= pf.name ?? ''
+      meta.symbol ||= pf.symbol ?? ''
+      meta.image ||= safeUrl(pf.image_uri)
+      meta.banner ||= safeUrl(pf.banner_uri)
+      meta.description ||= (pf.description ?? '').slice(0, 1000)
+      meta.website ||= socialUrl('website', pf.website)
+      meta.twitter ||= socialUrl('twitter', pf.twitter)
+      meta.telegram ||= socialUrl('telegram', pf.telegram)
+    }
+  }
+
+  meta.name = meta.name.slice(0, 60)
+  meta.symbol = meta.symbol.replace(/^\$/, '').toUpperCase().slice(0, 20)
+  return meta
+}
+
 /** Métricas reales del token (DexScreener + ATH + top10). Nunca lanza. */
 export async function fetchTokenStats(network: string, ca: string): Promise<ChainStats> {
   const dexChain = DEX_CHAIN[network]

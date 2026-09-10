@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, CalendarClock, CheckCircle2, Code2, EyeOff, Hash, MonitorPlay, Radar, Rocket, Zap } from 'lucide-react'
@@ -14,6 +14,7 @@ import { ImageDrop } from '@/components/cabal/image-drop'
 import { cn } from '@/lib/utils'
 import { NETWORKS } from '@/lib/cabal'
 import { uploadImage, useCreateLaunch } from '@/lib/api-client'
+import type { TokenMeta } from '@/lib/chain-stats'
 
 const EMPTY_FORM = {
   name: '',
@@ -42,6 +43,52 @@ export default function PublicarLaunchPage() {
   const [earned, setEarned] = useState(0)
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Autocompletar por CA: al pegar un contrato válido se busca en DexScreener /
+  // pump.fun y se rellenan los campos vacíos (nunca pisa lo que ya escribió).
+  const [lookup, setLookup] = useState<{ state: 'idle' | 'loading' | 'found' | 'notfound'; source?: string }>({ state: 'idle' })
+  const lookupCa = form.contract.trim()
+  useEffect(() => {
+    if (!/^[a-zA-Z0-9]{32,44}$|^0x[a-fA-F0-9]{40}$/.test(lookupCa)) {
+      setLookup({ state: 'idle' })
+      return
+    }
+    let cancelled = false
+    setLookup({ state: 'loading' })
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tokens/lookup?ca=${encodeURIComponent(lookupCa)}`)
+        const meta = (await res.json()) as TokenMeta
+        if (cancelled) return
+        if (!res.ok || !meta.found) {
+          setLookup({ state: 'notfound' })
+          return
+        }
+        setForm((f) => ({
+          ...f,
+          network: meta.network || f.network,
+          name: f.name || meta.name,
+          ticker: f.ticker || meta.symbol,
+          image: f.image || meta.image,
+          banner: f.banner || meta.banner,
+          description: f.description || meta.description,
+          website: f.website || meta.website,
+          twitter: f.twitter || meta.twitter,
+          telegram: f.telegram || meta.telegram,
+        }))
+        setLookup({ state: 'found', source: meta.source === 'pumpfun' ? 'pump.fun' : 'DexScreener' })
+        toast.success(`${meta.symbol ? `$${meta.symbol}` : 'Token'} encontrado`, {
+          description: 'Rellenamos los datos del token. Revísalos antes de publicar.',
+        })
+      } catch {
+        if (!cancelled) setLookup({ state: 'notfound' })
+      }
+    }, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [lookupCa])
 
   const handleSelect = (key: 'image' | 'banner') => async (file: File) => {
     setError('')
@@ -330,9 +377,21 @@ export default function PublicarLaunchPage() {
                   spellCheck={false}
                   className="h-10 bg-[#0a0b08] font-mono text-sm"
                 />
-                <p className="text-[10px] leading-relaxed text-muted-foreground">
-                  Si el token ya fue desplegado, pégalo aquí para activar el gráfico en vivo estilo GMGN en su ficha.
-                </p>
+                {lookup.state === 'loading' ? (
+                  <p className="text-[11px] font-medium text-muted-foreground">Buscando el token…</p>
+                ) : lookup.state === 'found' ? (
+                  <p className="flex items-center gap-1 text-[11px] font-semibold text-primary">
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Token verificado en {lookup.source}: datos rellenados
+                  </p>
+                ) : lookup.state === 'notfound' ? (
+                  <p className="text-[11px] font-medium text-amber-300">
+                    No encontramos este token en DexScreener ni pump.fun. Rellena los datos a mano.
+                  </p>
+                ) : (
+                  <p className="text-[10px] leading-relaxed text-muted-foreground">
+                    Si el token ya fue desplegado, pega el CA y rellenamos nombre, ticker, imagen, banner y redes solos. También activa el gráfico en vivo en su ficha.
+                  </p>
+                )}
               </div>
 
               {/* Fecha */}

@@ -293,14 +293,17 @@ function ReferralSection() {
   const [copied, setCopied] = useState(false)
   if (!ref) return null
 
+  const link = ref.code ? `${window.location.origin}/app?ref=${ref.code}` : ''
+
   const copy = async () => {
+    if (!link) return
     try {
-      await navigator.clipboard.writeText(ref.code)
+      await navigator.clipboard.writeText(link)
       setCopied(true)
-      toast.success('Código copiado')
+      toast.success('Enlace copiado')
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      toast.error('No se pudo copiar el código')
+      toast.error('No se pudo copiar el enlace')
     }
   }
 
@@ -309,13 +312,13 @@ function ReferralSection() {
       <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Invita y gana</p>
       <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-3.5">
         <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Comparte tu código: quien se registre con él te deja el{' '}
+          Comparte tu enlace: quien se registre con él te deja el{' '}
           <span className="font-bold text-primary">{ref.percent}%</span> de los puntos que genere en el Cabal.
         </p>
         <div className="mt-2.5 flex items-center gap-1.5">
           <div className="flex h-10 min-w-0 flex-1 items-center rounded-lg border border-white/10 bg-[#0a0b08] px-3">
-            <span className="truncate font-mono text-sm font-bold tracking-[0.2em] text-primary">
-              {ref.code || '···'}
+            <span className="truncate font-mono text-xs font-bold text-primary" title={link}>
+              {link ? link.replace(/^https?:\/\//, '') : '···'}
             </span>
           </div>
           <Button
