@@ -7,9 +7,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   BadgeCheck,
+  Check,
   CheckCircle2,
+  Copy,
+  Download,
   Languages,
   Loader2,
+  Paperclip,
   Send,
   Sparkles,
   Zap,
@@ -24,6 +28,14 @@ import { jsonFetch, qk } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { XLogo } from '@/components/cabal/x-logo'
 import type { Locale, WaitlistStatusDTO } from '@/lib/waitlist'
+import {
+  canCopyImages,
+  copyImage,
+  downloadImage,
+  fetchCardFile,
+  prefersNativeShare,
+  shareNative,
+} from '@/lib/share-image'
 
 /**
  * Pasos 2 y 3 de la lista de espera, en su propia página (/whitelist): datos
@@ -339,6 +351,38 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
   const [locale, setLocale] = useState<Locale>(status.locale)
   const post = status.share[locale]
   const other: Locale = locale === 'es' ? 'en' : 'es'
+
+  // Capacidades del navegador. Se leen tras montar porque en el servidor no
+  // existen y leerlas durante el render descuadraría la hidratación.
+  const [nativeShare, setNativeShare] = useState(false)
+  const [copyable, setCopyable] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setNativeShare(prefersNativeShare())
+      setCopyable(canCopyImages())
+    }, 0)
+    return () => clearTimeout(t)
+  }, [])
+
+  // La imagen se descarga por adelantado. Compartir y copiar tienen que ocurrir
+  // dentro del gesto del usuario, y Safari lo da por perdido si antes de llamar
+  // al navegador hay que esperar a una descarga. Se guarda junto a su URL para
+  // que al cambiar de idioma no se use la del otro mientras llega la nueva.
+  const [loaded, setLoaded] = useState<{ url: string; file: File } | null>(null)
+  const cardFile = loaded?.url === post.card ? loaded.file : null
+  useEffect(() => {
+    let alive = true
+    fetchCardFile(post.card, e.xHandle)
+      .then((file) => alive && setLoaded({ url: post.card, file }))
+      .catch(() => {}) // sin imagen se sigue pudiendo compartir el enlace
+    return () => {
+      alive = false
+    }
+  }, [post.card, e.xHandle])
+
+  const [copiedFor, setCopiedFor] = useState<string | null>(null)
+  const copied = copiedFor === post.card
+
   const markShared = useMutation({
     mutationFn: () =>
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/waitlist/shared', { method: 'POST' }),
@@ -353,6 +397,46 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
   })
 
   const approved = e.status === 'approved'
+
+  const ctaClass = cn(
+    'mt-4 h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#9dba46]',
+    !e.shared && 'animate-cta-glow'
+  )
+  const ctaLabel = (
+    <>
+      <Send className="h-4 w-4" aria-hidden /> Compartir en X
+      {!e.shared && <span className="font-mono">+{status.shareBonus}</span>}
+    </>
+  )
+
+  /** Móvil: la imagen y el texto van juntos a la app de X. */
+  const shareFromDevice = async () => {
+    if (!cardFile) return
+    try {
+      const done = await shareNative(cardFile, `${post.text}\n\n${post.url}`)
+      if (done && !e.shared) markShared.mutate()
+    } catch {
+      // Si el panel del sistema falla, el intent de siempre: al menos sale el texto
+      window.open(post.intent, '_blank', 'noopener,noreferrer')
+      if (!e.shared) markShared.mutate()
+    }
+  }
+
+  /** Escritorio: se copia para pegarla con Ctrl+V en el compositor de X. */
+  const copyCard = async () => {
+    if (!cardFile) return
+    try {
+      await copyImage(cardFile)
+      setCopiedFor(post.card)
+      toast.success('Imagen copiada', {
+        description: 'Ahora pulsa Compartir en X y pégala con Ctrl+V (⌘V en Mac).',
+      })
+    } catch {
+      toast.error('Tu navegador no dejó copiar la imagen', {
+        description: 'Descárgala y adjúntala desde el botón de imagen de X.',
+      })
+    }
+  }
 
   return (
     <div>
@@ -420,21 +504,50 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
           className="w-full border-t border-white/10"
           loading="lazy"
         />
+        {/* X no adjunta la imagen desde el intent; en escritorio se ofrece
+            copiarla o descargarla. En movil no hace falta: se adjunta sola. */}
+        {!nativeShare && (
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
+            <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
+            <span>Para que la imagen salga siempre, adjúntala al post:</span>
+            {copyable && (
+              <>
+                <button
+                  type="button"
+                  onClick={copyCard}
+                  disabled={!cardFile}
+                  className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
+                  {copied ? 'Copiada' : 'Copiar'}
+                </button>
+                <span aria-hidden>·</span>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => cardFile && downloadImage(cardFile)}
+              disabled={!cardFile}
+              className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
+            >
+              <Download className="h-3 w-3" aria-hidden />
+              Descargar
+            </button>
+          </p>
+        )}
       </div>
 
-      <Button
-        asChild
-        onClick={() => !e.shared && markShared.mutate()}
-        className={cn(
-          'mt-4 h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#9dba46]',
-          !e.shared && 'animate-cta-glow'
-        )}
-      >
-        <a href={post.intent} target="_blank" rel="noopener noreferrer">
-          <Send className="h-4 w-4" aria-hidden /> Compartir en X
-          {!e.shared && <span className="font-mono">+{status.shareBonus}</span>}
-        </a>
-      </Button>
+      {nativeShare && cardFile ? (
+        <Button onClick={shareFromDevice} className={ctaClass}>
+          {ctaLabel}
+        </Button>
+      ) : (
+        <Button asChild onClick={() => !e.shared && markShared.mutate()} className={ctaClass}>
+          <a href={post.intent} target="_blank" rel="noopener noreferrer">
+            {ctaLabel}
+          </a>
+        </Button>
+      )}
 
       {e.shared && (
         <p className="mt-2.5 flex items-center justify-center gap-1.5 text-[12px] text-primary">
