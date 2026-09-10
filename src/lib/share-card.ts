@@ -43,8 +43,9 @@ export const CARD_COUNT = 5
  *   v3 → bloque subido para que el título de X no lo tape.
  *   v4 → salida en JPEG, mucho más rápida de generar y de descargar.
  *   v5 → posición por escena, medida a 1px sobre cada plantilla.
+ *   v6 → JPEG sin mozjpeg, 6 veces más rápido de codificar.
  */
-const CARD_VERSION = 'v5'
+const CARD_VERSION = 'v6'
 
 /**
  * Tipografía del @usuario. Se listan varias a propósito: el contenedor de
@@ -263,13 +264,20 @@ export async function renderShareCard(opts: {
   })
 
   // JPEG y no PNG a propósito: son ilustraciones fotográficas, y codificarlas
-  // como PNG costaba ~1.8s y 666KB frente a ~0.08s y 273KB en JPEG. Esa
-  // diferencia es la que hacía que el rastreador de X abandonase la descarga
-  // por timeout y publicase la tarjeta sin imagen. mozjpeg aprieta un poco más
-  // sin coste apreciable.
+  // como PNG costaba ~1.8s frente a ~40ms en JPEG. Esa diferencia es la que
+  // hacía que el rastreador de X abandonase la descarga por timeout y
+  // publicase la tarjeta sin imagen.
+  //
+  // Medido contra las alternativas (misma plantilla, media de 6 pasadas):
+  //   JPEG                    40ms  371KB   <- este
+  //   JPEG + mozjpeg         238ms  347KB   comprime un 6% más a costa de ser 6x más lento
+  //   WebP q80               156ms  176KB   más pequeño pero más lento, y X lo
+  //                                         renderiza peor que JPEG en sus tarjetas
+  // Lo que importa aquí es el tiempo, no el peso. 4:4:4 conserva nítidos los
+  // bordes de color del @usuario y el aro verde; cuesta 5ms más que 4:2:0.
   return sharp(template)
     .composite(layers)
-    .jpeg({ quality: 84, mozjpeg: true, chromaSubsampling: '4:4:4' })
+    .jpeg({ quality: 84, chromaSubsampling: '4:4:4' })
     .toBuffer()
 }
 
