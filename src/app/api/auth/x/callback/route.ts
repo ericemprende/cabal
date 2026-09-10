@@ -65,14 +65,16 @@ export async function GET(req: NextRequest) {
       headers: { Authorization: `Bearer ${tokenJson.access_token}` },
     })
     const meJson = (await meRes.json().catch(() => ({}))) as {
-      data?: { username?: string; name?: string }
+      data?: { username?: string; name?: string; profile_image_url?: string }
     }
     const username = meJson.data?.username
     if (!username) return finish('connect_error=profile')
+    // X devuelve la miniatura de 48px; la de 400x400 se ve nítida en el perfil
+    const photo = meJson.data?.profile_image_url?.replace('_normal', '_400x400')
 
     // 3. Login social: entrar/crear cuenta con la identidad de X
     if (loginMode) {
-      const { user, created } = await loginOrCreateSocial('x', username, meJson.data?.name)
+      const { user, created } = await loginOrCreateSocial('x', username, meJson.data?.name, photo)
       const res = finish(created ? 'ok=1&login=1&created=1' : 'ok=1&login=1')
       res.cookies.set(SESSION_COOKIE, createSessionValue(user.id), sessionCookieOptions())
       return res
@@ -80,7 +82,7 @@ export async function GET(req: NextRequest) {
 
     // 4. Modo verificación: vincular la cuenta al usuario actual
     const me = await getCurrentUser()
-    await linkProvider(me.id, 'x', username)
+    await linkProvider(me.id, 'x', username, photo)
     return finish('ok=1')
   } catch (e) {
     if (e instanceof SocialError) return finish('connect_error=profile')

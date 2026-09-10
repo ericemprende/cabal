@@ -17,7 +17,8 @@ export class SocialError extends Error {}
 export async function linkProvider(
   userId: string,
   provider: SocialProvider,
-  rawValue: string
+  rawValue: string,
+  photoUrl?: string
 ): Promise<{ pointsEarned: number }> {
   const value = rawValue.trim()
 
@@ -26,9 +27,11 @@ export async function linkProvider(
     if (!/^[\w]{1,15}$/.test(handle)) {
       throw new SocialError('Handle de X inválido (1-15 caracteres)')
     }
+    const current = await db.user.findUnique({ where: { id: userId }, select: { avatar: true } })
+    const avatar = xPhotoFor(current?.avatar, photoUrl)
     await db.user.update({
       where: { id: userId },
-      data: { xHandle: handle, xVerified: true },
+      data: { xHandle: handle, xVerified: true, ...(avatar && { avatar }) },
     })
     const pointsEarned = await awardOnce(userId, 'verify_x', 'Cuenta de X verificada')
     return { pointsEarned }
@@ -64,7 +67,8 @@ export async function unlinkProvider(userId: string, provider: SocialProvider) {
 export async function loginOrCreateSocial(
   provider: SocialProvider,
   rawValue: string,
-  profileName?: string
+  profileName?: string,
+  photoUrl?: string
 ): Promise<{ user: { id: string }; created: boolean }> {
   const value = rawValue.trim()
 
@@ -74,13 +78,19 @@ export async function loginOrCreateSocial(
       throw new SocialError('Handle de X inválido (1-15 caracteres)')
     }
     const existing = await db.user.findFirst({ where: { xHandle: handle } })
-    if (existing) return { user: existing, created: false }
+    if (existing) {
+      const avatar = xPhotoFor(existing.avatar, photoUrl)
+      if (avatar) await db.user.update({ where: { id: existing.id }, data: { avatar } })
+      return { user: existing, created: false }
+    }
+    const avatar = xPhotoFor(null, photoUrl)
     const user = await db.user.create({
       data: {
         handle: await uniqueHandle(handle),
         name: (profileName?.trim() || handle).slice(0, 40),
         xHandle: handle,
         xVerified: true,
+        ...(avatar && { avatar }),
       },
     })
     await awardOnce(user.id, 'verify_x', 'Cuenta de X verificada')
@@ -104,6 +114,17 @@ export async function loginOrCreateSocial(
   })
   await awardOnce(user.id, 'verify_google', 'Cuenta de Google verificada')
   return { user, created: true }
+}
+
+/**
+ * Foto de X a guardar como avatar, o null si no toca. Solo https de X, y nunca
+ * pisa una foto subida por el usuario (/uploads/); sí reemplaza el emoji por
+ * defecto y una foto de X anterior (así se refresca si la cambia en X).
+ */
+function xPhotoFor(current: string | null | undefined, photoUrl?: string): string | null {
+  if (!photoUrl || !/^https:\/\/pbs\.twimg\.com\/\S+$/.test(photoUrl) || photoUrl.length > 500) return null
+  if (current && current.startsWith('/uploads/')) return null
+  return photoUrl
 }
 
 /** Handle único y válido: base, base2, base3… (reglas: 3-20 chars [a-z0-9_]). */
