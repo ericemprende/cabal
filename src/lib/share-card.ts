@@ -40,8 +40,9 @@ export const CARD_COUNT = 5
  * que cambie el aspecto (posición, tamaños, tipografía): si no, el servidor
  * seguiría sirviendo las imágenes viejas indefinidamente.
  *   v2 → avatar grande, posición fija y tipografía con fuentes del contenedor.
+ *   v3 → bloque subido para que el título de X no lo tape.
  */
-const CARD_VERSION = 'v2'
+const CARD_VERSION = 'v3'
 
 /**
  * Tipografía del @usuario. Se listan varias a propósito: el contenedor de
@@ -53,23 +54,44 @@ const FONT_STACK = "'Liberation Sans', Arial, 'DejaVu Sans', Helvetica, sans-ser
 
 /**
  * Composición del avatar y el nombre, en el espacio de 1672x941 del original.
- * Es idéntica en las diez plantillas: todas dejan libre la banda inferior
- * izquierda, bajo el titular.
+ *
+ * La banda util es estrecha y esta acotada por arriba y por abajo:
+ *  - Por arriba, el subtitulo de la plantilla ("SOY PARTE DE CABAL.ARMY").
+ *  - Por abajo, X: no muestra la imagen entera, la recorta a 1.91:1 (de los 941
+ *    de alto deja 875, quitando 33 arriba y 33 abajo) y superpone el og:title en
+ *    una caja abajo a la izquierda que arranca sobre y=788. Lo que caiga ahi
+ *    queda tapado justo en la vista donde se comparte.
+ *
+ * Cuatro de las cinco escenas acaban su subtitulo en y=620 y comparten
+ * composicion. La escena 5 lo lleva 68px mas abajo (termina en y=688), asi que
+ * su bloque baja y se encoge para caber entre su subtitulo y la caja de X.
  */
-const AVATAR = {
+const BASE = {
   /** Diámetro del círculo del avatar. */
-  d: 148,
+  d: 132,
   /** Esquina superior izquierda del círculo. */
   x: 86,
-  y: 700,
+  y: 640,
   /** Grosor y color del aro que lo separa del fondo. */
   ring: 5,
   ringColor: '#b6e04b',
+  /** Cuerpo del @usuario, que se centra con el avatar. */
+  font: 50,
 }
 
-/** @usuario, a la derecha del avatar y centrado con él. */
+type Layout = typeof BASE
+
+/** Composición por escena (índice 0..4). La 5 es la excepción comentada arriba. */
+const LAYOUTS: Layout[] = [
+  BASE,
+  BASE,
+  BASE,
+  BASE,
+  { ...BASE, d: 100, y: 690, font: 42 },
+]
+
+/** @usuario, a la derecha del avatar. */
 const HANDLE = {
-  size: 54,
   /** Separación entre el borde del avatar y la primera letra. */
   gap: 30,
   color: '#eaf5d2',
@@ -167,7 +189,7 @@ export async function renderShareCard(opts: {
   const idx = pickIndex(seed, CARD_COUNT)
   const template = path.join(process.cwd(), 'public', 'share', locale, `card-${idx + 1}.png`)
 
-  const { d, x, y, ring, ringColor } = AVATAR
+  const { d, x, y, ring, ringColor, font } = LAYOUTS[idx]
   const layers: sharp.OverlayOptions[] = []
 
   // Aro exterior: se pinta como un anillo completo detrás del avatar, de modo
@@ -209,18 +231,18 @@ export async function renderShareCard(opts: {
   const textX = x + d + HANDLE.gap
   const cy = y + d / 2
   const svgW = HANDLE.maxRight - textX
-  const svgH = HANDLE.size * 2
+  const svgH = font * 2
   const handle = `@${opts.handle}`
   // 0.60em es el ancho medio de esta tipografía en negrita; recorta antes de
   // salirse del área libre en vez de invadir la ilustración.
-  const maxChars = Math.floor(svgW / (HANDLE.size * 0.6))
+  const maxChars = Math.floor(svgW / (font * 0.6))
   const shown = handle.length > maxChars ? `${handle.slice(0, Math.max(3, maxChars - 1))}…` : handle
 
   layers.push({
     input: Buffer.from(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">
-        <text x="0" y="${svgH / 2 + HANDLE.size * 0.36}"
-              font-family="${FONT_STACK}" font-size="${HANDLE.size}"
+        <text x="0" y="${svgH / 2 + font * 0.36}"
+              font-family="${FONT_STACK}" font-size="${font}"
               font-weight="bold" fill="${HANDLE.color}" letter-spacing="1"
               stroke="#000000" stroke-width="6" stroke-opacity="0.45"
               paint-order="stroke">${esc(shown)}</text>
