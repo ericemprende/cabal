@@ -47,7 +47,12 @@ RUN bun run build
 # ---------- 3. Runtime ----------
 FROM oven/bun:1-debian AS runner
 WORKDIR /app
+# fonts-liberation: la imagen base no trae ninguna tipografia, y sin fuentes el
+# texto de los SVG se compone vacio (las formas si se pintan). Es lo que dejaba
+# la tarjeta de compartir con el avatar pero sin el @usuario. Liberation Sans
+# comparte metricas con Arial, que es sobre la que esta calculado el recorte.
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates curl \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production

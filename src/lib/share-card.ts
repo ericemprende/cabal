@@ -35,6 +35,23 @@ export function toLocale(value: unknown): Locale {
 export const CARD_COUNT = 5
 
 /**
+ * Versión de la composición. Forma parte de la clave de la caché en disco, así
+ * que subirla invalida todas las tarjetas ya generadas. Hay que tocarla siempre
+ * que cambie el aspecto (posición, tamaños, tipografía): si no, el servidor
+ * seguiría sirviendo las imágenes viejas indefinidamente.
+ *   v2 → avatar grande, posición fija y tipografía con fuentes del contenedor.
+ */
+const CARD_VERSION = 'v2'
+
+/**
+ * Tipografía del @usuario. Se listan varias a propósito: el contenedor de
+ * producción lleva Liberation Sans (ver Dockerfile) y las máquinas de
+ * desarrollo suelen tener Arial. Si no se resuelve ninguna, el texto se
+ * compone vacío en vez de fallar, que es difícil de detectar.
+ */
+const FONT_STACK = "'Liberation Sans', Arial, 'DejaVu Sans', Helvetica, sans-serif"
+
+/**
  * Composición del avatar y el nombre, en el espacio de 1672x941 del original.
  * Es idéntica en las diez plantillas: todas dejan libre la banda inferior
  * izquierda, bajo el titular.
@@ -203,7 +220,7 @@ export async function renderShareCard(opts: {
     input: Buffer.from(
       `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">
         <text x="0" y="${svgH / 2 + HANDLE.size * 0.36}"
-              font-family="Arial, Helvetica, sans-serif" font-size="${HANDLE.size}"
+              font-family="${FONT_STACK}" font-size="${HANDLE.size}"
               font-weight="bold" fill="${HANDLE.color}" letter-spacing="1"
               stroke="#000000" stroke-width="6" stroke-opacity="0.45"
               paint-order="stroke">${esc(shown)}</text>
@@ -228,7 +245,7 @@ export async function getShareCard(opts: {
 }): Promise<Buffer> {
   const locale = toLocale(opts.locale)
   const key = createHash('sha256')
-    .update(`${opts.seed ?? ''}|${opts.handle}|${opts.avatarUrl ?? ''}|${locale}`)
+    .update(`${CARD_VERSION}|${opts.seed ?? ''}|${opts.handle}|${opts.avatarUrl ?? ''}|${locale}`)
     .digest('hex')
     .slice(0, 24)
   const dir = path.join(process.cwd(), 'upload', 'cards')
