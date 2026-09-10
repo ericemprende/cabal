@@ -80,7 +80,12 @@ export async function GET(req: NextRequest) {
     // 3. Cuenta Cabal asociada (idempotente: si ya existe, la reutiliza)
     let userId: string | null = null
     try {
-      const { user } = await loginOrCreateSocial('x', p.username, p.name)
+      const { user } = await loginOrCreateSocial(
+        'x',
+        p.username,
+        p.name,
+        p.profile_image_url?.replace('_normal', '_400x400')
+      )
       userId = user.id
     } catch (e) {
       if (!(e instanceof SocialError)) throw e // handle raro de X: seguimos sin cuenta
