@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/lib/db'
+import { LOCALES, getShareCard } from '@/lib/share-card'
 import { clientIp, rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { WAITLIST_COOKIE, readWaitlistCookie } from '@/lib/waitlist'
 
@@ -59,6 +60,21 @@ export async function POST(req: Request) {
   if (updated.userId) {
     await db.user.update({ where: { id: updated.userId }, data: { name } }).catch(() => {})
   }
+
+  // Deja las dos tarjetas ya generadas y en caché. El rastreador de X las pide
+  // en el instante en que la persona publica, y si le toca generarlas en ese
+  // momento puede abandonar por timeout y publicar el post sin imagen. No se
+  // espera al resultado: si falla, se generarán a la primera petición.
+  void Promise.all(
+    LOCALES.map((locale) =>
+      getShareCard({
+        handle: updated.xHandle,
+        avatarUrl: updated.xAvatar,
+        seed: updated.xId,
+        locale,
+      })
+    )
+  ).catch(() => {})
 
   return NextResponse.json({ ok: true })
 }

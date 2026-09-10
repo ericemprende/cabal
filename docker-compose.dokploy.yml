@@ -42,6 +42,12 @@ services:
       X_CLIENT_ID: ${X_CLIENT_ID:-}
       X_CLIENT_SECRET: ${X_CLIENT_SECRET:-}
       SOLANA_RPC_URL: ${SOLANA_RPC_URL:-}
+    volumes:
+      # Tarjetas de compartir ya generadas. Sin este volumen se perdian en cada
+      # despliegue y el rastreador de X se encontraba siempre la version en
+      # frio, que tarda lo suficiente como para que abandone la descarga y
+      # publique el post sin imagen.
+      - card-cache:/app/upload
     networks:
       - cabal
       - dokploy-network
@@ -144,6 +150,7 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  card-cache:
 
 networks:
   cabal:

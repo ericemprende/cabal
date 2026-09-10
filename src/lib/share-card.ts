@@ -41,8 +41,10 @@ export const CARD_COUNT = 5
  * seguiría sirviendo las imágenes viejas indefinidamente.
  *   v2 → avatar grande, posición fija y tipografía con fuentes del contenedor.
  *   v3 → bloque subido para que el título de X no lo tape.
+ *   v4 → salida en JPEG, mucho más rápida de generar y de descargar.
+ *   v5 → posición por escena, medida a 1px sobre cada plantilla.
  */
-const CARD_VERSION = 'v3'
+const CARD_VERSION = 'v5'
 
 /**
  * Tipografía del @usuario. Se listan varias a propósito: el contenedor de
@@ -55,39 +57,47 @@ const FONT_STACK = "'Liberation Sans', Arial, 'DejaVu Sans', Helvetica, sans-ser
 /**
  * Composición del avatar y el nombre, en el espacio de 1672x941 del original.
  *
- * La banda util es estrecha y esta acotada por arriba y por abajo:
- *  - Por arriba, el subtitulo de la plantilla ("SOY PARTE DE CABAL.ARMY").
+ * La banda util esta acotada por arriba y por abajo, y es distinta en cada
+ * escena:
+ *  - Por arriba, el subtitulo de la plantilla, medido a 1px sobre la columna
+ *    de texto (x 70..630). Cada escena lo termina a una altura distinta, y en
+ *    la misma escena el espanol y el ingles tampoco coinciden, asi que se toma
+ *    siempre la mas baja de las dos.
  *  - Por abajo, X: no muestra la imagen entera, la recorta a 1.91:1 (de los 941
- *    de alto deja 875, quitando 33 arriba y 33 abajo) y superpone el og:title en
- *    una caja abajo a la izquierda que arranca sobre y=788. Lo que caiga ahi
- *    queda tapado justo en la vista donde se comparte.
+ *    de alto deja 875) y superpone el og:title en una caja abajo a la izquierda
+ *    que arranca sobre y=788. Lo que caiga ahi queda tapado justo en la vista
+ *    donde se comparte.
  *
- * Cuatro de las cinco escenas acaban su subtitulo en y=620 y comparten
- * composicion. La escena 5 lo lleva 68px mas abajo (termina en y=688), asi que
- * su bloque baja y se encoge para caber entre su subtitulo y la caja de X.
+ * Las escenas 1 y 5 dejan poco mas de 100px libres, asi que su avatar es mas
+ * pequeno. Las 2, 3 y 4 tienen holgura y comparten el tamano grande.
  */
-const BASE = {
+
+/** Composición de una escena. */
+type Layout = {
   /** Diámetro del círculo del avatar. */
-  d: 132,
+  d: number
   /** Esquina superior izquierda del círculo. */
-  x: 86,
-  y: 640,
+  x: number
+  y: number
   /** Grosor y color del aro que lo separa del fondo. */
-  ring: 5,
-  ringColor: '#b6e04b',
+  ring: number
+  ringColor: string
   /** Cuerpo del @usuario, que se centra con el avatar. */
-  font: 50,
+  font: number
 }
 
-type Layout = typeof BASE
+const COMMON = { x: 86, ring: 5, ringColor: '#b6e04b' }
 
-/** Composición por escena (índice 0..4). La 5 es la excepción comentada arriba. */
+/**
+ * Composición por escena (índice 0..4). El comentario de cada una anota desde
+ * que altura esta libre la plantilla, que es de donde sale la `y`.
+ */
 const LAYOUTS: Layout[] = [
-  BASE,
-  BASE,
-  BASE,
-  BASE,
-  { ...BASE, d: 100, y: 690, font: 42 },
+  { ...COMMON, y: 682, d: 98, font: 38 }, // escena 1: libre desde 674 (es)
+  { ...COMMON, y: 634, d: 132, font: 50 }, // escena 2: libre desde 625 (en)
+  { ...COMMON, y: 632, d: 132, font: 50 }, // escena 3: libre desde 624
+  { ...COMMON, y: 634, d: 132, font: 50 }, // escena 4: libre desde 626 (es)
+  { ...COMMON, y: 690, d: 90, font: 36 }, // escena 5: libre desde 682
 ]
 
 /** @usuario, a la derecha del avatar. */
@@ -252,7 +262,15 @@ export async function renderShareCard(opts: {
     top: Math.round(cy - svgH / 2),
   })
 
-  return sharp(template).composite(layers).png({ quality: 90 }).toBuffer()
+  // JPEG y no PNG a propósito: son ilustraciones fotográficas, y codificarlas
+  // como PNG costaba ~1.8s y 666KB frente a ~0.08s y 273KB en JPEG. Esa
+  // diferencia es la que hacía que el rastreador de X abandonase la descarga
+  // por timeout y publicase la tarjeta sin imagen. mozjpeg aprieta un poco más
+  // sin coste apreciable.
+  return sharp(template)
+    .composite(layers)
+    .jpeg({ quality: 84, mozjpeg: true, chromaSubsampling: '4:4:4' })
+    .toBuffer()
 }
 
 /**
@@ -271,7 +289,7 @@ export async function getShareCard(opts: {
     .digest('hex')
     .slice(0, 24)
   const dir = path.join(process.cwd(), 'upload', 'cards')
-  const file = path.join(dir, `${key}.png`)
+  const file = path.join(dir, `${key}.jpg`)
 
   try {
     return await readFile(file)

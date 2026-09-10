@@ -162,7 +162,7 @@ export async function shareRuleAmount(): Promise<number> {
  * fallida que tenga guardada de antes.
  */
 export function shareCardUrl(handle: string, locale: Locale = DEFAULT_LOCALE): string {
-  return `${siteUrl()}/api/waitlist/card/${encodeURIComponent(handle)}.png?l=${toLocale(locale)}`
+  return `${siteUrl()}/api/waitlist/card/${encodeURIComponent(handle)}.jpg?l=${toLocale(locale)}`
 }
 
 // ---------- Estado que consume la landing ----------
