@@ -107,21 +107,21 @@ export function shareText(seed?: string | null, locale: Locale = DEFAULT_LOCALE)
 }
 
 /**
- * URL pública del enlace de referido. Lleva el idioma (`l`) además del handle
- * porque el `og:image` lo pide el rastreador de X desde sus propios servidores:
- * el idioma tiene que viajar en el enlace, no detectarse en ese momento.
+ * URL pública del enlace de invitación: /r/<handle> en español y
+ * /r/<handle>/en en inglés.
  *
- * El idioma se escribe SIEMPRE, incluso en español que es el valor por defecto.
- * X cachea la tarjeta de cada URL cerca de una semana y retiró en 2022 el
- * validador que permitía refrescarla a mano, así que la única forma de que
- * vuelva a rastrear un enlace ya visto es que la URL cambie. Los enlaces que
- * se compartieron antes de tener metadatos quedaron cacheados sin imagen; con
- * el parámetro presente son URLs nuevas y X las rastrea otra vez.
+ * El handle y el idioma van en la RUTA, no en la query. Con /?ref=<handle>, X
+ * publicaba todos los posts con la tarjeta de la home: al buscar la tarjeta en
+ * su caché normaliza la URL y descarta `ref` (lo trata como parámetro de
+ * seguimiento), así que todas las invitaciones acababan siendo cabal.army a
+ * secas, cuya tarjeta guardada es de cuando la home era la app y no tiene una
+ * imagen válida. Un segmento de ruta no se descarta nunca.
  */
 export function shareRefUrl(handle?: string | null, locale: Locale = DEFAULT_LOCALE): string {
   if (!handle) return siteUrl()
-  const params = new URLSearchParams({ ref: handle, l: toLocale(locale) })
-  return `${siteUrl()}/?${params.toString()}`
+  const l = toLocale(locale)
+  const base = `${siteUrl()}/r/${encodeURIComponent(handle)}`
+  return l === DEFAULT_LOCALE ? base : `${base}/${l}`
 }
 
 /**
@@ -156,13 +156,14 @@ export async function shareRuleAmount(): Promise<number> {
 }
 
 /**
- * URL pública de la tarjeta personalizada (og:image del enlace de referido).
- * Como en `shareRefUrl`, el idioma va siempre explícito: además de elegir la
- * plantilla, hace que sea una URL nueva para X y no reutilice la descarga
- * fallida que tenga guardada de antes.
+ * URL pública de la tarjeta personalizada (og:image de la invitación):
+ * /api/waitlist/card/<handle>.<idioma>.jpg
+ *
+ * El idioma va en el nombre del archivo y no en ?l=, por lo mismo que en
+ * `shareRefUrl`: que la URL no dependa de ninguna query que X pueda descartar.
  */
 export function shareCardUrl(handle: string, locale: Locale = DEFAULT_LOCALE): string {
-  return `${siteUrl()}/api/waitlist/card/${encodeURIComponent(handle)}.jpg?l=${toLocale(locale)}`
+  return `${siteUrl()}/api/waitlist/card/${encodeURIComponent(handle)}.${toLocale(locale)}.jpg`
 }
 
 // ---------- Estado que consume la landing ----------

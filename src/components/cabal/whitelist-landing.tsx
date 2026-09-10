@@ -73,20 +73,28 @@ const ERRORS: Record<string, string> = {
   server: 'Error inesperado, inténtalo de nuevo',
 }
 
-export function WhitelistLanding() {
+/**
+ * @param refHandle Quién invita. Lo pasa la ruta /r/<handle>; si no viene, se
+ *   lee de ?ref=, que es el formato de los enlaces antiguos ya publicados.
+ */
+export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = {}) {
   const status = useQuery<WaitlistStatusDTO>({
     queryKey: qk.waitlistMe,
     queryFn: () => jsonFetch('/api/waitlist/me'),
   })
 
-  // ?ref= (invitación) y ?wl_error= (vuelta fallida del OAuth), leídos una vez
+  // Invitación y ?wl_error= (vuelta fallida del OAuth), leídos una vez
   const [params] = useState(() => {
-    if (typeof window === 'undefined') return { ref: null as string | null, error: null as string | null }
+    if (typeof window === 'undefined') {
+      return { ref: refHandle ?? null, error: null as string | null }
+    }
     const sp = new URLSearchParams(window.location.search)
-    const ref = sp.get('ref')
+    const ref = refHandle ?? sp.get('ref')
     const error = sp.get('wl_error')
     if (error) {
-      window.history.replaceState(null, '', `${window.location.pathname}${ref ? `?ref=${ref}` : ''}`)
+      // En /r/<handle> la invitación ya va en la ruta; solo la home necesita ?ref=
+      const keep = ref && !refHandle ? `?ref=${ref}` : ''
+      window.history.replaceState(null, '', `${window.location.pathname}${keep}`)
     }
     return { ref, error }
   })
