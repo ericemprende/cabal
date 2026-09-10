@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { awardPoints, computeLaunchStatus, getCurrentUser } from '@/lib/api-helpers'
-import { toUserDTO } from '@/lib/serializers'
+import { toPublicUserDTO } from '@/lib/serializers'
 import { NETWORKS } from '@/lib/cabal'
 import { cached, CACHE_TTL, invalidate } from '@/lib/cache'
 import { pendingMany } from '@/lib/counters'
@@ -56,7 +56,7 @@ export async function GET() {
       mintRevoked: l.mintRevoked,
       top10Pct: l.top10Pct,
       createdAt: new Date(l.createdAt).toISOString(),
-      createdBy: toUserDTO(l.createdBy, followedIds.has(l.createdById)),
+      createdBy: toPublicUserDTO(l.createdBy, followedIds.has(l.createdById)),
       postsCount: countMap.get(l.id) ?? 0,
     }))
     return NextResponse.json(dto)

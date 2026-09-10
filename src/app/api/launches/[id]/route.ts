@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { computeLaunchStatus, getCurrentUser } from '@/lib/api-helpers'
 import { isAdminRequest } from '@/lib/admin-auth'
-import { toPostDTO, toUserDTO } from '@/lib/serializers'
+import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import { pending } from '@/lib/counters'
 import type { LaunchDetailDTO, PostDTO } from '@/lib/types'
 
@@ -58,7 +58,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       mintRevoked: launch.mintRevoked,
       top10Pct: launch.top10Pct,
       createdAt: launch.createdAt.toISOString(),
-      createdBy: toUserDTO(launch.createdBy, followedIds.has(launch.createdById)),
+      createdBy: toPublicUserDTO(launch.createdBy, followedIds.has(launch.createdById)),
       postsCount: posts.length,
       posts: (await Promise.all(
         posts.map((p) => toPostDTO(p, likedIds.has(p.id)))

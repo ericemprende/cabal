@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { cached, CACHE_TTL } from '@/lib/cache'
-import { toUserDTO } from '@/lib/serializers'
+import { toPublicUserDTO } from '@/lib/serializers'
 import type { ClanDTO, LeaderboardDTO, LeaderboardEntryDTO } from '@/lib/types'
 
 const CLANS: ClanDTO[] = [
@@ -30,7 +30,7 @@ export async function GET() {
       .sort((a, b) => b.cabalScore - a.cabalScore)
       .map((u, i) => ({
         rank: i + 1,
-        user: toUserDTO(u, followedIds.has(u.id)),
+        user: toPublicUserDTO(u, followedIds.has(u.id)),
         metric: u.cabalScore,
         winRate: u.callsTotal > 0 ? Math.round((u.callsWon / u.callsTotal) * 100) : 0,
       }))
@@ -40,7 +40,7 @@ export async function GET() {
       .sort((a, b) => b.points - a.points)
       .map((u, i) => ({
         rank: i + 1,
-        user: toUserDTO(u, followedIds.has(u.id)),
+        user: toPublicUserDTO(u, followedIds.has(u.id)),
         metric: u.points,
         winRate: u.callsTotal > 0 ? Math.round((u.callsWon / u.callsTotal) * 100) : 0,
       }))
@@ -49,7 +49,7 @@ export async function GET() {
       .sort((a, b) => b.points - a.points)
       .map((u, i) => ({
         rank: i + 1,
-        user: toUserDTO(u, followedIds.has(u.id)),
+        user: toPublicUserDTO(u, followedIds.has(u.id)),
         metric: u.points,
       }))
 

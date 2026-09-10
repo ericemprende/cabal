@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/api-helpers'
-import { toUserDTO } from '@/lib/serializers'
+import { toPublicUserDTO } from '@/lib/serializers'
 import type { TokenDTO } from '@/lib/types'
 
 export async function GET(req: Request) {
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       launchedAt: t.launchedAt.toISOString(),
       athMc: t.athMc,
       isRug: t.isRug,
-      dev: toUserDTO(t.dev),
+      dev: toPublicUserDTO(t.dev),
       postsCount: countMap.get(t.id) ?? 0,
     }))
     return NextResponse.json(dto)

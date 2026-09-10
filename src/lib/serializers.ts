@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { computeLaunchStatus } from '@/lib/api-helpers'
-import type { PostDTO, UserDTO } from '@/lib/types'
+import type { PostDTO, PublicUserDTO, UserDTO } from '@/lib/types'
 
 type DbUser = {
   id: string
@@ -25,22 +25,24 @@ type DbUser = {
   lifetimePoints: number
 }
 
-export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
+/**
+ * Versión pública del usuario. Es la que deben usar todas las rutas abiertas
+ * (feed, leaderboard, tokens, launches, perfil): omite la wallet, el correo de
+ * Google y la marca de admin.
+ */
+export function toPublicUserDTO(u: DbUser, isFollowed?: boolean): PublicUserDTO {
   return {
     id: u.id,
     handle: u.handle,
     name: u.name,
     avatar: u.avatar,
     bio: u.bio,
-    wallet: u.wallet,
     walletVerified: u.walletVerified,
     xHandle: u.xHandle,
     xVerified: u.xVerified,
-    googleEmail: u.googleEmail,
     googleVerified: u.googleVerified,
     tgHandle: u.tgHandle,
     isDev: u.isDev,
-    isAdmin: u.isAdmin,
     cabalScore: u.cabalScore,
     callsWon: u.callsWon,
     callsTotal: u.callsTotal,
@@ -48,6 +50,19 @@ export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
     points: u.points,
     lifetimePoints: u.lifetimePoints,
     isFollowed,
+  }
+}
+
+/**
+ * Versión completa, con los campos privados. Reservada para /api/me y para el
+ * panel de admin: no la uses en una ruta que pueda pedir cualquiera.
+ */
+export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
+  return {
+    ...toPublicUserDTO(u, isFollowed),
+    wallet: u.wallet,
+    googleEmail: u.googleEmail,
+    isAdmin: u.isAdmin,
   }
 }
 
@@ -103,7 +118,7 @@ export async function toPostDTO(
     liked,
     pnl: p.pnl,
     createdAt: p.createdAt.toISOString(),
-    user: toUserDTO(p.user),
+    user: toPublicUserDTO(p.user),
     launch,
     token,
     pointsEarned,

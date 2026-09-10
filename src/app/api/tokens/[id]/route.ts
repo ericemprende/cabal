@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { generateChart, getCurrentUser } from '@/lib/api-helpers'
-import { toPostDTO, toUserDTO } from '@/lib/serializers'
+import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import type { TokenDetailDTO } from '@/lib/types'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -51,7 +51,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       launchedAt: token.launchedAt.toISOString(),
       athMc: token.athMc,
       isRug: token.isRug,
-      dev: toUserDTO(token.dev, followedIds.has(token.devId)),
+      dev: toPublicUserDTO(token.dev, followedIds.has(token.devId)),
       postsCount: posts.length,
       chart: generateChart(token.id, token.mc, token.change24h, token.isRug),
       posts: (await Promise.all(posts.map((p) => toPostDTO(p, likedIds.has(p.id))))) ?? [],

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { CopyCA, NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
-import { fmtMc, fmtNum, fmtPct, fmtPrice, shortWallet, timeAgo } from '@/lib/cabal'
+import { fmtMc, fmtNum, fmtPct, fmtPrice, timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useToken } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
@@ -180,8 +180,8 @@ export function TokenDetailDialog() {
                       {token.dev.walletVerified && <BadgeCheck className="h-4 w-4 text-primary" />}
                     </p>
                     <p className="text-xs text-muted-foreground">@{token.dev.handle}</p>
-                    <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                      {shortWallet(token.dev.wallet) || 'sin wallet conectada'}
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {token.dev.walletVerified ? 'Wallet verificada' : 'Wallet sin verificar'}
                     </p>
                   </div>
                 </div>

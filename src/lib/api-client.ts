@@ -18,6 +18,7 @@ import type {
   ReferralDTO,
   TokenDTO,
   TokenDetailDTO,
+  UserDTO,
 } from '@/lib/types'
 
 export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {

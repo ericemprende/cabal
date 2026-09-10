@@ -1,18 +1,24 @@
-export interface UserDTO {
+/**
+ * Lo que se puede enseñar de un usuario a cualquiera: es lo que viaja en el
+ * feed, el leaderboard, los tokens, los launches y la página de perfil.
+ *
+ * Deliberadamente NO lleva `wallet`, `googleEmail` ni `isAdmin`. Son datos de
+ * la cuenta, no del perfil, y esas rutas las puede pedir cualquiera sin sesión.
+ * Para el usuario autenticado consigo mismo está `UserDTO`.
+ */
+export interface PublicUserDTO {
   id: string
   handle: string
   name: string
   avatar: string
   bio?: string | null
-  wallet?: string | null
+  /** Si tiene alguna wallet verificada; la dirección en sí no se expone. */
   walletVerified: boolean
   xHandle?: string | null
   xVerified: boolean
-  googleEmail?: string | null
   googleVerified: boolean
   tgHandle?: string | null
   isDev: boolean
-  isAdmin?: boolean
   cabalScore: number
   callsWon: number
   callsTotal: number
@@ -20,6 +26,13 @@ export interface UserDTO {
   points: number
   lifetimePoints: number
   isFollowed?: boolean
+}
+
+/** El usuario visto por sí mismo o por el panel de admin: incluye lo privado. */
+export interface UserDTO extends PublicUserDTO {
+  wallet?: string | null
+  googleEmail?: string | null
+  isAdmin?: boolean
 }
 
 export interface LaunchRefDTO {
@@ -51,7 +64,7 @@ export interface PostDTO {
   liked: boolean
   pnl?: number | null
   createdAt: string
-  user: UserDTO
+  user: PublicUserDTO
   launch?: LaunchRefDTO | null
   token?: TokenRefDTO | null
   pointsEarned?: number
@@ -83,7 +96,7 @@ export interface LaunchDTO {
   mintRevoked: boolean
   top10Pct: number
   createdAt: string
-  createdBy: UserDTO
+  createdBy: PublicUserDTO
   postsCount: number
 }
 
@@ -104,7 +117,7 @@ export interface TokenDTO {
   launchedAt: string
   athMc: number
   isRug: boolean
-  dev: UserDTO
+  dev: PublicUserDTO
   postsCount: number
 }
 
@@ -151,7 +164,7 @@ export interface LaunchDetailDTO extends LaunchDTO {
 
 export interface LeaderboardEntryDTO {
   rank: number
-  user: UserDTO
+  user: PublicUserDTO
   metric: number // cabalScore or points or winrate-based
   winRate?: number
 }
