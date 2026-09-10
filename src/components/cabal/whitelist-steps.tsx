@@ -4,7 +4,16 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, BadgeCheck, CheckCircle2, Loader2, Send, Sparkles, Zap } from 'lucide-react'
+import {
+  ArrowLeft,
+  BadgeCheck,
+  CheckCircle2,
+  Languages,
+  Loader2,
+  Send,
+  Sparkles,
+  Zap,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { jsonFetch, qk } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { XLogo } from '@/components/cabal/x-logo'
-import type { WaitlistStatusDTO } from '@/lib/waitlist'
+import type { Locale, WaitlistStatusDTO } from '@/lib/waitlist'
 
 /**
  * Pasos 2 y 3 de la lista de espera, en su propia página (/whitelist): datos
@@ -325,6 +334,11 @@ function Field({
 // --- Paso 3: compartir la tarjeta en X ---
 function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () => void }) {
   const e = status.entry!
+  // Arranca en el idioma detectado por el navegador y se puede cambiar a mano:
+  // ambas variantes ya vienen en la respuesta, así que el cambio es inmediato.
+  const [locale, setLocale] = useState<Locale>(status.locale)
+  const post = status.share[locale]
+  const other: Locale = locale === 'es' ? 'en' : 'es'
   const markShared = useMutation({
     mutationFn: () =>
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/waitlist/shared', { method: 'POST' }),
@@ -383,12 +397,23 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
       {/* Vista previa del post, tal y como se verá en X */}
       <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-[#0a0b08]">
         <div className="p-4 pb-3">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tu post</p>
-          <p className="mt-2.5 whitespace-pre-line text-[13px] leading-relaxed">{status.shareText}</p>
-          <p className="mt-2 truncate text-[13px] text-primary">{status.shareUrl}</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tu post</p>
+            <button
+              type="button"
+              onClick={() => setLocale(other)}
+              className="flex items-center gap-1 rounded-md border border-white/15 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary"
+            >
+              <Languages className="h-3 w-3" aria-hidden />
+              {other === 'en' ? 'English' : 'Español'}
+            </button>
+          </div>
+          <p className="mt-2.5 whitespace-pre-line text-[13px] leading-relaxed">{post.text}</p>
+          <p className="mt-2 truncate text-[13px] text-primary">{post.url}</p>
         </div>
         <img
-          src={status.shareCard}
+          key={post.card}
+          src={post.card}
           alt={`Tarjeta de @${e.xHandle} para compartir en X`}
           width={1672}
           height={941}
@@ -405,7 +430,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
           !e.shared && 'animate-cta-glow'
         )}
       >
-        <a href={status.shareIntent} target="_blank" rel="noopener noreferrer">
+        <a href={post.intent} target="_blank" rel="noopener noreferrer">
           <Send className="h-4 w-4" aria-hidden /> Compartir en X
           {!e.shared && <span className="font-mono">+{status.shareBonus}</span>}
         </a>

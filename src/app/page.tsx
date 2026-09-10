@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { WhitelistLanding } from '@/components/cabal/whitelist-landing'
-import { shareCardUrl, siteUrl } from '@/lib/waitlist'
+import { shareCardUrl, shareRefUrl, siteUrl, toLocale } from '@/lib/waitlist'
 
 /**
  * Home pública de cabal.army mientras el proyecto no ha abierto: la landing de
@@ -21,20 +21,34 @@ const description =
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ ref?: string | string[] }>
+  searchParams: Promise<{ ref?: string | string[]; l?: string | string[] }>
 }): Promise<Metadata> {
-  const { ref } = await searchParams
+  const { ref, l } = await searchParams
   const raw = Array.isArray(ref) ? ref[0] : ref
   const handle = raw?.replace(/^@+/, '').trim()
   const valid = handle && /^[\w]{1,15}$/.test(handle) ? handle : null
+  // Idioma con el que se publicó el enlace: la tarjeta y el titular tienen que
+  // salir en el mismo idioma que eligió quien compartió.
+  const locale = toLocale(Array.isArray(l) ? l[0] : l)
 
   const image = valid
-    ? { url: shareCardUrl(valid), width: 1672, height: 941, alt: `@${valid} en Cabal.army` }
+    ? {
+        url: shareCardUrl(valid, locale),
+        width: 1672,
+        height: 941,
+        alt: `@${valid} en Cabal.army`,
+      }
     : { url: '/og-cabal.png', width: 1200, height: 630, alt: 'Cabal' }
 
-  const ogTitle = valid ? `@${valid} ya es parte de Cabal.army` : title
+  const ogTitle = valid
+    ? locale === 'en'
+      ? `@${valid} is part of Cabal.army`
+      : `@${valid} ya es parte de Cabal.army`
+    : title
   const ogDescription = valid
-    ? `@${valid} te invita a la lista de espera de Cabal: el radar donde la comunidad ve los memecoins ANTES de que salgan.`
+    ? locale === 'en'
+      ? `@${valid} invites you to the Cabal waitlist: the radar where the community spots memecoins BEFORE they launch.`
+      : `@${valid} te invita a la lista de espera de Cabal: el radar donde la comunidad ve los memecoins ANTES de que salgan.`
     : description
 
   return {
@@ -45,7 +59,7 @@ export async function generateMetadata({
     openGraph: {
       title: ogTitle,
       description: ogDescription,
-      url: valid ? `${siteUrl()}/?ref=${valid}` : siteUrl(),
+      url: shareRefUrl(valid, locale),
       siteName: 'Cabal',
       type: 'website',
       images: [image],

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getShareCard } from '@/lib/share-card'
+import { getShareCard, toLocale } from '@/lib/share-card'
 
 /**
  * GET /api/waitlist/card/<handle>.png
@@ -8,9 +8,12 @@ import { getShareCard } from '@/lib/share-card'
  * @usuario y el avatar de quien comparte. La consume el rastreador de X cuando
  * alguien publica cabal.army/?ref=<handle>.
  */
-export async function GET(_req: Request, ctx: { params: Promise<{ handle: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ handle: string }> }) {
   const { handle: raw } = await ctx.params
   const handle = raw.replace(/\.png$/i, '').replace(/^@+/, '')
+  // El idioma viaja en el enlace (?l=en): el rastreador de X pide esta imagen
+  // desde sus propios servidores, así que no se puede detectar aquí.
+  const locale = toLocale(new URL(req.url).searchParams.get('l'))
   if (!/^[\w]{1,15}$/.test(handle)) {
     return NextResponse.json({ error: 'Handle inválido' }, { status: 400 })
   }
@@ -28,6 +31,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ handle: string
     handle: entry?.xHandle ?? handle,
     avatarUrl: entry?.xAvatar ?? null,
     seed: entry?.xId ?? handle,
+    locale,
   })
 
   return new NextResponse(new Uint8Array(png), {

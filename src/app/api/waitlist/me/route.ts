@@ -1,14 +1,12 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getXConfig } from '@/lib/oauth'
 import {
   WAITLIST_COOKIE,
   readWaitlistCookie,
-  shareCardUrl,
-  shareIntentUrl,
-  shareText,
-  siteUrl,
+  localeFromHeader,
+  shareVariants,
   SHARE_BONUS,
   waitlistPosition,
   type WaitlistStatusDTO,
@@ -23,6 +21,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET() {
   const store = await cookies()
+  const locale = localeFromHeader((await headers()).get('accept-language'))
   const entryId = readWaitlistCookie(store.get(WAITLIST_COOKIE)?.value)
   const entry = entryId ? await db.waitlistEntry.findUnique({ where: { id: entryId } }) : null
   // Solo cuentan los registros terminados: los que se quedaron en el paso 2 no
@@ -32,10 +31,8 @@ export async function GET() {
     step: !entry ? 'login' : entry.completed ? 'done' : 'form',
     configured: Boolean(getXConfig()),
     total,
-    shareText: shareText(entry?.xId ?? entry?.xHandle),
-    shareUrl: entry ? `${siteUrl()}/?ref=${entry.xHandle}` : siteUrl(),
-    shareIntent: shareIntentUrl(entry?.xHandle, entry?.xId),
-    shareCard: entry ? shareCardUrl(entry.xHandle) : `${siteUrl()}/og-cabal.png`,
+    locale,
+    share: shareVariants(entry?.xHandle, entry?.xId),
     shareBonus: SHARE_BONUS,
     ...(entry
       ? {

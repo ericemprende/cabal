@@ -1,6 +1,17 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { db } from '@/lib/db'
-import { SHARE_PHRASES, pickIndex } from '@/lib/share-card'
+import {
+  CARD_COUNT,
+  DEFAULT_LOCALE,
+  SHARE_BODY,
+  SHARE_PHRASES,
+  pickIndex,
+  toLocale,
+  type Locale,
+} from '@/lib/share-card'
+
+export type { Locale }
+export { DEFAULT_LOCALE, toLocale }
 
 /**
  * Lista de espera (whitelist) previa al lanzamiento público.
@@ -58,16 +69,59 @@ export function siteUrl(): string {
 export const SHARE_BONUS = 10
 
 /**
+ * Idioma preferido del visitante a partir de la cabecera Accept-Language.
+ * Es más fiable que geolocalizar la IP: refleja el idioma que la persona ha
+ * elegido en su sistema, no el país desde el que se conecta (un hispanohablante
+ * de viaje, o detrás de una VPN, sigue viendo español).
+ */
+export function localeFromHeader(acceptLanguage?: string | null): Locale {
+  if (!acceptLanguage) return DEFAULT_LOCALE
+  // "es-ES,es;q=0.9,en;q=0.8" → la primera etiqueta que reconozcamos gana,
+  // respetando el orden de preferencia declarado por el navegador.
+  const tags = acceptLanguage
+    .split(',')
+    .map((part) => {
+      const [tag, ...params] = part.trim().split(';')
+      const q = params.find((x) => x.trim().startsWith('q='))
+      return { tag: tag.trim().toLowerCase(), q: q ? parseFloat(q.split('=')[1]) || 0 : 1 }
+    })
+    .sort((a, b) => b.q - a.q)
+
+  for (const { tag } of tags) {
+    const base = tag.slice(0, 2)
+    if (base === 'es') return 'es'
+    if (base === 'en') return 'en'
+  }
+  return DEFAULT_LOCALE
+}
+
+/**
  * Texto del post. La frase de cabecera se elige de forma estable por usuario
  * (misma persona → misma frase, y coincide con la plantilla de su tarjeta).
  */
-export function shareText(seed?: string | null): string {
-  const phrase = seed ? SHARE_PHRASES[pickIndex(seed, SHARE_PHRASES.length)] : SHARE_PHRASES[0]
-  return [
-    phrase,
-    'Launches antes de que salgan, tesis de la comunidad e historial real de cada dev.',
-    'Entra conmigo a la lista de espera:',
-  ].join('\n\n')
+export function shareText(seed?: string | null, locale: Locale = DEFAULT_LOCALE): string {
+  const l = toLocale(locale)
+  const phrases = SHARE_PHRASES[l]
+  const phrase = seed ? phrases[pickIndex(seed, CARD_COUNT)] : phrases[0]
+  return [phrase, ...SHARE_BODY[l]].join('\n\n')
+}
+
+/**
+ * URL pública del enlace de referido. Lleva el idioma (`l`) además del handle
+ * porque el `og:image` lo pide el rastreador de X desde sus propios servidores:
+ * el idioma tiene que viajar en el enlace, no detectarse en ese momento.
+ *
+ * El idioma se escribe SIEMPRE, incluso en español que es el valor por defecto.
+ * X cachea la tarjeta de cada URL cerca de una semana y retiró en 2022 el
+ * validador que permitía refrescarla a mano, así que la única forma de que
+ * vuelva a rastrear un enlace ya visto es que la URL cambie. Los enlaces que
+ * se compartieron antes de tener metadatos quedaron cacheados sin imagen; con
+ * el parámetro presente son URLs nuevas y X las rastrea otra vez.
+ */
+export function shareRefUrl(handle?: string | null, locale: Locale = DEFAULT_LOCALE): string {
+  if (!handle) return siteUrl()
+  const params = new URLSearchParams({ ref: handle, l: toLocale(locale) })
+  return `${siteUrl()}/?${params.toString()}`
 }
 
 /**
@@ -75,9 +129,15 @@ export function shareText(seed?: string | null): string {
  * El enlace lleva ?ref=<handle>: quien entre por ahí queda registrado como
  * invitado suyo y le genera el 10% de sus puntos.
  */
-export function shareIntentUrl(handle?: string | null, seed?: string | null): string {
-  const url = handle ? `${siteUrl()}/?ref=${encodeURIComponent(handle)}` : siteUrl()
-  const params = new URLSearchParams({ text: shareText(seed ?? handle), url })
+export function shareIntentUrl(
+  handle?: string | null,
+  seed?: string | null,
+  locale: Locale = DEFAULT_LOCALE
+): string {
+  const params = new URLSearchParams({
+    text: shareText(seed ?? handle, locale),
+    url: shareRefUrl(handle, locale),
+  })
   return `https://x.com/intent/post?${params.toString()}`
 }
 
@@ -95,9 +155,14 @@ export async function shareRuleAmount(): Promise<number> {
   return SHARE_BONUS
 }
 
-/** URL pública de la tarjeta personalizada (og:image del enlace de referido). */
-export function shareCardUrl(handle: string): string {
-  return `${siteUrl()}/api/waitlist/card/${encodeURIComponent(handle)}.png`
+/**
+ * URL pública de la tarjeta personalizada (og:image del enlace de referido).
+ * Como en `shareRefUrl`, el idioma va siempre explícito: además de elegir la
+ * plantilla, hace que sea una URL nueva para X y no reutilice la descarga
+ * fallida que tenga guardada de antes.
+ */
+export function shareCardUrl(handle: string, locale: Locale = DEFAULT_LOCALE): string {
+  return `${siteUrl()}/api/waitlist/card/${encodeURIComponent(handle)}.png?l=${toLocale(locale)}`
 }
 
 // ---------- Estado que consume la landing ----------
@@ -131,11 +196,40 @@ export type WaitlistStatusDTO = {
     position: number
     createdAt: string
   }
-  shareText: string
-  shareUrl: string
-  shareIntent: string
-  shareCard: string
+  /** Idioma detectado para este visitante (Accept-Language). */
+  locale: Locale
+  /**
+   * El post listo en los dos idiomas. Viajan ambos para que el botón de cambiar
+   * idioma sea instantáneo, sin volver a pedir nada al servidor.
+   */
+  share: Record<Locale, ShareVariant>
   shareBonus: number
+}
+
+/** El post en un idioma concreto: lo que se ve, se copia y se publica. */
+export type ShareVariant = {
+  /** Texto del tuit. */
+  text: string
+  /** Enlace de referido que acompaña al texto. */
+  url: string
+  /** Enlace al intent de X, con texto y enlace ya rellenados. */
+  intent: string
+  /** Imagen que X mostrará como tarjeta del enlace. */
+  card: string
+}
+
+/** Construye las dos variantes del post para una entrada de la lista. */
+export function shareVariants(
+  handle?: string | null,
+  seed?: string | null
+): Record<Locale, ShareVariant> {
+  const build = (locale: Locale): ShareVariant => ({
+    text: shareText(seed ?? handle, locale),
+    url: shareRefUrl(handle, locale),
+    intent: shareIntentUrl(handle, seed, locale),
+    card: handle ? shareCardUrl(handle, locale) : `${siteUrl()}/og-cabal.png`,
+  })
+  return { es: build('es'), en: build('en') }
 }
 
 /** Posición en la cola: cuántos completaron el registro antes (1 = el primero). */
