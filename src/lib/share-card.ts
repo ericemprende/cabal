@@ -8,7 +8,7 @@ import sharp from 'sharp'
  *
  * X no permite adjuntar una imagen desde un intent de publicación, así que la
  * imagen viaja como tarjeta Open Graph del enlace de referido: el post lleva
- * cabal.army/?ref=<handle>&l=<idioma> y esta ruta genera el `og:image` de ese
+ * cabal.army/r/<handle> (o /r/<handle>/en) y esta ruta genera el `og:image` de ese
  * enlace con el avatar y el @usuario de quien comparte incrustados.
  *
  * Hay cinco escenas y cada una existe en español y en inglés (mismo índice =

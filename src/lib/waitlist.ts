@@ -126,7 +126,7 @@ export function shareRefUrl(handle?: string | null, locale: Locale = DEFAULT_LOC
 
 /**
  * URL del intent de X con el texto y el enlace de referido ya rellenados.
- * El enlace lleva ?ref=<handle>: quien entre por ahí queda registrado como
+ * El enlace es /r/<handle> (ver shareRefUrl): quien entre por ahí queda registrado como
  * invitado suyo y le genera el 10% de sus puntos.
  */
 export function shareIntentUrl(
