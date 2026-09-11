@@ -8,13 +8,15 @@ import type { LaunchDTO } from '@/lib/types'
 import { parseLaunchInput } from '@/lib/launch-input'
 import { getIpfsImage } from '@/lib/ipfs-cache'
 import { ipfsCid } from '@/lib/remote-image'
+import { getPremiumSettings, getViewer, launchAccess, premiumLaunchFields, teamLaunchIdsOf } from '@/lib/premium'
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const me = await getCurrentUser()
-    const [launches, votes, follows, postCounts] = await Promise.all([
+    const [launches, votes, follows, postCounts, viewer, settings] = await Promise.all([
       // Compartido entre todos los usuarios -> cacheable. Los votos y follows
-      // de más abajo son personales y se leen siempre en fresco.
+      // de más abajo son personales y se leen siempre en fresco. Los datos
+      // premium también viajan en la caché: se filtran por usuario más abajo.
       cached('launches:visible', CACHE_TTL.launch, () =>
         db.launch.findMany({
           where: { hidden: false },
@@ -25,12 +27,15 @@ export async function GET() {
       db.vote.findMany({ where: { userId: me.id, target: 'launch' } }),
       db.follow.findMany({ where: { userId: me.id } }),
       db.post.groupBy({ by: ['launchId'], _count: { _all: true } }),
+      getViewer(req),
+      getPremiumSettings(),
     ])
     const hypedIds = new Set(votes.map((v) => v.targetId))
     const followedIds = new Set(follows.map((f) => f.targetId))
     const countMap = new Map(postCounts.filter((p) => p.launchId).map((p) => [p.launchId!, p._count._all]))
     // Deltas de hype todavía en Redis, en una sola llamada (§4.2).
     const hypeDelta = await pendingMany('launch:hype', launches.map((l) => l.id))
+    const teamIds = await teamLaunchIdsOf(viewer.userId)
 
     const dto: LaunchDTO[] = launches.map((l) => ({
       id: l.id,
@@ -42,7 +47,7 @@ export async function GET() {
       isPrivate: l.isPrivate,
       hidden: l.hidden,
       submitterRole: l.submitterRole === 'dev' ? 'dev' : 'community',
-      contract: l.contract,
+      ...premiumLaunchFields(l, launchAccess(viewer, l, teamIds), settings.fields),
       network: l.network,
       launchAt: new Date(l.launchAt).toISOString(),
       description: l.description,

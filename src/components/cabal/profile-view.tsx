@@ -2,19 +2,20 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, BadgeCheck, CalendarDays, Code2, Rocket, Send, Target, Trophy } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, CalendarDays, Code2, Crown, Rocket, Send, Target, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { fmtMc, timeAgo } from '@/lib/cabal'
-import { CabalWordmark, NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { BadgesRow, CabalWordmark, NetworkBadge, PremiumPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { XLogo } from '@/components/cabal/x-logo'
 import { AuthDialog } from '@/components/cabal/auth-dialog'
 import { LaunchDetailDialog } from '@/components/cabal/launch-detail'
 import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
+import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { useFollowToggle, useSession, useUserFollows, useUserProfile } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import type { PublicProfileDTO } from '@/lib/types'
@@ -65,6 +66,7 @@ export function ProfileView({ handle }: { handle: string }) {
       <LaunchDetailDialog />
       <TokenDetailDialog />
       <ProfileDialog />
+      <PremiumDialog />
       <AuthDialog />
     </div>
   )
@@ -117,7 +119,7 @@ function ProfileHeader({
   onOpenList: (type: 'followers' | 'following') => void
 }) {
   const { user, counts, isMe } = profile
-  const { setProfileOpen, openAuth } = useUI()
+  const { setProfileOpen, openAuth, setPremiumOpen } = useUI()
   const { data: session } = useSession()
   const follow = useFollowToggle()
   const joined = new Date(profile.joinedAt).toLocaleDateString('es', { month: 'long', year: 'numeric' })
@@ -137,6 +139,7 @@ function ProfileHeader({
           src={user.avatar}
           size="xl"
           verified={user.walletVerified}
+          premium={profile.premium}
           className="h-20 w-20 text-2xl sm:h-24 sm:w-24"
         />
 
@@ -150,6 +153,7 @@ function ProfileHeader({
                     Dev
                   </span>
                 )}
+                {profile.premium && <PremiumPill />}
               </h1>
               <p className="text-sm text-muted-foreground">@{user.handle}</p>
             </div>
@@ -158,13 +162,23 @@ function ProfileHeader({
               <CountButton label="Siguiendo" value={counts.following} onClick={() => onOpenList('following')} />
               <CountButton label="Seguidores" value={counts.followers} onClick={() => onOpenList('followers')} />
               {isMe ? (
-                <Button
-                  onClick={() => setProfileOpen(true)}
-                  variant="outline"
-                  className="h-10 rounded-xl border-white/15 bg-transparent px-4 font-bold hover:bg-white/5"
-                >
-                  Editar perfil
-                </Button>
+                <>
+                  {!profile.premium && (
+                    <Button
+                      onClick={() => setPremiumOpen(true)}
+                      className="h-10 gap-1.5 rounded-xl bg-amber-400 px-4 font-bold text-[#171200] hover:bg-amber-300"
+                    >
+                      <Crown className="h-4 w-4 fill-[#171200]" aria-hidden /> Hazte Pro
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => setProfileOpen(true)}
+                    variant="outline"
+                    className="h-10 rounded-xl border-white/15 bg-transparent px-4 font-bold hover:bg-white/5"
+                  >
+                    Editar perfil
+                  </Button>
+                </>
               ) : (
                 <Button
                   onClick={toggleFollow}
@@ -213,6 +227,9 @@ function ProfileHeader({
               <CalendarDays className="h-3.5 w-3.5" aria-hidden /> Se unió en {joined}
             </span>
           </div>
+
+          {/* Emblemas: fundador, actividad… pasa el mouse para leer cada uno */}
+          <BadgesRow badges={profile.badges} className="mt-3" />
         </div>
       </div>
     </section>

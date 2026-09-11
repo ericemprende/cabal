@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
 import { linkProvider, SocialError, SocialProvider, unlinkProvider } from '@/lib/social'
+import { socialDemoAllowed } from '@/lib/oauth'
 
 /**
  * POST /api/me/verify
  * Modo demo de verificación social (sin API keys) + desconexión de proveedores.
  * Con credenciales configuradas, la verificación real pasa por el flujo OAuth
- * (/api/auth/x/start y /api/auth/google/start).
+ * (/api/auth/x/start y /api/auth/google/start). La verificación demo solo
+ * existe en desarrollo (ver socialDemoAllowed); desconectar vale siempre.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -19,6 +21,10 @@ export async function POST(req: NextRequest) {
     if (body.disconnect) {
       await unlinkProvider(me.id, provider)
       return NextResponse.json({ ok: true })
+    }
+
+    if (!socialDemoAllowed(provider)) {
+      return NextResponse.json({ error: 'Verifica tu cuenta con el proveedor real' }, { status: 403 })
     }
 
     const value = typeof body.value === 'string' ? body.value.trim() : ''

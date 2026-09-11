@@ -16,6 +16,8 @@ export type LaunchInput = {
   isPrivate: boolean
   submitterRole: 'dev' | 'community'
   contract: string | null
+  devWallet: string | null
+  launchpad: string | null
   network: string
   launchAt: Date
   description: string
@@ -40,9 +42,14 @@ const safeUrl = (v: unknown) =>
 /** Enlaces opcionales: vacío pasa a null en vez de guardar una cadena vacía. */
 const optional = (v: unknown, max = 300) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
 
+/** Dirección de Solana o Tron (base58) o EVM (0x…): las redes que soporta Cabal. */
+const WALLET_RE = /^(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$/
+/** Nombre de launchpad: libre (hay decenas), pero sin símbolos raros. */
+const LAUNCHPAD_RE = /^[\p{L}\p{N} ._-]{2,40}$/u
+
 export function parseLaunchInput(body: Record<string, unknown>): ParseResult {
   const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram } = body
-  const { image, banner, isPrivate, submitterRole, contract, isLive, liveUrl } = body
+  const { image, banner, isPrivate, submitterRole, contract, isLive, liveUrl, devWallet, launchpad } = body
 
   if (!name || !network || !launchAt) {
     return { ok: false, error: 'Faltan campos requeridos (nombre, red y fecha)' }
@@ -59,6 +66,18 @@ export function parseLaunchInput(body: Record<string, unknown>): ParseResult {
 
   const cleanContract =
     typeof contract === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim()) ? contract.trim() : null
+
+  // Datos premium (opcionales). Mejor rechazar que guardar a medias: una wallet
+  // mal copiada que se vende como dato de pago es peor que no tenerla.
+  const cleanWallet = optional(devWallet, 80)
+  if (cleanWallet && !WALLET_RE.test(cleanWallet)) {
+    return { ok: false, error: 'La wallet del dev no parece una dirección válida de Solana, EVM o Tron' }
+  }
+  const cleanLaunchpad = optional(launchpad, 40)
+  if (cleanLaunchpad && !LAUNCHPAD_RE.test(cleanLaunchpad)) {
+    return { ok: false, error: 'El launchpad solo admite letras, números, espacios y . _ -' }
+  }
+
   // Streaming en vivo: el creador puede marcar que se emitirá en vivo y pegar el link del stream
   const live = bool(isLive)
 
@@ -74,6 +93,8 @@ export function parseLaunchInput(body: Record<string, unknown>): ParseResult {
       // ¿Quién publica? dev = el propio dev postula su proyecto | community = alguien que encontró la info
       submitterRole: submitterRole === 'dev' ? 'dev' : 'community',
       contract: cleanContract,
+      devWallet: cleanWallet,
+      launchpad: cleanLaunchpad,
       // La red debe ser una de las soportadas; si llega algo inválido cae a Solana
       network: typeof network === 'string' && network in NETWORKS ? network : 'solana',
       launchAt: when,

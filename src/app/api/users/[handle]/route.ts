@@ -5,6 +5,8 @@ import { sessionUserIdFromCookies } from '@/lib/auth'
 import { publicDevClaim } from '@/lib/claims'
 import { pendingMany } from '@/lib/counters'
 import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
+import { hasPremium } from '@/lib/premium'
+import { computeBadges, isFounder } from '@/lib/badges'
 import type { PostDTO, PublicProfileDTO } from '@/lib/types'
 
 /**
@@ -29,34 +31,65 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
     const viewerId = await sessionUserIdFromCookies()
     const isMe = viewerId === user.id
 
-    const [launches, tokens, devClaims, posts, followers, following, postsCount, theses, launchesCount, viewer] =
-      await Promise.all([
-        db.launch.findMany({
-          where: { createdById: user.id, hidden: false },
-          orderBy: { launchAt: 'desc' },
-          take: 30,
-        }),
-        db.token.findMany({ where: { devId: user.id }, orderBy: { launchedAt: 'desc' } }),
-        db.devClaim.findMany({
-          where: { userId: user.id, status: 'verified' },
-          orderBy: { verifiedAt: 'desc' },
-        }),
-        db.post.findMany({
-          where: { userId: user.id },
-          include: { user: true },
-          orderBy: { createdAt: 'desc' },
-          take: 30,
-        }),
-        db.follow.count({ where: { targetId: user.id } }),
-        db.follow.count({ where: { userId: user.id } }),
-        db.post.count({ where: { userId: user.id } }),
-        db.post.count({ where: { userId: user.id, kind: 'thesis' } }),
-        db.launch.count({ where: { createdById: user.id, hidden: false } }),
-        // ¿Quien mira sigue a este usuario?
-        viewerId
-          ? db.follow.findUnique({ where: { userId_targetId: { userId: viewerId, targetId: user.id } } })
-          : Promise.resolve(null),
-      ])
+    const [
+      launches,
+      tokens,
+      devClaims,
+      posts,
+      followers,
+      following,
+      postsCount,
+      theses,
+      launchesCount,
+      viewer,
+      premium,
+      likesReceived,
+      hypesGiven,
+      founder,
+    ] = await Promise.all([
+      db.launch.findMany({
+        where: { createdById: user.id, hidden: false },
+        orderBy: { launchAt: 'desc' },
+        take: 30,
+      }),
+      db.token.findMany({ where: { devId: user.id }, orderBy: { launchedAt: 'desc' } }),
+      db.devClaim.findMany({
+        where: { userId: user.id, status: 'verified' },
+        orderBy: { verifiedAt: 'desc' },
+      }),
+      db.post.findMany({
+        where: { userId: user.id },
+        include: { user: true },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      }),
+      db.follow.count({ where: { targetId: user.id } }),
+      db.follow.count({ where: { userId: user.id } }),
+      db.post.count({ where: { userId: user.id } }),
+      db.post.count({ where: { userId: user.id, kind: 'thesis' } }),
+      db.launch.count({ where: { createdById: user.id, hidden: false } }),
+      // ¿Quien mira sigue a este usuario?
+      viewerId
+        ? db.follow.findUnique({ where: { userId_targetId: { userId: viewerId, targetId: user.id } } })
+        : Promise.resolve(null),
+      hasPremium(user.id),
+      db.post.aggregate({ where: { userId: user.id }, _sum: { likes: true } }),
+      db.vote.count({ where: { userId: user.id, target: 'launch' } }),
+      isFounder(user.createdAt),
+    ])
+    const badges = computeBadges({
+      createdAt: user.createdAt,
+      isDev: user.isDev,
+      walletVerified: user.walletVerified,
+      isFounder: founder,
+      stats: {
+        launchesCount,
+        thesesCount: theses,
+        postsCount,
+        likesReceived: likesReceived._sum.likes ?? 0,
+        hypesGiven,
+      },
+    })
 
     // Solo los "me gusta" de quien mira sobre estos posts, no todos los suyos
     const likes = viewerId
@@ -75,6 +108,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
       user: toPublicUserDTO(user, Boolean(viewer)),
       joinedAt: user.createdAt.toISOString(),
       isMe,
+      premium,
+      badges,
       counts: {
         followers,
         following,

@@ -16,8 +16,9 @@ import { LaunchDetailDialog } from '@/components/cabal/launch-detail'
 import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
+import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { useUI } from '@/lib/store'
-import { qk, useMe } from '@/lib/api-client'
+import { qk, useConfirmPremiumCheckout, useMe } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
@@ -94,6 +95,40 @@ export default function Home() {
     }
   }, [oauthReturn, qc])
 
+  // Vuelta del pago Premium: /app?premium=ok&session_id=… (tarjeta), premium=crypto,
+  // premium=cancel o premium=portal (ver createStripeCheckout / createStripeCheckout).
+  const confirmCheckout = useConfirmPremiumCheckout()
+  const [premiumReturn] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const sp = new URLSearchParams(window.location.search)
+    const status = sp.get('premium')
+    if (!status) return null
+    const sessionId = sp.get('session_id')
+    window.history.replaceState(null, '', window.location.pathname)
+    return { status, sessionId }
+  })
+
+  useEffect(() => {
+    if (!premiumReturn) return
+    if (premiumReturn.status === 'ok' && premiumReturn.sessionId) {
+      confirmCheckout.mutate(premiumReturn.sessionId, {
+        onSuccess: () => toast.success('¡Ya eres Premium!', { description: 'La información completa ya está desbloqueada' }),
+        onError: () =>
+          toast.error('No pudimos confirmar el pago todavía', {
+            description: 'Si el cobro se completó, tu cuenta se activará en unos minutos',
+          }),
+      })
+    } else if (premiumReturn.status === 'crypto') {
+      toast.info('Factura generada', {
+        description: 'Tu Premium se activa en cuanto la red confirme el pago (puede tardar varios minutos)',
+      })
+    } else if (premiumReturn.status === 'cancel') {
+      toast('Pago cancelado')
+    } else if (premiumReturn.status === 'portal') {
+      qc.invalidateQueries({ queryKey: qk.me })
+    }
+  }, [premiumReturn])
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -149,6 +184,7 @@ export default function Home() {
       <TokenDetailDialog />
       <ProfileDialog />
       <AdminDialog />
+      <PremiumDialog />
     </div>
   )
 }

@@ -16,6 +16,19 @@ export function networkMeta(key: string) {
   return NETWORKS[key as NetworkKey] ?? NETWORKS.solana
 }
 
+/**
+ * Launchpads habituales de cada red, para elegirlos de un toque al publicar.
+ * Es solo una ayuda: el campo admite cualquier otro.
+ */
+export const LAUNCHPADS: Record<NetworkKey, string[]> = {
+  solana: ['pump.fun', 'LetsBonk', 'Raydium LaunchLab', 'Meteora', 'Moonshot', 'Believe'],
+  base: ['Zora', 'Clanker', 'Virtuals', 'Flaunch'],
+  ethereum: ['Uniswap'],
+  bsc: ['Four.meme'],
+  tron: ['SunPump'],
+  robinhood: [],
+}
+
 export function fmtMc(n: number): string {
   if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`

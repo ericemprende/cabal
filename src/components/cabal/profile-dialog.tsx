@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ChevronDown,
   Copy,
+  Crown,
   Droplets,
   ExternalLink,
   Flame,
@@ -35,7 +36,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { NETWORKS, shortWallet, timeAgo } from '@/lib/cabal'
-import { PointsPill, UserAvatar, NetworkIcon } from '@/components/cabal/shared'
+import { BadgesRow, PointsPill, PremiumPill, UserAvatar, NetworkIcon } from '@/components/cabal/shared'
 import {
   injectedWalletFor,
   uploadImage,
@@ -86,7 +87,7 @@ export function ProfileDialog() {
 }
 
 function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data']> }) {
-  const { setProfileOpen } = useUI()
+  const { setProfileOpen, setPremiumOpen } = useUI()
   const updateMe = useUpdateMe()
   const { data: authStatus } = useAuthStatus()
   const [consent, setConsent] = useState<'x' | 'google' | null>(null)
@@ -94,11 +95,11 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
   const [bio, setBio] = useState(me.bio ?? '')
   const [avatar, setAvatar] = useState(me.avatar)
 
-  /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo si no. */
+  /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo (solo en desarrollo) si no. */
   const connect = (provider: 'x' | 'google') => {
     if (authStatus?.[provider]?.configured) {
       window.location.assign(`/api/auth/${provider}/start`)
-    } else {
+    } else if (authStatus?.[provider]?.demo) {
       setConsent(provider)
     }
   }
@@ -116,10 +117,20 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
     <>
         <div className="relative overflow-hidden border-b border-white/10 p-5">
           <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#8FA83F]/8 blur-3xl" />
-          <div className="relative flex items-center gap-4">
-            <UserAvatar name={me?.name} handle={me?.handle} src={avatar} size="xl" verified={me?.walletVerified} />
-            <div className="min-w-0">
-              <DialogTitle className="font-display truncate text-xl font-bold">{me?.name}</DialogTitle>
+          <div className="relative flex items-start gap-4">
+            <UserAvatar
+              name={me?.name}
+              handle={me?.handle}
+              src={avatar}
+              size="xl"
+              verified={me?.walletVerified}
+              premium={me?.premium.active}
+            />
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="font-display flex items-center gap-1.5 truncate text-xl font-bold">
+                {me?.name}
+                {me?.premium.active && <PremiumPill />}
+              </DialogTitle>
               <p className="text-sm text-muted-foreground">@{me?.handle}</p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <PointsPill points={me?.points ?? 0} />
@@ -135,8 +146,38 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
                   <span className="rounded-full bg-[#8FA83F]/12 px-2 py-0.5 text-[11px] font-bold text-primary">ADMIN</span>
                 )}
               </div>
+              {me && <BadgesRow badges={me.badges} className="mt-2.5" />}
             </div>
           </div>
+
+          {/* Premium: pasar a Pro o gestionar la suscripción activa */}
+          <button
+            type="button"
+            onClick={() => setPremiumOpen(true)}
+            className={cn(
+              'relative mt-4 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+              me?.premium.active
+                ? 'border-amber-400/25 bg-amber-400/5 hover:border-amber-400/40'
+                : 'border-amber-400/30 bg-gradient-to-br from-amber-400/10 to-transparent hover:border-amber-400/50'
+            )}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10">
+              <Crown className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] font-bold text-amber-200">
+                {me?.premium.active ? 'Eres Premium' : 'Hazte Premium'}
+              </span>
+              <span className="block text-[11px] text-muted-foreground">
+                {me?.premium.active
+                  ? me.premium.until
+                    ? `Activo hasta el ${new Date(me.premium.until).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                    : 'Sin fecha de caducidad'
+                  : 'La wallet del dev, el launchpad y el contrato antes del lanzamiento'}
+              </span>
+            </span>
+            <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground" aria-hidden />
+          </button>
         </div>
 
         {/* Stats */}
@@ -207,6 +248,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             provider="x"
             cta="Conectar con X"
             configured={authStatus?.x.configured ?? false}
+            demo={authStatus?.x.demo ?? false}
             onConnect={() => connect('x')}
           />
           <ConnectionRow
@@ -218,6 +260,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             provider="google"
             cta="Conectar con Google"
             configured={authStatus?.google.configured ?? false}
+            demo={authStatus?.google.demo ?? false}
             onConnect={() => connect('google')}
           />
           <ApiSetupHelp status={authStatus} />
@@ -520,7 +563,8 @@ function ClaimProjectSection() {
 
 // Fila de conexión con proveedor externo (X / Google)
 // - Con API keys: redirige al flujo OAuth 2.0 real del proveedor.
-// - Sin API keys: abre la pantalla de consentimiento simulada (demo).
+// - Sin API keys, en desarrollo: abre la pantalla de consentimiento simulada (demo).
+// - Sin API keys, en producción: el proveedor no está disponible.
 function ConnectionRow({
   icon,
   title,
@@ -530,6 +574,7 @@ function ConnectionRow({
   provider,
   cta,
   configured,
+  demo,
   onConnect,
 }: {
   icon: React.ReactNode
@@ -540,6 +585,7 @@ function ConnectionRow({
   provider: 'x' | 'google'
   cta: string
   configured: boolean
+  demo: boolean
   onConnect: () => void
 }) {
   const verify = useVerifyProvider()
@@ -591,16 +637,18 @@ function ConnectionRow({
         <Button
           size="sm"
           onClick={onConnect}
+          disabled={!configured && !demo}
           className="h-8 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
           variant="ghost"
         >
-          {cta}
+          {configured || demo ? cta : 'No disponible'}
         </Button>
       </div>
       {!configured && (
         <p className="mt-2 pl-12 text-[10px] leading-relaxed text-muted-foreground/70">
-          Sin credenciales del proveedor: se abre una pantalla de autorización simulada.
-          Configura las API keys para usar el OAuth real.
+          {demo
+            ? 'Sin credenciales del proveedor: se abre una pantalla de autorización simulada. Configura las API keys para usar el OAuth real.'
+            : 'Este proveedor todavía no está configurado en el servidor.'}
         </p>
       )}
     </div>
