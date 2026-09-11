@@ -423,6 +423,22 @@ export function useCreateLaunch() {
   })
 }
 
+/**
+ * Editar un launch. Solo lo acepta el servidor si quien lo pide lo publicó o es
+ * admin (ver PATCH /api/launches/[id]). Los avisos los pone quien la usa.
+ */
+export function useUpdateLaunch(id: string) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, string>) =>
+      jsonFetch<{ ok: boolean }>(`/api/launches/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => invalidate(),
+  })
+}
+
 export function useUpdateMe() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({

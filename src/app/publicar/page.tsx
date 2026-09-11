@@ -13,8 +13,10 @@ import { CabalWordmark, NetworkIcon, TimezoneHint } from '@/components/cabal/sha
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { cn } from '@/lib/utils'
 import { NETWORKS } from '@/lib/cabal'
-import { uploadImage, useCreateLaunch } from '@/lib/api-client'
+import { uploadImage, useCreateLaunch, useLaunch, useUpdateLaunch } from '@/lib/api-client'
 import type { TokenMeta } from '@/lib/chain-stats'
+import type { LaunchDetailDTO } from '@/lib/types'
+import { useUI } from '@/lib/store'
 
 const EMPTY_FORM = {
   name: '',
@@ -31,13 +33,96 @@ const EMPTY_FORM = {
   liveUrl: '',
 }
 
+type FormInitial = {
+  form: typeof EMPTY_FORM
+  isPrivate: boolean
+  isLive: boolean
+  submitterRole: 'dev' | 'community'
+}
+
+const EMPTY_INITIAL: FormInitial = { form: EMPTY_FORM, isPrivate: false, isLive: false, submitterRole: 'community' }
+
+/** Fecha ISO a lo que espera un <input type="datetime-local">, en hora local. */
+function toLocalInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Valores del formulario a partir de un launch ya publicado. */
+function fromLaunch(l: LaunchDetailDTO): FormInitial {
+  return {
+    form: {
+      name: l.name,
+      ticker: l.ticker ?? '',
+      network: l.network,
+      launchAt: toLocalInput(l.launchAt),
+      contract: l.contract ?? '',
+      description: l.description,
+      website: l.website ?? '',
+      twitter: l.twitter ?? '',
+      telegram: l.telegram ?? '',
+      image: l.image ?? '',
+      banner: l.banner ?? '',
+      liveUrl: l.liveUrl ?? '',
+    },
+    isPrivate: l.isPrivate,
+    isLive: l.isLive,
+    submitterRole: l.submitterRole,
+  }
+}
+
+/**
+ * /publicar crea un launch; /publicar?edit=<id> edita uno existente con el
+ * mismo formulario. El servidor solo deja editar a quien lo publicó o a un admin
+ * (ver PATCH /api/launches/[id]); aquí se comprueba antes para no enseñar un
+ * formulario que luego no se podría guardar.
+ */
 export default function PublicarLaunchPage() {
+  // ?edit= se lee tras montar: al prerenderizar la página no existe window
+  const [mode, setMode] = useState<{ ready: boolean; editId: string | null }>({ ready: false, editId: null })
+  useEffect(() => {
+    const t = setTimeout(
+      () => setMode({ ready: true, editId: new URLSearchParams(window.location.search).get('edit') }),
+      0
+    )
+    return () => clearTimeout(t)
+  }, [])
+  const editing = useLaunch(mode.editId)
+
+  if (!mode.ready) return null
+  if (!mode.editId) return <LaunchForm initial={EMPTY_INITIAL} />
+  if (editing.isPending) return <FormNotice>Cargando el launch…</FormNotice>
+  if (!editing.data) return <FormNotice>No encontramos ese launch.</FormNotice>
+  if (!editing.data.canEdit) {
+    return <FormNotice>Solo quien publicó este launch o un administrador puede editarlo.</FormNotice>
+  }
+  // key: si cambia el launch que se edita, el formulario arranca de cero
+  return <LaunchForm key={mode.editId} initial={fromLaunch(editing.data)} editId={mode.editId} />
+}
+
+/** Aviso a pantalla completa mientras carga el launch o si no se puede editar. */
+function FormNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+      <p className="text-sm text-muted-foreground">{children}</p>
+      <Link href="/app" className="text-sm font-semibold text-primary hover:underline">
+        Volver al radar
+      </Link>
+    </div>
+  )
+}
+
+function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string }) {
   const router = useRouter()
+  const { openLaunch } = useUI()
   const createLaunch = useCreateLaunch()
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [isPrivate, setIsPrivate] = useState(false)
-  const [isLive, setIsLive] = useState(false)
-  const [submitterRole, setSubmitterRole] = useState<'dev' | 'community'>('community')
+  const updateLaunch = useUpdateLaunch(editId ?? '')
+  const saving = editId ? updateLaunch.isPending : createLaunch.isPending
+  const [form, setForm] = useState(initial.form)
+  const [isPrivate, setIsPrivate] = useState(initial.isPrivate)
+  const [isLive, setIsLive] = useState(initial.isLive)
+  const [submitterRole, setSubmitterRole] = useState<'dev' | 'community'>(initial.submitterRole)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
   const [earned, setEarned] = useState(0)
@@ -48,8 +133,11 @@ export default function PublicarLaunchPage() {
   // pump.fun y se rellenan los campos vacíos (nunca pisa lo que ya escribió).
   const [lookup, setLookup] = useState<{ state: 'idle' | 'loading' | 'found' | 'notfound'; source?: string }>({ state: 'idle' })
   const lookupCa = form.contract.trim()
+  // Al editar, el CA ya guardado no se vuelve a buscar: rellenaría campos que
+  // quizá se vaciaron a propósito y avisaría de "token encontrado" al abrir.
+  const savedCa = editId ? initial.form.contract.trim() : null
   useEffect(() => {
-    if (!/^[a-zA-Z0-9]{32,44}$|^0x[a-fA-F0-9]{40}$/.test(lookupCa)) {
+    if (lookupCa === savedCa || !/^[a-zA-Z0-9]{32,44}$|^0x[a-fA-F0-9]{40}$/.test(lookupCa)) {
       setLookup({ state: 'idle' })
       return
     }
@@ -88,7 +176,7 @@ export default function PublicarLaunchPage() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [lookupCa])
+  }, [lookupCa, savedCa])
 
   const handleSelect = (key: 'image' | 'banner') => async (file: File) => {
     setError('')
@@ -128,18 +216,34 @@ export default function PublicarLaunchPage() {
     // datetime-local se interpreta en la zona horaria del dispositivo del publicador;
     // se convierte a instante absoluto (ISO UTC) para que cada usuario lo vea en su hora local
     const launchAtIso = new Date(form.launchAt).toISOString()
+    const payload = {
+      ...form,
+      contract,
+      launchAt: launchAtIso,
+      submitterRole,
+      image: form.image === 'uploading' ? '' : form.image,
+      banner: form.banner === 'uploading' ? '' : form.banner,
+      isPrivate: String(isPrivate),
+      isLive: String(isLive),
+      liveUrl: isLive ? liveUrl : '',
+    }
+    if (editId) {
+      updateLaunch.mutate(payload, {
+        onSuccess: () => {
+          toast.success('Cambios guardados')
+          // De vuelta al radar con la ficha abierta, para ver el resultado
+          openLaunch(editId)
+          router.push('/app')
+        },
+        onError: (e: Error) => {
+          setError(e.message)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        },
+      })
+      return
+    }
     createLaunch.mutate(
-      {
-        ...form,
-        contract,
-        launchAt: launchAtIso,
-        submitterRole,
-        image: form.image === 'uploading' ? '' : form.image,
-        banner: form.banner === 'uploading' ? '' : form.banner,
-        isPrivate: String(isPrivate),
-        isLive: String(isLive),
-        liveUrl: isLive ? liveUrl : '',
-      },
+      payload,
       {
         onSuccess: (data) => {
           setEarned(data.pointsEarned)
@@ -179,9 +283,11 @@ export default function PublicarLaunchPage() {
           <Link href="/app" className="ml-1 flex items-center outline-none" aria-label="Ir al inicio">
             <CabalWordmark />
           </Link>
-          <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-2.5 py-1 text-xs font-semibold text-primary">
-            <Zap className="h-3 w-3" aria-hidden /> +40 pts por launch
-          </span>
+          {!editId && (
+            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-2.5 py-1 text-xs font-semibold text-primary">
+              <Zap className="h-3 w-3" aria-hidden /> +40 pts por launch
+            </span>
+          )}
         </div>
       </header>
 
@@ -198,10 +304,12 @@ export default function PublicarLaunchPage() {
             {/* Page heading */}
             <div className="mb-5">
               <h1 className="font-machina flex items-center gap-2.5 text-2xl font-bold uppercase tracking-wide">
-                <Rocket className="h-6 w-6 text-primary" aria-hidden /> Publicar lanzamiento
+                <Rocket className="h-6 w-6 text-primary" aria-hidden /> {editId ? 'Editar lanzamiento' : 'Publicar lanzamiento'}
               </h1>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                Avisa a la comunidad antes de que salga. Ganas puntos cuando la gente da hype a tu launch (+1 por hype).
+                {editId
+                  ? 'Actualiza la información, las redes o la fecha. Los cambios se ven al momento en el Radar.'
+                  : 'Avisa a la comunidad antes de que salga. Ganas puntos cuando la gente da hype a tu launch (+1 por hype).'}
               </p>
             </div>
 
@@ -418,7 +526,7 @@ export default function PublicarLaunchPage() {
                   aspect="square"
                   label="Imagen del token"
                   hint="Subir imagen"
-                  disabled={createLaunch.isPending}
+                  disabled={saving}
                 />
                 <ImageDrop
                   url={form.banner === 'uploading' ? '' : form.banner}
@@ -429,7 +537,7 @@ export default function PublicarLaunchPage() {
                   aspect="video"
                   label="Banner"
                   hint="Sube un banner (16:9)"
-                  disabled={createLaunch.isPending}
+                  disabled={saving}
                 />
               </div>
 
@@ -467,15 +575,23 @@ export default function PublicarLaunchPage() {
               <div className="flex flex-col-reverse items-stretch gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center">
                 <p className="flex flex-1 items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
                   <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
-                  El countdown empieza de inmediato. La comunidad verá tu launch primero en el Radar.
+                  {editId
+                    ? 'Si cambias la fecha, el countdown se recalcula para todo el mundo.'
+                    : 'El countdown empieza de inmediato. La comunidad verá tu launch primero en el Radar.'}
                 </p>
                 <Button
                   onClick={submit}
-                  disabled={createLaunch.isPending}
+                  disabled={saving}
                   className="h-11 shrink-0 gap-2 rounded-xl bg-primary px-6 font-bold text-primary-foreground neon-shadow hover:bg-[#8FA83F]"
                 >
                   <Zap className="h-4 w-4" strokeWidth={2.5} />
-                  {createLaunch.isPending ? 'Publicando…' : 'Publicar · +40 pts'}
+                  {editId
+                    ? saving
+                      ? 'Guardando…'
+                      : 'Guardar cambios'
+                    : saving
+                      ? 'Publicando…'
+                      : 'Publicar · +40 pts'}
                 </Button>
               </div>
             </div>

@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
-import { Flame, Globe, MonitorPlay, Send, Twitter, Zap } from 'lucide-react'
+import Link from 'next/link'
+import { Flame, Globe, MonitorPlay, Pencil, Send, Twitter, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -99,10 +100,21 @@ export function LaunchDetailDialog() {
                     </button>
                   </div>
                 </div>
+                {/* Solo quien lo publicó o un admin: lo decide el servidor (canEdit) */}
+                {launch.canEdit && (
+                  <Link
+                    href={`/publicar?edit=${launch.id}`}
+                    onClick={() => openLaunch(null)}
+                    className="ml-auto flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-[#8FA83F]/50 hover:text-primary"
+                  >
+                    <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+                  </Link>
+                )}
                 <button
                   onClick={() => hype.mutate(launch.id)}
                   className={cn(
-                    'ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-bold transition-all active:scale-95',
+                    'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-bold transition-all active:scale-95',
+                    !launch.canEdit && 'ml-auto',
                     launch.hyped
                       ? 'border-[#8FA83F]/50 bg-[#8FA83F]/15 text-primary neon-shadow'
                       : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/50 hover:text-primary'

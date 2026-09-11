@@ -160,6 +160,8 @@ export interface AffiliatePlatformDTO {
 
 export interface LaunchDetailDTO extends LaunchDTO {
   posts: PostDTO[]
+  /** Si quien lo mira puede editarlo: quien lo publicó o un administrador. */
+  canEdit: boolean
 }
 
 export interface LeaderboardEntryDTO {
