@@ -13,11 +13,19 @@ export async function POST(req: Request) {
     if (!limit.ok) return tooManyRequests(limit)
 
     const body = await req.json()
-    const { kind, content, launchId, tokenId } = body
+    const { kind, content, launchId, tokenId, contract } = body
     if (!content || !String(content).trim()) {
       return NextResponse.json({ error: 'El contenido está vacío' }, { status: 400 })
     }
     const postKind = ['thesis', 'comment', 'call'].includes(kind) ? kind : 'comment'
+
+    // Una call sin contrato no sirve: la comunidad no sabría qué token comprar
+    const cleanContract =
+      typeof contract === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim()) ? contract.trim() : null
+    if (postKind === 'call' && !cleanContract) {
+      return NextResponse.json({ error: 'Ingresa el CA/contrato del token para publicar una call' }, { status: 400 })
+    }
+
     const post = await db.post.create({
       data: {
         kind: postKind,
@@ -25,6 +33,7 @@ export async function POST(req: Request) {
         userId: me.id,
         launchId: launchId || null,
         tokenId: tokenId || null,
+        contract: postKind === 'call' ? cleanContract : null,
       },
       include: { user: true },
     })

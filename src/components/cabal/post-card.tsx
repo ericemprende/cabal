@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Heart, MessageCircle, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { useFollowToggle, useLikeToggle } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -57,6 +57,12 @@ export function PostCard({
           <p className={cn('mt-1.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90', compact ? 'line-clamp-3 text-[13px]' : 'text-sm')}>
             {post.content}
           </p>
+
+          {post.kind === 'call' && post.contract && (
+            <div className="mt-2 flex items-center rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
+              <CopyCA contract={post.contract} className="text-[11px]" />
+            </div>
+          )}
 
           {/* linked target */}
           {post.launch && (

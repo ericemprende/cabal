@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { GraduationCap, Megaphone, MessageSquare, Zap } from 'lucide-react'
+import { GraduationCap, Hash, Megaphone, MessageSquare, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/cabal/shared'
@@ -24,13 +25,21 @@ export function FeedTab() {
   const createPost = useCreatePost()
   const [content, setContent] = useState('')
   const [kind, setKind] = useState('comment')
+  const [contract, setContract] = useState('')
+
+  const isCall = kind === 'call'
+  const contractOk = /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim())
+  const canSubmit = content.trim() && (!isCall || contractOk)
 
   const submit = () => {
-    if (!content.trim()) return
+    if (!canSubmit) return
     createPost.mutate(
-      { kind, content },
+      { kind, content, contract: isCall ? contract.trim() : undefined },
       {
-        onSuccess: () => setContent(''),
+        onSuccess: () => {
+          setContent('')
+          setContract('')
+        },
       }
     )
   }
@@ -49,6 +58,20 @@ export function FeedTab() {
               className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
               aria-label="Escribir post"
             />
+            {isCall && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <Hash className="h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden />
+                <Input
+                  value={contract}
+                  onChange={(e) => setContract(e.target.value)}
+                  placeholder="CA / contrato del token (obligatorio para una call)"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="h-8 bg-[#0a0b08] font-mono text-xs"
+                  aria-label="Contrato del token"
+                />
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {KINDS.map((k) => (
                 <button
@@ -74,7 +97,7 @@ export function FeedTab() {
               <Button
                 size="sm"
                 onClick={submit}
-                disabled={!content.trim() || createPost.isPending}
+                disabled={!canSubmit || createPost.isPending}
                 className="ml-auto h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
               >
                 <Zap className="h-3 w-3" /> Publicar

@@ -220,7 +220,7 @@ export function useLogin() {
 export function useRegister() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { handle: string; name?: string; password: string; referralCode?: string }) =>
+    mutationFn: (data: { handle: string; name?: string; email: string; password: string; referralCode?: string }) =>
       jsonFetch<{ ok: boolean; user: UserDTO }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -417,7 +417,7 @@ export function useFollowToggle() {
 export function useCreatePost() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
-    mutationFn: (data: { kind: string; content: string; launchId?: string; tokenId?: string }) =>
+    mutationFn: (data: { kind: string; content: string; launchId?: string; tokenId?: string; contract?: string }) =>
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/posts', {
         method: 'POST',
         body: JSON.stringify(data),
