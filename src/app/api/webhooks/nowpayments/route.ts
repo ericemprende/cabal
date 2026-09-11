@@ -41,16 +41,16 @@ export async function POST(req: Request) {
     // Las IPN pueden llegar desordenadas: un pago cerrado no vuelve atrás
     // (salvo que se reembolse)
     const closed = payment.status === 'finished' && status !== 'refunded'
-    if (!closed && status) {
-      await db.payment.update({
-        where: { id: payment.id },
-        data: {
-          status,
-          providerPaymentId: paymentId ?? payment.providerPaymentId,
-          payCurrency: typeof body.pay_currency === 'string' ? body.pay_currency : payment.payCurrency,
-          actuallyPaid: Number.isFinite(Number(body.actually_paid)) ? Number(body.actually_paid) : payment.actuallyPaid,
-        },
-      })
+    const commonFields = {
+      providerPaymentId: paymentId ?? payment.providerPaymentId,
+      payCurrency: typeof body.pay_currency === 'string' ? body.pay_currency : payment.payCurrency,
+      actuallyPaid: Number.isFinite(Number(body.actually_paid)) ? Number(body.actually_paid) : payment.actuallyPaid,
+    }
+    // "finished" no se guarda todavía: si la verificación de abajo falla (o
+    // NOWPayments no responde), el pago no debe quedar marcado como terminado
+    // sin de verdad estarlo — el panel de admin lo usa para saber si ya cobró.
+    if (!closed && status && status !== 'finished') {
+      await db.payment.update({ where: { id: payment.id }, data: { status, ...commonFields } })
     }
 
     const alreadyGranted = await db.subscription.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       }
       if (!amountOk || !currencyOk) {
         console.error(`[nowpayments] importe inesperado en ${payment.id}: ${confirmed.price_amount} ${confirmed.price_currency}`)
-        await db.payment.update({ where: { id: payment.id }, data: { status: 'amount_mismatch' } })
+        await db.payment.update({ where: { id: payment.id }, data: { status: 'amount_mismatch', ...commonFields } })
         return NextResponse.json({ received: true })
       }
       const plan = isPlanKey(payment.plan) ? payment.plan : 'monthly'
@@ -75,6 +75,8 @@ export async function POST(req: Request) {
       }).catch((e: { code?: string }) => {
         if (e?.code !== 'P2002') throw e // P2002 = ya concedido por una IPN anterior
       })
+      // Confirmado y concedido: ahora sí queda como terminado.
+      await db.payment.update({ where: { id: payment.id }, data: { status: 'finished', ...commonFields } })
     }
     return NextResponse.json({ received: true, final: NOW_FINAL.has(status) })
   } catch (e) {
