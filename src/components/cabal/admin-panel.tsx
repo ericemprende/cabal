@@ -244,10 +244,17 @@ export function AdminPanel({
             <p className="text-xs text-muted-foreground">
               Ajusta puntos, edita perfiles (X, Telegram, Google) y gestiona insignias y roles. Cada cambio queda registrado.
             </p>
+            {users.data && (
+              <p className="flex items-center gap-1.5 text-sm font-bold">
+                <Users className="h-4 w-4 text-primary" aria-hidden />
+                {users.data.length.toLocaleString('es')} usuarios registrados
+              </p>
+            )}
             {users.isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-            {(users.data ?? []).map((u) => (
+            {(users.data ?? []).map((u, i) => (
               <AdminUserRow
                 key={u.id}
+                index={i + 1}
                 user={u}
                 enabled={enabled}
                 onAdjust={(amount, note) => adjust.mutate({ userId: u.id, amount, note })}
@@ -381,10 +388,12 @@ export function AdminPanel({
 
 // ---------------- Usuarios: puntos + edición de perfil ----------------
 function AdminUserRow({
+  index,
   user,
   enabled,
   onAdjust,
 }: {
+  index: number
   user: AdminUserRowDTO
   enabled: boolean
   onAdjust: (amount: number, note?: string) => void
@@ -440,6 +449,7 @@ function AdminUserRow({
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
       <div className="flex flex-wrap items-center gap-2.5">
+        <span className="w-8 shrink-0 text-right font-mono text-xs font-bold tabular-nums text-muted-foreground">#{index}</span>
         <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">
