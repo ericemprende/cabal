@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CalendarClock, CheckCircle2, Code2, EyeOff, Hash, MonitorPlay, Radar, Rocket, Zap } from 'lucide-react'
+import { ArrowLeft, CalendarClock, CheckCircle2, Code2, Crown, EyeOff, Hash, MonitorPlay, Radar, Rocket, Wallet, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { CabalWordmark, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { cn } from '@/lib/utils'
-import { NETWORKS } from '@/lib/cabal'
+import { LAUNCHPADS, NETWORKS, type NetworkKey } from '@/lib/cabal'
 import { uploadImage, useCreateLaunch, useLaunch, useUpdateLaunch } from '@/lib/api-client'
 import type { TokenMeta } from '@/lib/chain-stats'
 import type { LaunchDetailDTO } from '@/lib/types'
@@ -31,6 +31,8 @@ const EMPTY_FORM = {
   image: '',
   banner: '',
   liveUrl: '',
+  devWallet: '',
+  launchpad: '',
 }
 
 type FormInitial = {
@@ -65,6 +67,8 @@ function fromLaunch(l: LaunchDetailDTO): FormInitial {
       image: l.image ?? '',
       banner: l.banner ?? '',
       liveUrl: l.liveUrl ?? '',
+      devWallet: l.devWallet ?? '',
+      launchpad: l.launchpad ?? '',
     },
     isPrivate: l.isPrivate,
     isLive: l.isLive,
@@ -500,6 +504,60 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                     Si el token ya fue desplegado, pega el CA y rellenamos nombre, ticker, imagen, banner y redes solos. También activa el gráfico en vivo en su ficha.
                   </p>
                 )}
+              </div>
+
+              {/* Datos premium: solo los ve quien paga el plan Premium (o tu equipo) */}
+              <div className="space-y-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-200">
+                  <Crown className="h-3.5 w-3.5 fill-amber-300 text-amber-300" aria-hidden /> Datos Premium
+                  <span className="font-normal text-muted-foreground">· solo los ve quien tiene el plan Premium</span>
+                </p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pl-devwallet" className="flex items-center gap-1.5 text-xs font-semibold">
+                    <Wallet className="h-3 w-3 text-amber-300/80" aria-hidden /> Wallet del dev
+                    <span className="font-normal text-muted-foreground">· opcional</span>
+                  </Label>
+                  <Input
+                    id="pl-devwallet"
+                    value={form.devWallet}
+                    onChange={(e) => set('devWallet', e.target.value)}
+                    placeholder="La dirección que desplegó o va a desplegar el token"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="h-10 bg-[#0a0b08] font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pl-launchpad" className="text-xs font-semibold">
+                    Launchpad <span className="font-normal text-muted-foreground">· opcional</span>
+                  </Label>
+                  <Input
+                    id="pl-launchpad"
+                    value={form.launchpad}
+                    onChange={(e) => set('launchpad', e.target.value)}
+                    placeholder="Dónde sale el token: pump.fun, Zora…"
+                    className="h-10 bg-[#0a0b08] text-sm"
+                  />
+                  {(LAUNCHPADS[form.network as NetworkKey] ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {LAUNCHPADS[form.network as NetworkKey].map((lp) => (
+                        <button
+                          key={lp}
+                          type="button"
+                          onClick={() => set('launchpad', lp)}
+                          className={cn(
+                            'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-all',
+                            form.launchpad === lp
+                              ? 'border-amber-400/50 bg-amber-400/15 text-amber-200'
+                              : 'border-white/10 text-muted-foreground hover:border-white/25'
+                          )}
+                        >
+                          {lp}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Fecha */}

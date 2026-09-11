@@ -3,14 +3,14 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Flame, Globe, Maximize2, Minimize2, MonitorPlay, Pencil, Send, Twitter, Zap } from 'lucide-react'
+import { Crown, Flame, Globe, Lock, Maximize2, Minimize2, MonitorPlay, Pencil, Rocket, Send, Twitter, Wallet, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { displayImageUrl } from '@/lib/remote-image'
-import { CountdownPill, CopyCA, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, CountdownPill, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
@@ -19,7 +19,7 @@ import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch } from '@/lib/
 import { useUI } from '@/lib/store'
 
 export function LaunchDetailDialog() {
-  const { launchDetailId, openLaunch } = useUI()
+  const { launchDetailId, openLaunch, setPremiumOpen } = useUI()
   const { data: launch, isLoading } = useLaunch(launchDetailId)
   const hype = useHypeToggle()
   const follow = useFollowToggle()
@@ -99,6 +99,50 @@ export function LaunchDetailDialog() {
               <div className="mt-4 rounded-xl border border-white/10 bg-[#0a0b08] p-3">
                 <SafetyChecks lpLocked={launch.lpLocked} mintRevoked={launch.mintRevoked} top10Pct={launch.top10Pct} />
               </div>
+
+              {/* Datos Premium: lo que se ve, más una fila borrosa por cada dato que el launch tiene pero no se puede ver */}
+              {(launch.devWallet || launch.launchpad || launch.lockedFields.length > 0) && (
+                <div className="mt-3 space-y-1.5">
+                  {launch.devWallet && (
+                    <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400">
+                        <Wallet className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Wallet del dev</p>
+                        <CopyCA contract={launch.devWallet} className="border-0 bg-transparent p-0 text-[13px]" />
+                      </div>
+                    </div>
+                  )}
+                  {launch.launchpad && (
+                    <div className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400">
+                        <Rocket className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Launchpad</p>
+                        <p className="text-[13px] font-semibold">{launch.launchpad}</p>
+                      </div>
+                    </div>
+                  )}
+                  {launch.lockedFields.includes('devWallet') && (
+                    <PremiumLockedRow
+                      icon={<Wallet className="h-3.5 w-3.5" aria-hidden />}
+                      label="Wallet del dev"
+                      fakeValue="7xKXt••••••••••••••••••••••JosgAsU"
+                      onUnlock={() => setPremiumOpen(true)}
+                    />
+                  )}
+                  {launch.lockedFields.includes('launchpad') && (
+                    <PremiumLockedRow
+                      icon={<Rocket className="h-3.5 w-3.5" aria-hidden />}
+                      label="Launchpad"
+                      fakeValue="████████"
+                      onUnlock={() => setPremiumOpen(true)}
+                    />
+                  )}
+                </div>
+              )}
 
               <div className="mt-4 flex items-center gap-3">
                 <div className="flex items-center gap-2">
@@ -195,7 +239,7 @@ export function LaunchDetailDialog() {
             )}
 
             {/* Gráfico en vivo + panel de compra (solo si el launch tiene CA del token desplegado) */}
-            {launch.contract && (
+            {launch.contract ? (
               <section className="border-b border-white/10 p-4" aria-label="Gráfico en vivo y compra del token">
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gráfico en vivo</p>
@@ -214,7 +258,26 @@ export function LaunchDetailDialog() {
                   />
                 </div>
               </section>
-            )}
+            ) : launch.lockedFields.includes('contract') ? (
+              // El contrato ya existe (el launch aún no ha salido) pero es dato Premium
+              <section className="border-b border-white/10 p-4" aria-label="Contrato bloqueado">
+                <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gráfico en vivo</p>
+                <button
+                  type="button"
+                  onClick={() => setPremiumOpen(true)}
+                  className="group flex w-full flex-col items-center gap-2 rounded-xl border border-amber-400/25 bg-amber-400/[0.05] py-8 text-center transition-colors hover:border-amber-400/45"
+                >
+                  <Lock className="h-6 w-6 text-amber-300" aria-hidden />
+                  <span className="text-sm font-bold text-amber-200">El contrato ya existe</span>
+                  <span className="max-w-xs text-[12px] text-muted-foreground">
+                    Los suscriptores Premium lo ven antes del lanzamiento, junto al gráfico en vivo en cuanto salga
+                  </span>
+                  <span className="mt-1 flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-[#171200] transition-colors group-hover:bg-amber-300">
+                    <Crown className="h-3.5 w-3.5 fill-[#171200]" aria-hidden /> Hazte Pro
+                  </span>
+                </button>
+              </section>
+            ) : null}
 
             {/* Comments / tesis */}
             <div className="p-4">
