@@ -29,20 +29,52 @@ function RoleChip({ role }: { role: 'dev' | 'community' }) {
   )
 }
 
+type StatusFilter = 'active' | 'ended' | 'all'
+
+/** "Próximos" incluye lo que se está lanzando ahora (hasta 48h después): sigue vivo. */
+const STATUS_TABS: { key: StatusFilter; label: string }[] = [
+  { key: 'active', label: 'Próximos' },
+  { key: 'ended', label: 'Finalizados' },
+  { key: 'all', label: 'Todos' },
+]
+
 export function RadarTab() {
   const { data: launches, isLoading } = useLaunches()
   const router = useRouter()
   const { openLaunch } = useUI()
   const [network, setNetwork] = useState<string>('all')
   const [sort, setSort] = useState<'soon' | 'hype'>('soon')
+  // Por defecto lo que sigue vivo: antes el orden por fecha ascendente dejaba los
+  // launches finalizados más antiguos arriba del todo del radar.
+  const [status, setStatus] = useState<StatusFilter>('active')
+
+  const byNetwork = useMemo(
+    () => (launches ?? []).filter((l) => network === 'all' || l.network === network),
+    [launches, network]
+  )
+
+  const counts = useMemo(() => {
+    const ended = byNetwork.filter((l) => l.status === 'ended').length
+    return { active: byNetwork.length - ended, ended, all: byNetwork.length }
+  }, [byNetwork])
 
   const filtered = useMemo(() => {
-    let list = (launches ?? []).filter((l) => network === 'all' || l.network === network)
-    list = [...list].sort((a, b) =>
-      sort === 'soon' ? +new Date(a.launchAt) - +new Date(b.launchAt) : b.hype - a.hype
-    )
-    return list
-  }, [launches, network, sort])
+    const list =
+      status === 'all'
+        ? byNetwork
+        : byNetwork.filter((l) => (status === 'ended') === (l.status === 'ended'))
+    const at = (l: { launchAt: string }) => +new Date(l.launchAt)
+    return [...list].sort((a, b) => {
+      if (sort === 'hype') return b.hype - a.hype
+      // Por fecha, lo activo va primero y del más cercano al más lejano (los que
+      // se están lanzando ahora quedan arriba); lo finalizado, del más reciente
+      // al más antiguo, que es lo que interesa al repasar lo que ya salió.
+      const aEnded = a.status === 'ended'
+      const bEnded = b.status === 'ended'
+      if (aEnded !== bEnded) return aEnded ? 1 : -1
+      return aEnded ? at(b) - at(a) : at(a) - at(b)
+    })
+  }, [byNetwork, sort, status])
 
   const featured = useMemo(() => {
     const upcoming = (launches ?? []).filter((l) => l.status === 'upcoming')
@@ -55,6 +87,38 @@ export function RadarTab() {
     <div className="space-y-4">
       {/* Hero: featured launch */}
       {featured && <FeaturedLaunch launch={featured} onOpen={() => openLaunch(featured.id)} />}
+
+      {/* Estado: lo que está por salir o ya salió */}
+      <div
+        role="tablist"
+        aria-label="Estado de los launches"
+        className="inline-flex rounded-full border border-white/10 bg-[#121410] p-1"
+      >
+        {STATUS_TABS.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={status === t.key}
+            onClick={() => setStatus(t.key)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
+              status === t.key
+                ? 'bg-[#8FA83F]/15 text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t.label}
+            <span
+              className={cn(
+                'rounded-full px-1.5 font-mono text-[10px]',
+                status === t.key ? 'bg-[#8FA83F]/20' : 'bg-white/5'
+              )}
+            >
+              {counts[t.key]}
+            </span>
+          </button>
+        ))}
+      </div>
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
@@ -90,7 +154,7 @@ export function RadarTab() {
             className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'soon' ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground')}
           >
             <span className="flex items-center gap-1.5">
-              <Timer className="h-3.5 w-3.5" aria-hidden /> Próximos
+              <Timer className="h-3.5 w-3.5" aria-hidden /> Por fecha
             </span>
           </button>
           <button
