@@ -18,6 +18,7 @@ import type {
   PublicProfileDTO,
   PublicUserDTO,
   ReferralDTO,
+  SwapConfigDTO,
   TokenDTO,
   TokenDetailDTO,
   UserDTO,
@@ -353,6 +354,15 @@ export function useAffiliates() {
   return useQuery<AffiliatePlatformDTO[]>({
     queryKey: qk.affiliates,
     queryFn: () => jsonFetch('/api/affiliate'),
+    staleTime: 5 * 60_000,
+  })
+}
+
+/** Config para comprar sin salir de Cabal (Solana, Jupiter Terminal). */
+export function useSwapConfig() {
+  return useQuery<SwapConfigDTO>({
+    queryKey: ['swap', 'config'],
+    queryFn: () => jsonFetch('/api/swap/config'),
     staleTime: 5 * 60_000,
   })
 }

@@ -334,6 +334,14 @@ export interface AdminWaitlistDTO {
   }
 }
 
+// ---------- Comprar sin salir de Cabal (Solana, Jupiter Terminal) ----------
+export interface SwapConfigDTO {
+  enabled: boolean
+  solMint: string
+  /** null = el botón funciona igual, pero todavía sin comisión para Cabal. */
+  fee: { referralAccount: string; feeBps: number } | null
+}
+
 // ---------- Perfil público (/u/<handle>) ----------
 
 /** Launch publicado por el usuario, en la lista de proyectos de su perfil. */

@@ -189,7 +189,7 @@ export function LaunchDetailDialog() {
                   <CopyCA contract={launch.contract} className="max-w-[60%] text-[10px]" />
                 </div>
                 <LiveChart network={launch.network} contract={launch.contract} height={320} />
-                <ExternalLinksRow network={launch.network} contract={launch.contract} className="mt-2.5" />
+                <ExternalLinksRow network={launch.network} contract={launch.contract} ticker={launch.ticker ?? undefined} className="mt-2.5" />
               </section>
             )}
 

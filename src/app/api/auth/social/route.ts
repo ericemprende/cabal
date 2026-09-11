@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/seed'
 import { toUserDTO } from '@/lib/serializers'
 import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
@@ -30,7 +31,10 @@ export async function POST(req: NextRequest) {
     if (!value) return NextResponse.json({ error: 'Falta la cuenta del proveedor' }, { status: 400 })
 
     const name = typeof body.name === 'string' ? body.name : undefined
-    const { user, created } = await loginOrCreateSocial(provider, value, name)
+    // loginOrCreateSocial solo devuelve { id }: lo justo para abrir sesión. Aquí
+    // además se enseña el perfil completo, así que se vuelve a leer entero.
+    const { user: ref, created } = await loginOrCreateSocial(provider, value, name)
+    const user = await db.user.findUniqueOrThrow({ where: { id: ref.id } })
 
     const res = NextResponse.json({ ok: true, created, user: toUserDTO(user) })
     res.cookies.set(SESSION_COOKIE, createSessionValue(user.id), sessionCookieOptions())

@@ -124,7 +124,7 @@ export function TokenDetailDialog() {
                 {activeTab === 'live' ? (
                   <>
                     <LiveChart network={token.network} contract={token.contract} height={360} />
-                    <ExternalLinksRow network={token.network} contract={token.contract} className="mt-2" />
+                    <ExternalLinksRow network={token.network} contract={token.contract} ticker={token.ticker} className="mt-2" />
                   </>
                 ) : (
                   <div className="h-44 w-full">
