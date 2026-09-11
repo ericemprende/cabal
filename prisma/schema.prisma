@@ -37,6 +37,19 @@ model User {
   referredById  String?
   referredBy    User?    @relation("ReferralTree", fields: [referredById], references: [id])
   referrals     User[]   @relation("ReferralTree")
+  // Correo de la cuenta: seguridad (códigos por correo) y contacto (GHL). No es
+  // único en la base: dos cuentas pueden escribir el mismo sin verificarlo, y
+  // gana la primera que lo verifica (la unicidad se comprueba al verificar).
+  email            String?
+  emailVerified    Boolean  @default(false)
+  // Pide un código por correo al iniciar sesión con usuario y contraseña
+  twoFactorEnabled Boolean  @default(false)
+  // Cliente de Stripe, para abrir su portal de facturación
+  stripeCustomerId String?  @unique
+  // Sincronización con Go High Level (contacto etiquetado "Cabal")
+  ghlContactId  String?
+  ghlSyncedAt   DateTime?
+  ghlError      String?
   createdAt     DateTime @default(now())
   posts         Post[]
   launches      Launch[]
@@ -48,10 +61,16 @@ model User {
   wallets       WalletLink[]
   devClaims     DevClaim[]
   projectClaims ProjectClaim[]
+  subscriptions Subscription[]
+  payments      Payment[]
+  emailCodes    EmailCode[]
+  launchMemberships LaunchMember[] @relation("launchMember")
+  launchInvitesSent LaunchMember[] @relation("launchInviter")
 
   @@index([points])
   @@index([referredById])
   @@index([createdAt])
+  @@index([email])
 }
 
 model Launch {
@@ -65,6 +84,9 @@ model Launch {
   hidden        Boolean  @default(false)
   submitterRole String   @default("community") // dev = lo sube su propio dev | community = scout que comparte info
   contract      String?  // CA del token si ya fue desplegado (para gráfico en vivo)
+  // Datos premium: su visibilidad la decide el admin (ver lib/premium.ts)
+  devWallet     String?  // wallet del dev, si se conoce
+  launchpad     String?  // plataforma donde sale el token (pump.fun, Zora…)
   network       String   @default("solana")
   launchAt      DateTime
   description   String
@@ -83,10 +105,98 @@ model Launch {
   createdBy     User     @relation(fields: [createdById], references: [id])
   posts         Post[]
   token         Token?
+  members       LaunchMember[]
 
   @@index([status, launchAt])
   @@index([createdById])
   @@index([contract])
+}
+
+// Equipo de un launch: el dev invita a otros usuarios con un rol (Programador,
+// Team, Moderador…). La invitación no cuenta hasta que el invitado la acepta,
+// para que nadie aparezca en el equipo de un proyecto sin quererlo.
+model LaunchMember {
+  id          String    @id @default(cuid())
+  launchId    String
+  launch      Launch    @relation(fields: [launchId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("launchMember", fields: [userId], references: [id])
+  role        String    // programador | team | moderador (ver lib/launch-team.ts)
+  status      String    @default("pending") // pending | accepted | declined
+  invitedById String
+  invitedBy   User      @relation("launchInviter", fields: [invitedById], references: [id])
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@unique([launchId, userId])
+  @@index([userId, status])
+}
+
+// Acceso premium. Una fila por suscripción de Stripe, por pago en cripto
+// (NOWPayments) o por concesión manual del admin. El usuario es premium
+// mientras tenga alguna fila activa con el periodo en curso.
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id])
+  provider             String    // stripe | nowpayments | admin
+  plan                 String    // monthly | biannual | annual | custom
+  status               String    // active | trialing | past_due | canceled | unpaid | incomplete | incomplete_expired | paused
+  currentPeriodEnd     DateTime? // null = sin caducidad (solo concesiones del admin)
+  cancelAtPeriodEnd    Boolean   @default(false)
+  stripeSubscriptionId String?   @unique
+  // Fecha del último evento de Stripe aplicado: los webhooks pueden llegar
+  // desordenados y uno viejo no debe pisar un estado más reciente.
+  stripeEventAt        DateTime?
+  paymentId            String?   @unique // pago en cripto que la originó
+  note                 String    @default("")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([userId, status])
+}
+
+// Cada cobro: facturas de Stripe (pagadas o fallidas) y facturas de
+// NOWPayments desde que se crean hasta que se pagan. Es el historial del admin
+// y el ancla idempotente de las notificaciones de los proveedores.
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  provider          String   // stripe | nowpayments
+  plan              String
+  amountUsd         Float
+  // stripe: paid | failed · nowpayments: waiting | confirming | confirmed |
+  // sending | partially_paid | finished | failed | refunded | expired
+  status            String
+  externalId        String?  // id de la factura en el proveedor
+  providerPaymentId String?  // payment_id de NOWPayments
+  payCurrency       String?
+  actuallyPaid      Float?
+  invoiceUrl        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, externalId])
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+// Códigos de seguridad enviados por correo (verificar el correo, entrar con
+// 2FA, activar o desactivar el 2FA). Se guarda el hash, nunca el código.
+model EmailCode {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose    String    // verify_email | login | two_factor
+  email      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, purpose, createdAt])
 }
 
 model Token {
