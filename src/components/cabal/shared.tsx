@@ -3,7 +3,25 @@
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Check, CheckCircle2, Copy, Globe2, Lock, Timer, XCircle, Zap } from 'lucide-react'
+import {
+  Check,
+  CheckCircle2,
+  Copy,
+  Crown,
+  Flame,
+  Gem,
+  GraduationCap,
+  Globe2,
+  Heart,
+  Lock,
+  Rocket,
+  ShieldCheck,
+  Timer,
+  XCircle,
+  Zap,
+} from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import type { BadgeDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { displayImageUrl } from '@/lib/remote-image'
 import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
@@ -123,6 +141,7 @@ export function UserAvatar({
   src,
   size = 'md',
   verified,
+  premium,
   className,
   ring = true,
 }: {
@@ -132,6 +151,8 @@ export function UserAvatar({
   src?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   verified?: boolean
+  /** Plan Premium activo: la coronita, arriba a la derecha. */
+  premium?: boolean
   className?: string
   ring?: boolean
 }) {
@@ -191,6 +212,66 @@ export function UserAvatar({
           </svg>
         </span>
       )}
+      {premium && (
+        <span
+          className="absolute -top-1.5 left-1/2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-[#0a0b08]"
+          title="Premium"
+        >
+          <Crown className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-label="Premium" />
+        </span>
+      )}
+    </div>
+  )
+}
+
+// ---------- Pill "PRO" junto al nombre (ver también el prop `premium` de UserAvatar) ----------
+export function PremiumPill({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-300',
+        className
+      )}
+    >
+      <Crown className="h-3 w-3 fill-amber-300" aria-hidden /> Pro
+    </span>
+  )
+}
+
+// ---------- Emblemas del perfil (fundador, actividad…) ----------
+const BADGE_ICONS: Record<string, typeof Gem> = {
+  gem: Gem,
+  'shield-check': ShieldCheck,
+  flame: Flame,
+  rocket: Rocket,
+  'graduation-cap': GraduationCap,
+  heart: Heart,
+  zap: Zap,
+}
+
+export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className?: string }) {
+  if (badges.length === 0) return null
+  return (
+    <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
+      {badges.map((b) => {
+        const Icon = BADGE_ICONS[b.icon] ?? Gem
+        return (
+          <Tooltip key={b.id}>
+            <TooltipTrigger asChild>
+              <span
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-[#8FA83F]/30 bg-[#8FA83F]/10 text-primary transition-colors hover:border-[#8FA83F]/60"
+                aria-label={`${b.label}: ${b.description}`}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[220px] text-center">
+              <p className="font-bold">{b.label}</p>
+              <p className="font-normal opacity-90">{b.description}</p>
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
     </div>
   )
 }

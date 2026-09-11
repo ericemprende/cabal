@@ -27,6 +27,8 @@ interface UIState {
   authMode: AuthMode
   setAuthMode: (m: AuthMode) => void
   openAuth: (mode?: AuthMode) => void
+  premiumOpen: boolean
+  setPremiumOpen: (v: boolean) => void
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -51,4 +53,6 @@ export const useUI = create<UIState>((set) => ({
   authMode: 'login',
   setAuthMode: (authMode) => set({ authMode }),
   openAuth: (mode) => set({ authOpen: true, ...(mode ? { authMode: mode } : {}) }),
+  premiumOpen: false,
+  setPremiumOpen: (premiumOpen) => set({ premiumOpen }),
 }))

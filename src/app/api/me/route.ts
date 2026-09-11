@@ -2,28 +2,56 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser, getPointRules } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
+import { premiumStatus } from '@/lib/premium'
+import { computeBadges, isFounder } from '@/lib/badges'
 import type { DevClaimStats, MeDTO } from '@/lib/types'
 
 export async function GET() {
   try {
     const me = await getCurrentUser()
-    const [followed, pointEvents, rules, postCount, launchCount, hypes, likesReceived, wallets, devClaims] =
-      await Promise.all([
-        db.follow.findMany({ where: { userId: me.id } }),
-        db.pointEvent.findMany({
-          where: { userId: me.id },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-        }),
-        getPointRules(),
-        db.post.count({ where: { userId: me.id } }),
-        db.launch.count({ where: { createdById: me.id } }),
-        db.vote.count({ where: { userId: me.id, target: 'launch' } }),
-        db.post.aggregate({ where: { userId: me.id }, _sum: { likes: true } }),
-        db.walletLink.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),
-        db.devClaim.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),
-      ])
+    const [
+      followed,
+      pointEvents,
+      rules,
+      postCount,
+      thesesCount,
+      launchCount,
+      hypes,
+      likesReceived,
+      wallets,
+      devClaims,
+      premium,
+    ] = await Promise.all([
+      db.follow.findMany({ where: { userId: me.id } }),
+      db.pointEvent.findMany({
+        where: { userId: me.id },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+      getPointRules(),
+      db.post.count({ where: { userId: me.id } }),
+      db.post.count({ where: { userId: me.id, kind: 'thesis' } }),
+      db.launch.count({ where: { createdById: me.id } }),
+      db.vote.count({ where: { userId: me.id, target: 'launch' } }),
+      db.post.aggregate({ where: { userId: me.id }, _sum: { likes: true } }),
+      db.walletLink.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),
+      db.devClaim.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),
+      premiumStatus(me.id, me.isAdmin),
+    ])
     const followedIds = new Set(followed.map((f) => f.targetId))
+    const badges = computeBadges({
+      createdAt: me.createdAt,
+      isDev: me.isDev,
+      walletVerified: me.walletVerified,
+      isFounder: await isFounder(me.createdAt),
+      stats: {
+        launchesCount: launchCount,
+        thesesCount,
+        postsCount: postCount,
+        likesReceived: likesReceived._sum.likes ?? 0,
+        hypesGiven: hypes,
+      },
+    })
 
     // rank by points
     const pointsRank = (await db.user.count({ where: { points: { gt: me.points } } })) + 1
@@ -68,6 +96,8 @@ export async function GET() {
         createdAt: c.createdAt.toISOString(),
         verifiedAt: c.verifiedAt?.toISOString() ?? null,
       })),
+      premium,
+      badges,
     }
     return NextResponse.json(dto)
   } catch (e) {

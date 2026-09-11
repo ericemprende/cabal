@@ -9,6 +9,8 @@ import { invalidate } from '@/lib/cache'
 import { getIpfsImage } from '@/lib/ipfs-cache'
 import { parseLaunchInput, type LaunchInput } from '@/lib/launch-input'
 import { ipfsCid } from '@/lib/remote-image'
+import { getPremiumSettings, getViewer, launchAccess, premiumLaunchFields } from '@/lib/premium'
+import { teamManagerIds, toMemberDTO } from '@/lib/launch-team'
 import type { LaunchDetailDTO, PostDTO } from '@/lib/types'
 
 /**
@@ -42,7 +44,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
     }
 
-    const [posts, votes, follows] = await Promise.all([
+    const [posts, votes, follows, members, managers, viewer, settings] = await Promise.all([
       db.post.findMany({
         where: { launchId: launch.id },
         include: { user: true },
@@ -50,12 +52,32 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }),
       db.vote.findMany({ where: { userId: me.id } }),
       db.follow.findMany({ where: { userId: me.id } }),
+      db.launchMember.findMany({
+        where: { launchId: launch.id, status: { in: ['accepted', 'pending'] } },
+        include: { user: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      teamManagerIds(launch),
+      getViewer(req),
+      getPremiumSettings(),
     ])
     // Quien puede editar necesita ver el ticker aunque el launch sea privado: si
     // no, el formulario lo cargaría vacío y al guardar lo borraría.
     const canEdit = await canEditLaunch(req, launch.createdById)
     const likedIds = new Set(votes.filter((v) => v.target === 'post').map((v) => v.targetId))
     const followedIds = new Set(follows.map((f) => f.targetId))
+
+    // Equipo: los aceptados son públicos; las invitaciones pendientes solo las
+    // ve quien gestiona el equipo (y cada invitado, la suya).
+    const accepted = members.filter((m) => m.status === 'accepted')
+    const invites = members.filter((m) => m.status === 'pending')
+    const viewerId = viewer.userId
+    const canManageTeam = viewer.isAdmin || (viewerId !== null && managers.has(viewerId))
+    const isTeamMember = viewerId !== null && accepted.some((m) => m.userId === viewerId)
+    const myInvite = viewerId ? invites.find((m) => m.userId === viewerId) : undefined
+    // Los datos premium de SU launch los ve todo el equipo, sin suscripción
+    const inTeam = isTeamMember || (viewerId !== null && managers.has(viewerId))
+    const access = launchAccess(viewer, launch, new Set(inTeam ? [launch.id] : []))
 
     const dto: LaunchDetailDTO = {
       id: launch.id,
@@ -67,7 +89,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       isPrivate: launch.isPrivate,
       hidden: launch.hidden,
       submitterRole: launch.submitterRole === 'dev' ? 'dev' : 'community',
-      contract: launch.contract,
+      ...premiumLaunchFields(launch, access, settings.fields),
       network: launch.network,
       launchAt: launch.launchAt.toISOString(),
       description: launch.description,
@@ -86,6 +108,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       createdBy: toPublicUserDTO(launch.createdBy, followedIds.has(launch.createdById)),
       postsCount: posts.length,
       canEdit,
+      team: accepted.map(toMemberDTO),
+      pendingInvites: canManageTeam ? invites.map(toMemberDTO) : [],
+      canManageTeam,
+      myInvite: myInvite ? toMemberDTO(myInvite) : null,
+      isTeamMember,
       posts: (await Promise.all(
         posts.map((p) => toPostDTO(p, likedIds.has(p.id)))
       )) as PostDTO[],
@@ -120,6 +147,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     // hubiera (puede venir del panel de admin) en vez de pisarlo con el de serie.
     const data: Partial<LaunchInput> = { ...parsed.data }
     if (!(typeof body.emoji === 'string' && body.emoji)) delete data.emoji
+    // Igual con los datos premium: un cliente que no los envía no los borra
+    if (!('devWallet' in body)) delete data.devWallet
+    if (!('launchpad' in body)) delete data.launchpad
 
     const updated = await db.launch.update({ where: { id }, data })
     await invalidate('launches:*')

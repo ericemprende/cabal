@@ -23,12 +23,15 @@ type DbUser = {
   followers: number
   points: number
   lifetimePoints: number
+  email?: string | null
+  emailVerified?: boolean
+  twoFactorEnabled?: boolean
 }
 
 /**
  * Versión pública del usuario. Es la que deben usar todas las rutas abiertas
- * (feed, leaderboard, tokens, launches, perfil): omite la wallet, el correo de
- * Google y la marca de admin.
+ * (feed, leaderboard, tokens, launches, perfil): omite la wallet, los correos
+ * y la marca de admin.
  */
 export function toPublicUserDTO(u: DbUser, isFollowed?: boolean): PublicUserDTO {
   return {
@@ -63,6 +66,9 @@ export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
     wallet: u.wallet,
     googleEmail: u.googleEmail,
     isAdmin: u.isAdmin,
+    email: u.email ?? null,
+    emailVerified: u.emailVerified ?? false,
+    twoFactorEnabled: u.twoFactorEnabled ?? false,
   }
 }
 

@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
 import { NETWORKS } from '@/lib/cabal'
 import { toUserDTO } from '@/lib/serializers'
+import { invalidate } from '@/lib/cache'
 import type { LaunchDTO } from '@/lib/types'
 
 const safeUrl = (v: unknown) =>
@@ -12,6 +13,12 @@ const safeUrl = (v: unknown) =>
 
 const safeContract = (v: unknown) =>
   typeof v === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(v.trim()) ? v.trim() : null
+
+const safeWallet = (v: unknown) =>
+  typeof v === 'string' && /^(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})$/.test(v.trim()) ? v.trim() : null
+
+const safeLaunchpad = (v: unknown) =>
+  typeof v === 'string' && /^[\p{L}\p{N} ._-]{2,40}$/u.test(v.trim()) ? v.trim() : null
 
 // GET: lista completa para el admin (incluye launches ocultos, ticker real de privados)
 export async function GET(req: Request) {
@@ -32,6 +39,9 @@ export async function GET(req: Request) {
       hidden: l.hidden,
       submitterRole: l.submitterRole === 'dev' ? 'dev' : 'community',
       contract: l.contract,
+      devWallet: l.devWallet,
+      launchpad: l.launchpad,
+      lockedFields: [],
       network: l.network,
       launchAt: l.launchAt.toISOString(),
       description: l.description,
@@ -92,6 +102,8 @@ export async function PATCH(req: Request) {
     if ('image' in body) data.image = safeUrl(body.image)
     if ('banner' in body) data.banner = safeUrl(body.banner)
     if ('contract' in body) data.contract = safeContract(body.contract)
+    if ('devWallet' in body) data.devWallet = safeWallet(body.devWallet)
+    if ('launchpad' in body) data.launchpad = safeLaunchpad(body.launchpad)
     // Streaming en vivo: toggle + link del stream (YouTube, Twitch, Vimeo…)
     if (typeof body.isLive === 'boolean') data.isLive = body.isLive
     if ('liveUrl' in body) data.liveUrl = body.isLive === false ? null : safeUrl(body.liveUrl)
@@ -108,6 +120,8 @@ export async function PATCH(req: Request) {
     }
 
     const updated = await db.launch.update({ where: { id }, data })
+    // La lista del Radar está cacheada: sin esto el cambio tardaría hasta un minuto
+    await invalidate('launches:*')
     return NextResponse.json({ ok: true, launch: { id: updated.id, hidden: updated.hidden } })
   } catch (e) {
     if (e instanceof ForbiddenError) return NextResponse.json({ error: e.message }, { status: 403 })

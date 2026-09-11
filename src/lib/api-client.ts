@@ -16,6 +16,7 @@ import type {
   LeaderboardDTO,
   MeDTO,
   PostDTO,
+  PremiumInfoDTO,
   ProjectClaimDTO,
   PublicProfileDTO,
   PublicUserDTO,
@@ -134,6 +135,7 @@ export const qk = {
   user: (handle: string) => ['user', handle.toLowerCase()] as const,
   userFollows: (handle: string, type: 'followers' | 'following') =>
     ['user', handle.toLowerCase(), type] as const,
+  premium: ['premium'] as const,
 }
 
 export function useMe() {
@@ -975,5 +977,59 @@ export function useUserFollows(handle: string, type: 'followers' | 'following', 
     queryKey: qk.userFollows(handle, type),
     queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/follows?type=${type}`),
     enabled: enabled && Boolean(handle),
+  })
+}
+
+// ---------- Premium ----------
+
+/** Planes a la venta, pasarelas disponibles y el estado premium de quien pregunta. */
+export function usePremiumInfo(enabled = true) {
+  return useQuery<PremiumInfoDTO>({
+    queryKey: qk.premium,
+    queryFn: () => jsonFetch('/api/premium'),
+    enabled,
+  })
+}
+
+/**
+ * Arranca el pago de un plan y redirige a la pasarela (Stripe Checkout o la
+ * factura de NOWPayments). El acceso se activa solo cuando el proveedor
+ * confirma el pago; aquí solo se abre la página para pagar.
+ */
+export function useStartPremiumCheckout() {
+  return useMutation({
+    mutationFn: (data: { plan: string; method: 'card' | 'crypto' }) =>
+      jsonFetch<{ url: string }>('/api/premium/checkout', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: (res) => {
+      window.location.assign(res.url)
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+/** Portal de facturación de Stripe: cambiar tarjeta, cancelar, descargar facturas. */
+export function useOpenBillingPortal() {
+  return useMutation({
+    mutationFn: () => jsonFetch<{ url: string }>('/api/premium/portal', { method: 'POST' }),
+    onSuccess: (res) => {
+      window.location.assign(res.url)
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+/** Confirma el pago al volver de Stripe Checkout (?session_id=...), sin esperar al webhook. */
+export function useConfirmPremiumCheckout() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      jsonFetch<{ status: unknown }>('/api/premium/confirm', {
+        method: 'POST',
+        body: JSON.stringify({ sessionId }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.me })
+      qc.invalidateQueries({ queryKey: qk.premium })
+    },
   })
 }
