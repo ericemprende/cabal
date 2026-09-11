@@ -6,7 +6,13 @@ const MIN = 60 * 1000
 
 export async function ensureSeeded(): Promise<void> {
   if (!seedPromise) {
-    seedPromise = seed()
+    // Si falla (p. ej. Postgres aún no responde), se olvida para reintentarlo en
+    // la siguiente petición. Guardar la promesa rechazada dejaba toda la API
+    // devolviendo 500 hasta reiniciar el servidor.
+    seedPromise = seed().catch((e) => {
+      seedPromise = null
+      throw e
+    })
   }
   return seedPromise
 }

@@ -58,6 +58,8 @@ server.log
 upload/cards/
 # Copias locales de las imágenes de IPFS de los tokens (caché, se regeneran solas)
 upload/img/
+# Imágenes que suben los usuarios (viven en el volumen de producción)
+upload/uploads/
 
 # Volcados de base de datos: contienen datos reales, no van al repo
 db/backups/
