@@ -98,7 +98,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-3 pb-24 pt-4 sm:px-4 md:pb-12">
+      <main className="mx-auto w-full max-w-[1800px] flex-1 px-3 pb-24 pt-4 sm:px-4 md:pb-12">
         <div className="flex gap-5">
           <LeftFeed />
 
@@ -131,7 +131,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-white/10 pb-16 pt-6 md:pb-10" style={{ marginBottom: 0 }}>
-        <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row">
+        <div className="mx-auto flex max-w-[1800px] flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row">
           <p>
             <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · la comunidad que ve los launches antes que nadie
           </p>
