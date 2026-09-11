@@ -276,6 +276,49 @@ export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className
   )
 }
 
+// ---------- Dato premium bloqueado: valor borroso + botón para desbloquear ----------
+// El launch SÍ tiene el dato (por eso está en lockedFields), pero no lo ve
+// quien mira. Enseñar un valor falso desenfocado en vez de ocultar la fila del
+// todo es lo que hace evidente que hay algo detrás, y por qué merece la pena pagar.
+export function PremiumLockedRow({
+  icon,
+  label,
+  fakeValue,
+  onUnlock,
+  className,
+}: {
+  icon: React.ReactNode
+  label: string
+  /** Texto de relleno con la forma del dato real (largo similar), nunca el dato en sí. */
+  fakeValue: string
+  onUnlock: () => void
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onUnlock}
+      className={cn(
+        'group flex w-full items-center gap-2.5 rounded-lg border border-amber-400/20 bg-amber-400/[0.04] px-3 py-2 text-left transition-colors hover:border-amber-400/40 hover:bg-amber-400/[0.07]',
+        className
+      )}
+    >
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-amber-400/25 bg-amber-400/10 text-amber-300">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="block select-none truncate font-mono text-[13px] text-foreground/70 blur-[5px]" aria-hidden>
+          {fakeValue}
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-[11px] font-bold text-[#171200] transition-colors group-hover:bg-amber-300">
+        <Lock className="h-3 w-3" aria-hidden /> Desbloquear
+      </span>
+    </button>
+  )
+}
+
 // ---------- Glyph de token/launch (imagen si hay, iniciales monocromas si no) ----------
 export function TokenGlyph({
   src,

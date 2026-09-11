@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, Eye, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
+import { Bell, ChevronDown, Crown, Eye, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -33,7 +33,7 @@ export function Header() {
   const { data: leaderboard } = useLeaderboard()
   const router = useRouter()
   const logout = useLogout()
-  const { setSearchOpen, setProfileOpen, setAdminOpen, setAffiliatesOpen, setTab, openLaunch, openAuth } = useUI()
+  const { setSearchOpen, setProfileOpen, setAdminOpen, setAffiliatesOpen, setPremiumOpen, setTab, openLaunch, openAuth } = useUI()
   const loggedIn = !!session?.loggedIn
 
   const soon = useMemo(() => {
@@ -126,16 +126,45 @@ export function Header() {
           {/* Autenticación */}
           {loggedIn ? (
             /* Cuenta logueada: menú con cerrar sesión */
+            <>
+              {/* Botón Premium siempre a la vista: no depende de abrir el menú ni "Mi Cabal" */}
+              {!me?.premium.active ? (
+                <Button
+                  size="sm"
+                  onClick={() => setPremiumOpen(true)}
+                  className="hidden h-9 gap-1.5 rounded-lg bg-amber-400 px-3 text-[13px] font-bold text-[#171200] hover:bg-amber-300 sm:inline-flex"
+                >
+                  <Crown className="h-4 w-4 fill-[#171200]" aria-hidden /> Hazte Pro
+                </Button>
+              ) : (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setPremiumOpen(true)}
+                  className="hidden h-9 w-9 text-amber-300 hover:text-amber-200 sm:inline-flex"
+                  aria-label="Tu plan Premium"
+                  title="Tu plan Premium"
+                >
+                  <Crown className="h-[18px] w-[18px] fill-amber-300" aria-hidden />
+                </Button>
+              )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-1.5 rounded-full outline-none" aria-label="Menú de usuario">
-                  <UserAvatar name={me?.name} handle={me?.handle} src={me?.avatar} size="sm" verified={me?.walletVerified} />
+                  <UserAvatar
+                    name={me?.name}
+                    handle={me?.handle}
+                    src={me?.avatar}
+                    size="sm"
+                    verified={me?.walletVerified}
+                    premium={me?.premium.active}
+                  />
                   <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-60 border-white/10 bg-popover">
                 <DropdownMenuLabel className="flex items-center gap-2.5 pb-2">
-                  <UserAvatar name={me?.name} handle={me?.handle} src={me?.avatar} size="sm" />
+                  <UserAvatar name={me?.name} handle={me?.handle} src={me?.avatar} size="sm" premium={me?.premium.active} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold">{me?.name ?? 'Tú'}</p>
                     <p className="truncate text-xs text-muted-foreground">@{me?.handle ?? 'tu'}</p>
@@ -149,6 +178,9 @@ export function Header() {
                   </div>
                 )}
                 <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
+                <DropdownMenuItem onClick={() => setPremiumOpen(true)} className="gap-2 text-[13px] text-amber-300 focus:text-amber-300 sm:hidden">
+                  <Crown className="h-4 w-4 fill-amber-300" /> {me?.premium.active ? 'Tu plan Premium' : 'Hazte Pro'}
+                </DropdownMenuItem>
                 {me?.handle && (
                   <DropdownMenuItem onClick={() => router.push(`/u/${me.handle}`)} className="gap-2 text-[13px]">
                     <Eye className="h-4 w-4" /> Ver mi perfil
@@ -178,6 +210,7 @@ export function Header() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            </>
           ) : (
             /* Invitado: un solo botón → abre el acceso (dentro se puede iniciar sesión o crear cuenta) */
             <div className="flex items-center gap-1.5">
