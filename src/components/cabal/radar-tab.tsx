@@ -2,8 +2,15 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
+import { ChevronDown, Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown } from '@/components/cabal/shared'
 import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
@@ -88,38 +95,6 @@ export function RadarTab() {
       {/* Hero: featured launch */}
       {featured && <FeaturedLaunch launch={featured} onOpen={() => openLaunch(featured.id)} />}
 
-      {/* Estado: lo que está por salir o ya salió */}
-      <div
-        role="tablist"
-        aria-label="Estado de los launches"
-        className="inline-flex rounded-full border border-white/10 bg-[#121410] p-1"
-      >
-        {STATUS_TABS.map((t) => (
-          <button
-            key={t.key}
-            role="tab"
-            aria-selected={status === t.key}
-            onClick={() => setStatus(t.key)}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all',
-              status === t.key
-                ? 'bg-[#8FA83F]/15 text-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {t.label}
-            <span
-              className={cn(
-                'rounded-full px-1.5 font-mono text-[10px]',
-                status === t.key ? 'bg-[#8FA83F]/20' : 'bg-white/5'
-              )}
-            >
-              {counts[t.key]}
-            </span>
-          </button>
-        ))}
-      </div>
-
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
         {/* Chips con wrap: todas las redes visibles sin scroll oculto (móvil incluido) */}
@@ -148,7 +123,28 @@ export function RadarTab() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {/* Estado: lo que está por salir o ya salió (desplegable para ahorrar una fila) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Estado de los launches"
+              className="flex items-center gap-1.5 rounded-full border border-[#8FA83F]/50 bg-[#8FA83F]/10 px-3 py-1.5 text-xs font-semibold text-primary outline-none"
+            >
+              {STATUS_TABS.find((t) => t.key === status)?.label}
+              <span className="rounded-full bg-[#8FA83F]/20 px-1.5 font-mono text-[10px]">{counts[status]}</span>
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44 border-white/10 bg-popover">
+              <DropdownMenuRadioGroup value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
+                {STATUS_TABS.map((t) => (
+                  <DropdownMenuRadioItem key={t.key} value={t.key} className="justify-between text-[13px]">
+                    {t.label}
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">{counts[t.key]}</span>
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             onClick={() => setSort('soon')}
             className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'soon' ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground')}
