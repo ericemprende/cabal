@@ -49,7 +49,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0b08]/85 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-3 sm:px-4">
+      <div className="mx-auto flex h-14 max-w-[1800px] items-center gap-3 px-3 sm:px-4">
         <button
           className="flex items-center outline-none"
           onClick={() => goToTab('radar')}

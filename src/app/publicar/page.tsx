@@ -273,7 +273,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     <div className="flex min-h-screen flex-col">
       {/* Top bar */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0b08]/85 backdrop-blur-md">
-        <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center gap-3 px-3 sm:px-4">
+        <div className="mx-auto flex h-14 w-full max-w-[1800px] items-center gap-3 px-3 sm:px-4">
           <Link
             href="/app"
             className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
@@ -601,7 +601,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
 
       {/* Footer (sticky bottom via mt-auto) */}
       <footer className="mt-auto border-t border-white/10 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
-        <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row">
+        <div className="mx-auto flex max-w-[1800px] flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row">
           <p>
             <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · la comunidad que ve los launches antes que nadie
           </p>

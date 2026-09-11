@@ -32,7 +32,7 @@ export function LeftFeed() {
   )
 
   return (
-    <aside className="hidden w-[300px] shrink-0 lg:block" aria-label="Actividad en vivo">
+    <aside className="hidden w-[375px] shrink-0 lg:block" aria-label="Actividad en vivo">
       <div className="sticky top-[72px] max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
         <div className="mb-2 flex items-center gap-2 px-1">
           <Radio className="h-3.5 w-3.5 text-primary live-dot" />

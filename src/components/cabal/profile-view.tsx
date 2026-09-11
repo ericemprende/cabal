@@ -38,7 +38,7 @@ export function ProfileView({ handle }: { handle: string }) {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-3 pb-24 pt-4 sm:px-4 md:pb-12">
+      <main className="mx-auto w-full max-w-[1800px] flex-1 px-3 pb-24 pt-4 sm:px-4 md:pb-12">
         <div className="flex gap-5">
           <LeftFeed />
 
