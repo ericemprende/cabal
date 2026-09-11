@@ -13,7 +13,10 @@ const safeUrl = (v: unknown) =>
 export async function GET(req: Request) {
   try {
     await requireAdmin(req)
-    const tokens = await db.token.findMany({ include: { dev: true }, orderBy: { mc: 'desc' } })
+    const tokens = await db.token.findMany({
+      include: { dev: true, launch: { include: { createdBy: true } } },
+      orderBy: { mc: 'desc' },
+    })
     const dto: TokenDTO[] = tokens.map((t) => ({
       id: t.id,
       name: t.name,
@@ -31,7 +34,8 @@ export async function GET(req: Request) {
       launchedAt: t.launchedAt.toISOString(),
       athMc: t.athMc,
       isRug: t.isRug,
-      dev: toUserDTO(t.dev),
+      dev: t.dev ? toUserDTO(t.dev) : null,
+      publishedBy: t.launch ? toUserDTO(t.launch.createdBy) : null,
       postsCount: 0,
     }))
     return NextResponse.json(dto)

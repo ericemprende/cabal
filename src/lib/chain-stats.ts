@@ -353,3 +353,40 @@ export async function fetchTokenStats(network: string, ca: string): Promise<Chai
 
   return stats
 }
+
+/** Datos de mercado de un token para la pestaña Tokens. */
+export type MarketSnapshot = {
+  priceUsd: number
+  marketCap: number
+  volume24h: number
+  change24h: number
+}
+
+/**
+ * Datos de mercado de varios tokens de una vez: DexScreener admite hasta 30
+ * contratos por llamada. Devuelve solo los que tienen par; los que aún no
+ * cotizan (p. ej. en la curva de pump.fun) no aparecen en el mapa.
+ */
+export async function fetchMarketBatch(contracts: string[]): Promise<Map<string, MarketSnapshot>> {
+  const out = new Map<string, MarketSnapshot>()
+  const unique = [...new Set(contracts.filter(Boolean))]
+  for (let i = 0; i < unique.length; i += 30) {
+    const chunk = unique.slice(i, i + 30)
+    const json = await fetchJson<{ pairs?: DexPair[] }>(
+      `https://api.dexscreener.com/latest/dex/tokens/${chunk.map(encodeURIComponent).join(',')}`,
+      8000
+    )
+    for (const ca of chunk) {
+      const pair = pickPair(json?.pairs ?? [], ca)
+      if (!pair) continue
+      out.set(ca, {
+        priceUsd: pair.priceUsd ? Number(pair.priceUsd) || 0 : 0,
+        // marketCap cuando DexScreener lo da; si no, el FDV es la mejor aproximación
+        marketCap: pair.marketCap ?? pair.fdv ?? 0,
+        volume24h: pair.volume?.h24 ?? 0,
+        change24h: pair.priceChange?.h24 ?? 0,
+      })
+    }
+  }
+  return out
+}

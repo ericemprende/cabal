@@ -8,7 +8,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   try {
     const { id } = await params
     const me = await getCurrentUser()
-    const token = await db.token.findUnique({ where: { id }, include: { dev: true } })
+    const token = await db.token.findUnique({
+      where: { id },
+      include: { dev: true, launch: { include: { createdBy: true } } },
+    })
     if (!token) return NextResponse.json({ error: 'Token no encontrado' }, { status: 404 })
 
     const [posts, votes, follows, devTokens] = await Promise.all([
@@ -19,7 +22,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       }),
       db.vote.findMany({ where: { userId: me.id } }),
       db.follow.findMany({ where: { userId: me.id } }),
-      db.token.findMany({ where: { devId: token.devId }, orderBy: { launchedAt: 'desc' } }),
+      // Sin dev no hay historial. Ojo: un where { devId: null } devolvería todos
+      // los tokens sin dev, como si fueran de esta persona.
+      token.devId
+        ? db.token.findMany({ where: { devId: token.devId }, orderBy: { launchedAt: 'desc' } })
+        : Promise.resolve([]),
     ])
     const likedIds = new Set(votes.filter((v) => v.target === 'post').map((v) => v.targetId))
     const followedIds = new Set(follows.map((f) => f.targetId))
@@ -51,7 +58,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       launchedAt: token.launchedAt.toISOString(),
       athMc: token.athMc,
       isRug: token.isRug,
-      dev: toPublicUserDTO(token.dev, followedIds.has(token.devId)),
+      dev: token.dev ? toPublicUserDTO(token.dev, followedIds.has(token.dev.id)) : null,
+      publishedBy: token.launch
+        ? toPublicUserDTO(token.launch.createdBy, followedIds.has(token.launch.createdById))
+        : null,
       postsCount: posts.length,
       chart: generateChart(token.id, token.mc, token.change24h, token.isRug),
       posts: (await Promise.all(posts.map((p) => toPostDTO(p, likedIds.has(p.id))))) ?? [],

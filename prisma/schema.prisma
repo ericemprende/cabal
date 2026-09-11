@@ -82,6 +82,7 @@ model Launch {
   createdAt     DateTime @default(now())
   createdBy     User     @relation(fields: [createdById], references: [id])
   posts         Post[]
+  token         Token?
 
   @@index([status, launchAt])
   @@index([createdById])
@@ -102,8 +103,15 @@ model Token {
   holders    Int      @default(0)
   top10Pct   Float    @default(25)
   contract   String   @default("")
-  devId      String
-  dev        User     @relation(fields: [devId], references: [id])
+  // Opcional: un token publicado por un scout no tiene dev hasta que alguien
+  // lo reclama y se verifica on-chain. Así el historial de un dev solo recoge
+  // lo que de verdad lanzó, no lo que otros encontraron.
+  devId      String?
+  dev        User?    @relation(fields: [devId], references: [id])
+  // Launch del Radar del que salió este token, si vino de ahí (da el
+  // "publicado por" y evita crear el mismo token dos veces).
+  launchId   String?  @unique
+  launch     Launch?  @relation(fields: [launchId], references: [id])
   launchedAt DateTime
   athMc      Float    @default(0)
   isRug      Boolean  @default(false)

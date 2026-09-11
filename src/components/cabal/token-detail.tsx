@@ -14,6 +14,7 @@ import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useToken } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import type { TokenDetailDTO } from '@/lib/types'
 
 export function TokenDetailDialog() {
   const { tokenDetailId, openToken } = useUI()
@@ -166,75 +167,16 @@ export function TokenDetailDialog() {
             </div>
 
             {/* DEV TRACK RECORD — el diferencial */}
-            <div className="border-b border-white/10 p-5">
-              <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> Historial del dev
-                <span className="font-normal normal-case text-primary/80">· verificado por wallet</span>
-              </p>
-              <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2.5">
-                  <UserAvatar name={token.dev.name} handle={token.dev.handle} src={token.dev.avatar} size="lg" verified={token.dev.walletVerified} />
-                  <div>
-                    <p className="flex items-center gap-1 text-sm font-bold">
-                      {token.dev.name}
-                      {token.dev.walletVerified && <BadgeCheck className="h-4 w-4 text-primary" />}
-                    </p>
-                    <p className="text-xs text-muted-foreground">@{token.dev.handle}</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">
-                      {token.dev.walletVerified ? 'Wallet verificada' : 'Wallet sin verificar'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 sm:ml-auto sm:justify-end">
-                  <div className="text-center">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Tokens</p>
-                    <p className="text-sm font-bold">{token.devStats.tokensLaunched}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rugs</p>
-                    <p className={cn('text-sm font-bold', token.devStats.rugs > 0 ? 'text-[#ff8080]' : 'text-primary')}>{token.devStats.rugs}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ret. ATH</p>
-                    <p className={cn('text-sm font-bold', token.devStats.avgPerformance >= 50 ? 'text-primary' : 'text-amber-300')}>
-                      {token.devStats.avgPerformance}%
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant={token.dev.isFollowed ? 'secondary' : 'default'}
-                    onClick={() => follow.mutate(token.dev.id)}
-                    className={cn(
-                      'h-8 rounded-lg text-xs font-bold',
-                      !token.dev.isFollowed && 'bg-primary text-primary-foreground hover:bg-[#8FA83F]'
-                    )}
-                  >
-                    {token.dev.isFollowed ? 'Siguiendo' : 'Seguir'}
-                  </Button>
-                </div>
-              </div>
-              {/* dev tokens timeline */}
-              <div className="no-scrollbar mt-2.5 flex gap-2 overflow-x-auto pb-1">
-                {token.devHistory.map((d) => (
-                  <div
-                    key={d.id}
-                    className={cn(
-                      'flex shrink-0 items-center gap-2 rounded-lg border px-2.5 py-1.5',
-                      d.isRug ? 'border-[#ff4d5e]/25 bg-[#ff4d5e]/5' : 'border-white/10 bg-white/4'
-                    )}
-                  >
-                    <TokenGlyph ticker={d.ticker} size="xs" />
-                    <div>
-                      <p className="text-xs font-bold">{d.ticker}</p>
-                      <p className="text-[10px] text-muted-foreground">{timeAgo(d.launchedAt)} · {fmtMc(d.mc)}</p>
-                    </div>
-                    <span className={cn('rounded px-1 py-0.5 text-[9px] font-black', d.isRug ? 'bg-[#ff4d5e]/20 text-[#ff8080]' : 'bg-[#8FA83F]/15 text-primary')}>
-                      {d.isRug ? 'RUG' : `ATH ${fmtMc(d.athMc)}`}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            {token.dev ? (
+              <DevTrackRecord
+                dev={token.dev}
+                stats={token.devStats}
+                history={token.devHistory}
+                onFollow={(id) => follow.mutate(id)}
+              />
+            ) : (
+              <UnverifiedDev publishedBy={token.publishedBy} />
+            )}
 
             {/* theses */}
             <div className="p-5">
@@ -286,6 +228,118 @@ function Stat({ label, value, warn }: { label: string; value: string; warn?: boo
     <div className="rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={cn('mt-0.5 text-sm font-bold tabular-nums', warn && 'text-amber-300')}>{value}</p>
+    </div>
+  )
+}
+
+/** Historial del dev: sus tokens anteriores, rugs y retención frente al ATH. */
+function DevTrackRecord({
+  dev,
+  stats,
+  history,
+  onFollow,
+}: {
+  dev: NonNullable<TokenDetailDTO['dev']>
+  stats: TokenDetailDTO['devStats']
+  history: TokenDetailDTO['devHistory']
+  onFollow: (id: string) => void
+}) {
+  return (
+    <div className="border-b border-white/10 p-5">
+      <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> Historial del dev
+        <span className="font-normal normal-case text-primary/80">· verificado por wallet</span>
+      </p>
+      <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2.5">
+          <UserAvatar name={dev.name} handle={dev.handle} src={dev.avatar} size="lg" verified={dev.walletVerified} />
+          <div>
+            <p className="flex items-center gap-1 text-sm font-bold">
+              {dev.name}
+              {dev.walletVerified && <BadgeCheck className="h-4 w-4 text-primary" />}
+            </p>
+            <p className="text-xs text-muted-foreground">@{dev.handle}</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              {dev.walletVerified ? 'Wallet verificada' : 'Wallet sin verificar'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 sm:ml-auto sm:justify-end">
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Tokens</p>
+            <p className="text-sm font-bold">{stats.tokensLaunched}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rugs</p>
+            <p className={cn('text-sm font-bold', stats.rugs > 0 ? 'text-[#ff8080]' : 'text-primary')}>{stats.rugs}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ret. ATH</p>
+            <p className={cn('text-sm font-bold', stats.avgPerformance >= 50 ? 'text-primary' : 'text-amber-300')}>
+              {stats.avgPerformance}%
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant={dev.isFollowed ? 'secondary' : 'default'}
+            onClick={() => onFollow(dev.id)}
+            className={cn(
+              'h-8 rounded-lg text-xs font-bold',
+              !dev.isFollowed && 'bg-primary text-primary-foreground hover:bg-[#8FA83F]'
+            )}
+          >
+            {dev.isFollowed ? 'Siguiendo' : 'Seguir'}
+          </Button>
+        </div>
+      </div>
+      {/* dev tokens timeline */}
+      <div className="no-scrollbar mt-2.5 flex gap-2 overflow-x-auto pb-1">
+        {history.map((d) => (
+          <div
+            key={d.id}
+            className={cn(
+              'flex shrink-0 items-center gap-2 rounded-lg border px-2.5 py-1.5',
+              d.isRug ? 'border-[#ff4d5e]/25 bg-[#ff4d5e]/5' : 'border-white/10 bg-white/4'
+            )}
+          >
+            <TokenGlyph ticker={d.ticker} size="xs" />
+            <div>
+              <p className="text-xs font-bold">{d.ticker}</p>
+              <p className="text-[10px] text-muted-foreground">{timeAgo(d.launchedAt)} · {fmtMc(d.mc)}</p>
+            </div>
+            <span className={cn('rounded px-1 py-0.5 text-[9px] font-black', d.isRug ? 'bg-[#ff4d5e]/20 text-[#ff8080]' : 'bg-[#8FA83F]/15 text-primary')}>
+              {d.isRug ? 'RUG' : `ATH ${fmtMc(d.athMc)}`}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Token sin dev: lo publicó un scout en el Radar y nadie lo ha reclamado. No se
+ * inventa un historial; se dice claramente y se indica cómo reclamarlo.
+ */
+function UnverifiedDev({ publishedBy }: { publishedBy: TokenDetailDTO['publishedBy'] }) {
+  return (
+    <div className="border-b border-white/10 p-5">
+      <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> Historial del dev
+      </p>
+      <div className="rounded-xl border border-dashed border-white/15 bg-[#0a0b08] p-3.5">
+        <p className="text-sm font-bold">Dev sin verificar</p>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {publishedBy ? (
+            <>
+              Lo encontró <span className="font-semibold text-foreground">@{publishedBy.handle}</span> y lo
+              publicó en el Radar.{' '}
+            </>
+          ) : null}
+          Si eres su dev, reclámalo desde tu perfil conectando la wallet que lo creó: al verificarse on-chain
+          pasará a contar en tu historial.
+        </p>
+      </div>
     </div>
   )
 }

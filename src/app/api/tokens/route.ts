@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { toPublicUserDTO } from '@/lib/serializers'
+import { ensureTokensFresh } from '@/lib/tokens-sync'
 import type { TokenDTO } from '@/lib/types'
 
 export async function GET(req: Request) {
@@ -11,8 +12,11 @@ export async function GET(req: Request) {
     const network = searchParams.get('network') ?? 'all'
     const me = await getCurrentUser()
 
+    // Convierte en token los launches que ya salieron y refresca el mercado
+    await ensureTokensFresh()
+
     const tokens = await db.token.findMany({
-      include: { dev: true },
+      include: { dev: true, launch: { include: { createdBy: true } } },
       orderBy: { mc: 'desc' },
     })
     const postsCounts = await db.post.groupBy({ by: ['tokenId'], _count: { _all: true } })
@@ -42,7 +46,8 @@ export async function GET(req: Request) {
       launchedAt: t.launchedAt.toISOString(),
       athMc: t.athMc,
       isRug: t.isRug,
-      dev: toPublicUserDTO(t.dev),
+      dev: t.dev ? toPublicUserDTO(t.dev) : null,
+      publishedBy: t.launch ? toPublicUserDTO(t.launch.createdBy) : null,
       postsCount: countMap.get(t.id) ?? 0,
     }))
     return NextResponse.json(dto)

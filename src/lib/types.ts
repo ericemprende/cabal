@@ -117,7 +117,13 @@ export interface TokenDTO {
   launchedAt: string
   athMc: number
   isRug: boolean
-  dev: PublicUserDTO
+  /**
+   * Su dev, solo si se sabe de verdad: publicó el launch él mismo o lo reclamó y
+   * se verificó. null = "dev sin verificar" (lo encontró un scout).
+   */
+  dev: PublicUserDTO | null
+  /** Quien lo publicó en el Radar, si el token salió de ahí. */
+  publishedBy: PublicUserDTO | null
   postsCount: number
 }
 
