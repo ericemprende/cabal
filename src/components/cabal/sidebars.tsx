@@ -7,19 +7,15 @@ import { Crown, Radio, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
-import { useFollowToggle, useFeed, useLaunches, useLeaderboard } from '@/lib/api-client'
+import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
+import { useFollowToggle, useLaunches, useLeaderboard } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { fmtNum } from '@/lib/cabal'
 
 // ---------- Left: live activity ----------
 export function LeftFeed() {
-  const { data: feed, isLoading } = useFeed()
+  const { items: activity, isLoading } = useActivity(14)
   const { openLaunch, openToken } = useUI()
-
-  const activity = useMemo(() => {
-    // mix of posts (already includes linked targets)
-    return (feed ?? []).slice(0, 14)
-  }, [feed])
 
   return (
     <aside className="hidden w-[300px] shrink-0 lg:block" aria-label="Actividad en vivo">
@@ -31,17 +27,21 @@ export function LeftFeed() {
         <div className="space-y-2">
           {isLoading &&
             [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
-          {activity.map((p) => (
-            <PostCard
-              key={p.id}
-              post={p}
-              compact
-              onComment={() => {
-                if (p.launch) openLaunch(p.launch.id)
-                else if (p.token) openToken(p.token.id)
-              }}
-            />
-          ))}
+          {activity.map((item) =>
+            item.type === 'launch' ? (
+              <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} compact onOpen={() => openLaunch(item.launch.id)} />
+            ) : (
+              <PostCard
+                key={item.post.id}
+                post={item.post}
+                compact
+                onComment={() => {
+                  if (item.post.launch) openLaunch(item.post.launch.id)
+                  else if (item.post.token) openToken(item.post.token.id)
+                }}
+              />
+            )
+          )}
         </div>
       </div>
     </aside>

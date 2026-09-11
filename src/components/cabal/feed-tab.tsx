@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
-import { useCreatePost, useFeed, useMe } from '@/lib/api-client'
+import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
+import { useCreatePost, useMe } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
 const KINDS = [
@@ -17,7 +18,8 @@ const KINDS = [
 ]
 
 export function FeedTab() {
-  const { data: feed, isLoading } = useFeed()
+  const { items: activity, isLoading } = useActivity(60)
+  const { openLaunch } = useUI()
   const { data: me } = useMe()
   const createPost = useCreatePost()
   const [content, setContent] = useState('')
@@ -98,9 +100,13 @@ export function FeedTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {(feed ?? []).map((p) => (
-            <PostCard key={p.id} post={p} />
-          ))}
+          {activity.map((item) =>
+            item.type === 'launch' ? (
+              <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} onOpen={() => openLaunch(item.launch.id)} />
+            ) : (
+              <PostCard key={item.post.id} post={item.post} />
+            )
+          )}
         </div>
       )}
     </div>
