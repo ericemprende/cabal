@@ -89,9 +89,21 @@ export function LaunchDetailDialog() {
 
               <div className="mt-4 flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <UserAvatar name={launch.createdBy.name} handle={launch.createdBy.handle} src={launch.createdBy.avatar} size="sm" verified={launch.createdBy.walletVerified} />
+                  <Link
+                    href={`/u/${launch.createdBy.handle}`}
+                    onClick={() => openLaunch(null)}
+                    aria-label={`Perfil de @${launch.createdBy.handle}`}
+                  >
+                    <UserAvatar name={launch.createdBy.name} handle={launch.createdBy.handle} src={launch.createdBy.avatar} size="sm" verified={launch.createdBy.walletVerified} />
+                  </Link>
                   <div>
-                    <p className="text-[13px] font-semibold">{launch.createdBy.name}</p>
+                    <Link
+                      href={`/u/${launch.createdBy.handle}`}
+                      onClick={() => openLaunch(null)}
+                      className="text-[13px] font-semibold hover:underline"
+                    >
+                      {launch.createdBy.name}
+                    </Link>
                     <button
                       onClick={() => !launch.createdBy.isFollowed && follow.mutate(launch.createdBy.id)}
                       className="text-[11px] text-muted-foreground hover:text-primary"

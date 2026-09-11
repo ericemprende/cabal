@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
+import { Bell, ChevronDown, Eye, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -149,6 +149,11 @@ export function Header() {
                   </div>
                 )}
                 <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
+                {me?.handle && (
+                  <DropdownMenuItem onClick={() => router.push(`/u/${me.handle}`)} className="gap-2 text-[13px]">
+                    <Eye className="h-4 w-4" /> Ver mi perfil
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setProfileOpen(true)} className="gap-2 text-[13px]">
                   <UserRound className="h-4 w-4" /> Mi Cabal (perfil)
                 </DropdownMenuItem>

@@ -333,3 +333,46 @@ export interface AdminWaitlistDTO {
     incomplete: number
   }
 }
+
+// ---------- Perfil público (/u/<handle>) ----------
+
+/** Launch publicado por el usuario, en la lista de proyectos de su perfil. */
+export interface ProfileLaunchDTO extends LaunchRefDTO {
+  status: string
+  hype: number
+}
+
+/** Token del que el usuario es dev (lo publicó él o lo reclamó y se verificó). */
+export interface ProfileTokenDTO {
+  id: string
+  name: string
+  ticker: string
+  emoji: string
+  image?: string | null
+  network: string
+  mc: number
+  athMc: number
+  change24h: number
+  isRug: boolean
+  launchedAt: string
+}
+
+export interface PublicProfileDTO {
+  user: PublicUserDTO
+  joinedAt: string
+  /** Si quien lo mira es el propio usuario: cambia "Seguir" por "Editar perfil". */
+  isMe: boolean
+  counts: {
+    followers: number
+    following: number
+    posts: number
+    theses: number
+    launches: number
+    tokens: number
+  }
+  launches: ProfileLaunchDTO[]
+  tokens: ProfileTokenDTO[]
+  /** Tokens externos verificados on-chain como suyos. */
+  devClaims: DevClaimDTO[]
+  posts: PostDTO[]
+}

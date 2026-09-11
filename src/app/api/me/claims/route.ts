@@ -2,46 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { fetchTokenStats, isValidContract, isValidNetwork } from '@/lib/chain-stats'
-import type { DevClaimStats } from '@/lib/types'
-
-function parseStats(raw: string): DevClaimStats | null {
-  try {
-    const obj = JSON.parse(raw) as DevClaimStats
-    return obj && Object.keys(obj).length > 0 ? obj : null
-  } catch {
-    return null
-  }
-}
-
-function serialize(c: {
-  id: string
-  network: string
-  contract: string
-  walletAddress: string
-  name: string
-  symbol: string
-  status: string
-  note: string
-  stats: string
-  source: string
-  createdAt: Date
-  verifiedAt: Date | null
-}) {
-  return {
-    id: c.id,
-    network: c.network,
-    contract: c.contract,
-    walletAddress: c.walletAddress,
-    name: c.name,
-    symbol: c.symbol,
-    status: c.status,
-    note: c.note,
-    stats: parseStats(c.stats),
-    source: c.source,
-    createdAt: c.createdAt.toISOString(),
-    verifiedAt: c.verifiedAt?.toISOString() ?? null,
-  }
-}
+import { serializeDevClaim as serialize } from '@/lib/claims'
 
 export async function GET() {
   try {

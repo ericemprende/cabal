@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Heart, MessageCircle, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
@@ -29,11 +30,15 @@ export function PostCard({
       )}
     >
       <div className="flex items-start gap-2.5">
-        <UserAvatar name={post.user.name} handle={post.user.handle} src={post.user.avatar} size={compact ? 'sm' : 'md'} verified={post.user.walletVerified} />
+        <Link href={`/u/${post.user.handle}`} className="shrink-0" aria-label={`Perfil de @${post.user.handle}`}>
+          <UserAvatar name={post.user.name} handle={post.user.handle} src={post.user.avatar} size={compact ? 'sm' : 'md'} verified={post.user.walletVerified} />
+        </Link>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <span className={cn('truncate font-semibold', compact ? 'text-[13px]' : 'text-sm')}>{post.user.name}</span>
-            <span className="truncate text-xs text-muted-foreground">@{post.user.handle}</span>
+            <Link href={`/u/${post.user.handle}`} className="flex min-w-0 items-center gap-x-1.5 hover:underline">
+              <span className={cn('truncate font-semibold', compact ? 'text-[13px]' : 'text-sm')}>{post.user.name}</span>
+              <span className="truncate text-xs text-muted-foreground">@{post.user.handle}</span>
+            </Link>
             <button
               className="text-[10px] font-semibold text-primary/70 hover:text-primary"
               onClick={(e) => {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Crown, Radio, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -119,11 +120,13 @@ export function RightRail() {
                 <span className={cn('w-4 text-center text-[11px] font-bold', i === 0 ? 'text-amber-300' : 'text-muted-foreground')}>
                   {i + 1}
                 </span>
-                <UserAvatar name={c.user.name} handle={c.user.handle} src={c.user.avatar} size="xs" verified={c.user.walletVerified} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">{c.user.name}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">{fmtNum(c.user.followers)} seguidores</p>
-                </div>
+                <Link href={`/u/${c.user.handle}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <UserAvatar name={c.user.name} handle={c.user.handle} src={c.user.avatar} size="xs" verified={c.user.walletVerified} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold">{c.user.name}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{fmtNum(c.user.followers)} seguidores</p>
+                  </div>
+                </Link>
                 {c.user.isFollowed ? (
                   <span className="text-[10px] font-bold text-muted-foreground">siguiendo</span>
                 ) : (

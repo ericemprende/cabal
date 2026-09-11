@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { BadgeCheck, ChartLine, History, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -244,6 +245,7 @@ function DevTrackRecord({
   history: TokenDetailDTO['devHistory']
   onFollow: (id: string) => void
 }) {
+  const { openToken } = useUI()
   return (
     <div className="border-b border-white/10 p-5">
       <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -251,7 +253,11 @@ function DevTrackRecord({
         <span className="font-normal normal-case text-primary/80">· verificado por wallet</span>
       </p>
       <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-2.5">
+        <Link
+          href={`/u/${dev.handle}`}
+          onClick={() => openToken(null)}
+          className="flex items-center gap-2.5 rounded-lg hover:opacity-90"
+        >
           <UserAvatar name={dev.name} handle={dev.handle} src={dev.avatar} size="lg" verified={dev.walletVerified} />
           <div>
             <p className="flex items-center gap-1 text-sm font-bold">
@@ -263,7 +269,7 @@ function DevTrackRecord({
               {dev.walletVerified ? 'Wallet verificada' : 'Wallet sin verificar'}
             </p>
           </div>
-        </div>
+        </Link>
         <div className="flex items-center gap-4 sm:ml-auto sm:justify-end">
           <div className="text-center">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Tokens</p>
@@ -322,6 +328,7 @@ function DevTrackRecord({
  * inventa un historial; se dice claramente y se indica cómo reclamarlo.
  */
 function UnverifiedDev({ publishedBy }: { publishedBy: TokenDetailDTO['publishedBy'] }) {
+  const { openToken } = useUI()
   return (
     <div className="border-b border-white/10 p-5">
       <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -332,7 +339,15 @@ function UnverifiedDev({ publishedBy }: { publishedBy: TokenDetailDTO['published
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           {publishedBy ? (
             <>
-              Lo encontró <span className="font-semibold text-foreground">@{publishedBy.handle}</span> y lo
+              Lo encontró{' '}
+              <Link
+                href={`/u/${publishedBy.handle}`}
+                onClick={() => openToken(null)}
+                className="font-semibold text-foreground hover:underline"
+              >
+                @{publishedBy.handle}
+              </Link>{' '}
+              y lo
               publicó en el Radar.{' '}
             </>
           ) : null}

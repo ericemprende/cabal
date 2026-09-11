@@ -15,6 +15,8 @@ import type {
   MeDTO,
   PostDTO,
   ProjectClaimDTO,
+  PublicProfileDTO,
+  PublicUserDTO,
   ReferralDTO,
   TokenDTO,
   TokenDetailDTO,
@@ -121,6 +123,9 @@ export const qk = {
   waitlistMe: ['waitlist', 'me'] as const,
   referral: ['me', 'referral'] as const,
   projectClaims: ['me', 'project-claims'] as const,
+  user: (handle: string) => ['user', handle.toLowerCase()] as const,
+  userFollows: (handle: string, type: 'followers' | 'following') =>
+    ['user', handle.toLowerCase(), type] as const,
 }
 
 export function useMe() {
@@ -772,5 +777,25 @@ export function useAdminDeleteWaitlist() {
       toast.success('Entrada eliminada')
     },
     onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ---------- Perfil público ----------
+
+/** Perfil público de un usuario (/u/<handle>). */
+export function useUserProfile(handle: string) {
+  return useQuery<PublicProfileDTO>({
+    queryKey: qk.user(handle),
+    queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}`),
+    enabled: Boolean(handle),
+  })
+}
+
+/** Seguidores o seguidos de un usuario. Solo se pide al abrir la lista. */
+export function useUserFollows(handle: string, type: 'followers' | 'following', enabled: boolean) {
+  return useQuery<{ users: PublicUserDTO[] }>({
+    queryKey: qk.userFollows(handle, type),
+    queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/follows?type=${type}`),
+    enabled: enabled && Boolean(handle),
   })
 }

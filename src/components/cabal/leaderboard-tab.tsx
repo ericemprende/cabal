@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Crown, Shield, ShieldCheck, Target, TrendingUp, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar } from '@/components/cabal/shared'
@@ -91,14 +92,18 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
       <span className={cn('w-8 shrink-0 text-center font-machina text-sm font-bold', rank <= 3 ? 'text-primary' : 'text-muted-foreground')}>
         {String(rank).padStart(2, '0')}
       </span>
-      <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
+      <Link href={`/u/${user.handle}`} className="shrink-0" aria-label={`Perfil de @${user.handle}`}>
+        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
+      </Link>
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-1.5 truncate text-sm font-bold">
-          {user.name}
-          {user.isDev && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
-          {rank === 1 && <Crown className="h-3.5 w-3.5 text-amber-300" />}
-        </p>
-        <p className="truncate text-xs text-muted-foreground">@{user.handle}</p>
+        <Link href={`/u/${user.handle}`} className="block hover:underline">
+          <p className="flex items-center gap-1.5 truncate text-sm font-bold">
+            {user.name}
+            {user.isDev && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
+            {rank === 1 && <Crown className="h-3.5 w-3.5 text-amber-300" />}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">@{user.handle}</p>
+        </Link>
         {/* win rate bar for callers/devs */}
         {(board === 'callers' || board === 'devs') && (
           <div className="mt-1.5 flex items-center gap-2">
