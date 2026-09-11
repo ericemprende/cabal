@@ -94,11 +94,11 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
   const [bio, setBio] = useState(me.bio ?? '')
   const [avatar, setAvatar] = useState(me.avatar)
 
-  /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo si no. */
+  /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo (solo en desarrollo) si no. */
   const connect = (provider: 'x' | 'google') => {
     if (authStatus?.[provider]?.configured) {
       window.location.assign(`/api/auth/${provider}/start`)
-    } else {
+    } else if (authStatus?.[provider]?.demo) {
       setConsent(provider)
     }
   }
@@ -207,6 +207,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             provider="x"
             cta="Conectar con X"
             configured={authStatus?.x.configured ?? false}
+            demo={authStatus?.x.demo ?? false}
             onConnect={() => connect('x')}
           />
           <ConnectionRow
@@ -218,6 +219,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             provider="google"
             cta="Conectar con Google"
             configured={authStatus?.google.configured ?? false}
+            demo={authStatus?.google.demo ?? false}
             onConnect={() => connect('google')}
           />
           <ApiSetupHelp status={authStatus} />
@@ -520,7 +522,8 @@ function ClaimProjectSection() {
 
 // Fila de conexión con proveedor externo (X / Google)
 // - Con API keys: redirige al flujo OAuth 2.0 real del proveedor.
-// - Sin API keys: abre la pantalla de consentimiento simulada (demo).
+// - Sin API keys, en desarrollo: abre la pantalla de consentimiento simulada (demo).
+// - Sin API keys, en producción: el proveedor no está disponible.
 function ConnectionRow({
   icon,
   title,
@@ -530,6 +533,7 @@ function ConnectionRow({
   provider,
   cta,
   configured,
+  demo,
   onConnect,
 }: {
   icon: React.ReactNode
@@ -540,6 +544,7 @@ function ConnectionRow({
   provider: 'x' | 'google'
   cta: string
   configured: boolean
+  demo: boolean
   onConnect: () => void
 }) {
   const verify = useVerifyProvider()
@@ -591,16 +596,18 @@ function ConnectionRow({
         <Button
           size="sm"
           onClick={onConnect}
+          disabled={!configured && !demo}
           className="h-8 shrink-0 rounded-lg border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
           variant="ghost"
         >
-          {cta}
+          {configured || demo ? cta : 'No disponible'}
         </Button>
       </div>
       {!configured && (
         <p className="mt-2 pl-12 text-[10px] leading-relaxed text-muted-foreground/70">
-          Sin credenciales del proveedor: se abre una pantalla de autorización simulada.
-          Configura las API keys para usar el OAuth real.
+          {demo
+            ? 'Sin credenciales del proveedor: se abre una pantalla de autorización simulada. Configura las API keys para usar el OAuth real.'
+            : 'Este proveedor todavía no está configurado en el servidor.'}
         </p>
       )}
     </div>

@@ -38,6 +38,18 @@ export function getGoogleConfig(): { clientId: string; clientSecret: string } | 
   return { clientId, clientSecret }
 }
 
+// ---------- Modo demo ----------
+/**
+ * El modo demo (entrar o verificar una identidad social sin pasar por el
+ * proveedor) solo existe en desarrollo y para proveedores sin credenciales.
+ * En cualquier otro caso bastaría con escribir el @usuario de X o el correo de
+ * Google de otra persona para entrar en su cuenta.
+ */
+export function socialDemoAllowed(provider: 'x' | 'google'): boolean {
+  if (process.env.NODE_ENV === 'production') return false
+  return provider === 'x' ? !getXConfig() : !getGoogleConfig()
+}
+
 // ---------- PKCE (X exige code_challenge S256) ----------
 export function randomToken(bytes = 32): string {
   return randomBytes(bytes).toString('base64url')

@@ -84,15 +84,18 @@ export function AuthDialog() {
     }
   }
 
-  // Login social: con API keys → OAuth real por redirección; sin keys → consentimiento demo
+  // Login social: con API keys → OAuth real por redirección; sin keys → consentimiento
+  // demo, que el servidor solo admite en desarrollo (en producción el botón no sale)
   const startSocial = (provider: 'x' | 'google') => {
-    const configured = provider === 'x' ? authStatus?.x.configured : authStatus?.google.configured
-    if (configured) {
+    if (authStatus?.[provider].configured) {
       window.location.assign(`/api/auth/${provider}/start?mode=login`)
-    } else {
+    } else if (authStatus?.[provider].demo) {
       setDemoProvider(provider)
     }
   }
+  const socialProviders = (['x', 'google'] as const).filter(
+    (p) => authStatus?.[p].configured || authStatus?.[p].demo
+  )
 
   return (
     <>
@@ -135,35 +138,47 @@ export function AuthDialog() {
             ))}
           </div>
 
-          {/* Login social directo con X / Google */}
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => startSocial('x')}
-              className="h-10 gap-2 rounded-xl border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
-            >
-              <XLogo className="h-3.5 w-3.5" aria-hidden />
-              X
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => startSocial('google')}
-              className="h-10 gap-2 rounded-xl border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
-            >
-              <GoogleG className="h-4 w-4" aria-hidden />
-              Google
-            </Button>
-          </div>
+          {/* Login social directo con X / Google (solo los proveedores disponibles) */}
+          {socialProviders.length > 0 && (
+            <>
+              <div className={cn('mt-4 grid gap-2', socialProviders.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
+                {socialProviders.includes('x') && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => startSocial('x')}
+                    className="h-10 gap-2 rounded-xl border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
+                  >
+                    <XLogo className="h-3.5 w-3.5" aria-hidden />
+                    X
+                  </Button>
+                )}
+                {socialProviders.includes('google') && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => startSocial('google')}
+                    className="h-10 gap-2 rounded-xl border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
+                  >
+                    <GoogleG className="h-4 w-4" aria-hidden />
+                    Google
+                  </Button>
+                )}
+              </div>
 
-          <div className="my-4 flex items-center gap-3" role="separator" aria-label="o con tus credenciales">
-            <span className="h-px flex-1 bg-white/8" />
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">o con tu usuario</span>
-            <span className="h-px flex-1 bg-white/8" />
-          </div>
+              <div className="my-4 flex items-center gap-3" role="separator" aria-label="o con tus credenciales">
+                <span className="h-px flex-1 bg-white/8" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">o con tu usuario</span>
+                <span className="h-px flex-1 bg-white/8" />
+              </div>
+            </>
+          )}
 
-          <form onSubmit={submit} className="space-y-3.5" aria-label={isLogin ? 'Iniciar sesión' : 'Crear cuenta'}>
+          <form
+            onSubmit={submit}
+            className={cn('space-y-3.5', socialProviders.length === 0 && 'mt-4')}
+            aria-label={isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
+          >
             <div className="space-y-1.5">
               <Label htmlFor="auth-handle" className="text-xs text-muted-foreground">Usuario</Label>
               <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] pl-3 focus-within:border-[#8FA83F]/40">

@@ -36,8 +36,9 @@ export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> 
 }
 
 export type AuthStatusDTO = {
-  x: { configured: boolean; callbackUrl: string }
-  google: { configured: boolean; callbackUrl: string }
+  /** demo: sin credenciales se puede usar el flujo simulado (solo en desarrollo). */
+  x: { configured: boolean; demo: boolean; callbackUrl: string }
+  google: { configured: boolean; demo: boolean; callbackUrl: string }
 }
 
 export type SessionDTO = {
