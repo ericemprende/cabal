@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Crown, Radio, Timer, Zap } from 'lucide-react'
+import { Crown, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
@@ -12,10 +12,24 @@ import { useFollowToggle, useLaunches, useLeaderboard } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { fmtNum } from '@/lib/cabal'
 
+type ActivityFilter = 'all' | 'launch' | 'post'
+
+const ACTIVITY_FILTERS: { value: ActivityFilter; label: string; icon: typeof Radio }[] = [
+  { value: 'all', label: 'Todo', icon: Radio },
+  { value: 'launch', label: 'Launches', icon: Rocket },
+  { value: 'post', label: 'Tesis', icon: MessageSquare },
+]
+
 // ---------- Left: live activity ----------
 export function LeftFeed() {
-  const { items: activity, isLoading } = useActivity(14)
+  const { items: activity, isLoading } = useActivity(30)
   const { openLaunch, openToken } = useUI()
+  const [filter, setFilter] = useState<ActivityFilter>('all')
+
+  const filtered = useMemo(
+    () => (filter === 'all' ? activity : activity.filter((item) => item.type === filter)),
+    [activity, filter]
+  )
 
   return (
     <aside className="hidden w-[300px] shrink-0 lg:block" aria-label="Actividad en vivo">
@@ -24,10 +38,37 @@ export function LeftFeed() {
           <Radio className="h-3.5 w-3.5 text-primary live-dot" />
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad del Cabal</p>
         </div>
+
+        {/* Filtro por tipo de actividad */}
+        <div className="mb-3 flex items-center gap-1 px-1" role="tablist" aria-label="Filtrar actividad">
+          {ACTIVITY_FILTERS.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              role="tab"
+              aria-selected={filter === value}
+              onClick={() => setFilter(value)}
+              className={cn(
+                'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all',
+                filter === value
+                  ? 'bg-[#8FA83F]/12 text-primary'
+                  : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+              )}
+            >
+              <Icon className="h-3 w-3" aria-hidden />
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-2">
           {isLoading &&
             [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
-          {activity.map((item) =>
+          {!isLoading && filtered.length === 0 && (
+            <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
+              Sin actividad de este tipo por ahora
+            </p>
+          )}
+          {filtered.map((item) =>
             item.type === 'launch' ? (
               <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} compact onOpen={() => openLaunch(item.launch.id)} />
             ) : (
