@@ -262,12 +262,25 @@ model Post {
   token     Token?   @relation(fields: [tokenId], references: [id])
   likes     Int      @default(0)
   pnl       Float?
+  // ---- Evidencia de la call (solo kind = "call") ----
+  // Foto del contrato en el instante en que se hizo la call: precio, market
+  // cap, en qué dex se encontró y el link al par. Se toma una sola vez al
+  // crear la call (POST /api/posts) y nunca se vuelve a tocar — es la prueba
+  // de "a qué precio la llamaste"; el precio actual se calcula en caliente
+  // comparándolo con el mercado en vivo (ver lib/calls.ts).
+  contract      String?
+  network       String?
+  entryPriceUsd Float?
+  entryMc       Float?
+  entryDexId    String?
+  entryPairUrl  String?
   createdAt DateTime @default(now())
 
   @@index([launchId, createdAt])
   @@index([tokenId, createdAt])
   @@index([userId, createdAt])
   @@index([createdAt])
+  @@index([kind, contract])
 }
 
 model Vote {

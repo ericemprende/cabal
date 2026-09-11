@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { GraduationCap, Megaphone, MessageSquare, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CheckCircle2, GraduationCap, Hash, Megaphone, MessageSquare, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { useCreatePost, useFeed, useMe } from '@/lib/api-client'
+import type { TokenMeta } from '@/lib/chain-stats'
 import { useUI } from '@/lib/store'
 
 const KINDS = [
@@ -23,12 +25,52 @@ export function FeedTab() {
   const [content, setContent] = useState('')
   const [kind, setKind] = useState('comment')
 
+  // Call: hace falta el contrato para tomarle la foto del precio al momento de
+  // llamarla. La red se detecta sola con el mismo buscador que usa /publicar.
+  const [contract, setContract] = useState('')
+  const [lookup, setLookup] = useState<{ state: 'idle' | 'loading' | 'found' | 'notfound'; meta?: TokenMeta }>({
+    state: 'idle',
+  })
+  useEffect(() => {
+    const ca = contract.trim()
+    if (kind !== 'call' || !/^[a-zA-Z0-9]{32,44}$|^0x[a-fA-F0-9]{40}$/.test(ca)) {
+      setLookup({ state: 'idle' })
+      return
+    }
+    let cancelled = false
+    setLookup({ state: 'loading' })
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tokens/lookup?ca=${encodeURIComponent(ca)}`)
+        const meta = (await res.json()) as TokenMeta
+        if (cancelled) return
+        setLookup(res.ok && meta.found ? { state: 'found', meta } : { state: 'notfound' })
+      } catch {
+        if (!cancelled) setLookup({ state: 'notfound' })
+      }
+    }, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [contract, kind])
+
+  const callReady = kind !== 'call' || lookup.state === 'found'
+
   const submit = () => {
-    if (!content.trim()) return
+    if (!content.trim() || !callReady) return
     createPost.mutate(
-      { kind, content },
       {
-        onSuccess: () => setContent(''),
+        kind,
+        content,
+        ...(kind === 'call' ? { contract: contract.trim(), network: lookup.meta!.network } : {}),
+      },
+      {
+        onSuccess: () => {
+          setContent('')
+          setContract('')
+          setLookup({ state: 'idle' })
+        },
       }
     )
   }
@@ -47,6 +89,35 @@ export function FeedTab() {
               className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
               aria-label="Escribir post"
             />
+            {kind === 'call' && (
+              <div className="mt-2 space-y-1">
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] px-2.5">
+                  <Hash className="h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden />
+                  <Input
+                    value={contract}
+                    onChange={(e) => setContract(e.target.value)}
+                    placeholder="Pega el contrato (CA) del token que estás llamando"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="h-9 border-0 bg-transparent px-0 font-mono text-xs focus-visible:ring-0"
+                  />
+                </div>
+                {lookup.state === 'loading' ? (
+                  <p className="text-[11px] text-muted-foreground">Buscando el token…</p>
+                ) : lookup.state === 'found' ? (
+                  <p className="flex items-center gap-1 text-[11px] font-semibold text-primary">
+                    <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                    {lookup.meta!.symbol ? `$${lookup.meta!.symbol}` : lookup.meta!.name} · se guarda el precio de ahora mismo como evidencia
+                  </p>
+                ) : lookup.state === 'notfound' ? (
+                  <p className="text-[11px] font-medium text-amber-300">No encontramos mercado para ese CA todavía.</p>
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">
+                    Se guarda el precio y la casa (dex) de ahora mismo: es la prueba de a qué precio hiciste la call.
+                  </p>
+                )}
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {KINDS.map((k) => (
                 <button
@@ -72,7 +143,7 @@ export function FeedTab() {
               <Button
                 size="sm"
                 onClick={submit}
-                disabled={!content.trim() || createPost.isPending}
+                disabled={!content.trim() || !callReady || createPost.isPending}
                 className="ml-auto h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
               >
                 <Zap className="h-3 w-3" /> Publicar

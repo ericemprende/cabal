@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { computeLaunchStatus } from '@/lib/api-helpers'
+import { liveMarketFor, pctChange } from '@/lib/calls'
 import type { PostDTO, PublicUserDTO, UserDTO } from '@/lib/types'
 
 type DbUser = {
@@ -85,6 +86,12 @@ export async function toPostDTO(
     user: DbUser
     launchId: string | null
     tokenId: string | null
+    contract?: string | null
+    network?: string | null
+    entryPriceUsd?: number | null
+    entryMc?: number | null
+    entryDexId?: string | null
+    entryPairUrl?: string | null
   },
   liked: boolean,
   pointsEarned?: number
@@ -118,6 +125,23 @@ export async function toPostDTO(
         mc: t.mc,
       }
   }
+  let call = null as PostDTO['call']
+  if (p.kind === 'call' && p.contract && p.network && p.entryPriceUsd != null) {
+    const market = await liveMarketFor([p.contract])
+    const live = market.get(p.contract)
+    call = {
+      contract: p.contract,
+      network: p.network,
+      dexId: p.entryDexId ?? '',
+      pairUrl: p.entryPairUrl ?? '',
+      entryPriceUsd: p.entryPriceUsd,
+      entryMc: p.entryMc ?? 0,
+      currentPriceUsd: live?.priceUsd ?? null,
+      currentMc: live?.marketCap ?? null,
+      pctChange: pctChange(p.entryMc, live?.marketCap ?? null),
+    }
+  }
+
   return {
     id: p.id,
     kind: p.kind,
@@ -125,6 +149,7 @@ export async function toPostDTO(
     likes: p.likes,
     liked,
     pnl: p.pnl,
+    call,
     createdAt: p.createdAt.toISOString(),
     user: toPublicUserDTO(p.user),
     launch,

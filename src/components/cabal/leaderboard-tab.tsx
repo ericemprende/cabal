@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Crown, Shield, ShieldCheck, Target, TrendingUp, Wrench, Zap } from 'lucide-react'
+import { Crown, Download, Megaphone, Shield, ShieldCheck, Target, TrendingDown, TrendingUp, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PointsPill, UserAvatar } from '@/components/cabal/shared'
-import { fmtMc, fmtPct } from '@/lib/cabal'
+import { CopyCA, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
-import type { LeaderboardEntryDTO } from '@/lib/types'
+import type { LeaderboardEntryDTO, TopCallDTO } from '@/lib/types'
 
-type Board = 'callers' | 'devs' | 'points' | 'clans'
+type Board = 'callers' | 'devs' | 'points' | 'clans' | 'calls'
 
 export function LeaderboardTab() {
   const { data, isLoading } = useLeaderboard()
@@ -21,6 +21,7 @@ export function LeaderboardTab() {
         {(
           [
             { key: 'callers', label: 'Top Callers', icon: Target },
+            { key: 'calls', label: 'Mejores Calls', icon: Megaphone },
             { key: 'points', label: 'Puntos Cabal', icon: Zap },
             { key: 'devs', label: 'Devs', icon: Wrench },
             { key: 'clans', label: 'Clanes', icon: Shield },
@@ -71,6 +72,15 @@ export function LeaderboardTab() {
             </div>
           ))}
         </div>
+      ) : board === 'calls' ? (
+        <div className="space-y-1.5">
+          {data?.topCalls.length === 0 && (
+            <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+              Todavía no hay calls con contrato en los últimos 30 días.
+            </p>
+          )}
+          {data?.topCalls.map((tc, i) => <CallRow key={tc.postId} rank={i + 1} tc={tc} />)}
+        </div>
       ) : (
         <div className="space-y-1.5">
           {(board === 'callers' ? data?.callers : board === 'devs' ? data?.devs : data?.points)?.map((entry) => (
@@ -78,6 +88,54 @@ export function LeaderboardTab() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function CallRow({ rank, tc }: { rank: number; tc: TopCallDTO }) {
+  const up = tc.call.pctChange! >= 0
+  return (
+    <div className="card-surface flex items-center gap-3 rounded-xl border border-white/8 p-3 transition-colors hover:border-white/12">
+      <span className={cn('w-8 shrink-0 text-center font-machina text-sm font-bold', rank <= 3 ? 'text-primary' : 'text-muted-foreground')}>
+        {String(rank).padStart(2, '0')}
+      </span>
+      <TokenGlyph ticker={tc.projectLabel} size="md" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-bold">{tc.projectLabel}</span>
+          <Link href={`/u/${tc.user.handle}`} className="truncate text-xs text-muted-foreground hover:underline">
+            @{tc.user.handle}
+          </Link>
+          <span className="text-[10px] text-muted-foreground">· {timeAgo(tc.createdAt)}</span>
+        </div>
+        <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+          <span>
+            Entrada <span className="font-semibold text-foreground/80">{fmtMc(tc.call.entryMc)}</span>
+          </span>
+          {tc.call.currentMc != null && (
+            <span>
+              Actual <span className="font-semibold text-foreground/80">{fmtMc(tc.call.currentMc)}</span>
+            </span>
+          )}
+          <CopyCA contract={tc.call.contract} className="border-0 bg-transparent p-0" />
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <p className={cn('flex items-center gap-1 text-sm font-bold', up ? 'text-primary' : 'text-[#ff8080]')}>
+          {up ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+          {up ? '+' : ''}
+          {tc.call.pctChange!.toFixed(1)}%
+        </p>
+        <a
+          href={`/api/posts/${tc.postId}/card`}
+          download
+          className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 text-muted-foreground transition-colors hover:border-[#8FA83F]/40 hover:text-primary"
+          aria-label="Descargar evidencia"
+          title="Descargar evidencia"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </a>
+      </div>
     </div>
   )
 }

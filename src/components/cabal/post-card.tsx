@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { Heart, MessageCircle, TrendingUp } from 'lucide-react'
+import { Download, Heart, MessageCircle, TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { useFollowToggle, useLikeToggle } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -89,6 +89,9 @@ export function PostCard({
             </button>
           )}
 
+          {/* Evidencia de la call: precio de entrada, casa y cómo va desde entonces */}
+          {post.call && <CallEvidence call={post.call} postId={post.id} />}
+
           <div className="mt-2 flex items-center gap-4">
             <button
               onClick={() => like.mutate(post.id)}
@@ -116,5 +119,61 @@ export function PostCard({
         </div>
       </div>
     </article>
+  )
+}
+
+/**
+ * Evidencia de una call: el precio y la casa a la que se encontró el
+ * contrato en el momento de publicarla, y cómo le va desde entonces según el
+ * mercado en vivo. "Descargar" trae la tarjeta lista para compartir (ver
+ * lib/call-card.ts) con esta misma foto de entrada.
+ */
+function CallEvidence({ call, postId }: { call: NonNullable<PostDTO['call']>; postId: string }) {
+  const up = (call.pctChange ?? 0) >= 0
+  return (
+    <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-2">
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold',
+            call.pctChange == null
+              ? 'bg-white/5 text-muted-foreground'
+              : up
+                ? 'bg-[#8FA83F]/12 text-primary'
+                : 'bg-[#ff5c5c]/12 text-[#ff8080]'
+          )}
+        >
+          {call.pctChange == null ? (
+            'Sin dato de mercado'
+          ) : (
+            <>
+              {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+              {up ? '+' : ''}
+              {call.pctChange.toFixed(1)}% desde la call
+            </>
+          )}
+        </span>
+        {call.dexId && <span className="text-[10px] text-muted-foreground">vía {call.dexId}</span>}
+        <a
+          href={`/api/posts/${postId}/card`}
+          download
+          onClick={(e) => e.stopPropagation()}
+          className="ml-auto flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:border-[#8FA83F]/40 hover:text-primary"
+        >
+          <Download className="h-3 w-3" aria-hidden /> Evidencia
+        </a>
+      </div>
+      <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
+        <span>
+          Entrada <span className="font-semibold text-foreground/80">{fmtMc(call.entryMc)}</span>
+        </span>
+        {call.currentMc != null && (
+          <span>
+            Actual <span className="font-semibold text-foreground/80">{fmtMc(call.currentMc)}</span>
+          </span>
+        )}
+        <CopyCA contract={call.contract} className="ml-auto border-0 bg-transparent p-0 text-[10px]" />
+      </div>
+    </div>
   )
 }

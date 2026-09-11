@@ -63,6 +63,22 @@ export interface TokenRefDTO {
   mc: number
 }
 
+/** Evidencia de una call: precio al momento de llamarla y cómo va ahora. */
+export interface CallEvidenceDTO {
+  contract: string
+  network: string
+  /** Casa/dex donde se encontró el par (pump.fun, raydium, uniswap…). */
+  dexId: string
+  pairUrl: string
+  entryPriceUsd: number
+  entryMc: number
+  /** null = no se pudo consultar el precio actual ahora mismo (best-effort). */
+  currentPriceUsd: number | null
+  currentMc: number | null
+  /** % de cambio en market cap desde la entrada; null si falta currentMc. */
+  pctChange: number | null
+}
+
 export interface PostDTO {
   id: string
   kind: string
@@ -75,6 +91,8 @@ export interface PostDTO {
   launch?: LaunchRefDTO | null
   token?: TokenRefDTO | null
   pointsEarned?: number
+  /** Solo en kind === 'call' con contrato reconocido. */
+  call?: CallEvidenceDTO | null
 }
 
 export interface LaunchDTO {
@@ -280,11 +298,23 @@ export interface ClanDTO {
   tag: string
 }
 
+/** Una call real de los últimos 30 días, con su evidencia y cómo va ahora. */
+export interface TopCallDTO {
+  postId: string
+  user: PublicUserDTO
+  content: string
+  createdAt: string
+  projectLabel: string
+  call: CallEvidenceDTO
+}
+
 export interface LeaderboardDTO {
   callers: LeaderboardEntryDTO[]
   devs: LeaderboardEntryDTO[]
   points: LeaderboardEntryDTO[]
   clans: ClanDTO[]
+  /** Mejores calls por % de subida desde que se publicaron (últimos 30 días). */
+  topCalls: TopCallDTO[]
 }
 
 export interface MeDTO extends UserDTO {
