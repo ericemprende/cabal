@@ -26,6 +26,7 @@ type DbUser = {
   email?: string | null
   emailVerified?: boolean
   twoFactorEnabled?: boolean
+  notifyEmail?: boolean
 }
 
 /**
@@ -69,6 +70,7 @@ export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
     email: u.email ?? null,
     emailVerified: u.emailVerified ?? false,
     twoFactorEnabled: u.twoFactorEnabled ?? false,
+    notifyEmail: u.notifyEmail ?? true,
   }
 }
 

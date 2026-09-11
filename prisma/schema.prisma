@@ -50,6 +50,10 @@ model User {
   ghlContactId  String?
   ghlSyncedAt   DateTime?
   ghlError      String?
+  // Avisos de lanzamientos por correo (perk Premium): activado por defecto,
+  // el usuario lo puede apagar. Sin correo verificado o sin Premium no llega
+  // nada de todos modos (ver lib/launch-alerts.ts).
+  notifyEmail   Boolean  @default(true)
   createdAt     DateTime @default(now())
   posts         Post[]
   launches      Launch[]
@@ -197,6 +201,20 @@ model EmailCode {
   createdAt  DateTime  @default(now())
 
   @@index([userId, purpose, createdAt])
+}
+
+// Marca que el aviso "faltan <threshold> minutos" de un launch ya se mandó.
+// La fila se crea ANTES de enviar los correos (create falla con la
+// restricción única si otra pasada ya la reservó): así dos ejecuciones del
+// worker nunca mandan el mismo aviso dos veces.
+model LaunchAlert {
+  id        String   @id @default(cuid())
+  launchId  String
+  threshold Int // minutos de antelación: 10, 5…
+  sentCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([launchId, threshold])
 }
 
 model Token {

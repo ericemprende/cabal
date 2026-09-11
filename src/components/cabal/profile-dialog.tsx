@@ -5,6 +5,7 @@ import {
   Activity,
   AtSign,
   BadgeCheck,
+  Bell,
   CalendarDays,
   ChevronDown,
   Copy,
@@ -33,6 +34,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { NETWORKS, shortWallet, timeAgo } from '@/lib/cabal'
@@ -178,6 +180,23 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             </span>
             <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground" aria-hidden />
           </button>
+
+          {/* Avisos de lanzamientos por correo (10 y 5 min antes): perk Premium, requiere correo verificado */}
+          <div className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
+            <Bell className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold">Avisos de lanzamientos por correo</p>
+              <p className="text-[11px] text-muted-foreground">
+                10 y 5 minutos antes, de los launches a los que diste hype o cuyo dev sigues
+                {!(me?.premium.active && me?.emailVerified) && ' · necesita Premium y correo verificado'}
+              </p>
+            </div>
+            <Switch
+              checked={me?.notifyEmail ?? true}
+              disabled={!(me?.premium.active && me?.emailVerified) || updateMe.isPending}
+              onCheckedChange={(v) => updateMe.mutate({ notifyEmail: v })}
+            />
+          </div>
         </div>
 
         {/* Stats */}

@@ -475,7 +475,7 @@ export function useUpdateLaunch(id: string) {
 export function useUpdateMe() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
-    mutationFn: (data: Record<string, string>) =>
+    mutationFn: (data: Record<string, string | boolean>) =>
       jsonFetch<{ ok: boolean }>('/api/me', { method: 'PATCH', body: JSON.stringify(data) }),
     onSuccess: () => {
       invalidate()
