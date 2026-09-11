@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Radar, Coins, Rss, Trophy, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUI, type TabKey } from '@/lib/store'
+import { useGoToTab } from '@/lib/use-go-to-tab'
 
 const TABS: { key: TabKey; label: string; icon: typeof Radar }[] = [
   { key: 'radar', label: 'Radar', icon: Radar },
@@ -13,7 +14,9 @@ const TABS: { key: TabKey; label: string; icon: typeof Radar }[] = [
 ]
 
 export function MobileNav() {
-  const { tab, setTab } = useUI()
+  const { tab } = useUI()
+  // Desde un perfil también hay que volver a /app para ver la sección
+  const setTab = useGoToTab()
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0a0b08]/95 backdrop-blur-md md:hidden"

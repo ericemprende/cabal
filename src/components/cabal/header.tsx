@@ -24,6 +24,7 @@ import { AuthDialog } from '@/components/cabal/auth-dialog'
 import { AffiliatesDialog } from '@/components/cabal/affiliates-dialog'
 import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { useGoToTab } from '@/lib/use-go-to-tab'
 import { timeAgo } from '@/lib/cabal'
 
 export function Header() {
@@ -33,7 +34,8 @@ export function Header() {
   const { data: leaderboard } = useLeaderboard()
   const router = useRouter()
   const logout = useLogout()
-  const { setSearchOpen, setProfileOpen, setAdminOpen, setAffiliatesOpen, setTab, openLaunch, openAuth } = useUI()
+  const { setSearchOpen, setProfileOpen, setAdminOpen, setAffiliatesOpen, openLaunch, openAuth } = useUI()
+  const goToTab = useGoToTab()
   const loggedIn = !!session?.loggedIn
 
   const soon = useMemo(() => {
@@ -50,7 +52,7 @@ export function Header() {
       <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-3 sm:px-4">
         <button
           className="flex items-center outline-none"
-          onClick={() => setTab('radar')}
+          onClick={() => goToTab('radar')}
           aria-label="Ir al Radar"
         >
           <CabalWordmark />

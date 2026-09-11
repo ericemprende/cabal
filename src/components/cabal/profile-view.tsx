@@ -2,16 +2,19 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, BadgeCheck, CalendarDays, Code2, Rocket, Send, Target, Trophy } from 'lucide-react'
+import { BadgeCheck, CalendarDays, Code2, Rocket, Send, Target, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { fmtMc, timeAgo } from '@/lib/cabal'
-import { CabalWordmark, NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { XLogo } from '@/components/cabal/x-logo'
-import { AuthDialog } from '@/components/cabal/auth-dialog'
+import { Header } from '@/components/cabal/header'
+import { LeftFeed, RightRail } from '@/components/cabal/sidebars'
+import { Ticker } from '@/components/cabal/ticker'
+import { MobileNav } from '@/components/cabal/mobile-nav'
 import { LaunchDetailDialog } from '@/components/cabal/launch-detail'
 import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
@@ -24,48 +27,48 @@ import type { PublicProfileDTO } from '@/lib/types'
  * redes y verificaciones, los proyectos que ha publicado o que son suyos como
  * dev, y sus tesis y posts.
  *
- * Tiene su propia barra superior (como /publicar) en vez de la cabecera de la
- * app, que navega entre pestañas de /app y aquí no aplica.
+ * Vive dentro de la misma estructura que /app (cabecera, actividad a la
+ * izquierda, próximos launches y top a la derecha) para que al entrar en un
+ * perfil no se pierda el resto del Cabal.
  */
 export function ProfileView({ handle }: { handle: string }) {
   const { data, isPending, isError } = useUserProfile(handle)
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0b08]/85 backdrop-blur-md">
-        <div className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-3 sm:px-4">
-          <Link
-            href="/app"
-            className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden /> Volver
-          </Link>
-          <Link href="/app" className="ml-1 flex items-center outline-none" aria-label="Ir al inicio">
-            <CabalWordmark />
-          </Link>
-        </div>
-      </header>
+      <Header />
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 pt-6">
-        {isPending ? (
-          <ProfileSkeleton />
-        ) : isError || !data ? (
-          <div className="py-24 text-center">
-            <p className="font-semibold">No encontramos a @{handle}</p>
-            <Link href="/app" className="mt-3 inline-block text-sm text-primary hover:underline">
-              Volver al radar
-            </Link>
+      <main className="mx-auto w-full max-w-[1440px] flex-1 px-3 pb-24 pt-4 sm:px-4 md:pb-12">
+        <div className="flex gap-5">
+          <LeftFeed />
+
+          <div className="min-w-0 flex-1">
+            {isPending ? (
+              <ProfileSkeleton />
+            ) : isError || !data ? (
+              <div className="py-24 text-center">
+                <p className="font-semibold">No encontramos a @{handle}</p>
+                <Link href="/app" className="mt-3 inline-block text-sm text-primary hover:underline">
+                  Volver al radar
+                </Link>
+              </div>
+            ) : (
+              <ProfileContent profile={data} />
+            )}
           </div>
-        ) : (
-          <ProfileContent profile={data} />
-        )}
+
+          <RightRail />
+        </div>
       </main>
 
-      {/* Diálogos que se abren desde el perfil (fichas, edición, login) */}
+      <Ticker />
+      <MobileNav />
+
+      {/* Diálogos que se abren desde el perfil (fichas y edición). El de login
+          ya lo monta la cabecera. */}
       <LaunchDetailDialog />
       <TokenDetailDialog />
       <ProfileDialog />
-      <AuthDialog />
     </div>
   )
 }
@@ -97,7 +100,7 @@ function ProfileContent({ profile }: { profile: PublicProfileDTO }) {
         />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.15fr]">
+      <div className="grid gap-5 2xl:grid-cols-[1fr_1.15fr]">
         <Projects profile={profile} />
         <Activity profile={profile} />
       </div>
@@ -474,7 +477,7 @@ function ProfileSkeleton() {
           <Skeleton key={i} className="h-20 rounded-xl" />
         ))}
       </div>
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5 2xl:grid-cols-2">
         <Skeleton className="h-64 rounded-xl" />
         <Skeleton className="h-64 rounded-xl" />
       </div>
