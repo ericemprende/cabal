@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { displayImageUrl } from '@/lib/remote-image'
 
 const URL_OK = /^https:\/\/\S+$/i
 
@@ -132,7 +133,7 @@ export function ImageDrop({
           {draftValid && !previewFailed && (
             <div className={cn('relative w-full overflow-hidden rounded-lg border border-white/10 bg-[#121410]', square ? 'h-28' : 'h-24')}>
               <Image
-                src={draftTrim}
+                src={displayImageUrl(draftTrim)}
                 alt="Vista previa de la imagen"
                 fill
                 sizes="480px"
@@ -160,7 +161,7 @@ export function ImageDrop({
             square ? 'h-28 w-28' : 'h-28 w-full'
           )}
         >
-          <Image src={url} alt={label} fill sizes="320px" className="object-cover" unoptimized />
+          <Image src={displayImageUrl(url)} alt={label} fill sizes="320px" className="object-cover" unoptimized />
           <div className="absolute right-1.5 top-1.5 flex gap-1">
             <button
               onClick={openUrlMode}

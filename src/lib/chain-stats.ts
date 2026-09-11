@@ -284,7 +284,13 @@ export async function fetchTokenMeta(ca: string): Promise<TokenMeta> {
       }
       meta.name ||= pf.name ?? ''
       meta.symbol ||= pf.symbol ?? ''
-      meta.image ||= safeUrl(pf.image_uri)
+      // El logo, de la CDN de pump.fun y no de image_uri: esa apunta a ipfs.io,
+      // que da 429 en cuanto hay tráfico. La CDN es la que usa su propia web
+      // (Cloudflare Images, ~80KB). El banner no tiene equivalente fiable y se
+      // queda en IPFS; la app lo sirve desde su copia (lib/remote-image).
+      if (!meta.image && pf.image_uri) {
+        meta.image = `https://images.pump.fun/coin-image/${encodeURIComponent(ca)}?variant=600x600`
+      }
       meta.banner ||= safeUrl(pf.banner_uri)
       meta.description ||= (pf.description ?? '').slice(0, 1000)
       meta.website ||= socialUrl('website', pf.website)

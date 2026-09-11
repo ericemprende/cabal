@@ -6,6 +6,8 @@ import { NETWORKS } from '@/lib/cabal'
 import { cached, CACHE_TTL, invalidate } from '@/lib/cache'
 import { pendingMany } from '@/lib/counters'
 import type { LaunchDTO } from '@/lib/types'
+import { getIpfsImage } from '@/lib/ipfs-cache'
+import { ipfsCid } from '@/lib/remote-image'
 
 export async function GET() {
   try {
@@ -127,6 +129,11 @@ export async function POST(req: Request) {
       `Publicaste el launch: ${launch.name}${launch.ticker ? ` (${launch.ticker})` : ' (privado)'}`
     )
     await invalidate('launches:*')
+    // Copia de las imágenes de IPFS hecha ya, para que quien abra la ficha no
+    // espere a las pasarelas. Sin await: si falla, se copiarán al primer uso.
+    for (const cid of [ipfsCid(launch.image), ipfsCid(launch.banner)]) {
+      if (cid) void getIpfsImage(cid)
+    }
     return NextResponse.json({ ok: true, pointsEarned }, { status: 201 })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { toast } from 'sonner'
 import { Check, CheckCircle2, Copy, Globe2, Lock, Timer, XCircle, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { displayImageUrl } from '@/lib/remote-image'
 import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
 
 // ---------- Wordmark (sin logo: solo la fuente en mayúscula) ----------
@@ -216,6 +217,12 @@ export function TokenGlyph({
           : size === 'lg'
             ? 'h-12 w-12 text-sm rounded-lg'
             : 'h-16 w-16 text-lg rounded-xl'
+  // Las de IPFS pasan por la copia del servidor (ver lib/remote-image)
+  const url = displayImageUrl(src)
+  // Si la imagen no carga se enseña la inicial, nunca el icono de imagen rota.
+  // Se recuerda qué URL falló para que al cambiar de token se vuelva a probar.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const showImage = Boolean(url) && failedUrl !== url
   return (
     <div
       className={cn(
@@ -225,8 +232,16 @@ export function TokenGlyph({
       )}
       aria-hidden
     >
-      {src ? (
-        <Image src={src} alt={ticker} fill sizes="64px" className="object-cover" unoptimized />
+      {showImage ? (
+        <Image
+          src={url as string}
+          alt=""
+          fill
+          sizes="64px"
+          className="object-cover"
+          unoptimized
+          onError={() => setFailedUrl(url as string)}
+        />
       ) : (
         <span>{(ticker || '?').replace(/^\$/, '')[0]?.toUpperCase()}</span>
       )}

@@ -56,6 +56,8 @@ server.log
 /skills/
 # Tarjetas de la lista de espera generadas al vuelo (caché, se regeneran solas)
 upload/cards/
+# Copias locales de las imágenes de IPFS de los tokens (caché, se regeneran solas)
+upload/img/
 
 # Volcados de base de datos: contienen datos reales, no van al repo
 db/backups/

@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { displayImageUrl } from '@/lib/remote-image'
 import { CountdownPill, CopyCA, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
@@ -46,12 +47,7 @@ export function LaunchDetailDialog() {
           </div>
         ) : (
           <>
-            {launch.banner && (
-              <div className="relative h-32 w-full overflow-hidden sm:h-40">
-                <Image src={launch.banner} alt={`Banner de ${launch.name}`} fill sizes="576px" className="object-cover" unoptimized />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#121410] to-transparent" />
-              </div>
-            )}
+            <LaunchBanner src={launch.banner} name={launch.name} />
             <div className="relative border-b border-white/10 p-5">
               <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#8FA83F]/8 blur-3xl" />
               <DialogTitle className="flex items-start gap-3 text-left">
@@ -312,3 +308,28 @@ function SocialChip({ href, icon, label }: { href: string; icon: React.ReactNode
 }
 
 export { timeAgo }
+
+/**
+ * Banner del launch. Las imágenes de IPFS pasan por la copia del servidor, y si
+ * aun así no carga, el bloque desaparece entero: mejor sin banner que con el
+ * icono de imagen rota y su texto alternativo encima de la ficha.
+ */
+function LaunchBanner({ src, name }: { src?: string | null; name: string }) {
+  const url = displayImageUrl(src)
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  if (!url || failedUrl === url) return null
+  return (
+    <div className="relative h-32 w-full overflow-hidden sm:h-40">
+      <Image
+        src={url}
+        alt={`Banner de ${name}`}
+        fill
+        sizes="576px"
+        className="object-cover"
+        unoptimized
+        onError={() => setFailedUrl(url)}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#121410] to-transparent" />
+    </div>
+  )
+}
