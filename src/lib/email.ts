@@ -123,6 +123,32 @@ export function codeEmail(code: string, purpose: CodePurpose): { subject: string
   return { subject: c.subject, html, text }
 }
 
+/**
+ * Aviso Premium de que un launch está a punto de salir. `minutes` es el
+ * umbral que se cruzó (10, 5…), no el tiempo exacto que falta.
+ */
+export function launchAlertEmail(
+  launch: { name: string; ticker: string | null },
+  minutes: number,
+  appUrl: string
+): { subject: string; html: string; text: string } {
+  const label = launch.ticker ? `$${launch.ticker} · ${launch.name}` : launch.name
+  const subject = `⏰ ${label} lanza en ${minutes} minutos`
+  const intro = `Diste hype o sigues al dev de este proyecto. Faltan ${minutes} minutos para su lanzamiento:`
+  const text = `${intro}\n\n${label}\n\n${appUrl}\n\n— Cabal · aviso Premium. Puedes apagarlo desde tu perfil.`
+  const html = `<!doctype html>
+<html lang="es"><body style="margin:0;padding:24px;background:#0a0b08;font-family:Arial,Helvetica,sans-serif;color:#e8ebe2">
+  <div style="max-width:440px;margin:0 auto;background:#121410;border:1px solid #2a2e24;border-radius:16px;padding:28px">
+    <p style="margin:0 0 18px;font-size:13px;font-weight:bold;letter-spacing:2px;color:#8FA83F">CABAL · PREMIUM</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.5">${intro}</p>
+    <p style="margin:0 0 20px;font-size:20px;font-weight:bold;color:#cddc8f">${label}</p>
+    <a href="${appUrl}" style="display:inline-block;background:#8FA83F;color:#0a0b08;font-weight:bold;text-decoration:none;padding:10px 18px;border-radius:10px;font-size:14px">Ver en Cabal →</a>
+    <p style="margin:22px 0 0;font-size:11px;line-height:1.5;color:#7c8272">Aviso Premium. Puedes apagarlo desde tu perfil en Cabal cuando quieras.</p>
+  </div>
+</body></html>`
+  return { subject, html, text }
+}
+
 /** "e••••@gmail.com": para decir a dónde se mandó el código sin revelarlo entero. */
 export function maskEmail(email: string): string {
   const [user, domain] = email.split('@')

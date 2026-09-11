@@ -38,6 +38,8 @@ export interface UserDTO extends PublicUserDTO {
   emailVerified: boolean
   /** Pide un código por correo al entrar con usuario y contraseña. */
   twoFactorEnabled: boolean
+  /** Avisos Premium de lanzamientos por correo (10 y 5 min antes). */
+  notifyEmail: boolean
 }
 
 export interface LaunchRefDTO {

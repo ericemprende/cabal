@@ -133,6 +133,7 @@ export async function PATCH(req: Request) {
       data.wallet = w.length >= 20 ? w : null
       if (w.length >= 20 && !me.walletVerified) data.walletVerified = true
     }
+    if (typeof body.notifyEmail === 'boolean') data.notifyEmail = body.notifyEmail
     const updated = await db.user.update({ where: { id: me.id }, data })
     return NextResponse.json({ ok: true, user: toUserDTO(updated) })
   } catch (e) {

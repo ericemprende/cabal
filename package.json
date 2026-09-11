@@ -15,6 +15,8 @@
     "counters:flush": "bun scripts/counters-flush.mjs",
     "counters:watch": "bun scripts/counters-flush.mjs --watch",
     "ghl:sync": "bun scripts/ghl-sync.mjs",
+    "alerts:flush": "bun scripts/launch-alerts.mjs",
+    "alerts:watch": "bun scripts/launch-alerts.mjs --watch",
     "db:reset": "echo 'PROHIBIDO: db:reset borra todos los datos. Usa bun run db:migrate.' && exit 1"
   },
   "dependencies": {

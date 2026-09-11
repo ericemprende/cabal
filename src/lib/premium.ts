@@ -126,6 +126,29 @@ export async function hasPremium(userId: string): Promise<boolean> {
   return (await db.subscription.count({ where: activeWhere(userId) })) > 0
 }
 
+/**
+ * De una lista de usuarios, cuáles tienen Premium activo ahora mismo. Una sola
+ * consulta en vez de una por usuario — la usan los avisos de lanzamientos,
+ * que pueden mirar a decenas de personas por launch.
+ */
+export async function premiumUserIdsAmong(userIds: string[]): Promise<Set<string>> {
+  if (userIds.length === 0) return new Set()
+  const now = Date.now()
+  const rows = await db.subscription.findMany({
+    where: {
+      userId: { in: userIds },
+      status: { in: ACTIVE_STATUSES },
+      OR: [
+        { provider: 'admin', currentPeriodEnd: null },
+        { provider: 'stripe', currentPeriodEnd: { gt: new Date(now - STRIPE_GRACE_MS) } },
+        { provider: { not: 'stripe' }, currentPeriodEnd: { gt: new Date(now) } },
+      ],
+    },
+    select: { userId: true },
+  })
+  return new Set(rows.map((r) => r.userId))
+}
+
 /** La misma regla que activeWhere, para una fila ya cargada (panel de admin). */
 export function subscriptionIsActive(
   s: { provider: string; status: string; currentPeriodEnd: Date | null },
