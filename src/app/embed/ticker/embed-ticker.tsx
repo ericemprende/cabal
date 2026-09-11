@@ -2,10 +2,20 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { jsonFetch } from '@/lib/api-client'
-import { TickerStrip, type TickerSpeed } from '@/components/cabal/ticker'
+import { EmbedBar, type TickerLogo, type TickerSpeed } from '@/components/cabal/ticker'
 import type { TokenDTO } from '@/lib/types'
 
-export function EmbedTicker({ ids, speed, solid }: { ids: string[]; speed: TickerSpeed; solid: boolean }) {
+export function EmbedTicker({
+  ids,
+  speed,
+  solid,
+  logo,
+}: {
+  ids: string[]
+  speed: TickerSpeed
+  solid: boolean
+  logo: TickerLogo
+}) {
   // Se deja abierto horas en OBS: refresca los precios cada minuto.
   const { data } = useQuery<TokenDTO[]>({
     queryKey: ['embed-ticker'],
@@ -20,8 +30,8 @@ export function EmbedTicker({ ids, speed, solid }: { ids: string[]; speed: Ticke
     <>
       {/* El layout pinta el fondo de la app; aquí tiene que verse lo que haya detrás. */}
       <style>{`html,body{background:${solid ? '#0d0e0a' : 'transparent'} !important;overflow:hidden}`}</style>
-      <div className="flex h-screen w-screen items-center overflow-hidden">
-        {tokens.length > 0 && <TickerStrip tokens={tokens} speed={speed} large />}
+      <div className="h-screen w-screen">
+        <EmbedBar tokens={tokens} speed={speed} logo={logo} />
       </div>
     </>
   )

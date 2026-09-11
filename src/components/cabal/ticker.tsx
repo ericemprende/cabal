@@ -56,6 +56,47 @@ export function TickerStrip({
   )
 }
 
+export type TickerLogo = 'full' | 'icon' | 'text' | 'badge'
+
+const LOGO_OPTIONS: { value: TickerLogo; label: string }[] = [
+  { value: 'full', label: 'Logo + nombre' },
+  { value: 'badge', label: 'Con web' },
+  { value: 'icon', label: 'Solo logo' },
+  { value: 'text', label: 'Solo nombre' },
+]
+
+/** Marca fija al inicio de la barra incrustada: promociona Cabal en los streams. */
+export function TickerBrand({ variant }: { variant: TickerLogo }) {
+  return (
+    <div className="flex shrink-0 items-center gap-2 border-r border-white/15 pl-4 pr-4">
+      {variant !== 'text' && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/cabal-logo.png" alt="Cabal" className="h-7 w-7 object-contain" />
+      )}
+      {variant !== 'icon' && (
+        <span className="flex flex-col leading-none">
+          <span className="font-machina text-base font-bold uppercase tracking-[0.2em] text-primary">Cabal</span>
+          {variant === 'badge' && (
+            <span className="mt-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground">cabal.army</span>
+          )}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** Barra completa de la incrustación: marca fija + tokens desplazándose. */
+export function EmbedBar({ tokens, speed, logo }: { tokens: TokenDTO[]; speed: TickerSpeed; logo: TickerLogo }) {
+  return (
+    <div className="flex h-full w-full items-center overflow-hidden">
+      <TickerBrand variant={logo} />
+      <div className="flex min-w-0 flex-1 items-center overflow-hidden">
+        {tokens.length > 0 && <TickerStrip tokens={tokens} speed={speed} large />}
+      </div>
+    </div>
+  )
+}
+
 export function Ticker() {
   const { data: tokens } = useTokens('trending', 'all')
   const [embedOpen, setEmbedOpen] = useState(false)
@@ -91,6 +132,7 @@ function TickerEmbedDialog({
   const [selected, setSelected] = useState<string[]>([])
   const [speed, setSpeed] = useState<TickerSpeed>('normal')
   const [transparent, setTransparent] = useState(true)
+  const [logo, setLogo] = useState<TickerLogo>('full')
   const [copied, setCopied] = useState<'url' | 'iframe' | null>(null)
 
   const toggle = (id: string) =>
@@ -102,9 +144,10 @@ function TickerEmbedDialog({
     if (selected.length) params.set('ids', selected.join(','))
     if (speed !== 'normal') params.set('speed', speed)
     if (!transparent) params.set('bg', 'solid')
+    if (logo !== 'full') params.set('logo', logo)
     const qs = params.toString()
     return `${origin}/embed/ticker${qs ? `?${qs}` : ''}`
-  }, [selected, speed, transparent])
+  }, [selected, speed, transparent, logo])
 
   const iframe = `<iframe src="${url}" width="100%" height="48" style="border:0;overflow:hidden" scrolling="no" allowtransparency="true"></iframe>`
 
@@ -181,6 +224,21 @@ function TickerEmbedDialog({
 
         {/* Opciones */}
         <div className="flex flex-wrap items-center gap-4 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-muted-foreground">Logo</span>
+            {LOGO_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => setLogo(o.value)}
+                className={cn(
+                  'rounded-full border px-2.5 py-0.5 font-semibold',
+                  logo === o.value ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-1.5">
             <span className="text-muted-foreground">Velocidad</span>
             {(['slow', 'normal', 'fast'] as const).map((s) => (
@@ -204,7 +262,7 @@ function TickerEmbedDialog({
 
         {/* Vista previa */}
         <div className={cn('flex h-12 items-center overflow-hidden rounded-lg border border-white/10', transparent ? 'bg-[repeating-conic-gradient(#1a1c16_0%_25%,#121410_0%_50%)] bg-[length:16px_16px]' : 'bg-[#0d0e0a]')}>
-          {preview.length > 0 && <TickerStrip tokens={preview} speed={speed} large />}
+          <EmbedBar tokens={preview} speed={speed} logo={logo} />
         </div>
 
         {/* Códigos */}
