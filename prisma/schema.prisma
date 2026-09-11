@@ -153,9 +153,12 @@ model PointEvent {
   amount    Int
   reason    String   // thesis | comment | launch | like_received | hype_received | admin_adjust | redeem
   note      String?
+  // En los "referral": el afiliado cuyos puntos generaron este bonus
+  sourceUserId String?
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([userId, reason, sourceUserId])
   @@index([createdAt])
 }
 

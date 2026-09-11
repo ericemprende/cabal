@@ -16,6 +16,8 @@ interface UIState {
   setProfileOpen: (v: boolean) => void
   adminOpen: boolean
   setAdminOpen: (v: boolean) => void
+  affiliatesOpen: boolean
+  setAffiliatesOpen: (v: boolean) => void
   searchOpen: boolean
   setSearchOpen: (v: boolean) => void
   composerOpen: boolean
@@ -38,6 +40,8 @@ export const useUI = create<UIState>((set) => ({
   setProfileOpen: (profileOpen) => set({ profileOpen }),
   adminOpen: false,
   setAdminOpen: (adminOpen) => set({ adminOpen }),
+  affiliatesOpen: false,
+  setAffiliatesOpen: (affiliatesOpen) => set({ affiliatesOpen }),
   searchOpen: false,
   setSearchOpen: (searchOpen) => set({ searchOpen }),
   composerOpen: false,

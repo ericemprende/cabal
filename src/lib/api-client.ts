@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import bs58 from 'bs58'
@@ -130,6 +130,31 @@ export function useMe() {
 /** Código de invitación + estadísticas de referidos. */
 export function useReferral() {
   return useQuery<ReferralDTO>({ queryKey: qk.referral, queryFn: () => jsonFetch('/api/me/referral') })
+}
+
+export type AffiliatesDTO = {
+  code: string
+  percent: number
+  totalEarned: number
+  affiliates: {
+    id: string
+    handle: string
+    name: string
+    avatar: string
+    xHandle: string | null
+    points: number
+    earnedForMe: number
+    joinedAt: string
+  }[]
+}
+
+/** Mis afiliados (quienes se registraron con mi enlace). */
+export function useMyAffiliates(enabled: boolean) {
+  return useQuery<AffiliatesDTO>({
+    queryKey: ['my-affiliates'],
+    queryFn: () => jsonFetch('/api/me/affiliates'),
+    enabled,
+  })
 }
 
 /** Mis reclamos de propiedad de proyectos. */

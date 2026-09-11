@@ -64,14 +64,16 @@ export async function awardPoints(
   userId: string,
   reason: PointReason,
   note?: string,
-  customAmount?: number
+  customAmount?: number,
+  /** Solo en 'referral': el afiliado que generó el bonus */
+  sourceUserId?: string
 ): Promise<number> {
   const amount =
     customAmount ??
     (REASON_TO_KEY[reason] ? (await getPointRules())[REASON_TO_KEY[reason]] ?? 0 : 0)
   if (amount === 0) return 0
   await db.$transaction([
-    db.pointEvent.create({ data: { userId, amount, reason, note } }),
+    db.pointEvent.create({ data: { userId, amount, reason, note, sourceUserId } }),
     db.user.update({
       where: { id: userId },
       data: {
@@ -92,7 +94,7 @@ export async function awardPoints(
         const pct = await getReferralPercent()
         const bonus = Math.floor((amount * pct) / 100)
         if (bonus > 0) {
-          await awardPoints(earner.referredById, 'referral', note ? `${pct}% referido · ${note}` : `${pct}% de puntos de tu invitado`, bonus)
+          await awardPoints(earner.referredById, 'referral', note ? `${pct}% referido · ${note}` : `${pct}% de puntos de tu invitado`, bonus, userId)
         }
       }
     } catch {

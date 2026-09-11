@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound } from 'lucide-react'
+import { Bell, ChevronDown, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -21,6 +21,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { CabalWordmark, CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { AuthDialog } from '@/components/cabal/auth-dialog'
+import { AffiliatesDialog } from '@/components/cabal/affiliates-dialog'
 import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { timeAgo } from '@/lib/cabal'
@@ -32,7 +33,7 @@ export function Header() {
   const { data: leaderboard } = useLeaderboard()
   const router = useRouter()
   const logout = useLogout()
-  const { setSearchOpen, setProfileOpen, setAdminOpen, setTab, openLaunch, openAuth } = useUI()
+  const { setSearchOpen, setProfileOpen, setAdminOpen, setAffiliatesOpen, setTab, openLaunch, openAuth } = useUI()
   const loggedIn = !!session?.loggedIn
 
   const soon = useMemo(() => {
@@ -151,6 +152,9 @@ export function Header() {
                 <DropdownMenuItem onClick={() => setProfileOpen(true)} className="gap-2 text-[13px]">
                   <UserRound className="h-4 w-4" /> Mi Cabal (perfil)
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setAffiliatesOpen(true)} className="gap-2 text-[13px]">
+                  <Users className="h-4 w-4" /> Afiliados
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSearchOpen(true)} className="gap-2 text-[13px] md:hidden">
                   <Search className="h-4 w-4" /> Buscar
                 </DropdownMenuItem>
@@ -204,6 +208,7 @@ export function Header() {
         onOpenLaunch={openLaunch}
       />
       <AuthDialog />
+      <AffiliatesDialog />
     </header>
   )
 }
