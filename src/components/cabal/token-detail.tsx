@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BadgeCheck, ChartLine, History, Zap } from 'lucide-react'
+import { BadgeCheck, ChartLine, History, Maximize2, Minimize2, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -24,6 +24,7 @@ export function TokenDetailDialog() {
   const createPost = useCreatePost()
   const follow = useFollowToggle()
   const [thesis, setThesis] = useState('')
+  const [expanded, setExpanded] = useState(false)
 
   // Tab del gráfico por token: "En vivo" por defecto si hay contrato, "Histórico" si no
   const [tabChoice, setTabChoice] = useState<{ tokenId: string | null; tab: 'live' | 'history' }>({ tokenId: null, tab: 'live' })
@@ -47,10 +48,24 @@ export function TokenDetailDialog() {
         if (!v) {
           openToken(null)
           setThesis('')
+          setExpanded(false)
         }
       }}
     >
-      <DialogContent className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-2xl lg:max-w-3xl" aria-describedby={undefined}>
+      <DialogContent
+        className={cn(
+          'overflow-y-auto border-white/10 bg-[#121410] p-0',
+          expanded ? 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[88vh] sm:max-w-2xl lg:max-w-3xl'
+        )}
+        aria-describedby={undefined}
+      >
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? 'Achicar' : 'Ampliar'}
+          className="absolute right-12 top-4 z-10 rounded-xs text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
+        >
+          {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
+        </button>
         {isLoading || !token ? (
           <div className="space-y-3 p-6">
             <DialogTitle className="sr-only">Detalle del token</DialogTitle>
@@ -125,10 +140,15 @@ export function TokenDetailDialog() {
                 {activeTab === 'live' ? (
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                     <div className="min-w-0 flex-1">
-                      <LiveChart network={token.network} contract={token.contract} height={360} />
+                      <LiveChart network={token.network} contract={token.contract} height={expanded ? 600 : 360} />
                       <ExternalLinksRow network={token.network} contract={token.contract} ticker={token.ticker} className="mt-2" />
                     </div>
-                    <TradePanel contract={token.contract} network={token.network} ticker={token.ticker} className="lg:w-[260px]" />
+                    <TradePanel
+                      contract={token.contract}
+                      network={token.network}
+                      ticker={token.ticker}
+                      className={expanded ? 'lg:w-[320px]' : 'lg:w-[260px]'}
+                    />
                   </div>
                 ) : (
                   <div className="h-44 w-full">

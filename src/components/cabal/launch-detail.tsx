@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Flame, Globe, MonitorPlay, Pencil, Send, Twitter, Zap } from 'lucide-react'
+import { Flame, Globe, Maximize2, Minimize2, MonitorPlay, Pencil, Send, Twitter, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -25,6 +25,7 @@ export function LaunchDetailDialog() {
   const follow = useFollowToggle()
   const createPost = useCreatePost()
   const [comment, setComment] = useState('')
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <Dialog
@@ -33,13 +34,24 @@ export function LaunchDetailDialog() {
         if (!v) {
           openLaunch(null)
           setComment('')
+          setExpanded(false)
         }
       }}
     >
       <DialogContent
-        className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-xl lg:max-w-3xl"
+        className={cn(
+          'overflow-y-auto border-white/10 bg-[#121410] p-0',
+          expanded ? 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[88vh] sm:max-w-xl lg:max-w-3xl'
+        )}
         aria-describedby={undefined}
       >
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          aria-label={expanded ? 'Achicar' : 'Ampliar'}
+          className="absolute right-12 top-4 z-10 rounded-xs text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
+        >
+          {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
+        </button>
         {isLoading || !launch ? (
           <div className="space-y-3 p-6">
             <DialogTitle className="sr-only">Detalle del lanzamiento</DialogTitle>
@@ -191,14 +203,14 @@ export function LaunchDetailDialog() {
                 </div>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                   <div className="min-w-0 flex-1">
-                    <LiveChart network={launch.network} contract={launch.contract} height={320} />
+                    <LiveChart network={launch.network} contract={launch.contract} height={expanded ? 560 : 320} />
                     <ExternalLinksRow network={launch.network} contract={launch.contract} ticker={launch.ticker ?? undefined} className="mt-2.5" />
                   </div>
                   <TradePanel
                     contract={launch.contract}
                     network={launch.network}
                     ticker={launch.ticker ?? launch.name}
-                    className="lg:w-[260px]"
+                    className={expanded ? 'lg:w-[320px]' : 'lg:w-[260px]'}
                   />
                 </div>
               </section>
