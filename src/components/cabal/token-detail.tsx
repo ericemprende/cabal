@@ -55,7 +55,7 @@ export function TokenDetailDialog() {
       <DialogContent
         className={cn(
           'overflow-y-auto border-white/10 bg-[#121410] p-0',
-          expanded ? 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[88vh] sm:max-w-2xl lg:max-w-3xl'
+          expanded ? 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[90vh] sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl'
         )}
         aria-describedby={undefined}
       >
@@ -140,14 +140,14 @@ export function TokenDetailDialog() {
                 {activeTab === 'live' ? (
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                     <div className="min-w-0 flex-1">
-                      <LiveChart network={token.network} contract={token.contract} height={expanded ? 600 : 360} />
+                      <LiveChart network={token.network} contract={token.contract} height={expanded ? 600 : 420} />
                       <ExternalLinksRow network={token.network} contract={token.contract} ticker={token.ticker} className="mt-2" />
                     </div>
                     <TradePanel
                       contract={token.contract}
                       network={token.network}
                       ticker={token.ticker}
-                      className={expanded ? 'lg:w-[320px]' : 'lg:w-[260px]'}
+                      className={expanded ? 'lg:w-[340px]' : 'lg:w-[300px]'}
                     />
                   </div>
                 ) : (

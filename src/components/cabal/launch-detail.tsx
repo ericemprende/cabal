@@ -41,7 +41,7 @@ export function LaunchDetailDialog() {
       <DialogContent
         className={cn(
           'overflow-y-auto border-white/10 bg-[#121410] p-0',
-          expanded ? 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[88vh] sm:max-w-xl lg:max-w-3xl'
+          expanded ? 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[90vh] sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl'
         )}
         aria-describedby={undefined}
       >
@@ -203,14 +203,14 @@ export function LaunchDetailDialog() {
                 </div>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                   <div className="min-w-0 flex-1">
-                    <LiveChart network={launch.network} contract={launch.contract} height={expanded ? 560 : 320} />
+                    <LiveChart network={launch.network} contract={launch.contract} height={expanded ? 560 : 400} />
                     <ExternalLinksRow network={launch.network} contract={launch.contract} ticker={launch.ticker ?? undefined} className="mt-2.5" />
                   </div>
                   <TradePanel
                     contract={launch.contract}
                     network={launch.network}
                     ticker={launch.ticker ?? launch.name}
-                    className={expanded ? 'lg:w-[320px]' : 'lg:w-[260px]'}
+                    className={expanded ? 'lg:w-[340px]' : 'lg:w-[300px]'}
                   />
                 </div>
               </section>
