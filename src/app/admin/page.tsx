@@ -156,7 +156,7 @@ function AdminDashboard() {
   return (
     <div className="flex min-h-screen flex-col bg-[#0a0b08]">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0b08]/95 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between gap-3 px-4">
+        <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6">
           <p className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/cabal-logo.png"
@@ -181,15 +181,11 @@ function AdminDashboard() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 p-4">
-        <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#121410]">
+      <main className="min-h-[calc(100vh-3.5rem)] w-full flex-1 sm:p-4">
+        <div className="min-h-[calc(100vh-3.5rem)] border border-white/10 bg-[#121410] sm:min-h-[calc(100vh-4.5rem)] sm:overflow-hidden sm:rounded-2xl">
           <AdminPanel enabled stickyHeader={false} />
         </div>
       </main>
-
-      <footer className="mt-auto border-t border-white/8 px-4 py-4">
-        <p className="text-center text-[11px] text-muted-foreground">Panel de administración · Cabal</p>
-      </footer>
     </div>
   )
 }
