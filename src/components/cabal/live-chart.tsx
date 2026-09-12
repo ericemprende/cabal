@@ -23,13 +23,14 @@ const GMGN_SLUGS: Record<string, string> = {
   robinhood: 'robinhood',
 }
 
-// Slugs de DexScreener por red (todas, incluida tron)
+// Slugs de DexScreener por red (todas, incluida tron y robinhood)
 const DEXSCREENER_SLUGS: Record<string, string> = {
   solana: 'solana',
   ethereum: 'ethereum',
   base: 'base',
   bsc: 'bsc',
   tron: 'tron',
+  robinhood: 'robinhood',
 }
 
 export interface TradeLink {
@@ -71,9 +72,10 @@ export function tradeLinks(network: string, contract: string): TradeLink[] {
 
 /**
  * Gráfico de trading en vivo embebido (estilo GMGN / Axiom Pro).
- * Fuente principal: TV widget de Birdeye; en tron usa el embed de DexScreener.
- * Si no hay contrato o la red no tiene soporte, muestra un estado elegante
- * con acceso a las plataformas externas.
+ * Fuente principal: TV widget de Birdeye; en las redes que Birdeye no cubre
+ * (tron, robinhood) usa el embed de DexScreener.
+ * Si no hay contrato o la red no tiene soporte en ninguna de las dos, muestra
+ * un estado elegante con acceso a las plataformas externas.
  */
 export function LiveChart({ network, contract, height = 320 }: { network: string; contract: string; height?: number }) {
   const birdeyeChain = BIRDEYE_CHAINS[network]
@@ -81,8 +83,8 @@ export function LiveChart({ network, contract, height = 320 }: { network: string
 
   const birdeyeSrc = birdeyeChain && contract ? `https://birdeye.so/tv-widget/${contract}?chain=${birdeyeChain}` : null
   const dexSrc = dexSlug && contract ? `https://dexscreener.com/${dexSlug}/${contract}?embed=1&theme=dark&info=0&trades=0` : null
-  // Birdeye no soporta tron bien: usamos DexScreener como fuente en esa red
-  const src = network === 'tron' ? dexSrc : birdeyeSrc
+  // Birdeye no cubre todas las redes: si no la tiene, cae a DexScreener
+  const src = birdeyeSrc ?? dexSrc
 
   if (!src) {
     return (
