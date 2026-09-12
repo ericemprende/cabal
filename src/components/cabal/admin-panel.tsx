@@ -10,6 +10,8 @@ import {
   Globe,
   Heart,
   Link2,
+  MessageSquareWarning,
+  Megaphone,
   Minus,
   Pencil,
   Plus,
@@ -19,6 +21,7 @@ import {
   ShieldCheck,
   Ticket,
   Trash2,
+  TrendingUp,
   Users,
   XCircle,
   Zap,
@@ -42,9 +45,9 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { NETWORKS, timeAgo } from '@/lib/cabal'
+import { NETWORKS, fmtPct, timeAgo } from '@/lib/cabal'
 import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
-import { PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
+import { CopyCA, PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { AdminWaitlist } from '@/components/cabal/admin-waitlist'
 import {
@@ -53,11 +56,14 @@ import {
   uploadImage,
   useAdminAdjustPoints,
   useAdminAffiliates,
+  useAdminCalls,
   useAdminCreateAffiliate,
   useAdminDeleteAffiliate,
   useAdminDeleteLaunch,
   useAdminLaunches,
   useAdminOverview,
+  useAdminDeletePost,
+  useAdminPosts,
   useAdminRules,
   useAdminSaveAffiliate,
   useAdminTokens,
@@ -110,6 +116,8 @@ type AdminView =
   | 'proyectos'
   | 'tokens'
   | 'afiliados'
+  | 'calls'
+  | 'moderacion'
   | 'stats'
 
 function toInputDateTime(iso: string): string {
@@ -217,6 +225,8 @@ export function AdminPanel({
               { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
               { key: 'tokens', label: 'Tokens', icon: Coins },
               { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
+              { key: 'calls', label: 'Calls por usuario', icon: Megaphone },
+              { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
               { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
               { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
             ] as { key: AdminView; label: string; icon: typeof Zap }[]
@@ -272,6 +282,10 @@ export function AdminPanel({
         {view === 'tokens' && <AdminTokens enabled={enabled} />}
 
         {view === 'afiliados' && <AdminAffiliates enabled={enabled} />}
+
+        {view === 'calls' && <AdminCalls enabled={enabled} />}
+
+        {view === 'moderacion' && <AdminModeration enabled={enabled} />}
 
         {view === 'reglas' && (
           <div className="space-y-3">
@@ -1227,6 +1241,185 @@ const ADMIN_CLAIM_STATUS: Record<string, { label: string; cls: string }> = {
   verified: { label: 'VERIFICADO', cls: 'border-[#8FA83F]/40 bg-[#8FA83F]/12 text-primary' },
   pending: { label: 'PENDIENTE', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
   rejected: { label: 'RECHAZADO', cls: 'border-[#ff8080]/30 bg-[#ff8080]/10 text-[#ff8080]' },
+}
+
+function AdminCalls({ enabled }: { enabled: boolean }) {
+  const callsQ = useAdminCalls(enabled)
+  const leaderboard = callsQ.data?.leaderboard ?? []
+  const calls = callsQ.data?.calls ?? []
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Últimas {calls.length} calls públicas del feed, con su %s en vivo desde que se publicaron (comparado contra el
+        precio actual). El winrate y el %s promedio solo cuentan las calls con dato de precio.
+      </p>
+
+      {callsQ.isLoading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+
+      {!callsQ.isLoading && leaderboard.length === 0 && (
+        <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-muted-foreground">
+          Todavía no hay calls publicadas
+        </p>
+      )}
+
+      {leaderboard.length > 0 && (
+        <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+          <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+            Winrate por usuario
+          </p>
+          <div className="space-y-1.5">
+            {leaderboard.map((row) => (
+              <div key={row.user.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-white/4">
+                <UserAvatar name={row.user.name} handle={row.user.handle} src={row.user.avatar} size="xs" ring={false} />
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{row.user.name}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {row.total} call{row.total === 1 ? '' : 's'}
+                </span>
+                <span className="text-[11px] font-bold text-primary">
+                  {row.winRate === null ? '—' : `${row.winRate}% winrate`}
+                </span>
+                <span className={cn('w-16 text-right font-mono text-[12px] font-bold', (row.avgPct ?? 0) >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+                  {row.avgPct === null ? '—' : fmtPct(row.avgPct)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <p className="pb-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Detalle de calls</p>
+        {calls.map((c) => (
+          <div key={c.id} className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <UserAvatar name={c.user.name} handle={c.user.handle} src={c.user.avatar} size="xs" ring={false} />
+                <span className="truncate text-[13px] font-bold">@{c.user.handle}</span>
+                <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
+                  <NetworkIcon network={c.network ?? 'solana'} className="h-3 w-3" />
+                  {c.symbol ? `$${c.symbol}` : ''}
+                </span>
+              </div>
+              <span className="flex items-center gap-2">
+                {c.pctChange !== null ? (
+                  <span className={cn('flex items-center gap-1 text-[12px] font-bold', c.pctChange >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+                    <TrendingUp className={cn('h-3 w-3', c.pctChange < 0 && 'rotate-180')} />
+                    {fmtPct(c.pctChange)}
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground">sin datos</span>
+                )}
+                <span className="text-[10px] text-muted-foreground">{timeAgo(c.createdAt)}</span>
+              </span>
+            </div>
+            <p className="mt-1.5 line-clamp-2 text-[13px] text-foreground/85">{c.content}</p>
+            {c.contract && <CopyCA contract={c.contract} className="mt-1.5 text-[10px]" />}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Moderación del feed: tesis y comentarios, con borrado directo ────────
+const MODERATION_KIND_LABEL: Record<string, string> = { thesis: 'Tesis', comment: 'Comentario' }
+
+function AdminModeration({ enabled }: { enabled: boolean }) {
+  const [kind, setKind] = useState<'thesis' | 'comment' | undefined>(undefined)
+  const postsQ = useAdminPosts(enabled, kind)
+  const deletePost = useAdminDeletePost(enabled)
+  const posts = postsQ.data?.posts ?? []
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Todas las tesis y comentarios del feed (últimos 300). Bórralos aquí si el contenido es inadecuado.
+      </p>
+
+      <div className="flex gap-1.5">
+        {(
+          [
+            { key: undefined, label: 'Todo' },
+            { key: 'thesis', label: 'Tesis' },
+            { key: 'comment', label: 'Comentarios' },
+          ] as { key: 'thesis' | 'comment' | undefined; label: string }[]
+        ).map((f) => (
+          <button
+            key={f.label}
+            onClick={() => setKind(f.key)}
+            className={cn(
+              'rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+              kind === f.key
+                ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {postsQ.isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+
+      {!postsQ.isLoading && posts.length === 0 && (
+        <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-muted-foreground">
+          No hay nada que moderar por ahora
+        </p>
+      )}
+
+      <div className="space-y-2">
+        {posts.map((p) => (
+          <div key={p.id} className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <UserAvatar name={p.user.name} handle={p.user.handle} src={p.user.avatar} size="xs" ring={false} />
+                <span className="truncate text-[13px] font-bold">@{p.user.handle}</span>
+                <span className="rounded bg-white/8 px-1 py-px text-[9px] font-black uppercase text-zinc-300">
+                  {MODERATION_KIND_LABEL[p.kind] ?? p.kind}
+                </span>
+                {(p.launchName || p.tokenName) && (
+                  <span className="truncate text-[10px] text-muted-foreground">en {p.launchName ?? p.tokenName}</span>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">{timeAgo(p.createdAt)}</span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={deletePost.isPending}
+                      className="h-8 w-8 rounded-lg border border-white/10 text-[#ff8080] hover:bg-destructive/15"
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="border-white/12 bg-[#121410]">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">¿Eliminar este {MODERATION_KIND_LABEL[p.kind]?.toLowerCase() ?? 'post'}?</AlertDialogTitle>
+                      <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deletePost.mutate(p.id)}
+                        className="bg-[#ff4d5e] text-white hover:bg-[#ff4d5e]/85"
+                      >
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+            <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-foreground/85">{p.content}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function AdminClaims({ enabled }: { enabled: boolean }) {

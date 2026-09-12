@@ -354,6 +354,80 @@ export async function fetchTokenStats(network: string, ca: string): Promise<Chai
   return stats
 }
 
+// ── Resultado de una call (feed): precio de entrada vs. precio actual ──
+
+export type CallResult = {
+  found: boolean
+  entryPriceUsd: number | null
+  currentPriceUsd: number | null
+  currentMc: number | null
+  symbol: string
+  pctChange: number | null
+  pairUrl: string
+}
+
+const EMPTY_CALL_RESULT: CallResult = {
+  found: false,
+  entryPriceUsd: null,
+  currentPriceUsd: null,
+  currentMc: null,
+  symbol: '',
+  pctChange: null,
+  pairUrl: '',
+}
+
+/**
+ * No guardamos precio de entrada al publicar la call: solo el instante
+ * (`calledAt`, el `createdAt` del post). El resultado se calcula siempre al
+ * vuelo, comparando el precio actual (DexScreener) contra la vela de un
+ * minuto más cercana a `calledAt` (GeckoTerminal OHLCV). Si la call es tan
+ * reciente que esa vela aún no existe, se usa el precio actual como entrada
+ * (0%) en vez de fallar.
+ */
+export async function fetchCallResult(network: string, ca: string, calledAt: Date): Promise<CallResult> {
+  const dexChain = DEX_CHAIN[network]
+  if (!dexChain) return { ...EMPTY_CALL_RESULT }
+
+  const json = await fetchJson<{ pairs?: DexPair[] }>(
+    `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(ca)}`,
+    8000
+  )
+  const pair = pickPair(json?.pairs ?? [], ca)
+  if (!pair) return { ...EMPTY_CALL_RESULT }
+
+  const currentPriceUsd = pair.priceUsd ? Number(pair.priceUsd) || null : null
+  const currentMc = pair.marketCap ?? pair.fdv ?? null
+
+  let entryPriceUsd: number | null = null
+  const geckoNet = GECKO_NETWORK[network]
+  if (geckoNet && pair.pairAddress) {
+    // antes de calledAt + un pequeño margen, para asegurarnos de que la vela
+    // de ese minuto ya exista cuando se pide justo después de publicar
+    const beforeTs = Math.floor(calledAt.getTime() / 1000) + 90
+    const url = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pair.pairAddress}/ohlcv/minute?aggregate=1&before_timestamp=${beforeTs}&limit=1`
+    const candles = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(url, 7000)
+    const c = candles?.data?.attributes?.ohlcv_list?.[0]
+    if (c && Number(c[4]) > 0) entryPriceUsd = Number(c[4])
+  }
+  // Call recién publicada: aún no hay vela de ese minuto. Entrada = precio actual (0%).
+  if (entryPriceUsd === null) entryPriceUsd = currentPriceUsd
+
+  const pctChange =
+    entryPriceUsd && currentPriceUsd && entryPriceUsd > 0
+      ? ((currentPriceUsd - entryPriceUsd) / entryPriceUsd) * 100
+      : null
+
+  return {
+    found: true,
+    entryPriceUsd,
+    currentPriceUsd,
+    currentMc,
+    symbol: pair.baseToken?.symbol ?? '',
+    pctChange,
+    pairUrl: pair.url ?? '',
+  }
+}
+
 /** Datos de mercado de un token para la pestaña Tokens. */
 export type MarketSnapshot = {
   priceUsd: number

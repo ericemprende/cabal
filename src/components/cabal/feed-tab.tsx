@@ -1,11 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { GraduationCap, Megaphone, MessageSquare, Zap } from 'lucide-react'
+import { GraduationCap, Hash, Megaphone, MessageSquare, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { UserAvatar } from '@/components/cabal/shared'
+import { NETWORKS } from '@/lib/cabal'
+import { NetworkIcon, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
 import { useCreatePost, useMe } from '@/lib/api-client'
@@ -24,13 +26,22 @@ export function FeedTab() {
   const createPost = useCreatePost()
   const [content, setContent] = useState('')
   const [kind, setKind] = useState('comment')
+  const [contract, setContract] = useState('')
+  const [network, setNetwork] = useState('solana')
+
+  const isCall = kind === 'call'
+  const contractOk = /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim())
+  const canSubmit = content.trim() && (!isCall || contractOk)
 
   const submit = () => {
-    if (!content.trim()) return
+    if (!canSubmit) return
     createPost.mutate(
-      { kind, content },
+      { kind, content, contract: isCall ? contract.trim() : undefined, network: isCall ? network : undefined },
       {
-        onSuccess: () => setContent(''),
+        onSuccess: () => {
+          setContent('')
+          setContract('')
+        },
       }
     )
   }
@@ -49,6 +60,39 @@ export function FeedTab() {
               className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
               aria-label="Escribir post"
             />
+            {isCall && (
+              <div className="mt-2 space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <Hash className="h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden />
+                  <Input
+                    value={contract}
+                    onChange={(e) => setContract(e.target.value)}
+                    placeholder="CA / contrato del token (obligatorio para una call)"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="h-8 bg-[#0a0b08] font-mono text-xs"
+                    aria-label="Contrato del token"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {Object.entries(NETWORKS).map(([key, meta]) => (
+                    <button
+                      key={key}
+                      onClick={() => setNetwork(key)}
+                      className={cn(
+                        'flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-all',
+                        network === key
+                          ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                          : 'border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground'
+                      )}
+                    >
+                      <NetworkIcon network={key} className="h-3 w-3" />
+                      {meta.short}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {KINDS.map((k) => (
                 <button
@@ -74,7 +118,7 @@ export function FeedTab() {
               <Button
                 size="sm"
                 onClick={submit}
-                disabled={!content.trim() || createPost.isPending}
+                disabled={!canSubmit || createPost.isPending}
                 className="ml-auto h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
               >
                 <Zap className="h-3 w-3" /> Publicar

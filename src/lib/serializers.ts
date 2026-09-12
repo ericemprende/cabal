@@ -77,6 +77,8 @@ export async function toPostDTO(
     user: DbUser
     launchId: string | null
     tokenId: string | null
+    contract?: string | null
+    network?: string | null
   },
   liked: boolean,
   pointsEarned?: number
@@ -121,6 +123,8 @@ export async function toPostDTO(
     user: toPublicUserDTO(p.user),
     launch,
     token,
+    contract: p.contract ?? null,
+    network: p.network ?? null,
     pointsEarned,
   }
 }

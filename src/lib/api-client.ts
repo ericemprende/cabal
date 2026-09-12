@@ -122,6 +122,7 @@ export const qk = {
   adminRules: ['admin', 'rules'] as const,
   adminLaunches: ['admin', 'launches'] as const,
   adminTokens: ['admin', 'tokens'] as const,
+  adminPosts: ['admin', 'posts'] as const,
   affiliates: ['affiliates'] as const,
   adminAffiliates: ['admin', 'affiliates'] as const,
   adminWaitlist: ['admin', 'waitlist'] as const,
@@ -224,7 +225,7 @@ export function useLogin() {
 export function useRegister() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { handle: string; name?: string; password: string; referralCode?: string }) =>
+    mutationFn: (data: { handle: string; name?: string; email: string; password: string; referralCode?: string }) =>
       jsonFetch<{ ok: boolean; user: UserDTO }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -332,6 +333,35 @@ export function useAdminUsers(enabled: boolean) {
   return useQuery<AdminUserRowDTO[]>({
     queryKey: qk.adminUsers,
     queryFn: () => jsonFetch('/api/admin/users'),
+    enabled,
+  })
+}
+
+export type AdminCallRowDTO = {
+  id: string
+  content: string
+  contract: string | null
+  network: string | null
+  createdAt: string
+  user: { id: string; name: string; handle: string; avatar: string }
+  symbol: string
+  pctChange: number | null
+  found: boolean
+}
+
+export type AdminCallLeaderRowDTO = {
+  user: { id: string; name: string; handle: string; avatar: string }
+  total: number
+  withData: number
+  winRate: number | null
+  avgPct: number | null
+}
+
+/** Calls por usuario (últimas 300), con %s en vivo desde que se publicaron. */
+export function useAdminCalls(enabled: boolean) {
+  return useQuery<{ calls: AdminCallRowDTO[]; leaderboard: AdminCallLeaderRowDTO[] }>({
+    queryKey: ['admin-calls'],
+    queryFn: () => jsonFetch('/api/admin/calls'),
     enabled,
   })
 }
@@ -444,6 +474,28 @@ export function useLikeToggle() {
   })
 }
 
+export type CallResultDTO = {
+  found: boolean
+  entryPriceUsd: number | null
+  currentPriceUsd: number | null
+  currentMc: number | null
+  symbol: string
+  pctChange: number | null
+  pairUrl: string
+  calledAt: string
+}
+
+/** Resultado en vivo de una call: público, no requiere sesión. */
+export function useCallResult(postId: string, enabled: boolean) {
+  return useQuery<CallResultDTO>({
+    queryKey: ['call-result', postId],
+    queryFn: () => jsonFetch(`/api/posts/${postId}/result`),
+    enabled,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+  })
+}
+
 export function useFollowToggle() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
@@ -456,7 +508,14 @@ export function useFollowToggle() {
 export function useCreatePost() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
-    mutationFn: (data: { kind: string; content: string; launchId?: string; tokenId?: string }) =>
+    mutationFn: (data: {
+      kind: string
+      content: string
+      launchId?: string
+      tokenId?: string
+      contract?: string
+      network?: string
+    }) =>
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/posts', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -707,6 +766,40 @@ export function useAdminDeleteLaunch(enabled: boolean) {
     onSuccess: () => {
       invalidate()
       toast.success('Launch eliminado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export type AdminPostDTO = {
+  id: string
+  kind: string
+  content: string
+  likes: number
+  createdAt: string
+  user: { id: string; name: string; handle: string; avatar: string }
+  launchName: string | null
+  tokenName: string | null
+}
+
+export function useAdminPosts(enabled: boolean, kind?: 'thesis' | 'comment') {
+  return useQuery<{ posts: AdminPostDTO[] }>({
+    queryKey: [...qk.adminPosts, kind ?? 'all'],
+    queryFn: () => jsonFetch(`/api/admin/posts${kind ? `?kind=${kind}` : ''}`),
+    enabled,
+  })
+}
+
+export function useAdminDeletePost(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (postId: string) =>
+      jsonFetch<{ ok: boolean }>(`/api/admin/posts?id=${encodeURIComponent(postId)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Eliminado del feed')
     },
     onError: (e: Error) => toast.error(e.message),
   })

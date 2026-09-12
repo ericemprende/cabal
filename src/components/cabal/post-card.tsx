@@ -1,13 +1,31 @@
 'use client'
 
 import Link from 'next/link'
-import { Heart, MessageCircle, TrendingUp } from 'lucide-react'
+import { Heart, ImageDown, MessageCircle, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
-import { useFollowToggle, useLikeToggle } from '@/lib/api-client'
+import { useCallResult, useFollowToggle, useLikeToggle } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import type { PostDTO } from '@/lib/types'
+
+function CallResultBadge({ post }: { post: PostDTO }) {
+  const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
+  if (!data?.found || data.pctChange === null) return null
+  const up = data.pctChange >= 0
+  return (
+    <span
+      className={cn(
+        'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold',
+        up ? 'bg-[#8FA83F]/10 text-primary' : 'bg-red-500/10 text-red-400'
+      )}
+      title="Cambio de precio desde que se publicó la call"
+    >
+      <TrendingUp className={cn('h-3 w-3', !up && 'rotate-180')} />
+      {fmtPct(data.pctChange)} desde la call
+    </span>
+  )
+}
 
 export function PostCard({
   post,
@@ -57,6 +75,22 @@ export function PostCard({
           <p className={cn('mt-1.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90', compact ? 'line-clamp-3 text-[13px]' : 'text-sm')}>
             {post.content}
           </p>
+
+          {post.kind === 'call' && post.contract && (
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
+              <CopyCA contract={post.contract} className="text-[11px]" />
+              <CallResultBadge post={post} />
+              <a
+                href={`/api/posts/${post.id}/card`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary hover:text-[#a9c95a]"
+                title="Ver/descargar imagen con el resultado para compartir"
+              >
+                <ImageDown className="h-3.5 w-3.5" /> imagen
+              </a>
+            </div>
+          )}
 
           {/* linked target */}
           {post.launch && (
