@@ -1,11 +1,22 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Heart, ImageDown, MessageCircle, TrendingUp } from 'lucide-react'
+import { Check, Copy, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { useCallResult, useFollowToggle, useLikeToggle } from '@/lib/api-client'
+import {
+  canCopyImages,
+  copyImage,
+  downloadImage,
+  fetchCardFile,
+  prefersNativeShare,
+  shareNative,
+} from '@/lib/share-image'
 import { useUI } from '@/lib/store'
 import type { PostDTO } from '@/lib/types'
 
@@ -63,6 +74,138 @@ function CallResultBadge({ post }: { post: PostDTO }) {
   )
 }
 
+/** Popup con la tarjeta de resultado de una call y el botón para compartirla en X. */
+function CallShareDialog({ post, open, onOpenChange }: { post: PostDTO; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { data } = useCallResult(post.id, open && post.kind === 'call' && !!post.contract)
+  const cardPath = `/api/posts/${post.id}/card`
+
+  // Capacidades del navegador: se leen tras montar, igual que en el flujo de
+  // la lista de espera, para no descuadrar la hidratación.
+  const [nativeShare, setNativeShare] = useState(false)
+  const [copyable, setCopyable] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    const t = setTimeout(() => {
+      setNativeShare(prefersNativeShare())
+      setCopyable(canCopyImages())
+    }, 0)
+    return () => clearTimeout(t)
+  }, [open])
+
+  // La imagen se descarga por adelantado (dentro del gesto de compartir hay
+  // que ser inmediato, sobre todo en Safari), con un cache-buster por si el
+  // resultado cambió desde la última vez que se abrió este popup.
+  const [loaded, setLoaded] = useState<{ url: string; file: File } | null>(null)
+  const absCardUrl = typeof window !== 'undefined' ? `${window.location.origin}${cardPath}?t=${Date.now()}` : cardPath
+  const cardFile = loaded?.url === cardPath ? loaded.file : null
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    fetchCardFile(absCardUrl, post.user.handle)
+      .then((file) => alive && setLoaded({ url: cardPath, file }))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cardPath])
+
+  const [copied, setCopied] = useState(false)
+
+  const symbol = data?.symbol ? `$${data.symbol}` : '$token'
+  const hasPeak = data?.peakMultiple !== null && (data?.peakMultiple ?? 0) >= 2
+  const headline =
+    hasPeak && data
+      ? `${symbol} llegó a hacer ${fmtX(data.peakMultiple!)} desde esta call`
+      : data?.pctChange !== null && data
+        ? `${symbol} va ${fmtPct(data.pctChange)} desde esta call`
+        : `Resultado de la call de ${symbol}`
+  const shareText = `${headline} en @cabalarmy 🐺`
+  const intentUrl = `https://x.com/intent/post?${new URLSearchParams({ text: shareText, url: 'https://cabal.army' }).toString()}`
+
+  const shareFromDevice = async () => {
+    if (!cardFile) return
+    try {
+      const done = await shareNative(cardFile, `${shareText}\n\nhttps://cabal.army`)
+      if (!done) return
+    } catch {
+      window.open(intentUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const copyCard = async () => {
+    if (!cardFile) return
+    try {
+      await copyImage(cardFile)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      // el botón de descargar sigue disponible como respaldo
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+        <DialogTitle className="sr-only">Compartir el resultado de la call</DialogTitle>
+        <img
+          key={cardPath}
+          src={cardPath}
+          alt={`Resultado de la call, ${symbol}`}
+          width={1200}
+          height={675}
+          className="w-full border-b border-white/10"
+        />
+        <div className="p-4">
+          {/* X no adjunta la imagen desde el intent: en escritorio hay que
+              copiarla o descargarla y pegarla a mano en el compositor. */}
+          {!nativeShare && (
+            <p className="mb-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground">
+              Para que la imagen salga en el post:
+              {copyable && (
+                <>
+                  <button
+                    type="button"
+                    onClick={copyCard}
+                    disabled={!cardFile}
+                    className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
+                  >
+                    {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    {copied ? 'Copiada' : 'Copiar'}
+                  </button>
+                  <span aria-hidden>·</span>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => cardFile && downloadImage(cardFile)}
+                disabled={!cardFile}
+                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
+              >
+                <Download className="h-3 w-3" />
+                Descargar
+              </button>
+              {copyable && <span className="w-full basis-full text-[10.5px] opacity-80">y pégala con Ctrl+V (⌘V en Mac) en el compositor de X.</span>}
+            </p>
+          )}
+
+          {nativeShare && cardFile ? (
+            <Button onClick={shareFromDevice} className="h-11 w-full gap-2 rounded-xl bg-primary text-[14px] font-bold text-primary-foreground hover:bg-[#9dba46]">
+              <Send className="h-4 w-4" /> Compartir en X
+            </Button>
+          ) : (
+            <Button asChild className="h-11 w-full gap-2 rounded-xl bg-primary text-[14px] font-bold text-primary-foreground hover:bg-[#9dba46]">
+              <a href={intentUrl} target="_blank" rel="noopener noreferrer">
+                <Send className="h-4 w-4" /> Compartir en X
+              </a>
+            </Button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function PostCard({
   post,
   compact,
@@ -75,6 +218,7 @@ export function PostCard({
   const like = useLikeToggle()
   const follow = useFollowToggle()
   const { openLaunch, openToken } = useUI()
+  const [shareOpen, setShareOpen] = useState(false)
 
   return (
     <article
@@ -116,15 +260,18 @@ export function PostCard({
             <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
               <CopyCA contract={post.contract} className="text-[11px]" />
               <CallResultBadge post={post} />
-              <a
-                href={`/api/posts/${post.id}/card`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShareOpen(true)
+                }}
                 className="ml-auto flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary hover:text-[#a9c95a]"
-                title="Ver/descargar imagen con el resultado para compartir"
+                title="Ver la tarjeta y compartirla en X"
               >
                 <ImageDown className="h-3.5 w-3.5" /> imagen
-              </a>
+              </button>
+              <CallShareDialog post={post} open={shareOpen} onOpenChange={setShareOpen} />
             </div>
           )}
 
