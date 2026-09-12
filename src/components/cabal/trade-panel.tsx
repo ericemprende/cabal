@@ -27,12 +27,19 @@ import { useBuildBuy, useBuildSell, useConfirmSwap, useSwapConfig, useTokenBalan
 const PRESETS_USD = [10, 25, 50, 100]
 const PRESETS_PCT = [25, 50, 75, 100]
 
-/** "0.37%" o, si el monto cae en el umbral chiquito configurado, la comisión mínima. */
+/**
+ * "0.37% ($0.05)" o, si el monto cae en el umbral chiquito configurado, la
+ * comisión mínima. El monto en $ solo se muestra cuando amountUsd es un
+ * número real (compras): en ventas no hay forma de saber cuánto vale en $ el
+ * % del saldo sin conocer el precio, así que ahí solo se ve el %.
+ */
 function feeLabel(fee: { feeBps: number; smallTradeUsd: number; smallTradeFeeBps: number } | null | undefined, amountUsd: number): string | null {
   if (!fee) return null
   const bps = fee.smallTradeUsd > 0 && amountUsd > 0 && amountUsd < fee.smallTradeUsd ? fee.smallTradeFeeBps : fee.feeBps
   const pct = (bps / 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
-  return `${pct}%`
+  if (!Number.isFinite(amountUsd) || amountUsd <= 0) return `${pct}%`
+  const feeUsd = (amountUsd * bps) / 10000
+  return `${pct}% ($${feeUsd.toFixed(feeUsd < 1 ? 2 : 0)})`
 }
 
 // Verde de las velas del gráfico (Birdeye), en vez del verde oliva del theme
