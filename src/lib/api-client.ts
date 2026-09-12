@@ -118,6 +118,7 @@ export const qk = {
   adminRules: ['admin', 'rules'] as const,
   adminLaunches: ['admin', 'launches'] as const,
   adminTokens: ['admin', 'tokens'] as const,
+  adminPosts: ['admin', 'posts'] as const,
   affiliates: ['affiliates'] as const,
   adminAffiliates: ['admin', 'affiliates'] as const,
   adminWaitlist: ['admin', 'waitlist'] as const,
@@ -726,6 +727,40 @@ export function useAdminDeleteLaunch(enabled: boolean) {
     onSuccess: () => {
       invalidate()
       toast.success('Launch eliminado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export type AdminPostDTO = {
+  id: string
+  kind: string
+  content: string
+  likes: number
+  createdAt: string
+  user: { id: string; name: string; handle: string; avatar: string }
+  launchName: string | null
+  tokenName: string | null
+}
+
+export function useAdminPosts(enabled: boolean, kind?: 'thesis' | 'comment') {
+  return useQuery<{ posts: AdminPostDTO[] }>({
+    queryKey: [...qk.adminPosts, kind ?? 'all'],
+    queryFn: () => jsonFetch(`/api/admin/posts${kind ? `?kind=${kind}` : ''}`),
+    enabled,
+  })
+}
+
+export function useAdminDeletePost(enabled: boolean) {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (postId: string) =>
+      jsonFetch<{ ok: boolean }>(`/api/admin/posts?id=${encodeURIComponent(postId)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Eliminado del feed')
     },
     onError: (e: Error) => toast.error(e.message),
   })

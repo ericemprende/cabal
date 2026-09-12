@@ -10,6 +10,7 @@ import {
   Globe,
   Heart,
   Link2,
+  MessageSquareWarning,
   Megaphone,
   Minus,
   Pencil,
@@ -61,6 +62,8 @@ import {
   useAdminDeleteLaunch,
   useAdminLaunches,
   useAdminOverview,
+  useAdminDeletePost,
+  useAdminPosts,
   useAdminRules,
   useAdminSaveAffiliate,
   useAdminTokens,
@@ -114,6 +117,7 @@ type AdminView =
   | 'tokens'
   | 'afiliados'
   | 'calls'
+  | 'moderacion'
   | 'stats'
 
 function toInputDateTime(iso: string): string {
@@ -222,6 +226,7 @@ export function AdminPanel({
               { key: 'tokens', label: 'Tokens', icon: Coins },
               { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
               { key: 'calls', label: 'Calls por usuario', icon: Megaphone },
+              { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
               { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
               { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
             ] as { key: AdminView; label: string; icon: typeof Zap }[]
@@ -279,6 +284,8 @@ export function AdminPanel({
         {view === 'afiliados' && <AdminAffiliates enabled={enabled} />}
 
         {view === 'calls' && <AdminCalls enabled={enabled} />}
+
+        {view === 'moderacion' && <AdminModeration enabled={enabled} />}
 
         {view === 'reglas' && (
           <div className="space-y-3">
@@ -1308,6 +1315,106 @@ function AdminCalls({ enabled }: { enabled: boolean }) {
             </div>
             <p className="mt-1.5 line-clamp-2 text-[13px] text-foreground/85">{c.content}</p>
             {c.contract && <CopyCA contract={c.contract} className="mt-1.5 text-[10px]" />}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Moderación del feed: tesis y comentarios, con borrado directo ────────
+const MODERATION_KIND_LABEL: Record<string, string> = { thesis: 'Tesis', comment: 'Comentario' }
+
+function AdminModeration({ enabled }: { enabled: boolean }) {
+  const [kind, setKind] = useState<'thesis' | 'comment' | undefined>(undefined)
+  const postsQ = useAdminPosts(enabled, kind)
+  const deletePost = useAdminDeletePost(enabled)
+  const posts = postsQ.data?.posts ?? []
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Todas las tesis y comentarios del feed (últimos 300). Bórralos aquí si el contenido es inadecuado.
+      </p>
+
+      <div className="flex gap-1.5">
+        {(
+          [
+            { key: undefined, label: 'Todo' },
+            { key: 'thesis', label: 'Tesis' },
+            { key: 'comment', label: 'Comentarios' },
+          ] as { key: 'thesis' | 'comment' | undefined; label: string }[]
+        ).map((f) => (
+          <button
+            key={f.label}
+            onClick={() => setKind(f.key)}
+            className={cn(
+              'rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+              kind === f.key
+                ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {postsQ.isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+
+      {!postsQ.isLoading && posts.length === 0 && (
+        <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-muted-foreground">
+          No hay nada que moderar por ahora
+        </p>
+      )}
+
+      <div className="space-y-2">
+        {posts.map((p) => (
+          <div key={p.id} className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <UserAvatar name={p.user.name} handle={p.user.handle} src={p.user.avatar} size="xs" ring={false} />
+                <span className="truncate text-[13px] font-bold">@{p.user.handle}</span>
+                <span className="rounded bg-white/8 px-1 py-px text-[9px] font-black uppercase text-zinc-300">
+                  {MODERATION_KIND_LABEL[p.kind] ?? p.kind}
+                </span>
+                {(p.launchName || p.tokenName) && (
+                  <span className="truncate text-[10px] text-muted-foreground">en {p.launchName ?? p.tokenName}</span>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-[10px] text-muted-foreground">{timeAgo(p.createdAt)}</span>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      disabled={deletePost.isPending}
+                      className="h-8 w-8 rounded-lg border border-white/10 text-[#ff8080] hover:bg-destructive/15"
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="border-white/12 bg-[#121410]">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="font-display">¿Eliminar este {MODERATION_KIND_LABEL[p.kind]?.toLowerCase() ?? 'post'}?</AlertDialogTitle>
+                      <AlertDialogDescription>Esta acción no se puede deshacer.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => deletePost.mutate(p.id)}
+                        className="bg-[#ff4d5e] text-white hover:bg-[#ff4d5e]/85"
+                      >
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+            <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-foreground/85">{p.content}</p>
           </div>
         ))}
       </div>
