@@ -13,7 +13,7 @@ export function AdminDialog() {
   return (
     <Dialog open={adminOpen} onOpenChange={setAdminOpen}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto border-white/12 bg-[#121410] p-0 sm:max-w-3xl"
+        className="max-h-[90vh] overflow-y-auto border-white/12 bg-[#121410] p-0 sm:max-w-5xl"
         aria-describedby={undefined}
       >
         <DialogTitle className="sr-only">Dashboard Admin</DialogTitle>
