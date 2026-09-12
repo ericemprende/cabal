@@ -27,6 +27,14 @@ import { useBuildBuy, useBuildSell, useConfirmSwap, useSwapConfig, useTokenBalan
 const PRESETS_USD = [10, 25, 50, 100]
 const PRESETS_PCT = [25, 50, 75, 100]
 
+/** "0.37%" o, si el monto cae en el umbral chiquito configurado, la comisión mínima. */
+function feeLabel(fee: { feeBps: number; smallTradeUsd: number; smallTradeFeeBps: number } | null | undefined, amountUsd: number): string | null {
+  if (!fee) return null
+  const bps = fee.smallTradeUsd > 0 && amountUsd > 0 && amountUsd < fee.smallTradeUsd ? fee.smallTradeFeeBps : fee.feeBps
+  const pct = (bps / 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+  return `${pct}%`
+}
+
 type PhantomSolana = {
   connect: () => Promise<{ publicKey: { toString(): string } }>
   signAndSendTransaction: (tx: Transaction | VersionedTransaction) => Promise<{ signature: string }>
@@ -228,6 +236,11 @@ export function TradePanel({
               </button>
             ))}
           </div>
+          {config.fee && (
+            <p className="text-center text-[11px] text-muted-foreground">
+              Comisión Cabal: <span className="font-bold text-foreground/80">{feeLabel(config.fee, Number(amount) || 0)}</span>
+            </p>
+          )}
           <Button
             onClick={buy}
             disabled={busy || !(Number(amount) > 0)}
@@ -275,6 +288,12 @@ export function TradePanel({
               </button>
             ))}
           </div>
+          {config.fee && (
+            <p className="text-center text-[11px] text-muted-foreground">
+              Comisión Cabal: <span className="font-bold text-foreground/80">{feeLabel(config.fee, Infinity)}</span>
+              {config.fee.smallTradeUsd > 0 && ' (menos en operaciones chiquitas)'}
+            </p>
+          )}
           <Button
             onClick={sellNow}
             disabled={busy || !(Number(amount) > 0)}

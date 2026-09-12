@@ -18,6 +18,14 @@ import { useBuildBuy, useConfirmSwap, useSwapConfig } from '@/lib/api-client'
 
 const PRESETS_USD = [10, 25, 50, 100]
 
+/** "0.37%" o, si el monto cae en el umbral chiquito configurado, la comisión mínima. */
+function feeLabel(fee: { feeBps: number; smallTradeUsd: number; smallTradeFeeBps: number } | null | undefined, amountUsd: number): string | null {
+  if (!fee) return null
+  const bps = fee.smallTradeUsd > 0 && amountUsd > 0 && amountUsd < fee.smallTradeUsd ? fee.smallTradeFeeBps : fee.feeBps
+  const pct = (bps / 100).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+  return `${pct}%`
+}
+
 type PhantomSolana = {
   connect: () => Promise<{ publicKey: { toString(): string } }>
   signAndSendTransaction: (tx: Transaction | VersionedTransaction) => Promise<{ signature: string }>
@@ -137,6 +145,11 @@ export function QuickBuyButton({ contract, network, ticker, className }: { contr
             </button>
           ))}
         </div>
+        {config.fee && (
+          <p className="mt-2 text-center text-[10px] text-muted-foreground">
+            Comisión Cabal: <span className="font-bold text-foreground/80">{feeLabel(config.fee, Number(amount) || 0)}</span>
+          </p>
+        )}
         <Button
           onClick={buy}
           disabled={busy || !(Number(amount) > 0)}
@@ -145,6 +158,7 @@ export function QuickBuyButton({ contract, network, ticker, className }: { contr
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Zap className="h-3.5 w-3.5" aria-hidden />}
           {pubkey ? `Comprar $${ticker}` : 'Conectar y comprar'}
         </Button>
+        {config.fee?.note && <p className="mt-2 text-center text-[10px] leading-relaxed text-muted-foreground/80">{config.fee.note}</p>}
       </PopoverContent>
     </Popover>
   )
