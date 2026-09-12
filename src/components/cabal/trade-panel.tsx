@@ -35,6 +35,10 @@ function feeLabel(fee: { feeBps: number; smallTradeUsd: number; smallTradeFeeBps
   return `${pct}%`
 }
 
+// Verde de las velas del gráfico (Birdeye), en vez del verde oliva del theme
+const BUY_GREEN = '#0ECB81'
+const BUY_GREEN_HOVER = '#12e08f'
+
 type PhantomSolana = {
   connect: () => Promise<{ publicKey: { toString(): string } }>
   signAndSendTransaction: (tx: Transaction | VersionedTransaction) => Promise<{ signature: string }>
@@ -62,7 +66,6 @@ export function TradePanel({
   const sell = useBuildSell()
   const confirm = useConfirmSwap()
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
-  const [stage, setStage] = useState<'idle' | 'amount'>('idle')
   const [amount, setAmount] = useState('') // USD (comprar) o % del saldo (vender)
   const [pubkey, setPubkey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -112,7 +115,6 @@ export function TradePanel({
         description: `$${usd} en $${ticker}`,
         action: { label: 'Ver ↗', onClick: () => window.open(`https://solscan.io/tx/${signature}`, '_blank') },
       })
-      setStage('idle')
       setAmount('')
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
@@ -151,7 +153,6 @@ export function TradePanel({
         description: `${pct}% de $${ticker}`,
         action: { label: 'Ver ↗', onClick: () => window.open(`https://solscan.io/tx/${signature}`, '_blank') },
       })
-      setStage('idle')
       setAmount('')
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
@@ -169,12 +170,12 @@ export function TradePanel({
         <button
           onClick={() => {
             setTab('buy')
-            setStage('idle')
             setAmount('')
           }}
+          style={tab === 'buy' ? { backgroundColor: BUY_GREEN } : undefined}
           className={cn(
             'rounded-md py-1.5 text-xs font-bold transition-colors',
-            tab === 'buy' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            tab === 'buy' ? 'text-black' : 'text-muted-foreground hover:text-foreground'
           )}
         >
           Compra
@@ -182,7 +183,6 @@ export function TradePanel({
         <button
           onClick={() => {
             setTab('sell')
-            setStage('idle')
             setAmount('')
           }}
           className={cn(
@@ -194,19 +194,7 @@ export function TradePanel({
         </button>
       </div>
 
-      {stage === 'idle' ? (
-        <Button
-          onClick={() => setStage('amount')}
-          className={cn(
-            'mt-3 h-10 w-full rounded-lg font-bold',
-            tab === 'buy'
-              ? 'bg-primary text-primary-foreground hover:bg-[#8FA83F]'
-              : 'bg-[#ff5c5c] text-white hover:bg-[#ff7373]'
-          )}
-        >
-          {tab === 'buy' ? 'Comprar' : 'Vender'}
-        </Button>
-      ) : tab === 'buy' ? (
+      {tab === 'buy' ? (
         <div className="mt-3 space-y-2.5">
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 py-2.5">
             <span className="text-lg font-bold text-muted-foreground">$</span>
@@ -225,11 +213,14 @@ export function TradePanel({
               <button
                 key={p}
                 onClick={() => setAmount(String(p))}
+                style={
+                  amount === String(p)
+                    ? { borderColor: `${BUY_GREEN}80`, backgroundColor: `${BUY_GREEN}1a`, color: BUY_GREEN }
+                    : undefined
+                }
                 className={cn(
                   'rounded-lg border py-1.5 text-xs font-bold transition-colors',
-                  amount === String(p)
-                    ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
-                    : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30 hover:text-primary'
+                  amount === String(p) ? '' : 'border-white/10 text-muted-foreground hover:text-foreground'
                 )}
               >
                 ${p}
@@ -244,14 +235,14 @@ export function TradePanel({
           <Button
             onClick={buy}
             disabled={busy || !(Number(amount) > 0)}
-            className="h-11 w-full gap-2 rounded-lg bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            style={{ backgroundColor: BUY_GREEN }}
+            onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = BUY_GREEN_HOVER)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN)}
+            className="h-11 w-full gap-2 rounded-lg font-bold text-black"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Zap className="h-4 w-4" aria-hidden />}
             {pubkey ? `Comprar $${ticker}` : 'Conectar y comprar'}
           </Button>
-          <button onClick={() => setStage('idle')} className="w-full text-center text-[11px] text-muted-foreground hover:text-foreground">
-            Volver
-          </button>
         </div>
       ) : (
         <div className="mt-3 space-y-2.5">
@@ -302,9 +293,6 @@ export function TradePanel({
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Zap className="h-4 w-4" aria-hidden />}
             {pubkey ? `Vender $${ticker}` : 'Conectar y vender'}
           </Button>
-          <button onClick={() => setStage('idle')} className="w-full text-center text-[11px] text-muted-foreground hover:text-foreground">
-            Volver
-          </button>
         </div>
       )}
 

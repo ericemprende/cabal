@@ -44,13 +44,14 @@ type DexPair = {
   pairCreatedAt?: number
 }
 
-// chainId de DexScreener por red de Cabal (robinhood aún no está listado allí)
+// chainId de DexScreener por red de Cabal
 const DEX_CHAIN: Record<string, string> = {
   solana: 'solana',
   ethereum: 'ethereum',
   base: 'base',
   bsc: 'bsc',
   tron: 'tron',
+  robinhood: 'robinhood',
 }
 
 // network id de GeckoTerminal para el OHLCV del ATH
@@ -60,6 +61,7 @@ const GECKO_NETWORK: Record<string, string> = {
   base: 'base',
   bsc: 'bsc',
   tron: 'tron',
+  robinhood: 'robinhood',
 }
 
 export function isValidNetwork(network: string): boolean {
@@ -147,6 +149,59 @@ async function fetchAth(
     }
   }
   return { athPrice, athAt }
+}
+
+/**
+ * Precio más alto alcanzado DESDE `sinceMs` (no el ATH histórico): con velas
+ * de hora alcanza ~41 días hacia atrás; si la call es más vieja que eso, cae
+ * a velas diarias para no perder el pico solo por quedar fuera de rango.
+ */
+async function fetchPeakSince(
+  network: string,
+  pairAddress: string,
+  sinceMs: number
+): Promise<{ peakPrice: number | null; peakAt: number | null }> {
+  const geckoNet = GECKO_NETWORK[network]
+  if (!geckoNet || !pairAddress) return { peakPrice: null, peakAt: null }
+
+  const scan = (list: number[][]): { peakPrice: number | null; peakAt: number | null } => {
+    let peakPrice: number | null = null
+    let peakAt: number | null = null
+    for (const c of list) {
+      const tsRaw = Number(c[0])
+      const ts = tsRaw > 1e12 ? tsRaw : tsRaw * 1000
+      if (ts < sinceMs) continue
+      const high = Number(c[2])
+      if (!Number.isFinite(high) || high <= 0) continue
+      if (peakPrice === null || high > peakPrice) {
+        peakPrice = high
+        peakAt = ts
+      }
+    }
+    return { peakPrice, peakAt }
+  }
+
+  const hourUrl = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/hour?aggregate=1&limit=1000`
+  const hourJson = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(hourUrl, 7000)
+  const hourCandles = hourJson?.data?.attributes?.ohlcv_list ?? []
+  // Si la vela más vieja que trajimos ya es posterior a `sinceMs`, la resolución
+  // de hora no cubre toda la ventana desde la call: completamos con velas diarias.
+  const oldestHourTs = hourCandles.length
+    ? (() => {
+        const raw = Number(hourCandles[hourCandles.length - 1][0])
+        return raw > 1e12 ? raw : raw * 1000
+      })()
+    : null
+  let result = scan(hourCandles)
+  if (oldestHourTs === null || oldestHourTs > sinceMs) {
+    const dayUrl = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/day?aggregate=1&limit=1000`
+    const dayJson = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(dayUrl, 7000)
+    const dayResult = scan(dayJson?.data?.attributes?.ohlcv_list ?? [])
+    if (dayResult.peakPrice !== null && (result.peakPrice === null || dayResult.peakPrice > result.peakPrice)) {
+      result = dayResult
+    }
+  }
+  return result
 }
 
 /** Top-10 % del supply vía RPC público de Solana (mejor esfuerzo). */
@@ -360,9 +415,19 @@ export type CallResult = {
   found: boolean
   entryPriceUsd: number | null
   currentPriceUsd: number | null
+  /** market cap (o FDV) en el momento de la call, estimado con supply constante */
+  entryMc: number | null
   currentMc: number | null
+  /** precio/MC más alto alcanzado DESDE la call (no el ATH histórico del token) */
+  peakPriceUsd: number | null
+  peakMc: number | null
+  peakAt: number | null
   symbol: string
   pctChange: number | null
+  /** veces que multiplicó desde la call hasta AHORA (solo si subió), p. ej. 3 = "hizo 3x" */
+  multiple: number | null
+  /** veces que multiplicó desde la call hasta su PICO, aunque después haya bajado */
+  peakMultiple: number | null
   pairUrl: string
 }
 
@@ -370,9 +435,15 @@ const EMPTY_CALL_RESULT: CallResult = {
   found: false,
   entryPriceUsd: null,
   currentPriceUsd: null,
+  entryMc: null,
   currentMc: null,
+  peakPriceUsd: null,
+  peakMc: null,
+  peakAt: null,
   symbol: '',
   pctChange: null,
+  multiple: null,
+  peakMultiple: null,
   pairUrl: '',
 }
 
@@ -417,13 +488,49 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
       ? ((currentPriceUsd - entryPriceUsd) / entryPriceUsd) * 100
       : null
 
+  // MC/FDV al momento de la call: no lo guardamos en la BD, así que se estima
+  // a partir del MC actual escalado por el cambio de precio (supply constante).
+  const entryMc =
+    currentMc && entryPriceUsd && currentPriceUsd && currentPriceUsd > 0
+      ? Math.round(currentMc * (entryPriceUsd / currentPriceUsd))
+      : null
+
+  const multiple =
+    pctChange !== null && pctChange > 0 && entryPriceUsd && currentPriceUsd
+      ? currentPriceUsd / entryPriceUsd
+      : null
+
+  let peakPriceUsd: number | null = null
+  let peakMc: number | null = null
+  let peakAt: number | null = null
+  let peakMultiple: number | null = null
+  if (geckoNet && pair.pairAddress && entryPriceUsd) {
+    const peak = await fetchPeakSince(network, pair.pairAddress, calledAt.getTime())
+    // El pico nunca puede ser menor que el precio actual (última vela puede no
+    // haber cerrado aún); si algo salió raro, usamos el actual como piso.
+    if (peak.peakPrice !== null && currentPriceUsd !== null) {
+      peakPriceUsd = Math.max(peak.peakPrice, currentPriceUsd)
+      peakAt = peakPriceUsd === currentPriceUsd && peak.peakPrice !== peakPriceUsd ? null : peak.peakAt
+      if (currentMc && currentPriceUsd > 0) {
+        peakMc = Math.round(currentMc * (peakPriceUsd / currentPriceUsd))
+      }
+      peakMultiple = peakPriceUsd / entryPriceUsd
+    }
+  }
+
   return {
     found: true,
     entryPriceUsd,
     currentPriceUsd,
+    entryMc,
     currentMc,
+    peakPriceUsd,
+    peakMc,
+    peakAt,
     symbol: pair.baseToken?.symbol ?? '',
     pctChange,
+    multiple,
+    peakMultiple,
     pairUrl: pair.url ?? '',
   }
 }

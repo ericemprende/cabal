@@ -518,9 +518,14 @@ export type CallResultDTO = {
   found: boolean
   entryPriceUsd: number | null
   currentPriceUsd: number | null
+  entryMc: number | null
   currentMc: number | null
+  peakMc: number | null
+  peakAt: number | null
   symbol: string
   pctChange: number | null
+  multiple: number | null
+  peakMultiple: number | null
   pairUrl: string
   calledAt: string
 }
