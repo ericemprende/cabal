@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Flame, Globe, MessageSquare, ShieldAlert, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, networkMeta, timeAgo } from '@/lib/cabal'
 import { useTokens } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -131,6 +132,7 @@ export function TokensTab() {
                 <span className="rounded-md bg-[#8FA83F]/8 px-1.5 py-0.5 text-[10px] font-bold text-primary group-hover:bg-[#8FA83F]/15">
                   <MessageSquare className="h-3 w-3" aria-hidden /> {t.postsCount}
                 </span>
+                <QuickBuyButton contract={t.contract} network={t.network} ticker={t.ticker} />
               </div>
             </button>
           ))}
