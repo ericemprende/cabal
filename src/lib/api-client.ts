@@ -21,6 +21,7 @@ import type {
   PublicUserDTO,
   ReferralDTO,
   SwapConfigDTO,
+  SwapFeeConfigDTO,
   TokenBalanceDTO,
   TokenDTO,
   TokenDetailDTO,
@@ -125,6 +126,7 @@ export const qk = {
   adminPosts: ['admin', 'posts'] as const,
   affiliates: ['affiliates'] as const,
   adminAffiliates: ['admin', 'affiliates'] as const,
+  adminSwapFees: ['admin', 'swap-fees'] as const,
   adminWaitlist: ['admin', 'waitlist'] as const,
   waitlistMe: ['waitlist', 'me'] as const,
   referral: ['me', 'referral'] as const,
@@ -431,6 +433,31 @@ export function useAdminAffiliates(enabled: boolean) {
     queryKey: qk.adminAffiliates,
     queryFn: () => jsonFetch('/api/admin/affiliate'),
     enabled,
+  })
+}
+
+/** Comisión de swap por red (una fila por red, aunque todavía no tenga swap propio). */
+export function useAdminSwapFees(enabled: boolean) {
+  return useQuery<SwapFeeConfigDTO[]>({
+    queryKey: qk.adminSwapFees,
+    queryFn: () => jsonFetch('/api/admin/swap-fees'),
+    enabled,
+  })
+}
+
+export function useAdminSaveSwapFee(enabled: boolean) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Omit<SwapFeeConfigDTO, 'network'> & { network: string }) =>
+      jsonFetch<{ ok: boolean; config: SwapFeeConfigDTO }>('/api/admin/swap-fees', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      if (enabled) qc.invalidateQueries({ queryKey: qk.adminSwapFees })
+      toast.success('Comisión guardada')
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 

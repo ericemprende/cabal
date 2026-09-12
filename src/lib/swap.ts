@@ -1,6 +1,7 @@
 import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js'
 import { ReferralProvider } from '@jup-ag/referral-sdk'
 import { cached } from '@/lib/cache'
+import { db } from '@/lib/db'
 
 /**
  * Comprar el token sin salir de Cabal (Solana, vía la API de Jupiter).
@@ -25,20 +26,54 @@ const JUP_BASE = 'https://lite-api.jup.ag'
 export const SOL_MINT = 'So11111111111111111111111111111111111111112'
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
 
-export type SwapFeeConfig = { referralAccount: string; feeBps: number }
+export type SwapFeeConfig = {
+  referralAccount: string
+  feeBps: number
+  smallTradeUsd: number
+  smallTradeFeeBps: number
+  feeWallet: string
+  note: string
+}
 
 const DEFAULT_FEE_BPS = 35
 
-export function swapFeeConfig(): SwapFeeConfig | null {
+/**
+ * Comisión configurada para una red, desde el panel de admin. Si no hay fila
+ * en la base todavía, cae a las variables de entorno (solo definidas para
+ * Solana, de cuando esto no era editable) — así ninguna comisión ya
+ * configurada se cae sola con este cambio.
+ */
+export async function swapFeeConfig(network: string): Promise<SwapFeeConfig | null> {
+  const row = await db.swapFeeConfig.findUnique({ where: { network } })
+  if (row) {
+    if (!row.enabled || !row.referralAccount) return null
+    return {
+      referralAccount: row.referralAccount,
+      feeBps: row.feeBps,
+      smallTradeUsd: row.smallTradeUsd,
+      smallTradeFeeBps: row.smallTradeFeeBps,
+      feeWallet: row.feeWallet,
+      note: row.note,
+    }
+  }
+  if (network !== 'solana') return null
   const referralAccount = process.env.JUPITER_REFERRAL_ACCOUNT?.trim()
   if (!referralAccount) return null
   const feeBps = Math.round(Number(process.env.SOLANA_FEE_BPS ?? DEFAULT_FEE_BPS))
-  return { referralAccount, feeBps: Number.isFinite(feeBps) && feeBps > 0 ? feeBps : DEFAULT_FEE_BPS }
+  return {
+    referralAccount,
+    feeBps: Number.isFinite(feeBps) && feeBps > 0 ? feeBps : DEFAULT_FEE_BPS,
+    smallTradeUsd: 0,
+    smallTradeFeeBps: 0,
+    feeWallet: process.env.SOLANA_FEE_WALLET?.trim() ?? '',
+    note: '',
+  }
 }
 
-/** Wallet a la que apunta la comisión, solo para mostrarla en el panel de admin. */
-export function feeWalletHint(): string | null {
-  return process.env.SOLANA_FEE_WALLET?.trim() || null
+/** La comisión efectiva para un monto dado: la mínima si es una operación chiquita, la estándar si no. */
+function effectiveFeeBps(fee: SwapFeeConfig, amountUsd: number): number {
+  if (fee.smallTradeUsd > 0 && amountUsd < fee.smallTradeUsd) return fee.smallTradeFeeBps
+  return fee.feeBps
 }
 
 let _connection: Connection | null = null
@@ -137,15 +172,18 @@ async function buildSwapTransactions(opts: {
   outputMint: string
   amount: number
   trader: PublicKey
+  /** Valor en USD de la operación, para saber si aplica la comisión mínima de operaciones chiquitas. */
+  amountUsd: number
 }): Promise<SwapBuildResult> {
   const outputMint = new PublicKey(opts.outputMint)
-  const fee = swapFeeConfig()
+  const fee = await swapFeeConfig('solana')
+  const feeBps = fee ? effectiveFeeBps(fee, opts.amountUsd) : undefined
   const quote = await jupQuote({
     inputMint: opts.inputMint,
     outputMint: opts.outputMint,
     amount: opts.amount,
     slippageBps: 150, // 1.5%: los memecoins recién lanzados se mueven rápido
-    platformFeeBps: fee?.feeBps,
+    platformFeeBps: feeBps,
   })
 
   let feeAccount: string | undefined
@@ -213,7 +251,13 @@ export async function buildBuyTransactions(opts: {
   const lamports = Math.round((opts.amountUsd / price) * 1e9)
   if (lamports < 1000) throw new InvalidBuyError('El monto es demasiado pequeño')
 
-  const result = await buildSwapTransactions({ inputMint: SOL_MINT, outputMint: opts.outputMint, amount: lamports, trader: buyer })
+  const result = await buildSwapTransactions({
+    inputMint: SOL_MINT,
+    outputMint: opts.outputMint,
+    amount: lamports,
+    trader: buyer,
+    amountUsd: opts.amountUsd,
+  })
   return { ...result, lamportsIn: String(lamports) }
 }
 
@@ -254,6 +298,14 @@ export async function buildSellTransactions(opts: {
   const amount = Math.floor((Number(balance.amount) * opts.percent) / 100)
   if (amount < 1) throw new InvalidSellError('No tienes saldo de este token para vender')
 
-  const result = await buildSwapTransactions({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, trader: seller })
+  // Para saber si aplica la comisión mínima de operaciones chiquitas hace
+  // falta saber cuánto vale esto en dólares — se estima con una cotización
+  // rápida sin comisión (buildSwapTransactions cotiza de nuevo, ya con la
+  // comisión correcta, para armar la transacción real).
+  const price = await solPriceUsd()
+  const estimate = await jupQuote({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, slippageBps: 150 })
+  const amountUsd = (Number(estimate.outAmount) / 1e9) * price
+
+  const result = await buildSwapTransactions({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, trader: seller, amountUsd })
   return { ...result, amountIn: String(amount) }
 }

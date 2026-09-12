@@ -14,6 +14,7 @@ import {
   Megaphone,
   Minus,
   Pencil,
+  Percent,
   Plus,
   Rocket,
   Save,
@@ -45,7 +46,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { NETWORKS, fmtPct, timeAgo } from '@/lib/cabal'
+import { NETWORKS, fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
 import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
 import { CopyCA, PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
@@ -66,13 +67,15 @@ import {
   useAdminPosts,
   useAdminRules,
   useAdminSaveAffiliate,
+  useAdminSaveSwapFee,
+  useAdminSwapFees,
   useAdminTokens,
   useAdminUpdateLaunch,
   useAdminUpdateToken,
   useAdminUpdateUser,
   useAdminUsers,
 } from '@/lib/api-client'
-import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, ProjectClaimDTO, TokenDTO } from '@/lib/types'
+import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, ProjectClaimDTO, SwapFeeConfigDTO, TokenDTO } from '@/lib/types'
 
 /** Placeholder de ejemplo por red, con el formato real de GMGN/Axiom. */
 const NETWORK_PLACEHOLDER: Record<string, string> = {
@@ -116,6 +119,7 @@ type AdminView =
   | 'proyectos'
   | 'tokens'
   | 'afiliados'
+  | 'comisiones'
   | 'calls'
   | 'moderacion'
   | 'stats'
@@ -205,6 +209,7 @@ export function AdminPanel({
     { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
     { key: 'tokens', label: 'Tokens', icon: Coins },
     { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
+    { key: 'comisiones', label: 'Comisiones de compra/venta', icon: Percent },
     { key: 'calls', label: 'Calls por usuario', icon: Megaphone },
     { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
     { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
@@ -299,6 +304,8 @@ export function AdminPanel({
         {view === 'tokens' && <AdminTokens enabled={enabled} />}
 
         {view === 'afiliados' && <AdminAffiliates enabled={enabled} />}
+
+        {view === 'comisiones' && <AdminSwapFees enabled={enabled} />}
 
         {view === 'calls' && <AdminCalls enabled={enabled} />}
 
@@ -948,6 +955,137 @@ function AdminAffiliates({ enabled }: { enabled: boolean }) {
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** bps ↔ porcentaje que ve el admin (37 bps = 0.37%). */
+const bpsToPct = (bps: number) => (bps / 100).toString()
+const pctToBps = (pct: string) => Math.round(Number(pct) * 100)
+
+function AdminSwapFees({ enabled }: { enabled: boolean }) {
+  const list = useAdminSwapFees(enabled)
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        Comisión que cobra Cabal cuando alguien compra o vende un token sin salir de la plataforma, red por red. Solo Solana
+        tiene el swap ya integrado (vía Jupiter); las demás quedan listas para cuando se agregue su aggregator.
+      </p>
+
+      <div className="rounded-xl border border-[#8FA83F]/25 bg-[#8FA83F]/6 px-3.5 py-2.5">
+        <p className="flex items-start gap-2 text-[11px] leading-relaxed text-foreground/80">
+          <Percent className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+          <span>
+            <span className="font-semibold text-foreground">Comisión mínima:</span> por debajo del monto que pongas en
+            &quot;operación chiquita&quot;, se cobra la comisión mínima en vez de la estándar — así una compra de $2 no
+            paga lo mismo, en proporción, que una de $500. Es lo mismo que hace FOMO. Pon el umbral en 0 para desactivarlo
+            y cobrar siempre la comisión estándar.
+          </span>
+        </p>
+      </div>
+
+      {list.isLoading && [...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
+      <div className="space-y-3">
+        {(list.data ?? []).map((cfg) => (
+          <SwapFeeRow key={cfg.network} config={cfg} enabled={enabled} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SwapFeeRow({ config, enabled }: { config: SwapFeeConfigDTO; enabled: boolean }) {
+  const save = useAdminSaveSwapFee(enabled)
+  const [draft, setDraft] = useState(config)
+  const meta = networkMeta(config.network)
+  const dirty = JSON.stringify(draft) !== JSON.stringify(config)
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <NetworkIcon network={config.network} className="h-5 w-5" />
+          <span className="font-bold">{meta.label}</span>
+        </div>
+        <ChipToggle label={draft.enabled ? 'Cobrando comisión' : 'Sin comisión'} checked={draft.enabled} onChange={(v) => setDraft((d) => ({ ...d, enabled: v }))} />
+      </div>
+
+      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Comisión estándar (%)</Label>
+          <Input
+            type="number"
+            min={0}
+            max={10}
+            step={0.01}
+            value={bpsToPct(draft.feeBps)}
+            onChange={(e) => setDraft((d) => ({ ...d, feeBps: pctToBps(e.target.value) }))}
+            className="mt-1 h-9 bg-[#121410] text-[13px]"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Operación chiquita, bajo (USD)</Label>
+          <Input
+            type="number"
+            min={0}
+            max={10000}
+            value={draft.smallTradeUsd}
+            onChange={(e) => setDraft((d) => ({ ...d, smallTradeUsd: Number(e.target.value) }))}
+            className="mt-1 h-9 bg-[#121410] text-[13px]"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Comisión mínima (%)</Label>
+          <Input
+            type="number"
+            min={0}
+            max={10}
+            step={0.01}
+            value={bpsToPct(draft.smallTradeFeeBps)}
+            onChange={(e) => setDraft((d) => ({ ...d, smallTradeFeeBps: pctToBps(e.target.value) }))}
+            className="mt-1 h-9 bg-[#121410] text-[13px]"
+          />
+        </div>
+        <div>
+          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Wallet de cobro (informativo)</Label>
+          <Input
+            value={draft.feeWallet}
+            onChange={(e) => setDraft((d) => ({ ...d, feeWallet: e.target.value }))}
+            placeholder="Dirección de la wallet"
+            spellCheck={false}
+            className="mt-1 h-9 bg-[#121410] font-mono text-[12px]"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cuenta de referido (Jupiter u otro aggregator)</Label>
+          <Input
+            value={draft.referralAccount}
+            onChange={(e) => setDraft((d) => ({ ...d, referralAccount: e.target.value }))}
+            placeholder="Dirección de la cuenta de referido"
+            spellCheck={false}
+            className="mt-1 h-9 bg-[#121410] font-mono text-[12px]"
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nota para la comunidad</Label>
+          <Input
+            value={draft.note}
+            onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
+            placeholder="Ej: Disfruta comisiones bajas en tokens blue chip. En operaciones chiquitas se cobra una comisión mínima para cubrir costos de blockchain."
+            className="mt-1 h-9 bg-[#121410] text-[12px]"
+          />
+        </div>
+      </div>
+
+      <Button
+        onClick={() => save.mutate(draft, { onSuccess: (res) => setDraft(res.config) })}
+        disabled={!dirty || save.isPending}
+        size="sm"
+        className="mt-3 h-8 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F] disabled:opacity-40"
+      >
+        <Save className="h-3.5 w-3.5" /> Guardar {meta.label}
+      </Button>
     </div>
   )
 }

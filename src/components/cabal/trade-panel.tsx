@@ -286,6 +286,8 @@ export function TradePanel({
         </div>
       )}
 
+      {config.fee?.note && <p className="mt-2.5 text-center text-[10px] leading-relaxed text-muted-foreground/80">{config.fee.note}</p>}
+
       <a
         href={`https://solscan.io/token/${contract}`}
         target="_blank"

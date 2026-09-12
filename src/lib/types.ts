@@ -341,7 +341,27 @@ export interface SwapConfigDTO {
   enabled: boolean
   solMint: string
   /** null = el botón funciona igual, pero todavía sin comisión para Cabal. */
-  fee: { referralAccount: string; feeBps: number } | null
+  fee: {
+    referralAccount: string
+    feeBps: number
+    /** Por debajo de este monto en USD se cobra smallTradeFeeBps en vez de feeBps. 0 = sin mínima. */
+    smallTradeUsd: number
+    smallTradeFeeBps: number
+    /** Texto para mostrarle a la comunidad (ej. "comisión mínima en operaciones chiquitas"). */
+    note: string
+  } | null
+}
+
+/** Comisión de swap de una red, tal como la edita el admin. */
+export interface SwapFeeConfigDTO {
+  network: string
+  enabled: boolean
+  feeBps: number
+  smallTradeUsd: number
+  smallTradeFeeBps: number
+  referralAccount: string
+  feeWallet: string
+  note: string
 }
 
 export interface SerializedTxDTO {

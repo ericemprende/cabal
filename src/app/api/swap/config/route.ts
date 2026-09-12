@@ -7,6 +7,19 @@ import type { SwapConfigDTO } from '@/lib/types'
  * son públicas en cuanto se usan en una transacción on-chain.
  */
 export async function GET() {
-  const dto: SwapConfigDTO = { enabled: true, solMint: SOL_MINT, fee: swapFeeConfig() }
+  const fee = await swapFeeConfig('solana')
+  const dto: SwapConfigDTO = {
+    enabled: true,
+    solMint: SOL_MINT,
+    fee: fee
+      ? {
+          referralAccount: fee.referralAccount,
+          feeBps: fee.feeBps,
+          smallTradeUsd: fee.smallTradeUsd,
+          smallTradeFeeBps: fee.smallTradeFeeBps,
+          note: fee.note,
+        }
+      : null,
+  }
   return NextResponse.json(dto)
 }

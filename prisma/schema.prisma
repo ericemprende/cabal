@@ -313,3 +313,21 @@ model WaitlistEntry {
   @@index([xHandle])
   @@index([completed])
 }
+
+// Comisión de Cabal al comprar/vender un token sin salir de la plataforma
+// (Jupiter en Solana; otras redes cuando se agreguen). Una fila por red.
+// "feeBps" es la comisión estándar; por debajo de "smallTradeUsd" se cobra
+// "smallTradeFeeBps" en su lugar — igual que hace FOMO, para no cobrar de
+// más en operaciones chiquitas donde el costo de blockchain ya pesa bastante.
+model SwapFeeConfig {
+  id               String   @id @default(cuid())
+  network          String   @unique
+  enabled          Boolean  @default(false)
+  feeBps           Int      @default(37)
+  smallTradeUsd    Float    @default(10)
+  smallTradeFeeBps Int      @default(5)
+  referralAccount  String   @default("")
+  feeWallet        String   @default("") // solo informativo, para mostrarlo en el panel
+  note             String   @default("") // texto que ve la comunidad (tooltip del panel de compra)
+  updatedAt        DateTime @updatedAt
+}
