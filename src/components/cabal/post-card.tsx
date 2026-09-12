@@ -9,12 +9,39 @@ import { useCallResult, useFollowToggle, useLikeToggle } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import type { PostDTO } from '@/lib/types'
 
+function fmtX(n: number): string {
+  return `${n.toFixed(n >= 10 ? 0 : 1)}x`
+}
+
 function CallResultBadge({ post }: { post: PostDTO }) {
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
   if (!data?.found || data.pctChange === null) return null
   const up = data.pctChange >= 0
   const showMc = data.entryMc !== null && data.currentMc !== null
-  const showMultiple = up && data.multiple !== null && data.multiple >= 2
+  // El pico (lo más alto que llegó a hacer desde la call, aunque después haya
+  // bajado) es el dato que más pesa: si hubo 2x o más ahí, va primero y en
+  // grande; el % actual queda como dato secundario.
+  const hasPeak = data.peakMultiple !== null && data.peakMultiple >= 2
+  const showMultiple = !hasPeak && up && data.multiple !== null && data.multiple >= 2
+
+  if (hasPeak) {
+    return (
+      <span
+        className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md bg-[#8FA83F]/10 px-1.5 py-0.5 text-primary"
+        title="Máximo alcanzado desde que se publicó la call"
+      >
+        <span className="flex items-center gap-1 text-sm font-extrabold">
+          <TrendingUp className="h-3.5 w-3.5" />
+          llegó a hacer {fmtX(data.peakMultiple!)}
+        </span>
+        <span className="text-[11px] font-normal opacity-80">
+          · ahora {fmtPct(data.pctChange)}
+          {showMc ? ` · MC ${fmtMc(data.entryMc!)} → pico ${fmtMc(data.peakMc!)} → ahora ${fmtMc(data.currentMc!)}` : ''}
+        </span>
+      </span>
+    )
+  }
+
   return (
     <span
       className={cn(
@@ -25,7 +52,7 @@ function CallResultBadge({ post }: { post: PostDTO }) {
     >
       <TrendingUp className={cn('h-3 w-3', !up && 'rotate-180')} />
       {fmtPct(data.pctChange)}
-      {showMultiple ? ` (${data.multiple!.toFixed(data.multiple! >= 10 ? 0 : 1)}x)` : ''}
+      {showMultiple ? ` (${fmtX(data.multiple!)})` : ''}
       {' desde la call'}
       {showMc ? (
         <span className="font-normal opacity-80">

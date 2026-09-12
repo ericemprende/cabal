@@ -28,7 +28,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       pctChange: result.pctChange,
       entryMc: result.entryMc,
       currentMc: result.currentMc,
+      peakMc: result.peakMc,
       multiple: result.multiple,
+      peakMultiple: result.peakMultiple,
       calledAt: post.createdAt,
     })
 

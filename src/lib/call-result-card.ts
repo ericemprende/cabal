@@ -82,14 +82,22 @@ export async function renderCallResultCard(opts: {
   pctChange: number | null
   entryMc: number | null
   currentMc: number | null
+  peakMc: number | null
   multiple: number | null
+  peakMultiple: number | null
   calledAt: Date
 }): Promise<Buffer> {
-  const { handle, avatarUrl, symbol, contract, pctChange, entryMc, currentMc, multiple, calledAt } = opts
+  const {
+    handle, avatarUrl, symbol, contract, pctChange, entryMc, currentMc, peakMc, multiple, peakMultiple, calledAt,
+  } = opts
   const up = (pctChange ?? 0) >= 0
-  const accent = pctChange === null ? '#9aa08a' : up ? '#8FA83F' : '#e5484d'
+  // El pico (el máximo que llegó a hacer desde la call, aunque después haya
+  // bajado) es el dato más vistoso: si hubo un 2x o más ahí, manda sobre el %
+  // actual, que queda como dato secundario más chico.
+  const hasPeak = peakMultiple !== null && peakMultiple >= 2
+  const accent = hasPeak ? '#8FA83F' : pctChange === null ? '#9aa08a' : up ? '#8FA83F' : '#e5484d'
   const pctText = pctChange === null ? 'sin datos aún' : fmtPct(pctChange)
-  const multipleText = multiple !== null && multiple >= 2 ? `hizo ${esc(fmtMultiple(multiple))}` : ''
+  const multipleText = !hasPeak && multiple !== null && multiple >= 2 ? `hizo ${esc(fmtMultiple(multiple))}` : ''
   const elapsed = fmtElapsed(Date.now() - calledAt.getTime())
   const shortCa = contract.length > 26 ? `${contract.slice(0, 12)}…${contract.slice(-8)}` : contract
 
@@ -136,17 +144,29 @@ export async function renderCallResultCard(opts: {
         Resultado de la call · publicada hace ${esc(elapsed)}
       </text>
 
-      <text x="70" y="300" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
+      ${
+        hasPeak
+          ? `<text x="70" y="240" font-family="${FONT_STACK}" font-size="22" font-weight="700" fill="#9aa08a" letter-spacing="2">
+        LLEGÓ A HACER
+      </text>
+      <text x="70" y="360" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
+        ${esc(fmtMultiple(peakMultiple as number))}
+      </text>
+      <text x="70" y="405" font-family="${FONT_STACK}" font-size="30" font-weight="700" fill="#f4f7ee">
+        ${esc(symbol ? `$${symbol}` : 'token')}  ·  ahora ${esc(pctText)} desde la call
+      </text>`
+          : `<text x="70" y="300" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
         ${esc(pctText)}
       </text>
       <text x="70" y="352" font-family="${FONT_STACK}" font-size="38" font-weight="700" fill="#f4f7ee">
         ${esc(symbol ? `$${symbol}` : 'token')}${multipleText ? `  ·  ${esc(multipleText)}` : ''}
-      </text>
+      </text>`
+      }
 
       ${
         entryMc !== null && currentMc !== null
-          ? `<text x="70" y="415" font-family="${FONT_STACK}" font-size="27" fill="#c7cdb8">
-        MC: ${esc(fmtMc(entryMc))} → ${esc(fmtMc(currentMc))}
+          ? `<text x="70" y="455" font-family="${FONT_STACK}" font-size="27" fill="#c7cdb8">
+        MC: ${esc(fmtMc(entryMc))}${hasPeak && peakMc !== null ? ` → pico ${esc(fmtMc(peakMc))}` : ''} → ahora ${esc(fmtMc(currentMc))}
       </text>`
           : ''
       }
