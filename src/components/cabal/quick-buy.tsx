@@ -18,6 +18,10 @@ import { useBuildBuy, useConfirmSwap, useSwapConfig } from '@/lib/api-client'
 
 const PRESETS_USD = [10, 25, 50, 100]
 
+// Verde de las velas del gráfico (Birdeye), en vez del verde oliva del theme
+const BUY_GREEN = '#0ECB81'
+const BUY_GREEN_HOVER = '#12e08f'
+
 /** "0.37%" o, si el monto cae en el umbral chiquito configurado, la comisión mínima. */
 function feeLabel(fee: { feeBps: number; smallTradeUsd: number; smallTradeFeeBps: number } | null | undefined, amountUsd: number): string | null {
   if (!fee) return null
@@ -102,10 +106,10 @@ export function QuickBuyButton({ contract, network, ticker, className }: { contr
         <button
           onClick={(e) => e.stopPropagation()}
           aria-label={`Comprar $${ticker}`}
-          className={cn(
-            'flex h-7 items-center gap-1 rounded-lg bg-primary px-2.5 text-[11px] font-black text-primary-foreground transition-colors hover:bg-[#8FA83F]',
-            className
-          )}
+          style={{ backgroundColor: BUY_GREEN }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN_HOVER)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN)}
+          className={cn('flex h-7 items-center gap-1 rounded-lg px-2.5 text-[11px] font-black text-black transition-colors', className)}
         >
           <Zap className="h-3 w-3" aria-hidden />
           Comprar
@@ -134,11 +138,14 @@ export function QuickBuyButton({ contract, network, ticker, className }: { contr
             <button
               key={p}
               onClick={() => setAmount(String(p))}
+              style={
+                amount === String(p)
+                  ? { borderColor: `${BUY_GREEN}80`, backgroundColor: `${BUY_GREEN}1a`, color: BUY_GREEN }
+                  : undefined
+              }
               className={cn(
                 'rounded-lg border py-1.5 text-[11px] font-bold transition-colors',
-                amount === String(p)
-                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
-                  : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30 hover:text-primary'
+                amount === String(p) ? '' : 'border-white/10 text-muted-foreground hover:text-foreground'
               )}
             >
               ${p}
@@ -153,7 +160,10 @@ export function QuickBuyButton({ contract, network, ticker, className }: { contr
         <Button
           onClick={buy}
           disabled={busy || !(Number(amount) > 0)}
-          className="mt-2.5 h-9 w-full gap-1.5 rounded-lg bg-primary text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+          style={{ backgroundColor: BUY_GREEN }}
+          onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = BUY_GREEN_HOVER)}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN)}
+          className="mt-2.5 h-9 w-full gap-1.5 rounded-lg text-xs font-bold text-black"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Zap className="h-3.5 w-3.5" aria-hidden />}
           {pubkey ? `Comprar $${ticker}` : 'Conectar y comprar'}
