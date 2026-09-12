@@ -198,10 +198,29 @@ export function AdminPanel({
     .filter((d) => d.total > 0)
     .map((d) => ({ name: RULE_LABELS[`points_${d.reason}`] ?? d.reason, value: d.total, key: d.reason }))
 
+  const NAV_ITEMS = [
+    { key: 'whitelist', label: 'Lista de espera', icon: Ticket },
+    { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
+    { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
+    { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
+    { key: 'tokens', label: 'Tokens', icon: Coins },
+    { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
+    { key: 'calls', label: 'Calls por usuario', icon: Megaphone },
+    { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
+    { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
+    { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
+  ] as { key: AdminView; label: string; icon: typeof Zap }[]
+
   return (
-    <div>
-      <div className={cn('z-10 border-b border-white/10 bg-[#121410] p-4', stickyHeader && 'sticky top-0')}>
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-stretch">
+      {/* Menú lateral: fijo a la izquierda en pantallas sm+, scroll horizontal en móvil */}
+      <div
+        className={cn(
+          'z-10 shrink-0 border-b border-white/10 bg-[#121410] p-4 sm:w-60 sm:border-b-0 sm:border-r sm:p-3',
+          stickyHeader && 'sticky top-0 sm:max-h-screen sm:overflow-y-auto'
+        )}
+      >
+        <div className="flex items-center gap-2 sm:px-1">
           <h2 className="flex items-center gap-2 font-display text-lg font-bold">
             <ShieldCheck className="h-5 w-5 text-primary" /> Dashboard Admin
           </h2>
@@ -210,45 +229,43 @@ export function AdminPanel({
               size="sm"
               variant="ghost"
               onClick={onClose}
-              className="ml-auto h-8 rounded-lg border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              className="ml-auto h-8 rounded-lg border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:hidden"
             >
               Cerrar
             </Button>
           )}
         </div>
-        <div className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto">
-          {(
-            [
-              { key: 'whitelist', label: 'Lista de espera', icon: Ticket },
-              { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
-              { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
-              { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
-              { key: 'tokens', label: 'Tokens', icon: Coins },
-              { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
-              { key: 'calls', label: 'Calls por usuario', icon: Megaphone },
-              { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
-              { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
-              { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
-            ] as { key: AdminView; label: string; icon: typeof Zap }[]
-          ).map((v) => (
+        <nav className="no-scrollbar mt-3 flex gap-1.5 overflow-x-auto sm:mt-4 sm:flex-col sm:gap-1 sm:overflow-visible">
+          {NAV_ITEMS.map((v) => (
             <button
               key={v.key}
               onClick={() => setView(v.key)}
               className={cn(
                 'flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all',
+                'sm:w-full sm:shrink sm:justify-start sm:rounded-lg sm:border-transparent sm:px-3 sm:py-2',
                 view === v.key
                   ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
-                  : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
+                  : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30 sm:hover:bg-white/5'
               )}
             >
-              <v.icon className="h-3.5 w-3.5" aria-hidden />
-              {v.label}
+              <v.icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{v.label}</span>
             </button>
           ))}
-        </div>
+        </nav>
+        {onClose && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onClose}
+            className="mt-4 hidden h-8 w-full rounded-lg border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:flex"
+          >
+            Cerrar
+          </Button>
+        )}
       </div>
 
-      <div className="p-4">
+      <div className="min-w-0 flex-1 p-4">
         {view === 'usuarios' && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
