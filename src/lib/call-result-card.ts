@@ -55,6 +55,17 @@ function fmtPct(n: number): string {
   return `${sign}${n.toFixed(n >= 100 || n <= -100 ? 0 : 1)}%`
 }
 
+function fmtMc(n: number): string {
+  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 1 : 2)}M`
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`
+  return `$${n.toFixed(0)}`
+}
+
+function fmtMultiple(n: number): string {
+  return `${n.toFixed(n >= 10 ? 0 : 1)}x`
+}
+
 function fmtElapsed(ms: number): string {
   const mins = Math.round(ms / 60000)
   if (mins < 60) return `${Math.max(1, mins)}m`
@@ -69,12 +80,16 @@ export async function renderCallResultCard(opts: {
   symbol: string
   contract: string
   pctChange: number | null
+  entryMc: number | null
+  currentMc: number | null
+  multiple: number | null
   calledAt: Date
 }): Promise<Buffer> {
-  const { handle, avatarUrl, symbol, contract, pctChange, calledAt } = opts
+  const { handle, avatarUrl, symbol, contract, pctChange, entryMc, currentMc, multiple, calledAt } = opts
   const up = (pctChange ?? 0) >= 0
   const accent = pctChange === null ? '#9aa08a' : up ? '#8FA83F' : '#e5484d'
   const pctText = pctChange === null ? 'sin datos aún' : fmtPct(pctChange)
+  const multipleText = multiple !== null && multiple >= 2 ? `hizo ${esc(fmtMultiple(multiple))}` : ''
   const elapsed = fmtElapsed(Date.now() - calledAt.getTime())
   const shortCa = contract.length > 26 ? `${contract.slice(0, 12)}…${contract.slice(-8)}` : contract
 
@@ -121,12 +136,20 @@ export async function renderCallResultCard(opts: {
         Resultado de la call · publicada hace ${esc(elapsed)}
       </text>
 
-      <text x="70" y="330" font-family="${FONT_STACK}" font-size="150" font-weight="900" fill="${accent}">
+      <text x="70" y="300" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
         ${esc(pctText)}
       </text>
-      <text x="70" y="390" font-family="${FONT_STACK}" font-size="40" font-weight="700" fill="#f4f7ee">
-        ${esc(symbol ? `$${symbol}` : 'token')}
+      <text x="70" y="352" font-family="${FONT_STACK}" font-size="38" font-weight="700" fill="#f4f7ee">
+        ${esc(symbol ? `$${symbol}` : 'token')}${multipleText ? `  ·  ${esc(multipleText)}` : ''}
       </text>
+
+      ${
+        entryMc !== null && currentMc !== null
+          ? `<text x="70" y="415" font-family="${FONT_STACK}" font-size="27" fill="#c7cdb8">
+        MC: ${esc(fmtMc(entryMc))} → ${esc(fmtMc(currentMc))}
+      </text>`
+          : ''
+      }
 
       <text x="70" y="545" font-family="${MONO_STACK}" font-size="24" fill="#9aa08a">
         CA: ${esc(shortCa)}

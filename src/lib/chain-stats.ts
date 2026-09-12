@@ -361,9 +361,13 @@ export type CallResult = {
   found: boolean
   entryPriceUsd: number | null
   currentPriceUsd: number | null
+  /** market cap (o FDV) en el momento de la call, estimado con supply constante */
+  entryMc: number | null
   currentMc: number | null
   symbol: string
   pctChange: number | null
+  /** veces que multiplicó desde la call (solo si subió), p. ej. 3 = "hizo 3x" */
+  multiple: number | null
   pairUrl: string
 }
 
@@ -371,9 +375,11 @@ const EMPTY_CALL_RESULT: CallResult = {
   found: false,
   entryPriceUsd: null,
   currentPriceUsd: null,
+  entryMc: null,
   currentMc: null,
   symbol: '',
   pctChange: null,
+  multiple: null,
   pairUrl: '',
 }
 
@@ -418,13 +424,27 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
       ? ((currentPriceUsd - entryPriceUsd) / entryPriceUsd) * 100
       : null
 
+  // MC/FDV al momento de la call: no lo guardamos en la BD, así que se estima
+  // a partir del MC actual escalado por el cambio de precio (supply constante).
+  const entryMc =
+    currentMc && entryPriceUsd && currentPriceUsd && currentPriceUsd > 0
+      ? Math.round(currentMc * (entryPriceUsd / currentPriceUsd))
+      : null
+
+  const multiple =
+    pctChange !== null && pctChange > 0 && entryPriceUsd && currentPriceUsd
+      ? currentPriceUsd / entryPriceUsd
+      : null
+
   return {
     found: true,
     entryPriceUsd,
     currentPriceUsd,
+    entryMc,
     currentMc,
     symbol: pair.baseToken?.symbol ?? '',
     pctChange,
+    multiple,
     pairUrl: pair.url ?? '',
   }
 }

@@ -13,16 +13,25 @@ function CallResultBadge({ post }: { post: PostDTO }) {
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
   if (!data?.found || data.pctChange === null) return null
   const up = data.pctChange >= 0
+  const showMc = data.entryMc !== null && data.currentMc !== null
+  const showMultiple = up && data.multiple !== null && data.multiple >= 2
   return (
     <span
       className={cn(
-        'flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold',
+        'flex flex-wrap items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold',
         up ? 'bg-[#8FA83F]/10 text-primary' : 'bg-red-500/10 text-red-400'
       )}
       title="Cambio de precio desde que se publicó la call"
     >
       <TrendingUp className={cn('h-3 w-3', !up && 'rotate-180')} />
-      {fmtPct(data.pctChange)} desde la call
+      {fmtPct(data.pctChange)}
+      {showMultiple ? ` (${data.multiple!.toFixed(data.multiple! >= 10 ? 0 : 1)}x)` : ''}
+      {' desde la call'}
+      {showMc ? (
+        <span className="font-normal opacity-80">
+          · MC {fmtMc(data.entryMc!)} → {fmtMc(data.currentMc!)}
+        </span>
+      ) : null}
     </span>
   )
 }
