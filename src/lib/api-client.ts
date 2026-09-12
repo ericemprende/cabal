@@ -418,6 +418,19 @@ export function useBuildSell() {
   })
 }
 
+/**
+ * Avisa que una compra/venta ya se firmó y mandó a la red, para que — si de
+ * verdad corrió on-chain — el invitador de quien operó gane puntos por la
+ * comisión generada. Se llama después de signAndSendTransaction; nunca
+ * bloquea ni afecta el resultado de la compra/venta en sí.
+ */
+export function useConfirmSwap() {
+  return useMutation({
+    mutationFn: (data: { intentId: string; signature: string }) =>
+      jsonFetch<{ ok: boolean; pointsAwarded: number }>('/api/swap/confirm', { method: 'POST', body: JSON.stringify(data) }),
+  })
+}
+
 /** Saldo de un token (o SOL) de una wallet, para las opciones "25%/50%/100%" al vender. */
 export function useTokenBalance(owner: string | null, mint: string | null) {
   return useQuery<TokenBalanceDTO>({

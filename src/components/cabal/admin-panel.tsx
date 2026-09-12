@@ -95,6 +95,8 @@ const RULE_LABELS: Record<string, string> = {
   points_hype_received: 'Hype en tu launch',
   points_daily_visit: 'Visita diaria',
   points_referral_percent: 'Referidos (% del equipo)',
+  points_swap_referral_pct: 'Referidos por compra/venta (% de la comisión)',
+  points_per_usd_fee: 'Puntos por cada $1 de esa comisión',
   points_share_x: 'Compartir tarjeta en X',
 }
 

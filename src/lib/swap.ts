@@ -2,6 +2,7 @@ import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js'
 import { ReferralProvider } from '@jup-ag/referral-sdk'
 import { cached } from '@/lib/cache'
 import { db } from '@/lib/db'
+import { awardPoints, swapReferralPointsFor } from '@/lib/api-helpers'
 
 /**
  * Comprar el token sin salir de Cabal (Solana, vía la API de Jupiter).
@@ -159,6 +160,8 @@ type SwapBuildResult = {
   swapTransaction: SerializedTx
   outAmount: string
   priceImpactPct: string
+  /** Para pasarlo a POST /api/swap/confirm una vez la transacción esté en la red. */
+  intentId: string | null
 }
 
 /**
@@ -174,6 +177,9 @@ async function buildSwapTransactions(opts: {
   trader: PublicKey
   /** Valor en USD de la operación, para saber si aplica la comisión mínima de operaciones chiquitas. */
   amountUsd: number
+  kind: 'buy' | 'sell'
+  /** El token que se está tradeando (no SOL): outputMint al comprar, inputMint al vender. */
+  tradedMint: string
 }): Promise<SwapBuildResult> {
   const outputMint = new PublicKey(opts.outputMint)
   const fee = await swapFeeConfig('solana')
@@ -223,11 +229,30 @@ async function buildSwapTransactions(opts: {
   // navegador de quien opera un base64 que no es de verdad una transacción.
   VersionedTransaction.deserialize(Buffer.from(swapTransaction, 'base64'))
 
+  // Feo aproximado (no exacto: ignora impacto de precio/slippage), pero de
+  // sobra para decidir cuántos puntos gana el referido del trader — no es
+  // contabilidad de plata real, es solo el bono en puntos.
+  const feeUsd = feeBps ? (opts.amountUsd * feeBps) / 10_000 : 0
+  const intent =
+    feeUsd > 0
+      ? await db.swapIntent.create({
+          data: {
+            network: 'solana',
+            kind: opts.kind,
+            walletAddress: opts.trader.toBase58(),
+            mint: opts.tradedMint,
+            amountUsd: opts.amountUsd,
+            feeUsd,
+          },
+        })
+      : null
+
   return {
     createFeeAccountTx,
     swapTransaction: { kind: 'versioned', base64: swapTransaction },
     outAmount: quote.outAmount,
     priceImpactPct: quote.priceImpactPct,
+    intentId: intent?.id ?? null,
   }
 }
 
@@ -257,6 +282,8 @@ export async function buildBuyTransactions(opts: {
     amount: lamports,
     trader: buyer,
     amountUsd: opts.amountUsd,
+    kind: 'buy',
+    tradedMint: opts.outputMint,
   })
   return { ...result, lamportsIn: String(lamports) }
 }
@@ -306,6 +333,64 @@ export async function buildSellTransactions(opts: {
   const estimate = await jupQuote({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, slippageBps: 150 })
   const amountUsd = (Number(estimate.outAmount) / 1e9) * price
 
-  const result = await buildSwapTransactions({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, trader: seller, amountUsd })
+  const result = await buildSwapTransactions({
+    inputMint: opts.inputMint,
+    outputMint: SOL_MINT,
+    amount,
+    trader: seller,
+    amountUsd,
+    kind: 'sell',
+    tradedMint: opts.inputMint,
+  })
   return { ...result, amountIn: String(amount) }
+}
+
+export class InvalidConfirmError extends Error {}
+
+/**
+ * Confirma que una intención de swap (de buildBuy/buildSellTransactions) de
+ * verdad se ejecutó en la blockchain, y si quien la hizo fue invitado por
+ * alguien, le da puntos a ese invitador — en vez de repartir la comisión en
+ * dinero de verdad (que exigiría que Cabal custodie fondos para pagar
+ * automático a cada referido), se reparte en puntos. Sin esta verificación,
+ * cualquiera podría llamar a /api/swap/build sin firmar ni mandar nada y
+ * "farmear" puntos para su referido.
+ */
+export async function confirmSwapIntent(opts: { intentId: string; signature: string }): Promise<{ pointsAwarded: number }> {
+  const intent = await db.swapIntent.findUnique({ where: { id: opts.intentId } })
+  if (!intent) throw new InvalidConfirmError('Esa intención de compra/venta no existe')
+  if (intent.consumed) return { pointsAwarded: 0 } // ya se contó una vez, no se duplica
+
+  // La transacción tiene que existir en la red, haber corrido sin error, y
+  // ser justo la wallet que pidió esta intención la que la firmó — si no,
+  // cualquiera podría mandar la firma de una transacción ajena. Justo después
+  // de mandarla puede que la red todavía no la tenga confirmada, así que se
+  // reintenta unos segundos antes de rendirse.
+  let tx: Awaited<ReturnType<Connection['getTransaction']>> = null
+  for (let i = 0; i < 6 && !tx; i++) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 2500))
+    tx = await solanaConnection()
+      .getTransaction(opts.signature, { commitment: 'confirmed', maxSupportedTransactionVersion: 0 })
+      .catch(() => null)
+  }
+  if (!tx || tx.meta?.err) throw new InvalidConfirmError('Esa transacción no se confirmó en la red')
+  const signer = tx.transaction.message.staticAccountKeys?.[0]?.toBase58()
+  if (signer !== intent.walletAddress) throw new InvalidConfirmError('La transacción no es de esa wallet')
+
+  await db.swapIntent.update({ where: { id: intent.id }, data: { consumed: true } })
+
+  const wallet = await db.walletLink.findFirst({ where: { network: intent.network, address: intent.walletAddress } })
+  const trader = wallet ? await db.user.findUnique({ where: { id: wallet.userId }, select: { id: true, referredById: true } }) : null
+  if (!trader?.referredById) return { pointsAwarded: 0 } // wallet sin cuenta vinculada, o sin quien la invitó
+
+  const points = await swapReferralPointsFor(intent.feeUsd)
+  if (points <= 0) return { pointsAwarded: 0 }
+  await awardPoints(
+    trader.referredById,
+    'swap_referral',
+    `${intent.kind === 'buy' ? 'Compra' : 'Venta'} de tu invitado en Cabal`,
+    points,
+    trader.id
+  )
+  return { pointsAwarded: points }
 }

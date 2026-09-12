@@ -6,7 +6,7 @@ import { ExternalLink, Loader2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useBuildBuy, useBuildSell, useSwapConfig, useTokenBalance } from '@/lib/api-client'
+import { useBuildBuy, useBuildSell, useConfirmSwap, useSwapConfig, useTokenBalance } from '@/lib/api-client'
 
 /**
  * Panel de trading propio, al estilo fomo: pestañas Compra/Venta. Comprar usa
@@ -52,6 +52,7 @@ export function TradePanel({
   const { data: config } = useSwapConfig()
   const build = useBuildBuy()
   const sell = useBuildSell()
+  const confirm = useConfirmSwap()
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [stage, setStage] = useState<'idle' | 'amount'>('idle')
   const [amount, setAmount] = useState('') // USD (comprar) o % del saldo (vender)
@@ -97,6 +98,7 @@ export function TradePanel({
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
       const { signature } = await p.signAndSendTransaction(swapTx)
+      if (res.intentId) confirm.mutate({ intentId: res.intentId, signature })
 
       toast.success('Compra enviada', {
         description: `$${usd} en $${ticker}`,
@@ -135,6 +137,7 @@ export function TradePanel({
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
       const { signature } = await p.signAndSendTransaction(swapTx)
+      if (res.intentId) confirm.mutate({ intentId: res.intentId, signature })
 
       toast.success('Venta enviada', {
         description: `${pct}% de $${ticker}`,

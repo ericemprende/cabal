@@ -14,6 +14,8 @@ export const POINT_RULE_KEYS = [
   'points_daily_visit',
   'points_referral_percent',
   'points_share_x',
+  'points_swap_referral_pct',
+  'points_per_usd_fee',
 ] as const
 
 export type PointReason =
@@ -30,6 +32,7 @@ export type PointReason =
   | 'verify_wallet'
   | 'referral'
   | 'share_x'
+  | 'swap_referral'
 
 const REASON_TO_KEY: Record<string, string> = {
   thesis: 'points_thesis',
@@ -102,6 +105,21 @@ export async function awardPoints(
     }
   }
   return amount
+}
+
+/**
+ * Puntos que gana quien invitó al trader por una compra/venta con comisión:
+ * points_swap_referral_pct% del valor en USD de la comisión, convertido a
+ * puntos con points_per_usd_fee. En vez de repartir la comisión en dinero de
+ * verdad (que exigiría que Cabal custodie fondos para pagar automático), se
+ * reparte en puntos — mismo espíritu, sin ese riesgo, mientras no haya mejor
+ * infraestructura para pagos automáticos.
+ */
+export async function swapReferralPointsFor(feeUsd: number): Promise<number> {
+  const rules = await getPointRules()
+  const pct = rules.points_swap_referral_pct ?? 25
+  const perUsd = rules.points_per_usd_fee ?? 100
+  return Math.floor(feeUsd * (pct / 100) * perUsd)
 }
 
 export async function requireAdmin(req?: Request) {

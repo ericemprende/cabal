@@ -331,3 +331,22 @@ model SwapFeeConfig {
   note             String   @default("") // texto que ve la comunidad (tooltip del panel de compra)
   updatedAt        DateTime @updatedAt
 }
+
+// Intención de swap: se crea al armar la transacción (build/sell), y se
+// consume cuando /api/swap/confirm verifica que de verdad se ejecutó
+// on-chain. Existe para no poder "farmear" puntos de afiliado llamando al
+// build sin firmar/mandar nada nunca — solo se dan puntos a una intención
+// real, confirmada en la blockchain.
+model SwapIntent {
+  id            String   @id @default(cuid())
+  network       String
+  kind          String // buy | sell
+  walletAddress String
+  mint          String
+  amountUsd     Float
+  feeUsd        Float
+  consumed      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([walletAddress, createdAt])
+}

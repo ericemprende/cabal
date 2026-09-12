@@ -377,6 +377,8 @@ export interface BuildBuyDTO {
   outAmount: string
   lamportsIn: string
   priceImpactPct: string
+  /** Pásalo a POST /api/swap/confirm con la firma, una vez la transacción esté en la red. null = sin comisión configurada. */
+  intentId: string | null
 }
 
 export interface BuildSellDTO {
@@ -387,6 +389,7 @@ export interface BuildSellDTO {
   outAmount: string
   amountIn: string
   priceImpactPct: string
+  intentId: string | null
 }
 
 export interface TokenBalanceDTO {

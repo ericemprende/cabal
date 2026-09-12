@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { useBuildBuy, useSwapConfig } from '@/lib/api-client'
+import { useBuildBuy, useConfirmSwap, useSwapConfig } from '@/lib/api-client'
 
 /**
  * Botón compacto de "Comprar" para usar al lado de un token en una lista
@@ -32,6 +32,7 @@ function phantomProvider(): PhantomSolana | null {
 export function QuickBuyButton({ contract, network, ticker, className }: { contract: string; network: string; ticker: string; className?: string }) {
   const { data: config } = useSwapConfig()
   const build = useBuildBuy()
+  const confirm = useConfirmSwap()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [pubkey, setPubkey] = useState<string | null>(null)
@@ -69,6 +70,7 @@ export function QuickBuyButton({ contract, network, ticker, className }: { contr
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
       const { signature } = await p.signAndSendTransaction(swapTx)
+      if (res.intentId) confirm.mutate({ intentId: res.intentId, signature })
 
       toast.success('Compra enviada', {
         description: `$${usd} en $${ticker}`,
