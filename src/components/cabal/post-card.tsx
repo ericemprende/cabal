@@ -24,52 +24,42 @@ function fmtX(n: number): string {
   return `${n.toFixed(n >= 10 ? 0 : 1)}x`
 }
 
+/** Estado de la call en una sola línea: monto compacto, sin envolver a varias filas. */
 function CallResultBadge({ post }: { post: PostDTO }) {
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
   if (!data?.found || data.pctChange === null) return null
   const up = data.pctChange >= 0
-  const showMc = data.entryMc !== null && data.currentMc !== null
+  const showMc = data.currentMc !== null
   // El pico (lo más alto que llegó a hacer desde la call, aunque después haya
-  // bajado) es el dato que más pesa: si hubo 2x o más ahí, va primero y en
-  // grande; el % actual queda como dato secundario.
+  // bajado) es el dato que más pesa: si hubo 2x o más ahí, manda sobre el %
+  // actual, que queda como dato secundario.
   const hasPeak = data.peakMultiple !== null && data.peakMultiple >= 2
   const showMultiple = !hasPeak && up && data.multiple !== null && data.multiple >= 2
 
   if (hasPeak) {
     return (
       <span
-        className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-md bg-[#8FA83F]/10 px-1.5 py-0.5 text-primary"
+        className="flex min-w-0 shrink items-center gap-1 truncate text-primary"
         title="Máximo alcanzado desde que se publicó la call"
       >
-        <span className="flex items-center gap-1 text-sm font-extrabold">
-          <TrendingUp className="h-3.5 w-3.5" />
-          llegó a hacer {fmtX(data.peakMultiple!)}
-        </span>
-        <span className="text-[11px] font-normal opacity-80">
-          · ahora {fmtPct(data.pctChange)}
-          {showMc ? ` · MC ${fmtMc(data.entryMc!)} → pico ${fmtMc(data.peakMc!)} → ahora ${fmtMc(data.currentMc!)}` : ''}
-        </span>
+        <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate text-[12px] font-extrabold">llegó a {fmtX(data.peakMultiple!)}</span>
+        <span className="shrink-0 text-[11px] font-normal opacity-80">· ahora {fmtPct(data.pctChange)}</span>
       </span>
     )
   }
 
   return (
     <span
-      className={cn(
-        'flex flex-wrap items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-bold',
-        up ? 'bg-[#8FA83F]/10 text-primary' : 'bg-red-500/10 text-red-400'
-      )}
+      className={cn('flex min-w-0 shrink items-center gap-1 truncate text-[11px] font-bold', up ? 'text-primary' : 'text-red-400')}
       title="Cambio de precio desde que se publicó la call"
     >
-      <TrendingUp className={cn('h-3 w-3', !up && 'rotate-180')} />
-      {fmtPct(data.pctChange)}
-      {showMultiple ? ` (${fmtX(data.multiple!)})` : ''}
-      {' desde la call'}
-      {showMc ? (
-        <span className="font-normal opacity-80">
-          · MC {fmtMc(data.entryMc!)} → {fmtMc(data.currentMc!)}
-        </span>
-      ) : null}
+      <TrendingUp className={cn('h-3 w-3 shrink-0', !up && 'rotate-180')} />
+      <span className="truncate">
+        {fmtPct(data.pctChange)}
+        {showMultiple ? ` (${fmtX(data.multiple!)})` : ''}
+        {showMc ? ` · MC ${fmtMc(data.currentMc!)}` : ''}
+      </span>
     </span>
   )
 }
@@ -257,8 +247,9 @@ export function PostCard({
           </p>
 
           {post.kind === 'call' && post.contract && (
-            <div className="mt-2 flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5">
-              <CopyCA contract={post.contract} className="text-[11px]" />
+            <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1">
+              <TokenGlyph src={post.token?.image} ticker={post.token?.ticker ?? '?'} size="xs" />
+              <CopyCA contract={post.contract} className="min-w-0 shrink text-[11px]" />
               <CallResultBadge post={post} />
               <button
                 type="button"
@@ -266,10 +257,11 @@ export function PostCard({
                   e.stopPropagation()
                   setShareOpen(true)
                 }}
-                className="ml-auto flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary hover:text-[#a9c95a]"
+                className="ml-auto shrink-0 text-muted-foreground hover:text-primary"
                 title="Ver la tarjeta y compartirla en X"
+                aria-label="Ver imagen para compartir"
               >
-                <ImageDown className="h-3.5 w-3.5" /> imagen
+                <ImageDown className="h-3.5 w-3.5" />
               </button>
               <CallShareDialog post={post} open={shareOpen} onOpenChange={setShareOpen} />
             </div>
