@@ -3,9 +3,8 @@
 import { ExternalLink, TrendingUp, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useAffiliates, useSwapConfig } from '@/lib/api-client'
+import { useAffiliates } from '@/lib/api-client'
 import { platformLinkFor } from '@/lib/affiliate'
-import { CabalSwapButton } from '@/components/cabal/swap-button'
 
 // Redes soportadas por el TV widget de Birdeye (tron NO soportado)
 const BIRDEYE_CHAINS: Record<string, string> = {
@@ -125,12 +124,8 @@ export function LiveChart({ network, contract, height = 320 }: { network: string
  *  "DE LA RED {red}" del token (o el enlace madre general), con los placeholders
  *  {ca} (contrato) y {red} (slug de la cadena). Si no hay ninguna configurada,
  *  muestra enlaces directos a las plataformas según la red del token. */
-export function ExternalLinksRow({ network, contract, ticker, className }: { network: string; contract: string; ticker?: string; className?: string }) {
+export function ExternalLinksRow({ network, contract, className }: { network: string; contract: string; ticker?: string; className?: string }) {
   const { data: affiliates } = useAffiliates()
-  const { data: swapConfig } = useSwapConfig()
-  // Con el botón propio de Cabal ya puesto, los enlaces externos pasan a
-  // segunda opción: nadie necesita dos botones "primary" del mismo verde.
-  const cabalSwapShown = network === 'solana' && Boolean(swapConfig?.enabled)
 
   const affiliateLinks = (affiliates ?? [])
     .map((a) => ({ label: a.name, url: platformLinkFor(a, network, contract) }))
@@ -140,16 +135,9 @@ export function ExternalLinksRow({ network, contract, ticker, className }: { net
     const [primary, ...rest] = affiliateLinks
     return (
       <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
-        <CabalSwapButton contract={contract} network={network} ticker={ticker ?? ''} />
         <Button
           asChild
-          variant={cabalSwapShown ? 'outline' : undefined}
-          className={cn(
-            'h-8 gap-1.5 rounded-lg px-3 text-[11px] font-black',
-            cabalSwapShown
-              ? 'border-white/10 text-muted-foreground hover:bg-transparent hover:text-primary'
-              : 'bg-primary text-primary-foreground hover:bg-[#8FA83F]'
-          )}
+          className="h-8 gap-1.5 rounded-lg bg-primary px-3 text-[11px] font-black text-primary-foreground hover:bg-[#8FA83F]"
         >
           <a href={primary.url} target="_blank" rel="noreferrer" aria-label={`Comprar en ${primary.label}`}>
             <TrendingUp className="h-3.5 w-3.5" aria-hidden />
@@ -174,10 +162,9 @@ export function ExternalLinksRow({ network, contract, ticker, className }: { net
   }
 
   const links = tradeLinks(network, contract)
-  if (links.length === 0 && !cabalSwapShown) return null
+  if (links.length === 0) return null
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
-      <CabalSwapButton contract={contract} network={network} ticker={ticker ?? ''} />
       {links.map((link) => (
         <Button
           key={link.url}
@@ -185,7 +172,7 @@ export function ExternalLinksRow({ network, contract, ticker, className }: { net
           asChild
           className={cn(
             'h-8 gap-1.5 rounded-lg border-white/10 px-2.5 text-[11px] font-bold text-muted-foreground hover:bg-transparent hover:text-primary',
-            link.primary && !cabalSwapShown && 'border-primary/40 bg-primary/10 text-primary hover:border-primary/60 hover:bg-primary/15 hover:text-primary'
+            link.primary && 'border-primary/40 bg-primary/10 text-primary hover:border-primary/60 hover:bg-primary/15 hover:text-primary'
           )}
         >
           <a href={link.url} target="_blank" rel="noreferrer">

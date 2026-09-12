@@ -13,6 +13,7 @@ import { displayImageUrl } from '@/lib/remote-image'
 import { CountdownPill, CopyCA, NetworkBadge, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
+import { TradePanel } from '@/components/cabal/trade-panel'
 import { timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -36,7 +37,7 @@ export function LaunchDetailDialog() {
       }}
     >
       <DialogContent
-        className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-xl"
+        className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-xl lg:max-w-3xl"
         aria-describedby={undefined}
       >
         {isLoading || !launch ? (
@@ -181,15 +182,25 @@ export function LaunchDetailDialog() {
               </section>
             )}
 
-            {/* Gráfico en vivo (solo si el launch tiene CA del token desplegado) */}
+            {/* Gráfico en vivo + panel de compra (solo si el launch tiene CA del token desplegado) */}
             {launch.contract && (
-              <section className="border-b border-white/10 p-4" aria-label="Gráfico en vivo del token">
+              <section className="border-b border-white/10 p-4" aria-label="Gráfico en vivo y compra del token">
                 <div className="mb-2.5 flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gráfico en vivo</p>
                   <CopyCA contract={launch.contract} className="max-w-[60%] text-[10px]" />
                 </div>
-                <LiveChart network={launch.network} contract={launch.contract} height={320} />
-                <ExternalLinksRow network={launch.network} contract={launch.contract} ticker={launch.ticker ?? undefined} className="mt-2.5" />
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+                  <div className="min-w-0 flex-1">
+                    <LiveChart network={launch.network} contract={launch.contract} height={320} />
+                    <ExternalLinksRow network={launch.network} contract={launch.contract} ticker={launch.ticker ?? undefined} className="mt-2.5" />
+                  </div>
+                  <TradePanel
+                    contract={launch.contract}
+                    network={launch.network}
+                    ticker={launch.ticker ?? launch.name}
+                    className="lg:w-[260px]"
+                  />
+                </div>
               </section>
             )}
 

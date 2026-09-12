@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { CopyCA, NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
+import { TradePanel } from '@/components/cabal/trade-panel'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useToken } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -49,7 +50,7 @@ export function TokenDetailDialog() {
         }
       }}
     >
-      <DialogContent className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-2xl" aria-describedby={undefined}>
+      <DialogContent className="max-h-[88vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-2xl lg:max-w-3xl" aria-describedby={undefined}>
         {isLoading || !token ? (
           <div className="space-y-3 p-6">
             <DialogTitle className="sr-only">Detalle del token</DialogTitle>
@@ -122,10 +123,13 @@ export function TokenDetailDialog() {
                   </button>
                 </div>
                 {activeTab === 'live' ? (
-                  <>
-                    <LiveChart network={token.network} contract={token.contract} height={360} />
-                    <ExternalLinksRow network={token.network} contract={token.contract} ticker={token.ticker} className="mt-2" />
-                  </>
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+                    <div className="min-w-0 flex-1">
+                      <LiveChart network={token.network} contract={token.contract} height={360} />
+                      <ExternalLinksRow network={token.network} contract={token.contract} ticker={token.ticker} className="mt-2" />
+                    </div>
+                    <TradePanel contract={token.contract} network={token.network} ticker={token.ticker} className="lg:w-[260px]" />
+                  </div>
                 ) : (
                   <div className="h-44 w-full">
                     <ResponsiveContainer width="100%" height="100%">

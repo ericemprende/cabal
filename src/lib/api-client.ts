@@ -8,6 +8,7 @@ import type {
   AdminUserRowDTO,
   AdminWaitlistDTO,
   AffiliatePlatformDTO,
+  BuildBuyDTO,
   DevClaimDTO,
   LaunchDetailDTO,
   LaunchDTO,
@@ -358,12 +359,20 @@ export function useAffiliates() {
   })
 }
 
-/** Config para comprar sin salir de Cabal (Solana, Jupiter Terminal). */
+/** Config para comprar sin salir de Cabal (Solana, vía la API de Jupiter). */
 export function useSwapConfig() {
   return useQuery<SwapConfigDTO>({
     queryKey: ['swap', 'config'],
     queryFn: () => jsonFetch('/api/swap/config'),
     staleTime: 5 * 60_000,
+  })
+}
+
+/** Cotiza y arma la(s) transacción(es) de una compra. No firma ni manda nada. */
+export function useBuildBuy() {
+  return useMutation({
+    mutationFn: (data: { outputMint: string; amountUsd: number; userPublicKey: string }) =>
+      jsonFetch<BuildBuyDTO>('/api/swap/build', { method: 'POST', body: JSON.stringify(data) }),
   })
 }
 

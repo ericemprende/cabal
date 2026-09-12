@@ -334,12 +334,27 @@ export interface AdminWaitlistDTO {
   }
 }
 
-// ---------- Comprar sin salir de Cabal (Solana, Jupiter Terminal) ----------
+// ---------- Comprar sin salir de Cabal (Solana, vía la API de Jupiter) ----------
 export interface SwapConfigDTO {
   enabled: boolean
   solMint: string
   /** null = el botón funciona igual, pero todavía sin comisión para Cabal. */
   fee: { referralAccount: string; feeBps: number } | null
+}
+
+export interface SerializedTxDTO {
+  kind: 'legacy' | 'versioned'
+  base64: string
+}
+
+export interface BuildBuyDTO {
+  ok: boolean
+  /** Solo en la primerísima compra de Cabal de este token: crea la cuenta donde cae la comisión. */
+  createFeeAccountTx: SerializedTxDTO | null
+  swapTransaction: SerializedTxDTO
+  outAmount: string
+  lamportsIn: string
+  priceImpactPct: string
 }
 
 // ---------- Perfil público (/u/<handle>) ----------
