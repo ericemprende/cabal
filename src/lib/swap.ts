@@ -110,6 +110,7 @@ async function jupBuildSwap(body: Record<string, unknown>): Promise<{ swapTransa
 }
 
 export class InvalidBuyError extends Error {}
+export class InvalidSellError extends Error {}
 
 /**
  * Cotiza y arma la transacción de compra (más, si hace falta, la de crear la
@@ -118,38 +119,31 @@ export class InvalidBuyError extends Error {}
  */
 export type SerializedTx = { kind: 'legacy' | 'versioned'; base64: string }
 
-export async function buildBuyTransactions(opts: {
-  outputMint: string
-  amountUsd: number
-  userPublicKey: string
-}): Promise<{
+type SwapBuildResult = {
   createFeeAccountTx: SerializedTx | null
   swapTransaction: SerializedTx
   outAmount: string
-  lamportsIn: string
   priceImpactPct: string
-}> {
-  if (!(opts.amountUsd >= 1 && opts.amountUsd <= 50_000)) {
-    throw new InvalidBuyError('El monto tiene que estar entre $1 y $50,000')
-  }
-  let buyer: PublicKey
-  let outputMint: PublicKey
-  try {
-    buyer = new PublicKey(opts.userPublicKey)
-    outputMint = new PublicKey(opts.outputMint)
-  } catch {
-    throw new InvalidBuyError('Wallet o contrato no válidos')
-  }
+}
 
-  const price = await solPriceUsd()
-  const lamports = Math.round((opts.amountUsd / price) * 1e9)
-  if (lamports < 1000) throw new InvalidBuyError('El monto es demasiado pequeño')
-
+/**
+ * Núcleo compartido por comprar y vender: cotiza `inputMint` → `outputMint`
+ * por `amount` (unidades base del mint de entrada) y arma la transacción de
+ * swap, creando de paso — si hace falta — la cuenta donde Jupiter deposita
+ * la comisión de Cabal en el mint de SALIDA de este swap en concreto.
+ */
+async function buildSwapTransactions(opts: {
+  inputMint: string
+  outputMint: string
+  amount: number
+  trader: PublicKey
+}): Promise<SwapBuildResult> {
+  const outputMint = new PublicKey(opts.outputMint)
   const fee = swapFeeConfig()
   const quote = await jupQuote({
-    inputMint: SOL_MINT,
+    inputMint: opts.inputMint,
     outputMint: opts.outputMint,
-    amount: lamports,
+    amount: opts.amount,
     slippageBps: 150, // 1.5%: los memecoins recién lanzados se mueven rápido
     platformFeeBps: fee?.feeBps,
   })
@@ -162,15 +156,15 @@ export async function buildBuyTransactions(opts: {
     feeAccount = feeAccountPubKey.toBase58()
     const info = await solanaConnection().getAccountInfo(feeAccountPubKey).catch(() => null)
     if (!info) {
-      // Primera compra de Cabal para este token: hace falta crear la cuenta
-      // donde cae la comisión. La paga quien compra, con su propia wallet —
-      // es una sola vez por token, nunca más para los siguientes compradores.
+      // Primer swap de Cabal que entrega ESE mint (comprándolo, o vendiendo a
+      // SOL): hace falta crear la cuenta donde cae la comisión. La paga quien
+      // opera, con su propia wallet — es una sola vez por mint, nunca más.
       const { tx } = await referralProvider().initializeReferralTokenAccount({
-        payerPubKey: buyer,
+        payerPubKey: opts.trader,
         referralAccountPubKey,
         mint: outputMint,
       })
-      tx.feePayer = buyer
+      tx.feePayer = opts.trader
       const { blockhash } = await solanaConnection().getLatestBlockhash()
       tx.recentBlockhash = blockhash
       createFeeAccountTx = { kind: 'legacy', base64: tx.serialize({ requireAllSignatures: false }).toString('base64') }
@@ -179,7 +173,7 @@ export async function buildBuyTransactions(opts: {
 
   const { swapTransaction } = await jupBuildSwap({
     quoteResponse: quote,
-    userPublicKey: opts.userPublicKey,
+    userPublicKey: opts.trader.toBase58(),
     ...(feeAccount ? { feeAccount } : {}),
     wrapAndUnwrapSol: true,
     dynamicComputeUnitLimit: true,
@@ -188,14 +182,78 @@ export async function buildBuyTransactions(opts: {
 
   // Defensa en profundidad: si Jupiter alguna vez devolviera algo que no
   // deserializa, mejor que reviente aquí (error 502) que mandarle al
-  // navegador de quien compra un base64 que no es de verdad una transacción.
+  // navegador de quien opera un base64 que no es de verdad una transacción.
   VersionedTransaction.deserialize(Buffer.from(swapTransaction, 'base64'))
 
   return {
     createFeeAccountTx,
     swapTransaction: { kind: 'versioned', base64: swapTransaction },
     outAmount: quote.outAmount,
-    lamportsIn: String(lamports),
     priceImpactPct: quote.priceImpactPct,
   }
+}
+
+export async function buildBuyTransactions(opts: {
+  outputMint: string
+  amountUsd: number
+  userPublicKey: string
+}): Promise<SwapBuildResult & { lamportsIn: string }> {
+  if (!(opts.amountUsd >= 1 && opts.amountUsd <= 50_000)) {
+    throw new InvalidBuyError('El monto tiene que estar entre $1 y $50,000')
+  }
+  let buyer: PublicKey
+  try {
+    buyer = new PublicKey(opts.userPublicKey)
+    void new PublicKey(opts.outputMint)
+  } catch {
+    throw new InvalidBuyError('Wallet o contrato no válidos')
+  }
+
+  const price = await solPriceUsd()
+  const lamports = Math.round((opts.amountUsd / price) * 1e9)
+  if (lamports < 1000) throw new InvalidBuyError('El monto es demasiado pequeño')
+
+  const result = await buildSwapTransactions({ inputMint: SOL_MINT, outputMint: opts.outputMint, amount: lamports, trader: buyer })
+  return { ...result, lamportsIn: String(lamports) }
+}
+
+/** Balance de un mint SPL (o de SOL) en una wallet, en unidades base y legibles. */
+export async function tokenBalance(opts: { owner: string; mint: string }): Promise<{ amount: string; decimals: number; uiAmount: number }> {
+  const owner = new PublicKey(opts.owner)
+  if (opts.mint === SOL_MINT) {
+    const lamports = await solanaConnection().getBalance(owner)
+    return { amount: String(lamports), decimals: 9, uiAmount: lamports / 1e9 }
+  }
+  const mint = new PublicKey(opts.mint)
+  const accounts = await solanaConnection().getParsedTokenAccountsByOwner(owner, { mint })
+  const total = accounts.value.reduce((sum, { account }) => {
+    const info = account.data.parsed?.info?.tokenAmount
+    return sum + BigInt(info?.amount ?? '0')
+  }, BigInt(0))
+  const decimals = accounts.value[0]?.account.data.parsed?.info?.tokenAmount?.decimals ?? 0
+  return { amount: total.toString(), decimals, uiAmount: Number(total) / 10 ** decimals }
+}
+
+export async function buildSellTransactions(opts: {
+  inputMint: string
+  percent: number
+  userPublicKey: string
+}): Promise<SwapBuildResult & { amountIn: string }> {
+  if (!(opts.percent > 0 && opts.percent <= 100)) {
+    throw new InvalidSellError('El porcentaje a vender no es válido')
+  }
+  let seller: PublicKey
+  try {
+    seller = new PublicKey(opts.userPublicKey)
+    void new PublicKey(opts.inputMint)
+  } catch {
+    throw new InvalidSellError('Wallet o contrato no válidos')
+  }
+
+  const balance = await tokenBalance({ owner: opts.userPublicKey, mint: opts.inputMint })
+  const amount = Math.floor((Number(balance.amount) * opts.percent) / 100)
+  if (amount < 1) throw new InvalidSellError('No tienes saldo de este token para vender')
+
+  const result = await buildSwapTransactions({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, trader: seller })
+  return { ...result, amountIn: String(amount) }
 }

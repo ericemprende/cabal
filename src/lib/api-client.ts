@@ -9,6 +9,7 @@ import type {
   AdminWaitlistDTO,
   AffiliatePlatformDTO,
   BuildBuyDTO,
+  BuildSellDTO,
   DevClaimDTO,
   LaunchDetailDTO,
   LaunchDTO,
@@ -20,6 +21,7 @@ import type {
   PublicUserDTO,
   ReferralDTO,
   SwapConfigDTO,
+  TokenBalanceDTO,
   TokenDTO,
   TokenDetailDTO,
   UserDTO,
@@ -373,6 +375,24 @@ export function useBuildBuy() {
   return useMutation({
     mutationFn: (data: { outputMint: string; amountUsd: number; userPublicKey: string }) =>
       jsonFetch<BuildBuyDTO>('/api/swap/build', { method: 'POST', body: JSON.stringify(data) }),
+  })
+}
+
+/** Cotiza y arma la(s) transacción(es) de una venta (porcentaje del saldo). No firma ni manda nada. */
+export function useBuildSell() {
+  return useMutation({
+    mutationFn: (data: { inputMint: string; percent: number; userPublicKey: string }) =>
+      jsonFetch<BuildSellDTO>('/api/swap/sell', { method: 'POST', body: JSON.stringify(data) }),
+  })
+}
+
+/** Saldo de un token (o SOL) de una wallet, para las opciones "25%/50%/100%" al vender. */
+export function useTokenBalance(owner: string | null, mint: string | null) {
+  return useQuery<TokenBalanceDTO>({
+    queryKey: ['swap', 'balance', owner, mint],
+    queryFn: () => jsonFetch(`/api/swap/balance?owner=${owner}&mint=${mint}`),
+    enabled: !!owner && !!mint,
+    staleTime: 10_000,
   })
 }
 

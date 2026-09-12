@@ -357,6 +357,22 @@ export interface BuildBuyDTO {
   priceImpactPct: string
 }
 
+export interface BuildSellDTO {
+  ok: boolean
+  /** Solo si nadie vendió antes ese token por Cabal (o compró recibiendo SOL): crea la cuenta de comisión. */
+  createFeeAccountTx: SerializedTxDTO | null
+  swapTransaction: SerializedTxDTO
+  outAmount: string
+  amountIn: string
+  priceImpactPct: string
+}
+
+export interface TokenBalanceDTO {
+  amount: string
+  decimals: number
+  uiAmount: number
+}
+
 // ---------- Perfil público (/u/<handle>) ----------
 
 /** Launch publicado por el usuario, en la lista de proyectos de su perfil. */
