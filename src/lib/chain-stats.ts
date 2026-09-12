@@ -44,16 +44,17 @@ type DexPair = {
   pairCreatedAt?: number
 }
 
-// chainId de DexScreener por red de Cabal (robinhood aún no está listado allí)
+// chainId de DexScreener por red de Cabal
 const DEX_CHAIN: Record<string, string> = {
   solana: 'solana',
   ethereum: 'ethereum',
   base: 'base',
   bsc: 'bsc',
   tron: 'tron',
+  robinhood: 'robinhood',
 }
 
-// network id de GeckoTerminal para el OHLCV del ATH
+// network id de GeckoTerminal para el OHLCV del ATH (robinhood no está listado allí)
 const GECKO_NETWORK: Record<string, string> = {
   solana: 'solana',
   ethereum: 'eth',
