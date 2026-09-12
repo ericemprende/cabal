@@ -4,6 +4,7 @@ import { awardPoints, getCurrentUser } from '@/lib/api-helpers'
 import { toPostDTO } from '@/lib/serializers'
 import { invalidate } from '@/lib/cache'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
+import { NETWORKS } from '@/lib/cabal'
 
 export async function POST(req: Request) {
   try {
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
     if (!limit.ok) return tooManyRequests(limit)
 
     const body = await req.json()
-    const { kind, content, launchId, tokenId, contract } = body
+    const { kind, content, launchId, tokenId, contract, network } = body
     if (!content || !String(content).trim()) {
       return NextResponse.json({ error: 'El contenido está vacío' }, { status: 400 })
     }
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
     // Una call sin contrato no sirve: la comunidad no sabría qué token comprar
     const cleanContract =
       typeof contract === 'string' && /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim()) ? contract.trim() : null
+    const cleanNetwork = typeof network === 'string' && network in NETWORKS ? network : 'solana'
     if (postKind === 'call' && !cleanContract) {
       return NextResponse.json({ error: 'Ingresa el CA/contrato del token para publicar una call' }, { status: 400 })
     }
@@ -34,6 +36,7 @@ export async function POST(req: Request) {
         launchId: launchId || null,
         tokenId: tokenId || null,
         contract: postKind === 'call' ? cleanContract : null,
+        network: postKind === 'call' ? cleanNetwork : null,
       },
       include: { user: true },
     })

@@ -78,6 +78,7 @@ export async function toPostDTO(
     launchId: string | null
     tokenId: string | null
     contract?: string | null
+    network?: string | null
   },
   liked: boolean,
   pointsEarned?: number
@@ -123,6 +124,7 @@ export async function toPostDTO(
     launch,
     token,
     contract: p.contract ?? null,
+    network: p.network ?? null,
     pointsEarned,
   }
 }

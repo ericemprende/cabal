@@ -134,6 +134,7 @@ model Post {
   tokenId   String?
   token     Token?   @relation(fields: [tokenId], references: [id])
   contract  String? // CA del token: obligatorio para kind == "call"
+  network   String? // red del CA: obligatoria para kind == "call"
   likes     Int      @default(0)
   pnl       Float?
   createdAt DateTime @default(now())

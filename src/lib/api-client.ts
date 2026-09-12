@@ -332,6 +332,35 @@ export function useAdminUsers(enabled: boolean) {
   })
 }
 
+export type AdminCallRowDTO = {
+  id: string
+  content: string
+  contract: string | null
+  network: string | null
+  createdAt: string
+  user: { id: string; name: string; handle: string; avatar: string }
+  symbol: string
+  pctChange: number | null
+  found: boolean
+}
+
+export type AdminCallLeaderRowDTO = {
+  user: { id: string; name: string; handle: string; avatar: string }
+  total: number
+  withData: number
+  winRate: number | null
+  avgPct: number | null
+}
+
+/** Calls por usuario (últimas 300), con %s en vivo desde que se publicaron. */
+export function useAdminCalls(enabled: boolean) {
+  return useQuery<{ calls: AdminCallRowDTO[]; leaderboard: AdminCallLeaderRowDTO[] }>({
+    queryKey: ['admin-calls'],
+    queryFn: () => jsonFetch('/api/admin/calls'),
+    enabled,
+  })
+}
+
 export function useAdminLaunches(enabled: boolean) {
   return useQuery<LaunchDTO[]>({
     queryKey: qk.adminLaunches,
@@ -405,6 +434,28 @@ export function useLikeToggle() {
   })
 }
 
+export type CallResultDTO = {
+  found: boolean
+  entryPriceUsd: number | null
+  currentPriceUsd: number | null
+  currentMc: number | null
+  symbol: string
+  pctChange: number | null
+  pairUrl: string
+  calledAt: string
+}
+
+/** Resultado en vivo de una call: público, no requiere sesión. */
+export function useCallResult(postId: string, enabled: boolean) {
+  return useQuery<CallResultDTO>({
+    queryKey: ['call-result', postId],
+    queryFn: () => jsonFetch(`/api/posts/${postId}/result`),
+    enabled,
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+  })
+}
+
 export function useFollowToggle() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
@@ -417,7 +468,14 @@ export function useFollowToggle() {
 export function useCreatePost() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
-    mutationFn: (data: { kind: string; content: string; launchId?: string; tokenId?: string; contract?: string }) =>
+    mutationFn: (data: {
+      kind: string
+      content: string
+      launchId?: string
+      tokenId?: string
+      contract?: string
+      network?: string
+    }) =>
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/posts', {
         method: 'POST',
         body: JSON.stringify(data),

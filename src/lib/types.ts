@@ -68,6 +68,7 @@ export interface PostDTO {
   launch?: LaunchRefDTO | null
   token?: TokenRefDTO | null
   contract?: string | null
+  network?: string | null
   pointsEarned?: number
 }
 
