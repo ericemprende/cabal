@@ -423,6 +423,7 @@ export type CallResult = {
   peakMc: number | null
   peakAt: number | null
   symbol: string
+  image: string
   pctChange: number | null
   /** veces que multiplicó desde la call hasta AHORA (solo si subió), p. ej. 3 = "hizo 3x" */
   multiple: number | null
@@ -441,6 +442,7 @@ const EMPTY_CALL_RESULT: CallResult = {
   peakMc: null,
   peakAt: null,
   symbol: '',
+  image: '',
   pctChange: null,
   multiple: null,
   peakMultiple: null,
@@ -459,12 +461,17 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
   const dexChain = DEX_CHAIN[network]
   if (!dexChain) return { ...EMPTY_CALL_RESULT }
 
-  const json = await fetchJson<{ pairs?: DexPair[] }>(
+  const json = await fetchJson<{ pairs?: DexInfoPair[] }>(
     `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(ca)}`,
     8000
   )
-  const pair = pickPair(json?.pairs ?? [], ca)
+  const pair = pickPair(json?.pairs ?? [], ca) as DexInfoPair | null
   if (!pair) return { ...EMPTY_CALL_RESULT }
+
+  // Mismo logo que fetchTokenMeta: el de DexScreener si cotiza ahí, o si no
+  // (solana) el de la CDN de pump.fun — no hace falta otra petición, la URL
+  // es determinística a partir del contrato.
+  const image = safeUrl(pair.info?.imageUrl) || (network === 'solana' ? `https://images.pump.fun/coin-image/${encodeURIComponent(ca)}?variant=600x600` : '')
 
   const currentPriceUsd = pair.priceUsd ? Number(pair.priceUsd) || null : null
   const currentMc = pair.marketCap ?? pair.fdv ?? null
@@ -528,6 +535,7 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
     peakMc,
     peakAt,
     symbol: pair.baseToken?.symbol ?? '',
+    image,
     pctChange,
     multiple,
     peakMultiple,
