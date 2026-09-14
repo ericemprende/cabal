@@ -155,8 +155,13 @@ export async function renderCallResultCard(opts: {
       <rect width="${CALL_CARD_W}" height="${CALL_CARD_H}" fill="url(#glow)"/>
       <rect x="0" y="0" width="${CALL_CARD_W}" height="10" fill="${accent}"/>
 
-      <text x="70" y="90" font-family="${FONT_STACK}" font-size="34" font-weight="800" fill="#eaf5d2" letter-spacing="1">
-        🐺 CABAL.ARMY
+      <g transform="translate(70,58)">
+        <circle cx="17" cy="17" r="17" fill="#16200f"/>
+        <circle cx="17" cy="19" r="8" fill="#8FA83F"/>
+        <path d="M 5 34 a 13 12 0 0 1 24 0 Z" fill="#8FA83F"/>
+      </g>
+      <text x="112" y="90" font-family="${FONT_STACK}" font-size="34" font-weight="800" fill="#eaf5d2" letter-spacing="1">
+        CABAL.ARMY
       </text>
       <text x="70" y="132" font-family="${FONT_STACK}" font-size="22" fill="#9aa08a">
         Resultado de la call · publicada hace ${esc(elapsed)}

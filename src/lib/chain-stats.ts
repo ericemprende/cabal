@@ -54,14 +54,16 @@ const DEX_CHAIN: Record<string, string> = {
   robinhood: 'robinhood',
 }
 
-// network id de GeckoTerminal para el OHLCV del ATH
+// network id de GeckoTerminal para el OHLCV del ATH. "robinhood" no es una
+// red real de GeckoTerminal (ni de ningún indexer): sin id válido no hay
+// forma de pedir velas históricas, así que se deja fuera del mapa a
+// propósito — mejor no mostrar ATH/entrada ahí que mostrar un "0.0%" falso.
 const GECKO_NETWORK: Record<string, string> = {
   solana: 'solana',
   ethereum: 'eth',
   base: 'base',
   bsc: 'bsc',
   tron: 'tron',
-  robinhood: 'robinhood',
 }
 
 export function isValidNetwork(network: string): boolean {
@@ -487,8 +489,10 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
     const c = candles?.data?.attributes?.ohlcv_list?.[0]
     if (c && Number(c[4]) > 0) entryPriceUsd = Number(c[4])
   }
-  // Call recién publicada: aún no hay vela de ese minuto. Entrada = precio actual (0%).
-  if (entryPriceUsd === null) entryPriceUsd = currentPriceUsd
+  // Call recién publicada: aún no hay vela de ese minuto. Entrada = precio
+  // actual (0%) — pero solo si de verdad hay una fuente de velas para esta
+  // red; si no la hay (geckoNet), mejor dejar "sin datos" que fingir 0%.
+  if (entryPriceUsd === null && geckoNet) entryPriceUsd = currentPriceUsd
 
   const pctChange =
     entryPriceUsd && currentPriceUsd && entryPriceUsd > 0
