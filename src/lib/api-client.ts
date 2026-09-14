@@ -1031,29 +1031,57 @@ export function usePremiumInfo(enabled = true) {
 }
 
 /**
+ * Abre una pestaña en blanco ya mismo (dentro del gesto de clic, si no los
+ * navegadores bloquean el popup) y la navega en cuanto llegue la URL real.
+ * Así la pasarela se abre en pestaña nueva en vez de dejar Cabal atrás.
+ * Si el navegador bloqueó el popup, cae de vuelta a navegar la misma pestaña.
+ */
+function navigateInNewTab(url: string, popup: Window | null) {
+  if (popup && !popup.closed) {
+    popup.location.href = url
+  } else {
+    window.location.assign(url)
+  }
+}
+
+/**
  * Arranca el pago de un plan y redirige a la pasarela (Stripe Checkout o la
  * factura de NOWPayments). El acceso se activa solo cuando el proveedor
  * confirma el pago; aquí solo se abre la página para pagar.
+ *
+ * Quien llama debe abrir la pestaña con `window.open('', '_blank')` en el
+ * propio manejador del clic y pasarla como `popup` en `mutate` — abrirla acá
+ * dentro de onSuccess llega tarde (ya hubo un fetch de por medio) y el
+ * navegador bloquea el popup.
  */
 export function useStartPremiumCheckout() {
   return useMutation({
-    mutationFn: (data: { plan: string; method: 'card' | 'crypto' }) =>
-      jsonFetch<{ url: string }>('/api/premium/checkout', { method: 'POST', body: JSON.stringify(data) }),
-    onSuccess: (res) => {
-      window.location.assign(res.url)
+    mutationFn: (data: { plan: string; method: 'card' | 'crypto'; popup?: Window | null }) =>
+      jsonFetch<{ url: string }>('/api/premium/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ plan: data.plan, method: data.method }),
+      }),
+    onSuccess: (res, variables) => {
+      navigateInNewTab(res.url, variables.popup ?? null)
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (_e: Error, variables) => {
+      variables.popup?.close()
+      toast.error(_e.message)
+    },
   })
 }
 
 /** Portal de facturación de Stripe: cambiar tarjeta, cancelar, descargar facturas. */
 export function useOpenBillingPortal() {
   return useMutation({
-    mutationFn: () => jsonFetch<{ url: string }>('/api/premium/portal', { method: 'POST' }),
-    onSuccess: (res) => {
-      window.location.assign(res.url)
+    mutationFn: (_popup?: Window | null) => jsonFetch<{ url: string }>('/api/premium/portal', { method: 'POST' }),
+    onSuccess: (res, popup) => {
+      navigateInNewTab(res.url, popup ?? null)
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, popup) => {
+      popup?.close()
+      toast.error(e.message)
+    },
   })
 }
 

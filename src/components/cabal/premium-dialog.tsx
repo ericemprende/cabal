@@ -77,7 +77,11 @@ export function PremiumDialog() {
               <Skeleton className="h-24 w-full rounded-xl" />
             </div>
           ) : info.status.active ? (
-            <ActiveStatus status={info.status} onManage={() => portal.mutate()} managing={portal.isPending} />
+            <ActiveStatus
+              status={info.status}
+              onManage={() => portal.mutate(window.open('', '_blank'))}
+              managing={portal.isPending}
+            />
           ) : (
             <div className="space-y-3">
               {info.plans.length === 0 && (
@@ -90,7 +94,12 @@ export function PremiumDialog() {
                   key={plan.key}
                   plan={plan}
                   paying={checkout.isPending ? checkout.variables?.plan === plan.key : false}
-                  onPay={(method) => checkout.mutate({ plan: plan.key, method })}
+                  onPay={(method) => {
+                    // La pestaña se abre ya, en el propio clic: si se abre después
+                    // (cuando responda el checkout) el navegador la bloquea.
+                    const popup = window.open('', '_blank')
+                    checkout.mutate({ plan: plan.key, method, popup })
+                  }}
                 />
               ))}
             </div>
