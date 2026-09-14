@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, Copy, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
@@ -36,6 +37,14 @@ function CallTokenGlyph({ post }: { post: PostDTO }) {
   const src = post.token?.image ?? data?.image ?? null
   const ticker = post.token?.ticker ?? (data?.symbol ? data.symbol : '?')
   return <TokenGlyph src={src} ticker={ticker} size="xs" />
+}
+
+/** Botón de comprar el token de la call, directo desde el feed (solo Solana por ahora). */
+function CallBuyButton({ post }: { post: PostDTO }) {
+  const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract && !post.token)
+  if (!post.contract || !post.network) return null
+  const ticker = post.token?.ticker ?? data?.symbol ?? ''
+  return <QuickBuyButton contract={post.contract} network={post.network} ticker={ticker} className="shrink-0" />
 }
 
 /** Estado de la call en una sola línea: monto compacto, sin envolver a varias filas. */
@@ -265,18 +274,21 @@ export function PostCard({
               <CallTokenGlyph post={post} />
               <CopyCA contract={post.contract} className="min-w-0 shrink text-[11px]" />
               <CallResultBadge post={post} />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShareOpen(true)
-                }}
-                className="ml-auto shrink-0 text-muted-foreground hover:text-primary"
-                title="Ver la tarjeta y compartirla en X"
-                aria-label="Ver imagen para compartir"
-              >
-                <ImageDown className="h-3.5 w-3.5" />
-              </button>
+              <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                <CallBuyButton post={post} />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShareOpen(true)
+                  }}
+                  className="text-muted-foreground hover:text-primary"
+                  title="Ver la tarjeta y compartirla en X"
+                  aria-label="Ver imagen para compartir"
+                >
+                  <ImageDown className="h-3.5 w-3.5" />
+                </button>
+              </span>
               <CallShareDialog post={post} open={shareOpen} onOpenChange={setShareOpen} />
             </div>
           )}
