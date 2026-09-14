@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { GraduationCap, Hash, Megaphone, MessageSquare, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertTriangle, CheckCircle2, GraduationCap, Hash, Loader2, Megaphone, MessageSquare, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,6 +11,7 @@ import { NetworkIcon, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
 import { useCreatePost, useMe } from '@/lib/api-client'
+import type { TokenMeta } from '@/lib/chain-stats'
 import { useUI } from '@/lib/store'
 
 const KINDS = [
@@ -32,6 +33,41 @@ export function FeedTab() {
   const isCall = kind === 'call'
   const contractOk = /^[a-zA-Z0-9:_-]{2,80}$/.test(contract.trim())
   const canSubmit = content.trim() && (!isCall || contractOk)
+
+  // Verificación en vivo del contrato antes de publicar: busca en DexScreener /
+  // pump.fun (misma fuente que usa la card de la call luego) y auto-detecta la
+  // red, para que no se publique una call que después no se detecta.
+  const [lookup, setLookup] = useState<{ state: 'idle' | 'loading' | 'found' | 'notfound'; meta?: TokenMeta }>({
+    state: 'idle',
+  })
+  useEffect(() => {
+    const ca = contract.trim()
+    if (!isCall || !/^[a-zA-Z0-9]{32,44}$|^0x[a-fA-F0-9]{40}$/.test(ca)) {
+      setLookup({ state: 'idle' })
+      return
+    }
+    let cancelled = false
+    setLookup({ state: 'loading' })
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tokens/lookup?ca=${encodeURIComponent(ca)}`)
+        const meta = (await res.json()) as TokenMeta
+        if (cancelled) return
+        if (!res.ok || !meta.found) {
+          setLookup({ state: 'notfound' })
+          return
+        }
+        if (meta.network) setNetwork(meta.network)
+        setLookup({ state: 'found', meta })
+      } catch {
+        if (!cancelled) setLookup({ state: 'notfound' })
+      }
+    }, 400)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [contract, isCall])
 
   const submit = () => {
     if (!canSubmit) return
@@ -91,6 +127,25 @@ export function FeedTab() {
                     </button>
                   ))}
                 </div>
+                {lookup.state === 'loading' && (
+                  <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> Verificando contrato…
+                  </p>
+                )}
+                {lookup.state === 'found' && (
+                  <p className="flex items-center gap-1.5 text-[11px] text-primary">
+                    <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden />
+                    {lookup.meta?.symbol ? `$${lookup.meta.symbol}` : 'Token'} detectado en{' '}
+                    {lookup.meta?.source === 'pumpfun' ? 'pump.fun' : 'DexScreener'}
+                    {lookup.meta?.image ? ' · con imagen' : ' · sin imagen todavía'} · red {NETWORKS[network]?.short ?? network}
+                  </p>
+                )}
+                {lookup.state === 'notfound' && (
+                  <p className="flex items-center gap-1.5 text-[11px] text-amber-500">
+                    <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+                    No lo encontramos en DexScreener ni pump.fun. Revisa el contrato o la red antes de publicar: puede que no aparezca la imagen ni el resultado en vivo.
+                  </p>
+                )}
               </div>
             )}
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
