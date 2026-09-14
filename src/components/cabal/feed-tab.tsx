@@ -146,7 +146,12 @@ export function FeedTab() {
         <div className="space-y-3">
           {activity.map((item) =>
             item.type === 'launch' ? (
-              <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} onOpen={() => openLaunch(item.launch.id)} />
+              <LaunchActivityCard
+                key={`launch-${item.kind}-${item.launch.id}`}
+                launch={item.launch}
+                kind={item.kind}
+                onOpen={() => openLaunch(item.launch.id)}
+              />
             ) : (
               <PostCard key={item.post.id} post={item.post} />
             ) /* PostCard ya trae su propio "Responder" con caja de respuesta inline */

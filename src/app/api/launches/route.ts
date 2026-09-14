@@ -51,6 +51,8 @@ export async function GET(req: Request) {
       network: l.network,
       launchAt: new Date(l.launchAt).toISOString(),
       dateConfirmed: l.dateConfirmed,
+      lastEditedAt: l.lastEditedAt ? new Date(l.lastEditedAt).toISOString() : null,
+      lastChangeNote: l.lastChangeNote,
       description: l.description,
       website: l.website,
       twitter: l.twitter,

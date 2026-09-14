@@ -8,6 +8,7 @@ import { sessionUserIdFromCookies } from '@/lib/auth'
 import { invalidate } from '@/lib/cache'
 import { getIpfsImage } from '@/lib/ipfs-cache'
 import { parseLaunchInput, type LaunchInput } from '@/lib/launch-input'
+import { buildLaunchChangeNote } from '@/lib/launch-change-note'
 import { ipfsCid } from '@/lib/remote-image'
 import { getPremiumSettings, getViewer, launchAccess, premiumLaunchFields } from '@/lib/premium'
 import { teamManagerIds, toMemberDTO } from '@/lib/launch-team'
@@ -93,6 +94,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       network: launch.network,
       launchAt: launch.launchAt.toISOString(),
       dateConfirmed: launch.dateConfirmed,
+      lastEditedAt: launch.lastEditedAt ? launch.lastEditedAt.toISOString() : null,
+      lastChangeNote: launch.lastChangeNote,
       description: launch.description,
       website: launch.website,
       twitter: launch.twitter,
@@ -131,7 +134,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const launch = await db.launch.findUnique({ where: { id }, select: { createdById: true } })
+    const launch = await db.launch.findUnique({ where: { id } })
     if (!launch) return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
     if (!(await canEditLaunch(req, launch.createdById))) {
       return NextResponse.json(
@@ -152,7 +155,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!('devWallet' in body)) delete data.devWallet
     if (!('launchpad' in body)) delete data.launchpad
 
-    const updated = await db.launch.update({ where: { id }, data })
+    // Solo se registra como "actualización" si de verdad cambió algo visible;
+    // guardar sin tocar nada no debe aparecer como actividad reciente.
+    const note = buildLaunchChangeNote(launch, { ...launch, ...data })
+    const updateData: typeof data & { lastEditedAt?: Date; lastChangeNote?: string } = { ...data }
+    if (note) {
+      updateData.lastEditedAt = new Date()
+      updateData.lastChangeNote = note
+    }
+
+    const updated = await db.launch.update({ where: { id }, data: updateData })
     await invalidate('launches:*')
     // Si ha cambiado alguna imagen de IPFS, se copia ya (ver lib/ipfs-cache)
     for (const cid of [ipfsCid(updated.image), ipfsCid(updated.banner)]) {

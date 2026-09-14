@@ -107,6 +107,10 @@ model Launch {
   top10Pct      Float    @default(25)
   createdById   String
   createdAt     DateTime @default(now())
+  // Última edición con cambios de verdad (no se toca si se guarda sin cambiar nada),
+  // para mostrarla como actividad reciente ("actualizó la fecha", "cambió la descripción"…)
+  lastEditedAt  DateTime?
+  lastChangeNote String?
   createdBy     User     @relation(fields: [createdById], references: [id])
   posts         Post[]
   token         Token?

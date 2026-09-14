@@ -85,7 +85,13 @@ export function LeftFeed() {
               )}
               {filtered.map((item) =>
                 item.type === 'launch' ? (
-                  <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} compact onOpen={() => openLaunch(item.launch.id)} />
+                  <LaunchActivityCard
+                    key={`launch-${item.kind}-${item.launch.id}`}
+                    launch={item.launch}
+                    kind={item.kind}
+                    compact
+                    onOpen={() => openLaunch(item.launch.id)}
+                  />
                 ) : (
                   <PostCard key={item.post.id} post={item.post} compact />
                 )

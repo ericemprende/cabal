@@ -98,6 +98,10 @@ export interface LaunchDTO {
   launchAt: string
   /** false = fecha estimada, aún no confirmada por quien sube el proyecto. */
   dateConfirmed: boolean
+  /** Cuándo fue la última edición con cambios de verdad (null = nunca se editó). */
+  lastEditedAt?: string | null
+  /** Qué cambió en esa edición, en texto corto ("confirmó la fecha de lanzamiento"). */
+  lastChangeNote?: string | null
   description: string
   website?: string | null
   twitter?: string | null
