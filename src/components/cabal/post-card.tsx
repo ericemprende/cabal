@@ -24,6 +24,20 @@ function fmtX(n: number): string {
   return `${n.toFixed(n >= 10 ? 0 : 1)}x`
 }
 
+/**
+ * Logo del token de una call. Cuando la call viene de un token ya conocido
+ * en Cabal (`post.token`) se usa esa imagen; si es un CA suelto (pegado a
+ * mano, sin token vinculado) se cae al resultado en vivo (`useCallResult`),
+ * que ya resuelve el logo vía DexScreener/pump.fun — antes esas calls se
+ * quedaban con el "?" de siempre.
+ */
+function CallTokenGlyph({ post }: { post: PostDTO }) {
+  const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract && !post.token)
+  const src = post.token?.image ?? data?.image ?? null
+  const ticker = post.token?.ticker ?? (data?.symbol ? data.symbol : '?')
+  return <TokenGlyph src={src} ticker={ticker} size="xs" />
+}
+
 /** Estado de la call en una sola línea: monto compacto, sin envolver a varias filas. */
 function CallResultBadge({ post }: { post: PostDTO }) {
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
@@ -248,7 +262,7 @@ export function PostCard({
 
           {post.kind === 'call' && post.contract && (
             <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1">
-              <TokenGlyph src={post.token?.image} ticker={post.token?.ticker ?? '?'} size="xs" />
+              <CallTokenGlyph post={post} />
               <CopyCA contract={post.contract} className="min-w-0 shrink text-[11px]" />
               <CallResultBadge post={post} />
               <button
