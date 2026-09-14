@@ -20,6 +20,8 @@ export type LaunchInput = {
   launchpad: string | null
   network: string
   launchAt: Date
+  /** false = quien sube el proyecto no tiene la fecha confirmada (es un estimado). */
+  dateConfirmed: boolean
   description: string
   website: string | null
   twitter: string | null
@@ -50,6 +52,7 @@ const LAUNCHPAD_RE = /^[\p{L}\p{N} ._-]{2,40}$/u
 export function parseLaunchInput(body: Record<string, unknown>): ParseResult {
   const { name, ticker, emoji, network, launchAt, description, website, twitter, telegram } = body
   const { image, banner, isPrivate, submitterRole, contract, isLive, liveUrl, devWallet, launchpad } = body
+  const { dateConfirmed } = body
 
   if (!name || !network || !launchAt) {
     return { ok: false, error: 'Faltan campos requeridos (nombre, red y fecha)' }
@@ -98,6 +101,8 @@ export function parseLaunchInput(body: Record<string, unknown>): ParseResult {
       // La red debe ser una de las soportadas; si llega algo inválido cae a Solana
       network: typeof network === 'string' && network in NETWORKS ? network : 'solana',
       launchAt: when,
+      // Sin dato explícito se asume confirmada (así se comportaba antes de este campo)
+      dateConfirmed: dateConfirmed === undefined ? true : bool(dateConfirmed),
       description: String(description || '').slice(0, 800),
       website: optional(website),
       twitter: optional(twitter),

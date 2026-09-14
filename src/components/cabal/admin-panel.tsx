@@ -626,6 +626,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
     isPrivate: launch.isPrivate,
     network: launch.network,
     launchAt: toInputDateTime(launch.launchAt),
+    dateConfirmed: launch.dateConfirmed,
     description: launch.description,
     image: launch.image ?? '',
     banner: launch.banner ?? '',
@@ -661,6 +662,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
         isPrivate: form.isPrivate,
         network: form.network,
         launchAt: new Date(form.launchAt).toISOString(),
+        dateConfirmed: form.dateConfirmed,
         description: form.description,
         image: form.image,
         banner: form.banner,
@@ -697,7 +699,8 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
           </p>
           <p className="truncate text-xs text-muted-foreground">
             {NETWORKS[launch.network as keyof typeof NETWORKS]?.label ?? launch.network} ·{' '}
-            {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · hype {launch.hype}
+            {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            {!launch.dateConfirmed && ' (estimada)'} · hype {launch.hype}
           </p>
         </div>
         <Button
@@ -755,6 +758,15 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
               <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Fecha y hora</Label>
               <Input type="datetime-local" value={form.launchAt} onChange={(e) => set('launchAt', e.target.value)} className="h-8 bg-[#0a0b08] text-[13px] [color-scheme:dark]" />
               <TimezoneHint value={form.launchAt} compact />
+              <label className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={!form.dateConfirmed}
+                  onChange={(e) => set('dateConfirmed', !e.target.checked)}
+                  className="h-3.5 w-3.5 accent-amber-300"
+                />
+                Fecha estimada, aún no confirmada
+              </label>
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Red</Label>

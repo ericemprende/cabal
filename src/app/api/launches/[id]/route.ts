@@ -92,6 +92,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       ...premiumLaunchFields(launch, access, settings.fields),
       network: launch.network,
       launchAt: launch.launchAt.toISOString(),
+      dateConfirmed: launch.dateConfirmed,
       description: launch.description,
       website: launch.website,
       twitter: launch.twitter,

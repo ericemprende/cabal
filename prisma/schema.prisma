@@ -93,6 +93,7 @@ model Launch {
   launchpad     String?  // plataforma donde sale el token (pump.fun, Zora…)
   network       String   @default("solana")
   launchAt      DateTime
+  dateConfirmed Boolean  @default(true) // false = fecha estimada por quien sube el proyecto, no confirmada por el equipo
   description   String
   website       String?
   twitter       String?

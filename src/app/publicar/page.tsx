@@ -39,10 +39,17 @@ type FormInitial = {
   form: typeof EMPTY_FORM
   isPrivate: boolean
   isLive: boolean
+  dateConfirmed: boolean
   submitterRole: 'dev' | 'community'
 }
 
-const EMPTY_INITIAL: FormInitial = { form: EMPTY_FORM, isPrivate: false, isLive: false, submitterRole: 'community' }
+const EMPTY_INITIAL: FormInitial = {
+  form: EMPTY_FORM,
+  isPrivate: false,
+  isLive: false,
+  dateConfirmed: true,
+  submitterRole: 'community',
+}
 
 /** Fecha ISO a lo que espera un <input type="datetime-local">, en hora local. */
 function toLocalInput(iso: string): string {
@@ -72,6 +79,7 @@ function fromLaunch(l: LaunchDetailDTO): FormInitial {
     },
     isPrivate: l.isPrivate,
     isLive: l.isLive,
+    dateConfirmed: l.dateConfirmed,
     submitterRole: l.submitterRole,
   }
 }
@@ -126,6 +134,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
   const [form, setForm] = useState(initial.form)
   const [isPrivate, setIsPrivate] = useState(initial.isPrivate)
   const [isLive, setIsLive] = useState(initial.isLive)
+  const [dateConfirmed, setDateConfirmed] = useState(initial.dateConfirmed)
   const [submitterRole, setSubmitterRole] = useState<'dev' | 'community'>(initial.submitterRole)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -224,6 +233,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
       ...form,
       contract,
       launchAt: launchAtIso,
+      dateConfirmed: String(dateConfirmed),
       submitterRole,
       image: form.image === 'uploading' ? '' : form.image,
       banner: form.banner === 'uploading' ? '' : form.banner,
@@ -267,6 +277,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     setForm(EMPTY_FORM)
     setIsPrivate(false)
     setIsLive(false)
+    setDateConfirmed(true)
     setSubmitterRole('community')
     setError('')
     setDone(false)
@@ -571,6 +582,40 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                   className="h-10 max-w-sm bg-[#0a0b08] [color-scheme:dark]"
                 />
                 <TimezoneHint value={form.launchAt} className="max-w-sm" />
+                <button
+                  type="button"
+                  onClick={() => setDateConfirmed((v) => !v)}
+                  aria-pressed={!dateConfirmed}
+                  className={cn(
+                    'mt-1 flex w-full max-w-sm items-start gap-2.5 rounded-lg border p-2 text-left transition-all',
+                    !dateConfirmed
+                      ? 'border-amber-300/40 bg-amber-300/8'
+                      : 'border-white/10 bg-[#0a0b08] hover:border-white/20'
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'mt-0.5 flex h-4 w-7 shrink-0 items-center rounded-full border px-0.5 transition-colors',
+                      !dateConfirmed ? 'border-amber-300/50 bg-amber-300/25' : 'border-white/15 bg-white/5'
+                    )}
+                    aria-hidden
+                  >
+                    <span
+                      className={cn(
+                        'h-3 w-3 rounded-full transition-transform',
+                        !dateConfirmed ? 'translate-x-3 bg-amber-300' : 'translate-x-0 bg-zinc-400'
+                      )}
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span className={cn('block text-[12px] font-bold', !dateConfirmed ? 'text-amber-300' : 'text-foreground')}>
+                      Fecha todavía no confirmada (estimada)
+                    </span>
+                    <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
+                      Actívalo si no eres el dev y no hay fecha oficial. La comunidad verá que es un estimado hasta que se marque como confirmada.
+                    </span>
+                  </span>
+                </button>
               </div>
 
               {/* Identidad visual: imagen del token + banner */}

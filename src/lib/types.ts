@@ -96,6 +96,8 @@ export interface LaunchDTO {
   lockedFields: PremiumField[]
   network: string
   launchAt: string
+  /** false = fecha estimada, aún no confirmada por quien sube el proyecto. */
+  dateConfirmed: boolean
   description: string
   website?: string | null
   twitter?: string | null

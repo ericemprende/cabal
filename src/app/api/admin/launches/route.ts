@@ -44,6 +44,7 @@ export async function GET(req: Request) {
       lockedFields: [],
       network: l.network,
       launchAt: l.launchAt.toISOString(),
+      dateConfirmed: l.dateConfirmed,
       description: l.description,
       website: l.website,
       twitter: l.twitter,
@@ -94,6 +95,7 @@ export async function PATCH(req: Request) {
       }
       data.launchAt = when
     }
+    if (typeof body.dateConfirmed === 'boolean') data.dateConfirmed = body.dateConfirmed
     if (typeof body.description === 'string') data.description = body.description.slice(0, 800)
     // Redes sociales / enlaces del proyecto (editables desde el panel)
     if ('website' in body) data.website = safeUrl(body.website)

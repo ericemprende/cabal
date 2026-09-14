@@ -119,7 +119,7 @@ export function Header() {
                       <span className="text-[11px] text-muted-foreground">{timeAgo(l.createdAt)} posteado</span>
                     </div>
                   </div>
-                  <CountdownPill target={l.launchAt} size="sm" />
+                  <CountdownPill target={l.launchAt} size="sm" estimated={!l.dateConfirmed} />
                 </button>
               ))}
             </PopoverContent>

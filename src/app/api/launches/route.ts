@@ -50,6 +50,7 @@ export async function GET(req: Request) {
       ...premiumLaunchFields(l, launchAccess(viewer, l, teamIds), settings.fields),
       network: l.network,
       launchAt: new Date(l.launchAt).toISOString(),
+      dateConfirmed: l.dateConfirmed,
       description: l.description,
       website: l.website,
       twitter: l.twitter,

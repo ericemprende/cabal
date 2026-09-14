@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { displayImageUrl } from '@/lib/remote-image'
-import { CopyCA, CountdownPill, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, CountdownPill, EstimatedDateBadge, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
@@ -80,10 +80,11 @@ export function LaunchDetailDialog() {
                     </p>
                   )}
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <CountdownPill target={launch.launchAt} />
+                    <CountdownPill target={launch.launchAt} estimated={!launch.dateConfirmed} />
                     <span className="text-xs text-muted-foreground">
                       {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    {!launch.dateConfirmed && <EstimatedDateBadge />}
                   </div>
                 </div>
               </DialogTitle>

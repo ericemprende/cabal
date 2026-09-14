@@ -577,17 +577,35 @@ export function useCountdown(target: string | Date) {
   return parts
 }
 
+/** Fecha aún no confirmada: badge chiquito para poner junto a la fecha o el countdown. */
+export function EstimatedDateBadge({ className }: { className?: string }) {
+  return (
+    <span
+      title="Quien subió el proyecto todavía no tiene la fecha confirmada"
+      className={cn(
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-amber-300/40 bg-amber-300/10 px-1 py-px text-[9px] font-black uppercase tracking-wide text-amber-300',
+        className
+      )}
+    >
+      Estimada
+    </span>
+  )
+}
+
 export function CountdownPill({
   target,
   size = 'md',
   className,
   compact,
+  estimated,
 }: {
   target: string
   size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
   /** Cuenta atrás corta para tarjetas angostas (con min+seg si queda <24h). */
   compact?: boolean
+  /** La fecha es un estimado sin confirmar: antepone "~" y lo aclara en el title. */
+  estimated?: boolean
 }) {
   const c = useCountdown(target)
   // Compacto: cuenta atrás corta para tarjetas — incluye min+seg cuando queda <24h
@@ -630,13 +648,20 @@ export function CountdownPill({
         cls,
         className
       )}
-      title={urgent ? 'Lanzamiento inminente' : 'Tiempo para el lanzamiento'}
+      title={
+        estimated
+          ? 'Fecha estimada, todavía sin confirmar'
+          : urgent
+            ? 'Lanzamiento inminente'
+            : 'Tiempo para el lanzamiento'
+      }
     >
       {urgent ? (
         <span className={cn('live-dot-red shrink-0 rounded-full bg-[#ff4d5e]', dotCls)} aria-hidden />
       ) : (
         <Timer className={cn('shrink-0', iconCls)} aria-hidden />
       )}
+      {estimated && '~'}
       {text}
     </span>
   )
