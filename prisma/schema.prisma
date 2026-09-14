@@ -70,6 +70,7 @@ model User {
   emailCodes    EmailCode[]
   launchMemberships LaunchMember[] @relation("launchMember")
   launchInvitesSent LaunchMember[] @relation("launchInviter")
+  chatMessages  ChatMessage[]
 
   @@index([points])
   @@index([referredById])
@@ -253,6 +254,18 @@ model Token {
   @@index([devId])
   @@index([contract])
   @@index([launchedAt])
+}
+
+// Chat en vivo global del Cabal (una sola sala). Presencia (quién está
+// conectado) va por Pusher, no por aquí; esta tabla es solo el historial.
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model Post {

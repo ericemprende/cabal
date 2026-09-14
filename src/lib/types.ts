@@ -616,3 +616,17 @@ export interface AdminIntegrationsDTO {
     withoutEmail: number
   }
 }
+
+// ---------- Chat en vivo ----------
+export interface ChatMessageDTO {
+  id: string
+  body: string
+  createdAt: string
+  user: {
+    id: string
+    name: string
+    handle: string
+    avatar: string
+    walletVerified: boolean
+  }
+}

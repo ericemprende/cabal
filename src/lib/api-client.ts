@@ -11,6 +11,7 @@ import type {
   AffiliatePlatformDTO,
   BuildBuyDTO,
   BuildSellDTO,
+  ChatMessageDTO,
   DevClaimDTO,
   LaunchDetailDTO,
   LaunchDTO,
@@ -120,6 +121,7 @@ export const qk = {
   feed: ['feed'] as const,
   leaderboard: ['leaderboard'] as const,
   points: ['points'] as const,
+  chatMessages: ['chat', 'messages'] as const,
   adminOverview: ['admin', 'overview'] as const,
   adminUsers: ['admin', 'users'] as const,
   adminRules: ['admin', 'rules'] as const,
@@ -1098,5 +1100,18 @@ export function useConfirmPremiumCheckout() {
       qc.invalidateQueries({ queryKey: qk.me })
       qc.invalidateQueries({ queryKey: qk.premium })
     },
+  })
+}
+
+// ---------- Chat en vivo ----------
+/** Historial de los últimos mensajes del chat global (los nuevos llegan por Pusher, ver live-chat.tsx). */
+export function useChatMessages() {
+  return useQuery<ChatMessageDTO[]>({ queryKey: qk.chatMessages, queryFn: () => jsonFetch('/api/chat/messages') })
+}
+
+export function useSendChatMessage() {
+  return useMutation({
+    mutationFn: (body: string) =>
+      jsonFetch<ChatMessageDTO>('/api/chat/messages', { method: 'POST', body: JSON.stringify({ body }) }),
   })
 }

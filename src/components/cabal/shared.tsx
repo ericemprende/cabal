@@ -142,6 +142,7 @@ export function UserAvatar({
   size = 'md',
   verified,
   premium,
+  online,
   className,
   ring = true,
 }: {
@@ -153,6 +154,8 @@ export function UserAvatar({
   verified?: boolean
   /** Plan Premium activo: la coronita, arriba a la derecha. */
   premium?: boolean
+  /** Puntico verde: el usuario tiene el chat en vivo abierto ahora mismo (ver useIsOnline). */
+  online?: boolean
   className?: string
   ring?: boolean
 }) {
@@ -219,6 +222,13 @@ export function UserAvatar({
         >
           <Crown className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-label="Premium" />
         </span>
+      )}
+      {online && (
+        <span
+          className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0b08] bg-emerald-400"
+          title="Conectado ahora"
+          aria-label="Conectado ahora"
+        />
       )}
     </div>
   )
