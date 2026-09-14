@@ -54,16 +54,19 @@ const DEX_CHAIN: Record<string, string> = {
   robinhood: 'robinhood',
 }
 
-// network id de GeckoTerminal para el OHLCV del ATH. "robinhood" no es una
-// red real de GeckoTerminal (ni de ningún indexer): sin id válido no hay
-// forma de pedir velas históricas, así que se deja fuera del mapa a
-// propósito — mejor no mostrar ATH/entrada ahí que mostrar un "0.0%" falso.
+// network id de GeckoTerminal para el OHLCV del ATH. "robinhood" SÍ es un id
+// válido — no aparece en GET /networks (esa lista parece no incluir todas
+// las redes nuevas/de nicho), pero /search/pools y /ohlcv sí lo reconocen,
+// comprobado con una consulta real: devuelven velas de verdad. Se había
+// quitado por error creyendo que no existía; el bug real de "0.0%" era el
+// fallback (ver más abajo), no la falta de esta red.
 const GECKO_NETWORK: Record<string, string> = {
   solana: 'solana',
   ethereum: 'eth',
   base: 'base',
   bsc: 'bsc',
   tron: 'tron',
+  robinhood: 'robinhood',
 }
 
 export function isValidNetwork(network: string): boolean {
