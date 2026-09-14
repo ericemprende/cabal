@@ -5,6 +5,7 @@ import bs58 from 'bs58'
 import { toast } from 'sonner'
 import type {
   AdminOverviewDTO,
+  AdminPremiumDTO,
   AdminUserRowDTO,
   AdminWaitlistDTO,
   AffiliatePlatformDTO,
@@ -136,6 +137,7 @@ export const qk = {
   userFollows: (handle: string, type: 'followers' | 'following') =>
     ['user', handle.toLowerCase(), type] as const,
   premium: ['premium'] as const,
+  adminPremium: ['admin', 'premium'] as const,
 }
 
 export function useMe() {
@@ -338,6 +340,42 @@ export function useAdminUsers(enabled: boolean) {
     queryKey: qk.adminUsers,
     queryFn: () => jsonFetch('/api/admin/users'),
     enabled,
+  })
+}
+
+export function useAdminPremium(enabled: boolean) {
+  return useQuery<AdminPremiumDTO>({
+    queryKey: qk.adminPremium,
+    queryFn: () => jsonFetch('/api/admin/premium'),
+    enabled,
+  })
+}
+
+export function useAdminGrantPremium() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { handle: string; days: number | null; note?: string }) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/premium/grant', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Premium regalado')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminRevokePremium() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (id: string) => jsonFetch<{ ok: boolean }>(`/api/admin/premium/grant?id=${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Acceso retirado')
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 

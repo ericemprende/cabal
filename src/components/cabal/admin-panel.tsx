@@ -7,6 +7,8 @@ import {
   BadgeCheck,
   CheckCircle2,
   Coins,
+  CreditCard,
+  Crown,
   Globe,
   Heart,
   Link2,
@@ -64,7 +66,10 @@ import {
   useAdminLaunches,
   useAdminOverview,
   useAdminDeletePost,
+  useAdminGrantPremium,
   useAdminPosts,
+  useAdminPremium,
+  useAdminRevokePremium,
   useAdminRules,
   useAdminSaveAffiliate,
   useAdminSaveSwapFee,
@@ -75,7 +80,15 @@ import {
   useAdminUpdateUser,
   useAdminUsers,
 } from '@/lib/api-client'
-import type { AdminUserRowDTO, AffiliatePlatformDTO, LaunchDTO, ProjectClaimDTO, SwapFeeConfigDTO, TokenDTO } from '@/lib/types'
+import type {
+  AdminSubscriptionDTO,
+  AdminUserRowDTO,
+  AffiliatePlatformDTO,
+  LaunchDTO,
+  ProjectClaimDTO,
+  SwapFeeConfigDTO,
+  TokenDTO,
+} from '@/lib/types'
 
 /** Placeholder de ejemplo por red, con el formato real de GMGN/Axiom. */
 const NETWORK_PLACEHOLDER: Record<string, string> = {
@@ -116,6 +129,7 @@ const REASON_COLORS: Record<string, string> = {
 type AdminView =
   | 'whitelist'
   | 'usuarios'
+  | 'premium'
   | 'reclamos'
   | 'reglas'
   | 'proyectos'
@@ -207,6 +221,7 @@ export function AdminPanel({
   const NAV_ITEMS = [
     { key: 'whitelist', label: 'Lista de espera', icon: Ticket },
     { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
+    { key: 'premium', label: 'Plan Premium', icon: Crown },
     { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
     { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
     { key: 'tokens', label: 'Tokens', icon: Coins },
@@ -296,6 +311,8 @@ export function AdminPanel({
             ))}
           </div>
         )}
+
+        {view === 'premium' && <AdminPremium enabled={enabled} />}
 
         {view === 'whitelist' && <AdminWaitlist enabled={enabled} />}
 
@@ -875,6 +892,203 @@ function AdminTokens({ enabled }: { enabled: boolean }) {
 }
 
 // ---------------- Plataformas afiliadas (enlace madre de referido) ----------------
+// ── Plan Premium: quién es suscriptor, quién no, y regalar/retirar acceso ──
+const PREMIUM_STATUS: Record<string, { label: string; cls: string }> = {
+  active: { label: 'ACTIVO', cls: 'border-[#8FA83F]/40 bg-[#8FA83F]/12 text-primary' },
+  trialing: { label: 'PRUEBA', cls: 'border-[#8FA83F]/40 bg-[#8FA83F]/12 text-primary' },
+  past_due: { label: 'PAGO VENCIDO', cls: 'border-amber-400/40 bg-amber-400/10 text-amber-300' },
+  canceled: { label: 'CANCELADO', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
+  unpaid: { label: 'IMPAGO', cls: 'border-[#ff8080]/30 bg-[#ff8080]/10 text-[#ff8080]' },
+  incomplete: { label: 'INCOMPLETO', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
+  incomplete_expired: { label: 'EXPIRADO', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
+  paused: { label: 'PAUSADO', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
+}
+
+const PREMIUM_PROVIDER_LABEL: Record<string, string> = {
+  stripe: 'Tarjeta (Stripe)',
+  nowpayments: 'Cripto (NOWPayments)',
+  admin: 'Regalado por admin',
+}
+
+function AdminPremium({ enabled }: { enabled: boolean }) {
+  const data = useAdminPremium(enabled)
+  const grant = useAdminGrantPremium()
+  const revoke = useAdminRevokePremium()
+  const [handle, setHandle] = useState('')
+  const [days, setDays] = useState('30')
+  const [note, setNote] = useState('')
+
+  const doGrant = () => {
+    const h = handle.trim().replace(/^@+/, '')
+    if (!h) {
+      toast.error('Escribe el @usuario')
+      return
+    }
+    const parsedDays = days.trim() === '' ? null : Math.round(Number(days))
+    if (parsedDays !== null && !(Number.isFinite(parsedDays) && parsedDays >= 1)) {
+      toast.error('Días no válidos (déjalo vacío para sin caducidad)')
+      return
+    }
+    grant.mutate(
+      { handle: h, days: parsedDays, note: note.trim() || undefined },
+      { onSuccess: () => { setHandle(''); setNote('') } }
+    )
+  }
+
+  const s = data.data?.stats
+  const revenue = data.data?.stats.revenue30d ?? 0
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Quién tiene el plan Premium activo, por qué medio pagó, y el historial de cobros. Desde aquí también se regala
+        acceso (colaboradores, pruebas) sin necesidad de que pase por Stripe o NOWPayments.
+      </p>
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+        <Kpi label="Premium activos" value={s?.activeUsers ?? 0} icon={<Crown className="h-3.5 w-3.5" />} />
+        <Kpi label="Con tarjeta" value={s?.stripe ?? 0} icon={<CreditCard className="h-3.5 w-3.5" />} />
+        <Kpi label="Con cripto" value={s?.crypto ?? 0} icon={<Coins className="h-3.5 w-3.5" />} />
+        <Kpi label="Regalados" value={s?.admin ?? 0} icon={<ShieldCheck className="h-3.5 w-3.5" />} />
+        <div className="rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5" /> Ingresos 30d
+          </p>
+          <p className="mt-1 text-xl font-bold tabular-nums">${revenue.toLocaleString('es')}</p>
+        </div>
+      </div>
+
+      {data.data && !data.data.providers.stripe.configured && !data.data.providers.nowpayments.configured && (
+        <p className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-2.5 text-[12px] text-amber-200">
+          Ni Stripe ni NOWPayments están configurados (faltan las claves en el entorno): nadie puede pagar todavía,
+          solo se puede regalar acceso desde aquí.
+        </p>
+      )}
+
+      {/* Regalar acceso */}
+      <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Regalar Premium</p>
+        <div className="grid gap-2 sm:grid-cols-[160px_100px_1fr_auto]">
+          <Input
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
+            placeholder="@usuario"
+            aria-label="Usuario"
+            className="h-9 bg-[#121410] text-[13px]"
+          />
+          <Input
+            type="number"
+            value={days}
+            onChange={(e) => setDays(e.target.value)}
+            placeholder="Días"
+            aria-label="Días (vacío = sin caducidad)"
+            className="h-9 bg-[#121410] text-center text-[13px]"
+          />
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Motivo (opcional)"
+            aria-label="Motivo"
+            className="h-9 bg-[#121410] text-[13px]"
+          />
+          <Button
+            onClick={doGrant}
+            disabled={grant.isPending || !handle.trim()}
+            className="h-9 gap-1.5 rounded-lg bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
+          >
+            <Crown className="h-3.5 w-3.5 fill-[#171200]" /> Regalar
+          </Button>
+        </div>
+        <p className="mt-1.5 text-[11px] text-muted-foreground">Deja "Días" vacío para dar acceso sin caducidad.</p>
+      </div>
+
+      {/* Suscriptores */}
+      <div className="space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Suscriptores</p>
+        {data.isLoading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
+        {(data.data?.subscriptions ?? []).map((sub) => (
+          <AdminPremiumRow key={sub.id} sub={sub} onRevoke={() => revoke.mutate(sub.id)} revoking={revoke.isPending} />
+        ))}
+        {!data.isLoading && (data.data?.subscriptions ?? []).length === 0 && (
+          <p className="rounded-xl border border-dashed border-white/12 py-6 text-center text-xs text-muted-foreground">
+            Todavía nadie es Premium.
+          </p>
+        )}
+      </div>
+
+      {/* Historial de pagos */}
+      {(data.data?.payments ?? []).length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Últimos pagos</p>
+          {(data.data?.payments ?? []).map((p) => (
+            <div key={p.id} className="flex items-center gap-2.5 rounded-lg border border-white/10 bg-[#0a0b08] p-2.5 text-xs">
+              <UserAvatar name={p.user.name} handle={p.user.handle} src={p.user.avatar} size="sm" />
+              <span className="min-w-0 flex-1 truncate font-semibold">@{p.user.handle}</span>
+              <span className="text-muted-foreground">{PREMIUM_PROVIDER_LABEL[p.provider] ?? p.provider}</span>
+              <span className="font-bold tabular-nums">${p.amountUsd.toLocaleString('es')}</span>
+              <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-bold', p.status === 'paid' || p.status === 'finished' ? 'bg-[#8FA83F]/15 text-primary' : 'bg-white/5 text-muted-foreground')}>
+                {p.status}
+              </span>
+              <span className="text-muted-foreground">{timeAgo(p.createdAt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AdminPremiumRow({
+  sub,
+  onRevoke,
+  revoking,
+}: {
+  sub: AdminSubscriptionDTO
+  onRevoke: () => void
+  revoking: boolean
+}) {
+  const status = PREMIUM_STATUS[sub.status] ?? { label: sub.status.toUpperCase(), cls: 'border-white/15 bg-white/5 text-muted-foreground' }
+  return (
+    <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <UserAvatar name={sub.user.name} handle={sub.user.handle} src={sub.user.avatar} size="md" premium={sub.active} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold">@{sub.user.handle}</p>
+        <p className="truncate text-xs text-muted-foreground">
+          {PREMIUM_PROVIDER_LABEL[sub.provider] ?? sub.provider} · {sub.plan}
+          {sub.currentPeriodEnd ? ` · vence ${new Date(sub.currentPeriodEnd).toLocaleDateString('es')}` : ' · sin caducidad'}
+          {sub.cancelAtPeriodEnd ? ' · no se renueva' : ''}
+        </p>
+        {sub.note && <p className="truncate text-[11px] text-muted-foreground/80">"{sub.note}"</p>}
+      </div>
+      <span className={cn('shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold', status.cls)}>{status.label}</span>
+      {sub.active && sub.provider !== 'stripe' && (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" variant="ghost" disabled={revoking} className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-[#ff8080] hover:bg-destructive/15">
+              <XCircle className="h-3.5 w-3.5" /> Retirar
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="border-white/10 bg-[#121410]">
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Retirar el Premium de @{sub.user.handle}?</AlertDialogTitle>
+              <AlertDialogDescription>Pierde el acceso de inmediato. Esto no reembolsa ningún pago.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={onRevoke} className="bg-[#ff8080] text-[#171200] hover:bg-[#ff9999]">
+                Retirar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      {sub.active && sub.provider === 'stripe' && (
+        <span className="shrink-0 text-[11px] text-muted-foreground">Se cancela desde Stripe</span>
+      )}
+    </div>
+  )
+}
+
 function AdminAffiliates({ enabled }: { enabled: boolean }) {
   const list = useAdminAffiliates(enabled)
   const create = useAdminCreateAffiliate(enabled)
