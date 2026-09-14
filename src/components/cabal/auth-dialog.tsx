@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AtSign, Gift, KeyRound, LogIn, UserPlus } from 'lucide-react'
+import { AtSign, Gift, KeyRound, LogIn, Mail, UserPlus } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -30,6 +30,7 @@ export function AuthDialog() {
   const { data: authStatus } = useAuthStatus()
   const [handle, setHandle] = useState('')
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [referralCode, setReferralCode] = useState('')
   const [demoProvider, setDemoProvider] = useState<'x' | 'google' | null>(null)
@@ -59,23 +60,26 @@ export function AuthDialog() {
       setPassword('')
       setHandle('')
       setName('')
+      setEmail('')
       setReferralCode('')
     }
   }
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!handle.trim() || !password) return
     if (isLogin) {
+      if (!handle.trim() || !password) return
       login.mutate(
         { handle: handle.trim(), password },
         { onSuccess: () => close(false) }
       )
     } else {
+      if (!handle.trim() || !password || !email.trim()) return
       register.mutate(
         {
           handle: handle.trim(),
           name: name.trim() || undefined,
+          email: email.trim(),
           password,
           referralCode: referralCode.trim() || undefined,
         },
@@ -211,6 +215,25 @@ export function AuthDialog() {
 
             {!isLogin && (
               <div className="space-y-1.5">
+                <Label htmlFor="auth-email" className="text-xs text-muted-foreground">Correo</Label>
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] pl-3 focus-within:border-[#8FA83F]/40">
+                  <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  <Input
+                    id="auth-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="tucorreo@ejemplo.com"
+                    autoComplete="email"
+                    className="h-10 border-0 bg-transparent px-0 text-sm focus-visible:ring-0"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {!isLogin && (
+              <div className="space-y-1.5">
                 <Label htmlFor="auth-referral" className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Gift className="h-3.5 w-3.5" aria-hidden /> Código de invitación (opcional)
                 </Label>
@@ -248,7 +271,7 @@ export function AuthDialog() {
 
             <Button
               type="submit"
-              disabled={pending || !handle.trim() || !password}
+              disabled={pending || !handle.trim() || !password || (!isLogin && !email.trim())}
               className="h-10 w-full gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground hover:bg-[#8FA83F]"
             >
               {pending ? 'Conectando…' : isLogin ? 'Iniciar sesión' : 'Crear mi cuenta'}

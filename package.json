@@ -14,6 +14,7 @@
     "db:backup": "bun scripts/pg-backup.mjs",
     "counters:flush": "bun scripts/counters-flush.mjs",
     "counters:watch": "bun scripts/counters-flush.mjs --watch",
+    "ghl:sync": "bun scripts/ghl-sync.mjs",
     "db:reset": "echo 'PROHIBIDO: db:reset borra todos los datos. Usa bun run db:migrate.' && exit 1"
   },
   "dependencies": {

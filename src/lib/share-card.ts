@@ -44,8 +44,10 @@ export const CARD_COUNT = 5
  *   v4 → salida en JPEG, mucho más rápida de generar y de descargar.
  *   v5 → posición por escena, medida a 1px sobre cada plantilla.
  *   v6 → JPEG sin mozjpeg, 6 veces más rápido de codificar.
+ *   v7 → avatar y @usuario bajados un poco en todas las escenas: quedaban
+ *        demasiado pegados al subtítulo de la plantilla.
  */
-const CARD_VERSION = 'v6'
+const CARD_VERSION = 'v7'
 
 /**
  * Tipografía del @usuario. Se listan varias a propósito: el contenedor de
@@ -94,11 +96,11 @@ const COMMON = { x: 86, ring: 5, ringColor: '#b6e04b' }
  * que altura esta libre la plantilla, que es de donde sale la `y`.
  */
 const LAYOUTS: Layout[] = [
-  { ...COMMON, y: 682, d: 98, font: 38 }, // escena 1: libre desde 674 (es)
-  { ...COMMON, y: 634, d: 132, font: 50 }, // escena 2: libre desde 625 (en)
-  { ...COMMON, y: 632, d: 132, font: 50 }, // escena 3: libre desde 624
-  { ...COMMON, y: 634, d: 132, font: 50 }, // escena 4: libre desde 626 (es)
-  { ...COMMON, y: 690, d: 90, font: 36 }, // escena 5: libre desde 682
+  { ...COMMON, y: 688, d: 98, font: 38 }, // escena 1: libre desde 674 (es)
+  { ...COMMON, y: 646, d: 132, font: 50 }, // escena 2: libre desde 625 (en)
+  { ...COMMON, y: 644, d: 132, font: 50 }, // escena 3: libre desde 624
+  { ...COMMON, y: 646, d: 132, font: 50 }, // escena 4: libre desde 626 (es)
+  { ...COMMON, y: 696, d: 90, font: 36 }, // escena 5: libre desde 682
 ]
 
 /** @usuario, a la derecha del avatar. */

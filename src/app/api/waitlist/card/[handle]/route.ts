@@ -40,6 +40,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ handle: string 
   return new NextResponse(new Uint8Array(image), {
     headers: {
       'Content-Type': 'image/jpeg',
+      // Sin esto Next la manda con Transfer-Encoding: chunked (tamaño
+      // desconocido de antemano). El rastreador de X es más estricto que un
+      // navegador con las imágenes que descarga: declarar el tamaño exacto
+      // evita que dependa de leer el cuerpo entero para saber cuándo termina.
+      'Content-Length': String(image.byteLength),
       // Inmutable en la práctica: la tarjeta solo cambia si cambia el avatar
       'Cache-Control': 'public, max-age=86400, s-maxage=86400',
     },

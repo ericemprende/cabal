@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { awardPoints } from '@/lib/api-helpers'
+import { syncUserToGhl } from '@/lib/ghl'
 
 /**
  * Lógica compartida de vinculación social (X / Google).
@@ -41,10 +42,11 @@ export async function linkProvider(
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
     throw new SocialError('Email de Google inválido')
   }
-  await db.user.update({
+  const updated = await db.user.update({
     where: { id: userId },
     data: { googleEmail: email, googleVerified: true },
   })
+  void syncUserToGhl({ email, name: updated.name, handle: updated.handle })
   const pointsEarned = await awardOnce(userId, 'verify_google', 'Cuenta de Google verificada')
   return { pointsEarned }
 }
@@ -112,6 +114,7 @@ export async function loginOrCreateSocial(
       googleVerified: true,
     },
   })
+  void syncUserToGhl({ email, name: user.name, handle: user.handle })
   await awardOnce(user.id, 'verify_google', 'Cuenta de Google verificada')
   return { user, created: true }
 }
