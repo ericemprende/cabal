@@ -41,10 +41,9 @@ export type PremiumSettings = {
   prices: Record<PlanKey, number | null>
 }
 
-// El semestral no tiene precio decidido: no se ofrece hasta que el admin lo fije.
 const DEFAULTS: PremiumSettings = {
   fields: { devWallet: 'premium', launchpad: 'premium', contract: 'premium' },
-  prices: { monthly: 25, biannual: null, annual: 228 },
+  prices: { monthly: 25, biannual: 126, annual: 228 },
 }
 
 const fieldKey = (f: PremiumField) => `premium_field_${f}`

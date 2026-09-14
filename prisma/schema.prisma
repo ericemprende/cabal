@@ -14,7 +14,6 @@ model User {
   id            String   @id @default(cuid())
   handle        String   @unique
   name          String
-  email         String?  @unique // solo se pide en el registro por handle+contraseña; se sincroniza a GHL
   avatar        String   @default("🐺")
   bio           String?
   wallet        String?

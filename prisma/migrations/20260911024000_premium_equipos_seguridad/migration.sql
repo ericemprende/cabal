@@ -7,13 +7,19 @@ ALTER TABLE "Launch" ADD COLUMN     "devWallet" TEXT,
 ADD COLUMN     "launchpad" TEXT;
 
 -- AlterTable
-ALTER TABLE "User" ADD COLUMN     "email" TEXT,
-ADD COLUMN     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
+-- "email" ya existe (migración add_user_email); aquí solo se relaja: deja de
+-- ser único porque dos cuentas pueden escribirlo sin verificarlo, y gana la
+-- primera que lo verifica (ver User_email_idx más abajo y lib/email-codes.ts).
+ALTER TABLE "User" ADD COLUMN     "emailVerified" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN     "ghlContactId" TEXT,
 ADD COLUMN     "ghlError" TEXT,
 ADD COLUMN     "ghlSyncedAt" TIMESTAMP(3),
 ADD COLUMN     "stripeCustomerId" TEXT,
 ADD COLUMN     "twoFactorEnabled" BOOLEAN NOT NULL DEFAULT false;
+
+-- DropIndex
+-- El correo deja de ser único a nivel de columna (ver comentario arriba).
+DROP INDEX IF EXISTS "User_email_key";
 
 -- CreateTable
 CREATE TABLE "LaunchMember" (
