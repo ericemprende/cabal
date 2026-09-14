@@ -39,12 +39,16 @@ function CallTokenGlyph({ post }: { post: PostDTO }) {
   return <TokenGlyph src={src} ticker={ticker} size="xs" />
 }
 
-/** Botón de comprar el token de la call, directo desde el feed (solo Solana por ahora). */
-function CallBuyButton({ post }: { post: PostDTO }) {
+/**
+ * Botón de comprar el token de la call, directo desde el feed (solo Solana
+ * por ahora). En compact (Actividad del Cabal) solo el ícono: hay poco
+ * espacio y el dato del % (CallResultBadge) importa más ahí que el botón.
+ */
+function CallBuyButton({ post, compact }: { post: PostDTO; compact?: boolean }) {
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract && !post.token)
   if (!post.contract || !post.network) return null
   const ticker = post.token?.ticker ?? data?.symbol ?? ''
-  return <QuickBuyButton contract={post.contract} network={post.network} ticker={ticker} className="shrink-0" />
+  return <QuickBuyButton contract={post.contract} network={post.network} ticker={ticker} className="shrink-0" iconOnly={compact} />
 }
 
 /** Estado de la call en una sola línea: monto compacto, sin envolver a varias filas. */
@@ -282,7 +286,7 @@ export function PostCard({
               <CopyCA contract={post.contract} className="min-w-0 shrink text-[11px]" />
               <CallResultBadge post={post} />
               <span className="ml-auto flex shrink-0 items-center gap-1.5">
-                <CallBuyButton post={post} />
+                <CallBuyButton post={post} compact={compact} />
                 <button
                   type="button"
                   onClick={(e) => {
