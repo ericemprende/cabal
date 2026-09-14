@@ -43,7 +43,20 @@ function phantomProvider(): PhantomSolana | null {
   return w.phantom?.solana ?? (w.solana?.isPhantom ? w.solana : null) ?? null
 }
 
-export function QuickBuyButton({ contract, network, ticker, className }: { contract: string; network: string; ticker: string; className?: string }) {
+export function QuickBuyButton({
+  contract,
+  network,
+  ticker,
+  className,
+  iconOnly,
+}: {
+  contract: string
+  network: string
+  ticker: string
+  className?: string
+  /** Solo el rayo, sin el texto "Comprar" — para espacios chicos (p. ej. Actividad del Cabal). */
+  iconOnly?: boolean
+}) {
   const { data: config } = useSwapConfig()
   const build = useBuildBuy()
   const confirm = useConfirmSwap()
@@ -111,10 +124,14 @@ export function QuickBuyButton({ contract, network, ticker, className }: { contr
           style={{ backgroundColor: BUY_GREEN }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN_HOVER)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN)}
-          className={cn('flex h-7 items-center gap-1 rounded-lg px-2.5 text-[11px] font-black text-black transition-colors', className)}
+          className={cn(
+            'flex h-7 items-center gap-1 rounded-lg font-black text-black transition-colors',
+            iconOnly ? 'w-7 justify-center' : 'px-2.5 text-[11px]',
+            className
+          )}
         >
           <Zap className="h-3 w-3" aria-hidden />
-          Comprar
+          {!iconOnly && 'Comprar'}
         </button>
       </PopoverTrigger>
       <PopoverContent

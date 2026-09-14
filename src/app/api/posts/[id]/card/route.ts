@@ -24,6 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       handle: post.user.handle,
       avatarUrl,
       symbol: result.symbol,
+      tokenImageUrl: result.image || null,
       contract: post.contract,
       pctChange: result.pctChange,
       entryMc: result.entryMc,

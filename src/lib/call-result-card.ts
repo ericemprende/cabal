@@ -25,7 +25,7 @@ function siteUrl(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL || 'https://cabal.army').replace(/\/+$/, '')
 }
 
-async function fetchAvatar(url: string | null): Promise<Buffer | null> {
+async function fetchImage(url: string | null): Promise<Buffer | null> {
   if (!url) return null
   try {
     const abs = url.startsWith('/') ? `${siteUrl()}${url}` : url
@@ -48,6 +48,33 @@ function placeholderAvatar(size: number): Buffer {
       <path d="M ${r * 0.30} ${size} a ${r * 0.70} ${r * 0.62} 0 0 1 ${r * 1.40} 0 Z" fill="#b6e04b"/>
     </svg>`
   )
+}
+
+function placeholderTokenGlyph(size: number, symbol: string): Buffer {
+  const initial = esc((symbol || '?').slice(0, 1).toUpperCase())
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+      <rect width="${size}" height="${size}" rx="${size * 0.22}" fill="#16200f"/>
+      <text x="50%" y="54%" font-family="${FONT_STACK}" font-size="${size * 0.5}" font-weight="900" fill="#8FA83F" text-anchor="middle" dominant-baseline="middle">${initial}</text>
+    </svg>`
+  )
+}
+
+/** Circular (avatar) o con esquinas redondeadas (logo de token), remota o placeholder. */
+async function loadRoundedImage(url: string | null, size: number, shape: 'circle' | 'rounded', fallback: Buffer): Promise<Buffer> {
+  const raw = await fetchImage(url)
+  const mask =
+    shape === 'circle'
+      ? Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`)
+      : Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="${size}" height="${size}" rx="${size * 0.22}" fill="#fff"/></svg>`)
+  if (raw) {
+    try {
+      return await sharp(raw).resize(size, size, { fit: 'cover' }).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer()
+    } catch {
+      /* cae al placeholder */
+    }
+  }
+  return sharp(fallback).resize(size, size).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer()
 }
 
 function fmtPct(n: number): string {
@@ -78,6 +105,8 @@ export async function renderCallResultCard(opts: {
   handle: string
   avatarUrl?: string | null
   symbol: string
+  /** Logo del token (DexScreener o pump.fun); null si no se pudo resolver. */
+  tokenImageUrl?: string | null
   contract: string
   pctChange: number | null
   entryMc: number | null
@@ -88,7 +117,7 @@ export async function renderCallResultCard(opts: {
   calledAt: Date
 }): Promise<Buffer> {
   const {
-    handle, avatarUrl, symbol, contract, pctChange, entryMc, currentMc, peakMc, multiple, peakMultiple, calledAt,
+    handle, avatarUrl, symbol, tokenImageUrl, contract, pctChange, entryMc, currentMc, peakMc, multiple, peakMultiple, calledAt,
   } = opts
   const up = (pctChange ?? 0) >= 0
   // El pico (el máximo que llegó a hacer desde la call, aunque después haya
@@ -98,28 +127,17 @@ export async function renderCallResultCard(opts: {
   const accent = hasPeak ? '#8FA83F' : pctChange === null ? '#9aa08a' : up ? '#8FA83F' : '#e5484d'
   const pctText = pctChange === null ? 'sin datos aún' : fmtPct(pctChange)
   const multipleText = !hasPeak && multiple !== null && multiple >= 2 ? `hizo ${esc(fmtMultiple(multiple))}` : ''
+  // El pico se ve en la línea de MC siempre que exista y de verdad sea más
+  // alto que el actual — no solo cuando llega a 2x (eso solo decide el
+  // titular grande de arriba).
+  const showPeakMc = peakMc !== null && currentMc !== null && peakMc > currentMc * 1.01
   const elapsed = fmtElapsed(Date.now() - calledAt.getTime())
   const shortCa = contract.length > 26 ? `${contract.slice(0, 12)}…${contract.slice(-8)}` : contract
 
   const d = 84 // avatar
-  const raw = await fetchAvatar(avatarUrl ?? null)
-  const mask = Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}"><circle cx="${d / 2}" cy="${d / 2}" r="${d / 2}" fill="#fff"/></svg>`
-  )
-  let avatar: Buffer
-  if (raw) {
-    try {
-      avatar = await sharp(raw)
-        .resize(d, d, { fit: 'cover' })
-        .composite([{ input: mask, blend: 'dest-in' }])
-        .png()
-        .toBuffer()
-    } catch {
-      avatar = await sharp(placeholderAvatar(d)).png().toBuffer()
-    }
-  } else {
-    avatar = await sharp(placeholderAvatar(d)).png().toBuffer()
-  }
+  const avatar = await loadRoundedImage(avatarUrl ?? null, d, 'circle', placeholderAvatar(d))
+  const g = 92 // logo del token
+  const tokenGlyph = await loadRoundedImage(tokenImageUrl ?? null, g, 'rounded', placeholderTokenGlyph(g, symbol))
 
   const bg = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${CALL_CARD_W}" height="${CALL_CARD_H}">
@@ -137,11 +155,20 @@ export async function renderCallResultCard(opts: {
       <rect width="${CALL_CARD_W}" height="${CALL_CARD_H}" fill="url(#glow)"/>
       <rect x="0" y="0" width="${CALL_CARD_W}" height="10" fill="${accent}"/>
 
-      <text x="70" y="90" font-family="${FONT_STACK}" font-size="34" font-weight="800" fill="#eaf5d2" letter-spacing="1">
-        🐺 CABAL.ARMY
+      <g transform="translate(70,58)">
+        <circle cx="17" cy="17" r="17" fill="#16200f"/>
+        <circle cx="17" cy="19" r="8" fill="#8FA83F"/>
+        <path d="M 5 34 a 13 12 0 0 1 24 0 Z" fill="#8FA83F"/>
+      </g>
+      <text x="112" y="90" font-family="${FONT_STACK}" font-size="34" font-weight="800" fill="#eaf5d2" letter-spacing="1">
+        CABAL.ARMY
       </text>
       <text x="70" y="132" font-family="${FONT_STACK}" font-size="22" fill="#9aa08a">
         Resultado de la call · publicada hace ${esc(elapsed)}
+      </text>
+
+      <text x="${CALL_CARD_W - 70 - g / 2}" y="${68 + g + 34}" font-family="${FONT_STACK}" font-size="26" font-weight="800" fill="#f4f7ee" text-anchor="middle">
+        ${esc(symbol ? `$${symbol}` : 'token')}
       </text>
 
       ${
@@ -155,18 +182,45 @@ export async function renderCallResultCard(opts: {
       <text x="70" y="405" font-family="${FONT_STACK}" font-size="30" font-weight="700" fill="#f4f7ee">
         ${esc(symbol ? `$${symbol}` : 'token')}  ·  ahora ${esc(pctText)} desde la call
       </text>`
-          : `<text x="70" y="300" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
+          : pctChange !== null
+            ? `<text x="70" y="300" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
         ${esc(pctText)}
       </text>
       <text x="70" y="352" font-family="${FONT_STACK}" font-size="38" font-weight="700" fill="#f4f7ee">
         ${esc(symbol ? `$${symbol}` : 'token')}${multipleText ? `  ·  ${esc(multipleText)}` : ''}
+      </text>`
+            : currentMc !== null
+              ? `<text x="70" y="240" font-family="${FONT_STACK}" font-size="22" font-weight="700" fill="#9aa08a" letter-spacing="2">
+        MARKET CAP ACTUAL
+      </text>
+      <text x="70" y="345" font-family="${FONT_STACK}" font-size="110" font-weight="900" fill="${accent}">
+        ${esc(fmtMc(currentMc))}
+      </text>
+      <text x="70" y="390" font-family="${FONT_STACK}" font-size="30" font-weight="700" fill="#f4f7ee">
+        ${esc(symbol ? `$${symbol}` : 'token')}
+      </text>
+      <text x="70" y="425" font-family="${FONT_STACK}" font-size="19" fill="#9aa08a">
+        % desde la call aún no disponible en esta red
+      </text>`
+              : `<text x="70" y="300" font-family="${FONT_STACK}" font-size="90" font-weight="900" fill="${accent}">
+        sin datos aún
+      </text>
+      <text x="70" y="352" font-family="${FONT_STACK}" font-size="38" font-weight="700" fill="#f4f7ee">
+        ${esc(symbol ? `$${symbol}` : 'token')}
       </text>`
       }
 
       ${
         entryMc !== null && currentMc !== null
           ? `<text x="70" y="455" font-family="${FONT_STACK}" font-size="27" fill="#c7cdb8">
-        MC: ${esc(fmtMc(entryMc))}${hasPeak && peakMc !== null ? ` → pico ${esc(fmtMc(peakMc))}` : ''} → ahora ${esc(fmtMc(currentMc))}
+        MC: ${esc(fmtMc(entryMc))}${showPeakMc ? ` → pico ${esc(fmtMc(peakMc as number))}` : ''} → ahora ${esc(fmtMc(currentMc))}
+      </text>`
+          : ''
+      }
+      ${
+        !hasPeak && showPeakMc && peakMultiple !== null
+          ? `<text x="70" y="490" font-family="${FONT_STACK}" font-size="22" font-weight="700" fill="${accent}">
+        ATH desde la call: ${esc(fmtMultiple(peakMultiple))}
       </text>`
           : ''
       }
@@ -185,7 +239,10 @@ export async function renderCallResultCard(opts: {
   )
 
   return sharp(bg)
-    .composite([{ input: avatar, left: 70, top: CALL_CARD_H - 55 - 84 + 18 }])
+    .composite([
+      { input: avatar, left: 70, top: CALL_CARD_H - 55 - 84 + 18 },
+      { input: tokenGlyph, left: CALL_CARD_W - 70 - g, top: 68 },
+    ])
     .jpeg({ quality: 88, chromaSubsampling: '4:4:4' })
     .toBuffer()
 }

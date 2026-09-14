@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, Copy, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
@@ -24,10 +25,43 @@ function fmtX(n: number): string {
   return `${n.toFixed(n >= 10 ? 0 : 1)}x`
 }
 
+/**
+ * Logo del token de una call. Cuando la call viene de un token ya conocido
+ * en Cabal (`post.token`) se usa esa imagen; si es un CA suelto (pegado a
+ * mano, sin token vinculado) se cae al resultado en vivo (`useCallResult`),
+ * que ya resuelve el logo vía DexScreener/pump.fun — antes esas calls se
+ * quedaban con el "?" de siempre.
+ */
+function CallTokenGlyph({ post }: { post: PostDTO }) {
+  const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract && !post.token)
+  const src = post.token?.image ?? data?.image ?? null
+  const ticker = post.token?.ticker ?? (data?.symbol ? data.symbol : '?')
+  return <TokenGlyph src={src} ticker={ticker} size="xs" />
+}
+
+/**
+ * Botón de comprar el token de la call, directo desde el feed (solo Solana
+ * por ahora). En compact (Actividad del Cabal) solo el ícono: hay poco
+ * espacio y el dato del % (CallResultBadge) importa más ahí que el botón.
+ */
+function CallBuyButton({ post, compact }: { post: PostDTO; compact?: boolean }) {
+  const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract && !post.token)
+  if (!post.contract || !post.network) return null
+  const ticker = post.token?.ticker ?? data?.symbol ?? ''
+  return <QuickBuyButton contract={post.contract} network={post.network} ticker={ticker} className="shrink-0" iconOnly={compact} />
+}
+
 /** Estado de la call en una sola línea: monto compacto, sin envolver a varias filas. */
 function CallResultBadge({ post }: { post: PostDTO }) {
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
-  if (!data?.found || data.pctChange === null) return null
+  if (!data?.found) return null
+  // Algunas redes (p. ej. Robinhood) no tienen fuente de velas históricas:
+  // no hay forma de saber el % desde la call, pero sí el MC actual.
+  if (data.pctChange === null) {
+    return data.currentMc !== null ? (
+      <span className="truncate text-[11px] font-bold text-muted-foreground">MC {fmtMc(data.currentMc)}</span>
+    ) : null
+  }
   const up = data.pctChange >= 0
   const showMc = data.currentMc !== null
   // El pico (lo más alto que llegó a hacer desde la call, aunque después haya
@@ -248,21 +282,24 @@ export function PostCard({
 
           {post.kind === 'call' && post.contract && (
             <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1">
-              <TokenGlyph src={post.token?.image} ticker={post.token?.ticker ?? '?'} size="xs" />
+              <CallTokenGlyph post={post} />
               <CopyCA contract={post.contract} className="min-w-0 shrink text-[11px]" />
               <CallResultBadge post={post} />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setShareOpen(true)
-                }}
-                className="ml-auto shrink-0 text-muted-foreground hover:text-primary"
-                title="Ver la tarjeta y compartirla en X"
-                aria-label="Ver imagen para compartir"
-              >
-                <ImageDown className="h-3.5 w-3.5" />
-              </button>
+              <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                <CallBuyButton post={post} compact={compact} />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShareOpen(true)
+                  }}
+                  className="text-muted-foreground hover:text-primary"
+                  title="Ver la tarjeta y compartirla en X"
+                  aria-label="Ver imagen para compartir"
+                >
+                  <ImageDown className="h-3.5 w-3.5" />
+                </button>
+              </span>
               <CallShareDialog post={post} open={shareOpen} onOpenChange={setShareOpen} />
             </div>
           )}

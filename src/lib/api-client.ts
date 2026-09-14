@@ -525,6 +525,7 @@ export type CallResultDTO = {
   peakMc: number | null
   peakAt: number | null
   symbol: string
+  image: string
   pctChange: number | null
   multiple: number | null
   peakMultiple: number | null
