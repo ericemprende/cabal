@@ -149,7 +149,7 @@ export function FeedTab() {
               <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} onOpen={() => openLaunch(item.launch.id)} />
             ) : (
               <PostCard key={item.post.id} post={item.post} />
-            )
+            ) /* PostCard ya trae su propio "Responder" con caja de respuesta inline */
           )}
         </div>
       )}

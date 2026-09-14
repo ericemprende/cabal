@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Crown, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
+import { ChevronDown, ChevronUp, Crown, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
@@ -23,8 +23,11 @@ const ACTIVITY_FILTERS: { value: ActivityFilter; label: string; icon: typeof Rad
 // ---------- Left: live activity ----------
 export function LeftFeed() {
   const { items: activity, isLoading } = useActivity(30)
-  const { openLaunch, openToken } = useUI()
+  const { openLaunch } = useUI()
   const [filter, setFilter] = useState<ActivityFilter>('all')
+  // Colapsable: el panel ocupa bastante alto en pantallas chicas de laptop y
+  // conviene poder cerrarlo sin perder el resto del feed de vista.
+  const [collapsed, setCollapsed] = useState(false)
 
   const filtered = useMemo(
     () => (filter === 'all' ? activity : activity.filter((item) => item.type === filter)),
@@ -32,58 +35,64 @@ export function LeftFeed() {
   )
 
   return (
-    <aside className="hidden w-[375px] shrink-0 lg:block" aria-label="Actividad en vivo">
-      <div className="sticky top-[72px] max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
-        <div className="mb-2 flex items-center gap-2 px-1">
+    <aside className="hidden w-[440px] shrink-0 lg:block" aria-label="Actividad en vivo">
+      <div className="sticky top-[72px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1">
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          className="mb-2 flex w-full items-center gap-2 px-1"
+          aria-expanded={!collapsed}
+          aria-controls="cabal-activity-panel"
+        >
           <Radio className="h-3.5 w-3.5 text-primary live-dot" />
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad del Cabal</p>
-        </div>
+          {collapsed ? (
+            <ChevronDown className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+          ) : (
+            <ChevronUp className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+          )}
+        </button>
 
-        {/* Filtro por tipo de actividad */}
-        <div className="mb-3 flex items-center gap-1 px-1" role="tablist" aria-label="Filtrar actividad">
-          {ACTIVITY_FILTERS.map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              role="tab"
-              aria-selected={filter === value}
-              onClick={() => setFilter(value)}
-              className={cn(
-                'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all',
-                filter === value
-                  ? 'bg-[#8FA83F]/12 text-primary'
-                  : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+        {!collapsed && (
+          <div id="cabal-activity-panel">
+            {/* Filtro por tipo de actividad */}
+            <div className="mb-3 flex items-center gap-1 px-1" role="tablist" aria-label="Filtrar actividad">
+              {ACTIVITY_FILTERS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  role="tab"
+                  aria-selected={filter === value}
+                  onClick={() => setFilter(value)}
+                  className={cn(
+                    'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all',
+                    filter === value
+                      ? 'bg-[#8FA83F]/12 text-primary'
+                      : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                  )}
+                >
+                  <Icon className="h-3 w-3" aria-hidden />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              {isLoading &&
+                [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
+              {!isLoading && filtered.length === 0 && (
+                <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
+                  Sin actividad de este tipo por ahora
+                </p>
               )}
-            >
-              <Icon className="h-3 w-3" aria-hidden />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-2">
-          {isLoading &&
-            [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
-          {!isLoading && filtered.length === 0 && (
-            <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
-              Sin actividad de este tipo por ahora
-            </p>
-          )}
-          {filtered.map((item) =>
-            item.type === 'launch' ? (
-              <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} compact onOpen={() => openLaunch(item.launch.id)} />
-            ) : (
-              <PostCard
-                key={item.post.id}
-                post={item.post}
-                compact
-                onComment={() => {
-                  if (item.post.launch) openLaunch(item.post.launch.id)
-                  else if (item.post.token) openToken(item.post.token.id)
-                }}
-              />
-            )
-          )}
-        </div>
+              {filtered.map((item) =>
+                item.type === 'launch' ? (
+                  <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} compact onOpen={() => openLaunch(item.launch.id)} />
+                ) : (
+                  <PostCard key={item.post.id} post={item.post} compact />
+                )
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   )

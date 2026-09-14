@@ -8,8 +8,9 @@ import { CopyCA, KindBadge, TokenGlyph, UserAvatar } from '@/components/cabal/sh
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
-import { useCallResult, useFollowToggle, useLikeToggle } from '@/lib/api-client'
+import { useCallResult, useCreatePost, useFollowToggle, useLikeToggle } from '@/lib/api-client'
 import {
   canCopyImages,
   copyImage,
@@ -233,16 +234,30 @@ function CallShareDialog({ post, open, onOpenChange }: { post: PostDTO; open: bo
 export function PostCard({
   post,
   compact,
-  onComment,
 }: {
   post: PostDTO
   compact?: boolean
-  onComment?: () => void
 }) {
   const like = useLikeToggle()
   const follow = useFollowToggle()
+  const createPost = useCreatePost()
   const { openLaunch, openToken } = useUI()
   const [shareOpen, setShareOpen] = useState(false)
+  const [replyOpen, setReplyOpen] = useState(false)
+  const [reply, setReply] = useState('')
+
+  const sendReply = () => {
+    if (!reply.trim()) return
+    createPost.mutate(
+      { kind: 'comment', content: reply.trim(), launchId: post.launch?.id, tokenId: post.token?.id },
+      {
+        onSuccess: () => {
+          setReply('')
+          setReplyOpen(false)
+        },
+      }
+    )
+  }
 
   return (
     <article
@@ -347,18 +362,45 @@ export function PostCard({
               <Heart className={cn('h-3.5 w-3.5', post.liked && 'fill-primary')} />
               {post.likes}
             </button>
-            {onComment && (
-              <button onClick={onComment} className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary" aria-label="Comentar">
-                <MessageCircle className="h-3.5 w-3.5" />
-                Responder
-              </button>
-            )}
+            <button
+              onClick={() => setReplyOpen((v) => !v)}
+              className={cn(
+                'flex items-center gap-1 text-xs transition-colors',
+                replyOpen ? 'text-primary' : 'text-muted-foreground hover:text-primary'
+              )}
+              aria-label="Responder"
+              aria-expanded={replyOpen}
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Responder
+            </button>
             {typeof post.pnl === 'number' && post.pnl > 0 && (
               <span className="ml-auto flex items-center gap-1 rounded-md bg-[#8FA83F]/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
                 <TrendingUp className="h-3 w-3" /> +${post.pnl.toLocaleString('es')}
               </span>
             )}
           </div>
+
+          {replyOpen && (
+            <div className="mt-2 flex items-start gap-2">
+              <Textarea
+                value={reply}
+                onChange={(e) => setReply(e.target.value)}
+                placeholder={`Responder a @${post.user.handle}…`}
+                className="min-h-[42px] flex-1 resize-none rounded-lg border-white/10 bg-white/5 p-2 text-xs"
+                aria-label="Escribir respuesta"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                onClick={sendReply}
+                disabled={!reply.trim() || createPost.isPending}
+                className="h-8 shrink-0 gap-1 rounded-lg bg-primary px-3 text-[11px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+              >
+                <Send className="h-3 w-3" /> Enviar
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </article>
