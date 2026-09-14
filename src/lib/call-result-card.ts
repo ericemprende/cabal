@@ -182,11 +182,31 @@ export async function renderCallResultCard(opts: {
       <text x="70" y="405" font-family="${FONT_STACK}" font-size="30" font-weight="700" fill="#f4f7ee">
         ${esc(symbol ? `$${symbol}` : 'token')}  ·  ahora ${esc(pctText)} desde la call
       </text>`
-          : `<text x="70" y="300" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
+          : pctChange !== null
+            ? `<text x="70" y="300" font-family="${FONT_STACK}" font-size="140" font-weight="900" fill="${accent}">
         ${esc(pctText)}
       </text>
       <text x="70" y="352" font-family="${FONT_STACK}" font-size="38" font-weight="700" fill="#f4f7ee">
         ${esc(symbol ? `$${symbol}` : 'token')}${multipleText ? `  ·  ${esc(multipleText)}` : ''}
+      </text>`
+            : currentMc !== null
+              ? `<text x="70" y="240" font-family="${FONT_STACK}" font-size="22" font-weight="700" fill="#9aa08a" letter-spacing="2">
+        MARKET CAP ACTUAL
+      </text>
+      <text x="70" y="345" font-family="${FONT_STACK}" font-size="110" font-weight="900" fill="${accent}">
+        ${esc(fmtMc(currentMc))}
+      </text>
+      <text x="70" y="390" font-family="${FONT_STACK}" font-size="30" font-weight="700" fill="#f4f7ee">
+        ${esc(symbol ? `$${symbol}` : 'token')}
+      </text>
+      <text x="70" y="425" font-family="${FONT_STACK}" font-size="19" fill="#9aa08a">
+        % desde la call aún no disponible en esta red
+      </text>`
+              : `<text x="70" y="300" font-family="${FONT_STACK}" font-size="90" font-weight="900" fill="${accent}">
+        sin datos aún
+      </text>
+      <text x="70" y="352" font-family="${FONT_STACK}" font-size="38" font-weight="700" fill="#f4f7ee">
+        ${esc(symbol ? `$${symbol}` : 'token')}
       </text>`
       }
 

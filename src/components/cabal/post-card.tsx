@@ -50,7 +50,14 @@ function CallBuyButton({ post }: { post: PostDTO }) {
 /** Estado de la call en una sola línea: monto compacto, sin envolver a varias filas. */
 function CallResultBadge({ post }: { post: PostDTO }) {
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
-  if (!data?.found || data.pctChange === null) return null
+  if (!data?.found) return null
+  // Algunas redes (p. ej. Robinhood) no tienen fuente de velas históricas:
+  // no hay forma de saber el % desde la call, pero sí el MC actual.
+  if (data.pctChange === null) {
+    return data.currentMc !== null ? (
+      <span className="truncate text-[11px] font-bold text-muted-foreground">MC {fmtMc(data.currentMc)}</span>
+    ) : null
+  }
   const up = data.pctChange >= 0
   const showMc = data.currentMc !== null
   // El pico (lo más alto que llegó a hacer desde la call, aunque después haya
