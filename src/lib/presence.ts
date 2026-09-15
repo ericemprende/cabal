@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { create } from 'zustand'
 import { getPusherClient, CHAT_CHANNEL } from '@/lib/pusher-client'
 
@@ -69,12 +69,22 @@ export function usePresenceConnection() {
   }, [setOnline])
 }
 
+/**
+ * Los selectores de zustand deben devolver una referencia estable si el
+ * estado no cambió; devolver un Set/Array nuevo en cada llamada (como se
+ * hacía antes) hace que React crea que el snapshot cambia sin parar y
+ * revienta con "Maximum update depth exceeded" apenas se monta el
+ * componente. Por eso acá se lee el Map (referencia estable) y la
+ * conversión a array/set se memoiza aparte, solo cuando el Map cambia.
+ */
 export function useOnlineMembers(): OnlineMember[] {
-  return usePresenceStore((s) => Array.from(s.online.values()))
+  const online = usePresenceStore((s) => s.online)
+  return useMemo(() => Array.from(online.values()), [online])
 }
 
 export function useOnlineIds(): Set<string> {
-  return usePresenceStore((s) => new Set(s.online.keys()))
+  const online = usePresenceStore((s) => s.online)
+  return useMemo(() => new Set(online.keys()), [online])
 }
 
 export function useOnlineCount(): number {
