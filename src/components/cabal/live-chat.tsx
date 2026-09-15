@@ -49,7 +49,9 @@ export function LiveChat() {
     const body = text.trim()
     if (!body) return
     send.mutate(body, {
-      onSuccess: (msg) => setLive((prev) => [...prev, msg]),
+      // El eco por Pusher puede llegar antes de que resuelva este POST: sin
+      // este chequeo, el mensaje propio quedaba agregado dos veces.
+      onSuccess: (msg) => setLive((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])),
     })
     setText('')
   }
