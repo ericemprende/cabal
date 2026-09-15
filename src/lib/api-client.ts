@@ -10,6 +10,7 @@ import type {
   AdminWaitlistDTO,
   AffiliatePlatformDTO,
   BuildBuyDTO,
+  BuildBuyEvmDTO,
   BuildSellDTO,
   ChatMessageDTO,
   DevClaimDTO,
@@ -410,6 +411,25 @@ export function useAdminCalls(enabled: boolean) {
   })
 }
 
+export function useAdminBackfillCallEntry() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      jsonFetch<{ ok: boolean; total: number; updated: number; skipped: number }>('/api/admin/calls/backfill-entry', {
+        method: 'POST',
+      }),
+    onSuccess: (r) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-calls'] })
+      toast.success(
+        r.total === 0
+          ? 'No había calls antiguas pendientes'
+          : `Rellenadas ${r.updated} de ${r.total} calls antiguas${r.skipped ? ` (${r.skipped} sin dato disponible)` : ''}`
+      )
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useAdminLaunches(enabled: boolean) {
   return useQuery<LaunchDTO[]>({
     queryKey: qk.adminLaunches,
@@ -470,6 +490,36 @@ export function useConfirmSwap() {
   return useMutation({
     mutationFn: (data: { intentId: string; signature: string }) =>
       jsonFetch<{ ok: boolean; pointsAwarded: number }>('/api/swap/confirm', { method: 'POST', body: JSON.stringify(data) }),
+  })
+}
+
+/** Config para comprar sin salir de Cabal en una red EVM (Ethereum/Base/BSC, vía la API de 0x). */
+export function useSwapConfigEvm(network: string) {
+  return useQuery<SwapConfigDTO>({
+    queryKey: ['swap', 'config', network],
+    queryFn: () => jsonFetch(`/api/swap/config?network=${network}`),
+    staleTime: 5 * 60_000,
+  })
+}
+
+/** Cotiza y arma la transacción de una compra en una red EVM. No firma ni manda nada. */
+export function useBuildBuyEvm() {
+  return useMutation({
+    mutationFn: (data: { network: string; outputToken: string; amountUsd: number; userAddress: string }) =>
+      jsonFetch<BuildBuyEvmDTO>('/api/swap/build-evm', { method: 'POST', body: JSON.stringify(data) }),
+  })
+}
+
+/**
+ * Avisa que una compra EVM ya se firmó y mandó a la red, para que — si de
+ * verdad corrió on-chain — el invitador de quien compró gane puntos por la
+ * comisión generada. Se llama después de eth_sendTransaction; nunca bloquea
+ * ni afecta el resultado de la compra en sí.
+ */
+export function useConfirmSwapEvm() {
+  return useMutation({
+    mutationFn: (data: { intentId: string; network: string; txHash: string }) =>
+      jsonFetch<{ ok: boolean; pointsAwarded: number }>('/api/swap/confirm-evm', { method: 'POST', body: JSON.stringify(data) }),
   })
 }
 

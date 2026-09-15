@@ -62,6 +62,7 @@ import {
   useAdminAdjustPoints,
   useAdminAffiliates,
   useAdminCalls,
+  useAdminBackfillCallEntry,
   useAdminCreateAffiliate,
   useAdminDeleteAffiliate,
   useAdminDeleteLaunch,
@@ -1700,6 +1701,7 @@ const ADMIN_CLAIM_STATUS: Record<string, { label: string; cls: string }> = {
 
 function AdminCalls({ enabled }: { enabled: boolean }) {
   const callsQ = useAdminCalls(enabled)
+  const backfill = useAdminBackfillCallEntry()
   const leaderboard = callsQ.data?.leaderboard ?? []
   const calls = callsQ.data?.calls ?? []
 
@@ -1709,6 +1711,22 @@ function AdminCalls({ enabled }: { enabled: boolean }) {
         Últimas {calls.length} calls públicas del feed, con su %s en vivo desde que se publicaron (comparado contra el
         precio actual). El winrate y el %s promedio solo cuentan las calls con dato de precio.
       </p>
+
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+        <p className="text-[11px] text-muted-foreground">
+          Las calls de antes de este cambio no tenían guardado el precio exacto de entrada. Este botón lo reconstruye
+          una vez (por velas históricas) y lo deja fijo, para que dejen de recalcularse en cada carga.
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0"
+          disabled={backfill.isPending}
+          onClick={() => backfill.mutate()}
+        >
+          {backfill.isPending ? 'Rellenando…' : 'Rellenar calls antiguas'}
+        </Button>
+      </div>
 
       {callsQ.isLoading && [...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 w-full" />)}
 
