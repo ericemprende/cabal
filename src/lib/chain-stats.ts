@@ -169,22 +169,31 @@ async function fetchPeakSince(
   const geckoNet = GECKO_NETWORK[network]
   if (!geckoNet || !pairAddress) return { peakPrice: null, peakAt: null }
 
-  const scan = (list: number[][]): { peakPrice: number | null; peakAt: number | null } => {
+  // `durationMs` es el largo de cada vela: una vela de hora que ABRIÓ antes
+  // de `sinceMs` puede seguir corriendo (y marcar su máximo) DESPUÉS de la
+  // call, así que solo se descarta cuando ya CERRÓ antes de `sinceMs` —
+  // descartar por su apertura tiraba fuera, entera, la vela en curso en el
+  // momento de publicar la call, justo la que suele contener el pico real
+  // en calls muy recientes.
+  const scan = (list: number[][], durationMs: number): { peakPrice: number | null; peakAt: number | null } => {
     let peakPrice: number | null = null
     let peakAt: number | null = null
     for (const c of list) {
       const tsRaw = Number(c[0])
       const ts = tsRaw > 1e12 ? tsRaw : tsRaw * 1000
-      if (ts < sinceMs) continue
+      if (ts + durationMs < sinceMs) continue
       const high = Number(c[2])
       if (!Number.isFinite(high) || high <= 0) continue
       if (peakPrice === null || high > peakPrice) {
         peakPrice = high
-        peakAt = ts
+        peakAt = Math.max(ts, sinceMs)
       }
     }
     return { peakPrice, peakAt }
   }
+
+  const HOUR_MS = 60 * 60 * 1000
+  const DAY_MS = 24 * HOUR_MS
 
   const hourUrl = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/hour?aggregate=1&limit=1000`
   const hourJson = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(hourUrl, 7000)
@@ -197,11 +206,11 @@ async function fetchPeakSince(
         return raw > 1e12 ? raw : raw * 1000
       })()
     : null
-  let result = scan(hourCandles)
+  let result = scan(hourCandles, HOUR_MS)
   if (oldestHourTs === null || oldestHourTs > sinceMs) {
     const dayUrl = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/day?aggregate=1&limit=1000`
     const dayJson = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(dayUrl, 7000)
-    const dayResult = scan(dayJson?.data?.attributes?.ohlcv_list ?? [])
+    const dayResult = scan(dayJson?.data?.attributes?.ohlcv_list ?? [], DAY_MS)
     if (dayResult.peakPrice !== null && (result.peakPrice === null || dayResult.peakPrice > result.peakPrice)) {
       result = dayResult
     }
