@@ -494,8 +494,14 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
   }
   // Call recién publicada: aún no hay vela de ese minuto. Entrada = precio
   // actual (0%) — pero solo si de verdad hay una fuente de velas para esta
-  // red; si no la hay (geckoNet), mejor dejar "sin datos" que fingir 0%.
-  if (entryPriceUsd === null && geckoNet) entryPriceUsd = currentPriceUsd
+  // red (si no la hay, mejor "sin datos" que fingir 0%) Y la call es de
+  // verdad reciente. `fetchJson` no distingue "todavía no hay vela" de "la
+  // petición a GeckoTerminal falló" (timeout, rate-limit): sin este segundo
+  // chequeo, un fallo transitorio en una call vieja también caía en este
+  // fallback y borraba el % real (resettéandolo a 0%) durante los 20s que
+  // dura la caché de `cached()`.
+  const tooRecentForCandle = Date.now() - calledAt.getTime() < 3 * 60_000
+  if (entryPriceUsd === null && geckoNet && tooRecentForCandle) entryPriceUsd = currentPriceUsd
 
   const pctChange =
     entryPriceUsd && currentPriceUsd && entryPriceUsd > 0

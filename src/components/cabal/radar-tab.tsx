@@ -287,7 +287,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
             </span>
           </div>
         </div>
-        <CountdownPill target={launch.launchAt} compact size="xs" className="mt-0.5 shrink-0" />
+        <CountdownPill target={launch.launchAt} compact size="xs" estimated={!launch.dateConfirmed} className="mt-0.5 shrink-0" />
       </div>
 
       <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{launch.description}</p>

@@ -21,6 +21,7 @@ import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { useFollowToggle, useSession, useUserFollows, useUserProfile } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { usePresenceConnection, useIsOnline } from '@/lib/presence'
 import type { PublicProfileDTO } from '@/lib/types'
 
 /**
@@ -34,6 +35,9 @@ import type { PublicProfileDTO } from '@/lib/types'
  */
 export function ProfileView({ handle }: { handle: string }) {
   const { data, isPending, isError } = useUserProfile(handle)
+  // Perfil público es un punto de entrada aparte de /app: necesita su propio
+  // socket de presencia para el puntico verde del header y del chat.
+  usePresenceConnection()
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -125,6 +129,7 @@ function ProfileHeader({
   const { setProfileOpen, openAuth, setPremiumOpen } = useUI()
   const { data: session } = useSession()
   const follow = useFollowToggle()
+  const online = useIsOnline(user.id)
   const joined = new Date(profile.joinedAt).toLocaleDateString('es', { month: 'long', year: 'numeric' })
 
   const toggleFollow = () => {
@@ -143,6 +148,7 @@ function ProfileHeader({
           size="xl"
           verified={user.walletVerified}
           premium={profile.premium}
+          online={online}
           className="h-20 w-20 text-2xl sm:h-24 sm:w-24"
         />
 
@@ -158,7 +164,14 @@ function ProfileHeader({
                 )}
                 {profile.premium && <PremiumPill />}
               </h1>
-              <p className="text-sm text-muted-foreground">@{user.handle}</p>
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                @{user.handle}
+                {online && (
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden /> En línea
+                  </span>
+                )}
+              </p>
             </div>
 
             <div className="flex items-center gap-2 sm:ml-auto">

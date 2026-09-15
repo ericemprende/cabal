@@ -142,6 +142,7 @@ export function UserAvatar({
   size = 'md',
   verified,
   premium,
+  online,
   className,
   ring = true,
 }: {
@@ -153,6 +154,8 @@ export function UserAvatar({
   verified?: boolean
   /** Plan Premium activo: la coronita, arriba a la derecha. */
   premium?: boolean
+  /** Puntico verde: el usuario tiene el chat en vivo abierto ahora mismo (ver useIsOnline). */
+  online?: boolean
   className?: string
   ring?: boolean
 }) {
@@ -219,6 +222,13 @@ export function UserAvatar({
         >
           <Crown className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-label="Premium" />
         </span>
+      )}
+      {online && (
+        <span
+          className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0b08] bg-emerald-400"
+          title="Conectado ahora"
+          aria-label="Conectado ahora"
+        />
       )}
     </div>
   )
@@ -577,17 +587,35 @@ export function useCountdown(target: string | Date) {
   return parts
 }
 
+/** Fecha aún no confirmada: badge chiquito para poner junto a la fecha o el countdown. */
+export function EstimatedDateBadge({ className }: { className?: string }) {
+  return (
+    <span
+      title="Quien subió el proyecto todavía no tiene la fecha confirmada"
+      className={cn(
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-amber-300/40 bg-amber-300/10 px-1 py-px text-[9px] font-black uppercase tracking-wide text-amber-300',
+        className
+      )}
+    >
+      Estimada
+    </span>
+  )
+}
+
 export function CountdownPill({
   target,
   size = 'md',
   className,
   compact,
+  estimated,
 }: {
   target: string
   size?: 'xs' | 'sm' | 'md' | 'lg'
   className?: string
   /** Cuenta atrás corta para tarjetas angostas (con min+seg si queda <24h). */
   compact?: boolean
+  /** La fecha es un estimado sin confirmar: antepone "~" y lo aclara en el title. */
+  estimated?: boolean
 }) {
   const c = useCountdown(target)
   // Compacto: cuenta atrás corta para tarjetas — incluye min+seg cuando queda <24h
@@ -630,13 +658,20 @@ export function CountdownPill({
         cls,
         className
       )}
-      title={urgent ? 'Lanzamiento inminente' : 'Tiempo para el lanzamiento'}
+      title={
+        estimated
+          ? 'Fecha estimada, todavía sin confirmar'
+          : urgent
+            ? 'Lanzamiento inminente'
+            : 'Tiempo para el lanzamiento'
+      }
     >
       {urgent ? (
         <span className={cn('live-dot-red shrink-0 rounded-full bg-[#ff4d5e]', dotCls)} aria-hidden />
       ) : (
         <Timer className={cn('shrink-0', iconCls)} aria-hidden />
       )}
+      {estimated && '~'}
       {text}
     </span>
   )

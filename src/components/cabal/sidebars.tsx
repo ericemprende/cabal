@@ -10,6 +10,8 @@ import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
 import { useFollowToggle, useLaunches, useLeaderboard } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { useIsOnline } from '@/lib/presence'
+import { LiveChat } from '@/components/cabal/live-chat'
 import { fmtNum } from '@/lib/cabal'
 
 type ActivityFilter = 'all' | 'launch' | 'post'
@@ -95,7 +97,13 @@ export function LeftFeed() {
               )}
               {filtered.map((item) =>
                 item.type === 'launch' ? (
-                  <LaunchActivityCard key={`launch-${item.launch.id}`} launch={item.launch} compact onOpen={() => openLaunch(item.launch.id)} />
+                  <LaunchActivityCard
+                    key={`launch-${item.kind}-${item.launch.id}`}
+                    launch={item.launch}
+                    kind={item.kind}
+                    compact
+                    onOpen={() => openLaunch(item.launch.id)}
+                  />
                 ) : (
                   <PostCard key={item.post.id} post={item.post} compact />
                 )
@@ -158,7 +166,7 @@ export function RightRail() {
                   </p>
                   <div className="mt-0.5"><NetworkBadge network={l.network} /></div>
                 </div>
-                <CountdownPill target={l.launchAt} size="sm" />
+                <CountdownPill target={l.launchAt} size="sm" estimated={!l.dateConfirmed} />
               </button>
             ))}
             {next.length === 0 && (
@@ -176,30 +184,14 @@ export function RightRail() {
           </p>
           <div className="card-surface space-y-0.5 rounded-xl border border-white/10 p-1.5">
             {top.map((c, i) => (
-              <div key={c.user.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-white/5">
-                <span className={cn('w-4 text-center text-[11px] font-bold', i === 0 ? 'text-amber-300' : 'text-muted-foreground')}>
-                  {i + 1}
-                </span>
-                <Link href={`/u/${c.user.handle}`} className="flex min-w-0 flex-1 items-center gap-2.5">
-                  <UserAvatar name={c.user.name} handle={c.user.handle} src={c.user.avatar} size="xs" verified={c.user.walletVerified} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold">{c.user.name}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">{fmtNum(c.user.followers)} seguidores</p>
-                  </div>
-                </Link>
-                {c.user.isFollowed ? (
-                  <span className="text-[10px] font-bold text-muted-foreground">siguiendo</span>
-                ) : (
-                  <button
-                    onClick={() => follow.mutate(c.user.id)}
-                    className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground transition-opacity hover:opacity-85"
-                  >
-                    Seguir
-                  </button>
-                )}
-              </div>
+              <TopCallerRow key={c.user.id} caller={c} rank={i} onFollow={() => follow.mutate(c.user.id)} />
             ))}
           </div>
+        </section>
+
+        {/* Chat en vivo */}
+        <section>
+          <LiveChat />
         </section>
 
         {/* Points CTA */}
@@ -216,5 +208,41 @@ export function RightRail() {
         </section>
       </div>
     </aside>
+  )
+}
+
+function TopCallerRow({
+  caller,
+  rank,
+  onFollow,
+}: {
+  caller: import('@/lib/types').LeaderboardEntryDTO
+  rank: number
+  onFollow: () => void
+}) {
+  const online = useIsOnline(caller.user.id)
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-white/5">
+      <span className={cn('w-4 text-center text-[11px] font-bold', rank === 0 ? 'text-amber-300' : 'text-muted-foreground')}>
+        {rank + 1}
+      </span>
+      <Link href={`/u/${caller.user.handle}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+        <UserAvatar name={caller.user.name} handle={caller.user.handle} src={caller.user.avatar} size="xs" verified={caller.user.walletVerified} online={online} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold">{caller.user.name}</p>
+          <p className="truncate text-[10px] text-muted-foreground">{fmtNum(caller.user.followers)} seguidores</p>
+        </div>
+      </Link>
+      {caller.user.isFollowed ? (
+        <span className="text-[10px] font-bold text-muted-foreground">siguiendo</span>
+      ) : (
+        <button
+          onClick={onFollow}
+          className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground transition-opacity hover:opacity-85"
+        >
+          Seguir
+        </button>
+      )}
+    </div>
   )
 }

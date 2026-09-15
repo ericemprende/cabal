@@ -5,6 +5,7 @@ import { NETWORKS } from '@/lib/cabal'
 import { toUserDTO } from '@/lib/serializers'
 import { invalidate } from '@/lib/cache'
 import type { LaunchDTO } from '@/lib/types'
+import { buildLaunchChangeNote } from '@/lib/launch-change-note'
 
 const safeUrl = (v: unknown) =>
   typeof v === 'string' && (v.startsWith('/uploads/') || v.startsWith('/seed/') || v.startsWith('https://'))
@@ -44,6 +45,9 @@ export async function GET(req: Request) {
       lockedFields: [],
       network: l.network,
       launchAt: l.launchAt.toISOString(),
+      dateConfirmed: l.dateConfirmed,
+      lastEditedAt: l.lastEditedAt ? l.lastEditedAt.toISOString() : null,
+      lastChangeNote: l.lastChangeNote,
       description: l.description,
       website: l.website,
       twitter: l.twitter,
@@ -94,6 +98,7 @@ export async function PATCH(req: Request) {
       }
       data.launchAt = when
     }
+    if (typeof body.dateConfirmed === 'boolean') data.dateConfirmed = body.dateConfirmed
     if (typeof body.description === 'string') data.description = body.description.slice(0, 800)
     // Redes sociales / enlaces del proyecto (editables desde el panel)
     if ('website' in body) data.website = safeUrl(body.website)
@@ -117,6 +122,14 @@ export async function PATCH(req: Request) {
     }
     if (typeof body.top10Pct === 'number' && body.top10Pct >= 0 && body.top10Pct <= 100) {
       data.top10Pct = body.top10Pct
+    }
+
+    // Solo se registra como "actualización" si de verdad cambió algo visible;
+    // guardar sin tocar nada no debe aparecer como actividad reciente.
+    const note = buildLaunchChangeNote(target, { ...target, ...data })
+    if (note) {
+      data.lastEditedAt = new Date()
+      data.lastChangeNote = note
     }
 
     const updated = await db.launch.update({ where: { id }, data })

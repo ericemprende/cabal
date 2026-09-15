@@ -19,11 +19,15 @@ import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { useUI } from '@/lib/store'
 import { qk, useConfirmPremiumCheckout, useMe } from '@/lib/api-client'
+import { usePresenceConnection } from '@/lib/presence'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
   const { tab, setSearchOpen, setAdminOpen } = useUI()
   const { data: me } = useMe()
+  // Un solo socket de presencia para toda la app: alimenta el puntico verde
+  // de "conectado" en avatares (top callers, líderes, perfiles) y el chat.
+  usePresenceConnection()
   // Se lee una sola vez al montar para que la carga async de /api/me no lo pierda
   const [wantsAdmin] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1'

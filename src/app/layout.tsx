@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
@@ -58,6 +59,13 @@ export default function RootLayout({
       >
         <Providers>{children}</Providers>
         <Toaster position="bottom-center" />
+        {process.env.NODE_ENV === "production" && (
+          <Script
+            src="https://analytics.cabal.army/script.js"
+            data-website-id="c5d0c8fd-3e10-4c95-bcee-406c27bb1e44"
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );

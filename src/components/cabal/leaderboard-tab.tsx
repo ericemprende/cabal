@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct } from '@/lib/cabal'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
+import { useIsOnline } from '@/lib/presence'
 import type { LeaderboardEntryDTO } from '@/lib/types'
 
 type Board = 'callers' | 'devs' | 'points' | 'clans'
@@ -86,6 +87,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
   const follow = useFollowToggle()
   const { user, rank } = entry
   const winRate = entry.winRate ?? 0
+  const online = useIsOnline(user.id)
 
   return (
     <div className="card-surface flex items-center gap-3 rounded-xl border border-white/8 p-3 transition-colors hover:border-white/12">
@@ -93,7 +95,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
         {String(rank).padStart(2, '0')}
       </span>
       <Link href={`/u/${user.handle}`} className="shrink-0" aria-label={`Perfil de @${user.handle}`}>
-        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
+        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} online={online} />
       </Link>
       <div className="min-w-0 flex-1">
         <Link href={`/u/${user.handle}`} className="block hover:underline">

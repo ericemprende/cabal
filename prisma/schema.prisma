@@ -70,6 +70,7 @@ model User {
   emailCodes    EmailCode[]
   launchMemberships LaunchMember[] @relation("launchMember")
   launchInvitesSent LaunchMember[] @relation("launchInviter")
+  chatMessages  ChatMessage[]
 
   @@index([points])
   @@index([referredById])
@@ -93,6 +94,7 @@ model Launch {
   launchpad     String?  // plataforma donde sale el token (pump.fun, Zora…)
   network       String   @default("solana")
   launchAt      DateTime
+  dateConfirmed Boolean  @default(true) // false = fecha estimada por quien sube el proyecto, no confirmada por el equipo
   description   String
   website       String?
   twitter       String?
@@ -106,6 +108,10 @@ model Launch {
   top10Pct      Float    @default(25)
   createdById   String
   createdAt     DateTime @default(now())
+  // Última edición con cambios de verdad (no se toca si se guarda sin cambiar nada),
+  // para mostrarla como actividad reciente ("actualizó la fecha", "cambió la descripción"…)
+  lastEditedAt  DateTime?
+  lastChangeNote String?
   createdBy     User     @relation(fields: [createdById], references: [id])
   posts         Post[]
   token         Token?
@@ -248,6 +254,18 @@ model Token {
   @@index([devId])
   @@index([contract])
   @@index([launchedAt])
+}
+
+// Chat en vivo global del Cabal (una sola sala). Presencia (quién está
+// conectado) va por Pusher, no por aquí; esta tabla es solo el historial.
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model Post {
