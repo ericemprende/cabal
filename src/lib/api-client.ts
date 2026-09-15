@@ -430,6 +430,25 @@ export function useAdminBackfillCallEntry() {
   })
 }
 
+export function useAdminBackfillLaunchPoints() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      jsonFetch<{ ok: boolean; users: number; launches: number; points: number }>('/api/admin/launches/backfill-points', {
+        method: 'POST',
+      }),
+    onSuccess: (r) => {
+      queryClient.invalidateQueries()
+      toast.success(
+        r.launches === 0
+          ? 'Todos los launches ya tenían sus puntos'
+          : `Otorgados ${r.points} pts por ${r.launches} launches a ${r.users} usuarios`
+      )
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useAdminLaunches(enabled: boolean) {
   return useQuery<LaunchDTO[]>({
     queryKey: qk.adminLaunches,

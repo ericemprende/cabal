@@ -44,9 +44,22 @@ const REASON_TO_KEY: Record<string, string> = {
   share_x: 'points_share_x',
 }
 
+// Valores por defecto si la Setting no existe en la BD. El seed solo las crea
+// en una BD vacía, así que sin esto una regla ausente valía 0 y no se daban
+// puntos (pasó con points_launch en producción).
+const POINT_RULE_DEFAULTS: Record<string, number> = {
+  points_thesis: 25,
+  points_comment: 5,
+  points_launch: 40,
+  points_like_received: 2,
+  points_hype_received: 1,
+  points_daily_visit: 3,
+  points_share_x: 10,
+}
+
 export async function getPointRules(): Promise<Record<string, number>> {
   const settings = await db.setting.findMany({ where: { key: { startsWith: 'points_' } } })
-  const rules: Record<string, number> = {}
+  const rules: Record<string, number> = { ...POINT_RULE_DEFAULTS }
   for (const s of settings) rules[s.key] = parseInt(s.value, 10) || 0
   return rules
 }
@@ -123,9 +136,12 @@ export async function swapReferralPointsFor(feeUsd: number): Promise<number> {
 }
 
 export async function requireAdmin(req?: Request) {
-  const me = await getCurrentUser()
-  // Acceso si el usuario actual es admin O si trae la cookie de sesión de /admin
-  if (me.isAdmin || (req && isAdminRequest(req))) return me
+  // Acceso si trae la cookie de sesión de /admin O si el usuario actual es admin.
+  // La cookie va primero: sin sesión de usuario (p. ej. en incógnito)
+  // getCurrentUser lanza "No current user" y todo el panel /admin daba 500.
+  if (req && isAdminRequest(req)) return
+  const me = await getCurrentUser().catch(() => null)
+  if (me?.isAdmin) return
   throw new ForbiddenError()
 }
 

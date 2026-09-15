@@ -63,6 +63,7 @@ import {
   useAdminAffiliates,
   useAdminCalls,
   useAdminBackfillCallEntry,
+  useAdminBackfillLaunchPoints,
   useAdminCreateAffiliate,
   useAdminDeleteAffiliate,
   useAdminDeleteLaunch,
@@ -432,6 +433,10 @@ export function AdminPanel({
                   </div>
                 </div>
               </div>
+            ) : analytics.isError ? (
+              <div className="rounded-xl border border-[#ff4d5e]/30 bg-[#0a0b08] p-4 text-xs text-[#ff8080]">
+                No se pudieron cargar las visitas: {analytics.error.message}
+              </div>
             ) : (
               <Skeleton className="h-40 w-full" />
             )}
@@ -675,11 +680,23 @@ function AdminUserRow({
 // ---------------- Proyectos (launches) ----------------
 function AdminLaunches({ enabled }: { enabled: boolean }) {
   const launches = useAdminLaunches(enabled)
+  const backfillPoints = useAdminBackfillLaunchPoints()
   return (
     <div className="space-y-2">
-      <p className="text-xs text-muted-foreground">
-        Corrige cualquier dato de un lanzamiento: nombre, ticker, fecha, red, imágenes, redes sociales, contrato, privacidad, visibilidad, checks de seguridad y el stream en vivo.
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Corrige cualquier dato de un lanzamiento: nombre, ticker, fecha, red, imágenes, redes sociales, contrato, privacidad, visibilidad, checks de seguridad y el stream en vivo.
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="shrink-0"
+          disabled={backfillPoints.isPending}
+          onClick={() => backfillPoints.mutate()}
+        >
+          {backfillPoints.isPending ? 'Otorgando…' : 'Dar puntos pendientes'}
+        </Button>
+      </div>
       {launches.isLoading && [...Array(5)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
       {(launches.data ?? []).map((l) => (
         <AdminLaunchRow key={l.id} launch={l} enabled={enabled} />
