@@ -1318,6 +1318,11 @@ function SwapFeeRow({ config, enabled }: { config: SwapFeeConfigDTO; enabled: bo
   const [draft, setDraft] = useState(config)
   const meta = networkMeta(config.network)
   const dirty = JSON.stringify(draft) !== JSON.stringify(config)
+  // En Solana, quien cobra de verdad es la cuenta de referido de Jupiter — la
+  // wallet es solo informativa. En EVM (Ethereum/Base/BNB Chain) es al revés:
+  // 0x no tiene "cuenta de referido", cobra directo a esta wallet
+  // (swapFeeRecipient), así que aquí SÍ hace falta que sea una dirección real.
+  const isEvm = config.network === 'ethereum' || config.network === 'base' || config.network === 'bsc'
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
@@ -1366,25 +1371,29 @@ function SwapFeeRow({ config, enabled }: { config: SwapFeeConfigDTO; enabled: bo
           />
         </div>
         <div>
-          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Wallet de cobro (informativo)</Label>
+          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Wallet de cobro {isEvm ? '(la comisión cae aquí de verdad)' : '(informativo)'}
+          </Label>
           <Input
             value={draft.feeWallet}
             onChange={(e) => setDraft((d) => ({ ...d, feeWallet: e.target.value }))}
-            placeholder="Dirección de la wallet"
+            placeholder={isEvm ? 'Dirección EVM (0x...) donde 0x deposita la comisión' : 'Dirección de la wallet'}
             spellCheck={false}
             className="mt-1 h-9 bg-[#121410] font-mono text-[12px]"
           />
         </div>
-        <div className="sm:col-span-2">
-          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cuenta de referido (Jupiter u otro aggregator)</Label>
-          <Input
-            value={draft.referralAccount}
-            onChange={(e) => setDraft((d) => ({ ...d, referralAccount: e.target.value }))}
-            placeholder="Dirección de la cuenta de referido"
-            spellCheck={false}
-            className="mt-1 h-9 bg-[#121410] font-mono text-[12px]"
-          />
-        </div>
+        {!isEvm && (
+          <div className="sm:col-span-2">
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cuenta de referido (Jupiter u otro aggregator)</Label>
+            <Input
+              value={draft.referralAccount}
+              onChange={(e) => setDraft((d) => ({ ...d, referralAccount: e.target.value }))}
+              placeholder="Dirección de la cuenta de referido"
+              spellCheck={false}
+              className="mt-1 h-9 bg-[#121410] font-mono text-[12px]"
+            />
+          </div>
+        )}
         <div className="sm:col-span-2">
           <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nota para la comunidad</Label>
           <Input

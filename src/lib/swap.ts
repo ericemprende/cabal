@@ -47,7 +47,12 @@ const DEFAULT_FEE_BPS = 35
 export async function swapFeeConfig(network: string): Promise<SwapFeeConfig | null> {
   const row = await db.swapFeeConfig.findUnique({ where: { network } })
   if (row) {
-    if (!row.enabled || !row.referralAccount) return null
+    // Solana (Jupiter) cobra a través de la cuenta de referido: sin ella no
+    // hay dónde cobrar. Las redes EVM (0x) no usan ese campo — ahí cobran
+    // directo a `feeWallet` (swapFeeRecipient), así que lo que hace falta es
+    // esa wallet, no la cuenta de referido.
+    const hasPayee = network === 'solana' ? !!row.referralAccount : !!row.feeWallet
+    if (!row.enabled || !hasPayee) return null
     return {
       referralAccount: row.referralAccount,
       feeBps: row.feeBps,
