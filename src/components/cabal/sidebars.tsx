@@ -3,30 +3,57 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Crown, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crown, MessageCircle, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
 import { useFollowToggle, useLaunches, useLeaderboard } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
-import { useIsOnline } from '@/lib/presence'
+import { useIsOnline, useOnlineCount, useOnlineMembers } from '@/lib/presence'
 import { LiveChat } from '@/components/cabal/live-chat'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { fmtNum } from '@/lib/cabal'
 
-type ActivityFilter = 'all' | 'launch' | 'post'
+type ActivityFilter = 'all' | 'launch' | 'post' | 'chat'
 
 const ACTIVITY_FILTERS: { value: ActivityFilter; label: string; icon: typeof Radio }[] = [
   { value: 'all', label: 'Todo', icon: Radio },
   { value: 'launch', label: 'Launches', icon: Rocket },
   { value: 'post', label: 'Tesis', icon: MessageSquare },
+  { value: 'chat', label: 'Chat en vivo', icon: MessageCircle },
 ]
+
+/** Lista de quién está conectado ahora mismo, para el tooltip del icono del chat. */
+function OnlineTooltipContent() {
+  const members = useOnlineMembers()
+  if (members.length === 0) return <p className="text-xs">Nadie conectado todavía</p>
+  return (
+    <div className="max-w-[220px] space-y-1.5">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {members.length} conectado{members.length === 1 ? '' : 's'}
+      </p>
+      <div className="space-y-1">
+        {members.slice(0, 8).map((m) => (
+          <div key={m.id} className="flex items-center gap-1.5">
+            <UserAvatar name={m.name} handle={m.handle} src={m.avatar} size="xs" online />
+            <span className="truncate text-xs">{m.name}</span>
+          </div>
+        ))}
+        {members.length > 8 && (
+          <p className="text-[10px] text-muted-foreground">+{members.length - 8} más</p>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ---------- Left: live activity ----------
 export function LeftFeed() {
   const { items: activity, isLoading } = useActivity(30)
   const { openLaunch } = useUI()
   const [filter, setFilter] = useState<ActivityFilter>('all')
+  const onlineCount = useOnlineCount()
   // Colapsable hacia la izquierda: en vez de solo ocultar el contenido, el
   // panel se encoge a una tira angosta y el feed del medio gana ese ancho
   // (es flex-1 en el layout, así que crece solo).
@@ -64,51 +91,103 @@ export function LeftFeed() {
           )}
         </button>
 
+        {/* Colapsado: icono del chat que sigue accesible, con tooltip de quién está conectado */}
+        {collapsed && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setCollapsed(false)}
+                className="relative flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white/5"
+                aria-label={`Chat en vivo, ${onlineCount} conectados`}
+              >
+                <MessageCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
+                {onlineCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-[#0a0b08] bg-emerald-400" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <OnlineTooltipContent />
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {!collapsed && (
           <div id="cabal-activity-panel">
             {/* Filtro por tipo de actividad */}
             <div className="mb-3 flex items-center gap-1 px-1" role="tablist" aria-label="Filtrar actividad">
-              {ACTIVITY_FILTERS.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  role="tab"
-                  aria-selected={filter === value}
-                  onClick={() => setFilter(value)}
-                  className={cn(
-                    'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all',
-                    filter === value
-                      ? 'bg-[#8FA83F]/12 text-primary'
-                      : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
-                  )}
-                >
-                  <Icon className="h-3 w-3" aria-hidden />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-2">
-              {isLoading &&
-                [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
-              {!isLoading && filtered.length === 0 && (
-                <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
-                  Sin actividad de este tipo por ahora
-                </p>
-              )}
-              {filtered.map((item) =>
-                item.type === 'launch' ? (
-                  <LaunchActivityCard
-                    key={`launch-${item.kind}-${item.launch.id}`}
-                    launch={item.launch}
-                    kind={item.kind}
-                    compact
-                    onOpen={() => openLaunch(item.launch.id)}
-                  />
+              {ACTIVITY_FILTERS.map(({ value, label, icon: Icon }) =>
+                value === 'chat' ? (
+                  <Tooltip key={value}>
+                    <TooltipTrigger asChild>
+                      <button
+                        role="tab"
+                        aria-selected={filter === value}
+                        onClick={() => setFilter(value)}
+                        className={cn(
+                          'relative flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all',
+                          filter === value
+                            ? 'bg-[#8FA83F]/12 text-primary'
+                            : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                        )}
+                      >
+                        <Icon className="h-3 w-3" aria-hidden />
+                        {label}
+                        {onlineCount > 0 && (
+                          <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+                        )}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <OnlineTooltipContent />
+                    </TooltipContent>
+                  </Tooltip>
                 ) : (
-                  <PostCard key={item.post.id} post={item.post} compact />
+                  <button
+                    key={value}
+                    role="tab"
+                    aria-selected={filter === value}
+                    onClick={() => setFilter(value)}
+                    className={cn(
+                      'flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all',
+                      filter === value
+                        ? 'bg-[#8FA83F]/12 text-primary'
+                        : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                    )}
+                  >
+                    <Icon className="h-3 w-3" aria-hidden />
+                    {label}
+                  </button>
                 )
               )}
             </div>
+
+            {filter === 'chat' ? (
+              <LiveChat />
+            ) : (
+              <div className="space-y-2">
+                {isLoading &&
+                  [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
+                {!isLoading && filtered.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
+                    Sin actividad de este tipo por ahora
+                  </p>
+                )}
+                {filtered.map((item) =>
+                  item.type === 'launch' ? (
+                    <LaunchActivityCard
+                      key={`launch-${item.kind}-${item.launch.id}`}
+                      launch={item.launch}
+                      kind={item.kind}
+                      compact
+                      onOpen={() => openLaunch(item.launch.id)}
+                    />
+                  ) : (
+                    <PostCard key={item.post.id} post={item.post} compact />
+                  )
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -187,11 +266,6 @@ export function RightRail() {
               <TopCallerRow key={c.user.id} caller={c} rank={i} onFollow={() => follow.mutate(c.user.id)} />
             ))}
           </div>
-        </section>
-
-        {/* Chat en vivo */}
-        <section>
-          <LiveChat />
         </section>
 
         {/* Points CTA */}
