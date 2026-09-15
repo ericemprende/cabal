@@ -34,8 +34,16 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Variables NEXT_PUBLIC_* se inlinean en el bundle: deben existir en build time.
+# El campo "Build Args" de la Application en Dokploy está vacío (no reenvía el
+# panel de Environment como --build-arg), así que estos valores por defecto
+# SON la fuente real, igual que NEXT_PUBLIC_SITE_URL. No son secretos: la key
+# y el cluster de Pusher son públicos por diseño (viajan al navegador).
 ARG NEXT_PUBLIC_SITE_URL=https://cabal.army
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+ARG NEXT_PUBLIC_PUSHER_KEY=313d8aa24c72d23d4e5f
+ENV NEXT_PUBLIC_PUSHER_KEY=$NEXT_PUBLIC_PUSHER_KEY
+ARG NEXT_PUBLIC_PUSHER_CLUSTER=us2
+ENV NEXT_PUBLIC_PUSHER_CLUSTER=$NEXT_PUBLIC_PUSHER_CLUSTER
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
