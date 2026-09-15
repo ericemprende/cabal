@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   BarChart3,
   BadgeCheck,
@@ -9,6 +9,8 @@ import {
   Coins,
   CreditCard,
   Crown,
+  ExternalLink,
+  Eye,
   Globe,
   Heart,
   Link2,
@@ -113,6 +115,18 @@ const RULE_LABELS: Record<string, string> = {
   points_share_x: 'Compartir tarjeta en X',
 }
 
+type AdminAnalyticsDTO =
+  | { configured: false }
+  | {
+      configured: true
+      dashboardUrl: string
+      today: { visitors: number; pageviews: number; visits: number }
+      last7Days: { visitors: number; pageviews: number; visits: number }
+      last30Days: { visitors: number; pageviews: number; visits: number }
+      avgDailyVisitors30d: number
+      series: { date: string; visitors: number }[]
+    }
+
 const REASON_COLORS: Record<string, string> = {
   launch: '#8FA83F',
   thesis: '#a5bd55',
@@ -200,6 +214,12 @@ export function AdminPanel({
   const [view, setView] = useState<AdminView>('whitelist')
   const overview = useAdminOverview(enabled)
   const users = useAdminUsers(enabled)
+  const analytics = useQuery<AdminAnalyticsDTO>({
+    queryKey: ['admin', 'analytics'],
+    queryFn: () => jsonFetch('/api/admin/analytics'),
+    enabled: enabled && view === 'stats',
+    refetchInterval: 60_000,
+  })
   const rulesQ = useQuery<Record<string, number>>({
     queryKey: qk.adminRules,
     queryFn: () => jsonFetch('/api/admin/rules'),
@@ -364,6 +384,57 @@ export function AdminPanel({
 
         {view === 'stats' && (
           <div className="space-y-4">
+            {analytics.data?.configured === false ? (
+              <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4 text-xs text-muted-foreground">
+                Analytics de visitas (Umami) no está configurado. Faltan las variables{' '}
+                <code className="text-primary">UMAMI_URL</code>, <code className="text-primary">UMAMI_WEBSITE_ID</code>,{' '}
+                <code className="text-primary">UMAMI_USERNAME</code> y <code className="text-primary">UMAMI_PASSWORD</code> en el servicio.
+              </div>
+            ) : analytics.data?.configured ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                    <Eye className="h-3.5 w-3.5 text-primary" aria-hidden /> Visitas del sitio
+                  </p>
+                  <a
+                    href={analytics.data.dashboardUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline"
+                  >
+                    Ver panel completo <ExternalLink className="h-3 w-3" aria-hidden />
+                  </a>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                  <Kpi label="Visitantes hoy" value={analytics.data.today.visitors} icon={<Eye className="h-4 w-4" />} />
+                  <Kpi label="Prom. diario (30d)" value={analytics.data.avgDailyVisitors30d} />
+                  <Kpi label="Visitantes 7 días" value={analytics.data.last7Days.visitors} />
+                  <Kpi label="Vistas de página (30d)" value={analytics.data.last30Days.pageviews} />
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+                  <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Visitantes por día (últimos 14 días)
+                  </p>
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analytics.data.series} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+                        <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
+                        <XAxis dataKey="date" tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip
+                          cursor={{ stroke: 'rgba(143,168,63,0.25)' }}
+                          contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
+                        />
+                        <Line type="monotone" dataKey="visitors" stroke="#8FA83F" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Skeleton className="h-40 w-full" />
+            )}
+
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               <Kpi label="Miembros" value={overview.data?.totalUsers ?? 0} icon={<Users className="h-4 w-4" />} />
               <Kpi label="Posts" value={overview.data?.totalPosts ?? 0} />
@@ -1197,8 +1268,9 @@ function AdminSwapFees({ enabled }: { enabled: boolean }) {
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        Comisión que cobra Cabal cuando alguien compra o vende un token sin salir de la plataforma, red por red. Solo Solana
-        tiene el swap ya integrado (vía Jupiter); las demás quedan listas para cuando se agregue su aggregator.
+        Comisión que cobra Cabal cuando alguien compra o vende un token sin salir de la plataforma, red por red. Solana
+        (vía Jupiter) y la compra en Ethereum/Base/BNB Chain (vía 0x) ya están integradas; Tron y Robinhood quedan
+        listas para cuando se agregue su aggregator.
       </p>
 
       <div className="rounded-xl border border-[#8FA83F]/25 bg-[#8FA83F]/6 px-3.5 py-2.5">
