@@ -13,7 +13,7 @@ import { CabalWordmark, NetworkIcon, TimezoneHint } from '@/components/cabal/sha
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { cn } from '@/lib/utils'
 import { LAUNCHPADS, NETWORKS, type NetworkKey } from '@/lib/cabal'
-import { uploadImage, useCreateLaunch, useLaunch, useUpdateLaunch } from '@/lib/api-client'
+import { uploadImage, useCreateLaunch, useLaunch, usePointRules, useUpdateLaunch } from '@/lib/api-client'
 import type { TokenMeta } from '@/lib/chain-stats'
 import type { LaunchDetailDTO } from '@/lib/types'
 import { useUI } from '@/lib/store'
@@ -129,6 +129,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
   const router = useRouter()
   const { openLaunch } = useUI()
   const createLaunch = useCreateLaunch()
+  const rules = usePointRules()
   const updateLaunch = useUpdateLaunch(editId ?? '')
   const saving = editId ? updateLaunch.isPending : createLaunch.isPending
   const [form, setForm] = useState(initial.form)
@@ -300,7 +301,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
           </Link>
           {!editId && (
             <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-2.5 py-1 text-xs font-semibold text-primary">
-              <Zap className="h-3 w-3" aria-hidden /> +40 pts por launch
+              <Zap className="h-3 w-3" aria-hidden /> +{rules.points_launch} pts por launch
             </span>
           )}
         </div>
@@ -309,7 +310,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-16 pt-6 sm:pt-8">
         {done ? (
           <SuccessPanel
-            earned={earned}
+            earned={earned || rules.points_launch}
             ticker={form.ticker}
             onReset={reset}
             onGoRadar={() => router.push('/app')}
@@ -324,7 +325,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                 {editId
                   ? 'Actualiza la información, las redes o la fecha. Los cambios se ven al momento en el Radar.'
-                  : 'Avisa a la comunidad antes de que salga. Ganas puntos cuando la gente da hype a tu launch (+1 por hype).'}
+                  : `Avisa a la comunidad antes de que salga. Ganas puntos cuando la gente da hype a tu launch (+${rules.points_hype_received} por hype).`}
               </p>
             </div>
 
@@ -694,7 +695,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                       : 'Guardar cambios'
                     : saving
                       ? 'Publicando…'
-                      : 'Publicar · +40 pts'}
+                      : `Publicar · +${rules.points_launch} pts`}
                 </Button>
               </div>
             </div>
@@ -709,7 +710,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
             <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · la comunidad que ve los launches antes que nadie
           </p>
           <p className="flex items-center gap-1">
-            <Zap className="h-3 w-3 text-primary/70" aria-hidden /> Tesis +25 · Launch +40 · Se canjean por $CABAL
+            <Zap className="h-3 w-3 text-primary/70" aria-hidden /> Tesis +{rules.points_thesis} · Launch +{rules.points_launch} · Se canjean por $CABAL
           </p>
         </div>
       </footer>
@@ -742,7 +743,7 @@ function SuccessPanel({
         </p>
       </div>
       <p className="flex items-center gap-1.5 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-3.5 py-1.5 text-sm font-bold text-primary">
-        <Zap className="h-4 w-4" aria-hidden /> +{earned || 40} puntos Cabal
+        <Zap className="h-4 w-4" aria-hidden /> +{earned} puntos Cabal
       </p>
       <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
         <Button onClick={onGoRadar} className="h-10 rounded-xl bg-primary px-5 font-bold text-primary-foreground hover:bg-[#8FA83F]">

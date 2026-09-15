@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
-import { useFollowToggle, useLaunches, useLeaderboard } from '@/lib/api-client'
+import { useFollowToggle, useLaunches, useLeaderboard, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { useIsOnline, useOnlineCount, useOnlineMembers } from '@/lib/presence'
 import { LiveChat } from '@/components/cabal/live-chat'
@@ -200,6 +200,7 @@ export function RightRail() {
   const { data: launches } = useLaunches()
   const { data: leaderboard } = useLeaderboard()
   const follow = useFollowToggle()
+  const rules = usePointRules()
   const router = useRouter()
   const { openLaunch } = useUI()
 
@@ -223,7 +224,7 @@ export function RightRail() {
               <Timer className="h-3.5 w-3.5" aria-hidden /> Próximos a lanzar
             </p>
             <button onClick={() => router.push('/publicar')} className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
-              <Zap className="h-3 w-3" aria-hidden /> +40
+              <Zap className="h-3 w-3" aria-hidden /> +{rules.points_launch}
             </button>
           </div>
           <div className="space-y-2">

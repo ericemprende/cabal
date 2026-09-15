@@ -14,7 +14,7 @@ import {
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown } from '@/components/cabal/shared'
 import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
-import { useHypeToggle, useLaunches } from '@/lib/api-client'
+import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import type { LaunchDTO } from '@/lib/types'
 
@@ -47,6 +47,7 @@ const STATUS_TABS: { key: StatusFilter; label: string }[] = [
 
 export function RadarTab() {
   const { data: launches, isLoading } = useLaunches()
+  const rules = usePointRules()
   const router = useRouter()
   const { openLaunch } = useUI()
   const [network, setNetwork] = useState<string>('all')
@@ -183,7 +184,7 @@ export function RadarTab() {
           <Rocket className="h-8 w-8 text-muted-foreground" />
           <div>
             <p className="font-semibold">No hay launches con este filtro</p>
-            <p className="text-sm text-muted-foreground">Sé el primero en avisar a la comunidad (+40 puntos)</p>
+            <p className="text-sm text-muted-foreground">Sé el primero en avisar a la comunidad (+{rules.points_launch} puntos)</p>
           </div>
           <Button onClick={() => router.push('/publicar')} className="bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]">
             Publicar lanzamiento

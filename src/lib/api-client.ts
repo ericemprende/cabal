@@ -430,6 +430,27 @@ export function useAdminBackfillCallEntry() {
   })
 }
 
+// Mismos valores por defecto que el servidor, para no enseñar huecos mientras carga.
+const POINT_RULES_FALLBACK: Record<string, number> = {
+  points_thesis: 25,
+  points_comment: 5,
+  points_launch: 40,
+  points_like_received: 2,
+  points_hype_received: 1,
+  points_daily_visit: 3,
+  points_share_x: 10,
+}
+
+/** Reglas de puntos vigentes (editables en admin) para los "+N" de la interfaz. */
+export function usePointRules(): Record<string, number> {
+  const { data } = useQuery<Record<string, number>>({
+    queryKey: ['point-rules'],
+    queryFn: () => jsonFetch('/api/points/rules'),
+    staleTime: 60_000,
+  })
+  return { ...POINT_RULES_FALLBACK, ...data }
+}
+
 export function useAdminBackfillLaunchPoints() {
   const queryClient = useQueryClient()
   return useMutation({

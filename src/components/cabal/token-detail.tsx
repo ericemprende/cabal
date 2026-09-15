@@ -14,7 +14,7 @@ import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, timeAgo } from '@/lib/cabal'
-import { useCreatePost, useFollowToggle, useToken } from '@/lib/api-client'
+import { useCreatePost, useFollowToggle, usePointRules, useToken } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import type { TokenDetailDTO } from '@/lib/types'
 
@@ -23,6 +23,7 @@ export function TokenDetailDialog() {
   const { data: token, isLoading } = useToken(tokenDetailId)
   const createPost = useCreatePost()
   const follow = useFollowToggle()
+  const rules = usePointRules()
   const [thesis, setThesis] = useState('')
   const [expanded, setExpanded] = useState(false)
 
@@ -214,7 +215,7 @@ export function TokenDetailDialog() {
                 <Textarea
                   value={thesis}
                   onChange={(e) => setThesis(e.target.value)}
-                  placeholder={`Tu tesis sobre ${token.ticker}: ¿por qué va a subir? (+25 puntos)`}
+                  placeholder={`Tu tesis sobre ${token.ticker}: ¿por qué va a subir? (+${rules.points_thesis} puntos)`}
                   className="min-h-[64px] resize-none border-0 bg-transparent text-sm focus-visible:ring-0"
                   aria-label="Escribir tesis"
                 />

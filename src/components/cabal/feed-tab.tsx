@@ -10,17 +10,17 @@ import { NETWORKS } from '@/lib/cabal'
 import { NetworkIcon, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
-import { useCreatePost, useMe } from '@/lib/api-client'
+import { useCreatePost, useMe, usePointRules } from '@/lib/api-client'
 import type { TokenMeta } from '@/lib/chain-stats'
 import { useUI } from '@/lib/store'
 
-const KINDS = [
-  { key: 'thesis', label: 'Tesis', icon: GraduationCap, hint: '+25' },
-  { key: 'call', label: 'Call', icon: Megaphone, hint: '' },
-  { key: 'comment', label: 'Comentario', icon: MessageSquare, hint: '+5' },
-]
-
 export function FeedTab() {
+  const rules = usePointRules()
+  const KINDS = [
+    { key: 'thesis', label: 'Tesis', icon: GraduationCap, hint: `+${rules.points_thesis}` },
+    { key: 'call', label: 'Call', icon: Megaphone, hint: '' },
+    { key: 'comment', label: 'Comentario', icon: MessageSquare, hint: `+${rules.points_comment}` },
+  ]
   const { items: activity, isLoading } = useActivity(60)
   const { openLaunch } = useUI()
   const { data: me } = useMe()
@@ -187,7 +187,7 @@ export function FeedTab() {
       <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-gradient-to-r from-[#8FA83F]/8 to-transparent px-3.5 py-2.5">
         <Zap className="h-4 w-4 shrink-0 text-primary" aria-hidden />
         <p className="text-[12px] leading-relaxed text-foreground/80">
-          <span className="font-bold text-primary">Puntos Cabal:</span> tesis +25 · launch publicado +40 · likes recibidos +2 · se canjean por tokens del airdrop de $CABAL
+          <span className="font-bold text-primary">Puntos Cabal:</span> tesis +{rules.points_thesis} · launch publicado +{rules.points_launch} · likes recibidos +{rules.points_like_received} · se canjean por tokens del airdrop de $CABAL
         </p>
       </div>
 

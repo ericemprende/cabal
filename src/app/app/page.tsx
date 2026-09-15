@@ -18,13 +18,14 @@ import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { useUI } from '@/lib/store'
-import { qk, useConfirmPremiumCheckout, useMe } from '@/lib/api-client'
+import { qk, useConfirmPremiumCheckout, useMe, usePointRules } from '@/lib/api-client'
 import { usePresenceConnection } from '@/lib/presence'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
   const { tab, setSearchOpen, setAdminOpen } = useUI()
   const { data: me } = useMe()
+  const rules = usePointRules()
   // Un solo socket de presencia para toda la app: alimenta el puntico verde
   // de "conectado" en avatares (top callers, líderes, perfiles) y el chat.
   usePresenceConnection()
@@ -175,7 +176,7 @@ export default function Home() {
             <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · la comunidad que ve los launches antes que nadie
           </p>
           <p className="flex items-center gap-1">
-            <Zap className="h-3 w-3 text-primary/70" aria-hidden /> Tesis +25 · Launch +40 · Se canjean por $CABAL
+            <Zap className="h-3 w-3 text-primary/70" aria-hidden /> Tesis +{rules.points_thesis} · Launch +{rules.points_launch} · Se canjean por $CABAL
           </p>
         </div>
       </footer>

@@ -15,7 +15,7 @@ import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
 import { timeAgo } from '@/lib/cabal'
-import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch } from '@/lib/api-client'
+import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
 export function LaunchDetailDialog() {
@@ -24,6 +24,7 @@ export function LaunchDetailDialog() {
   const hype = useHypeToggle()
   const follow = useFollowToggle()
   const createPost = useCreatePost()
+  const rules = usePointRules()
   const [comment, setComment] = useState('')
   const [expanded, setExpanded] = useState(false)
 
@@ -289,13 +290,13 @@ export function LaunchDetailDialog() {
                 <Textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="¿Por qué este launch va a ser grande? Escribir tesis = +25 puntos"
+                  placeholder={`¿Por qué este launch va a ser grande? Escribir tesis = +${rules.points_thesis} puntos`}
                   className="min-h-[64px] resize-none border-0 bg-transparent text-sm focus-visible:ring-0"
                   aria-label="Escribir comentario"
                 />
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1 text-[11px] font-semibold text-primary/80">
-                    <Zap className="h-3 w-3" aria-hidden /> Tesis +25 · Comentario +5
+                    <Zap className="h-3 w-3" aria-hidden /> Tesis +{rules.points_thesis} · Comentario +{rules.points_comment}
                   </span>
                   <Button
                     size="sm"
