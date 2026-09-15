@@ -464,14 +464,43 @@ const EMPTY_CALL_RESULT: CallResult = {
 }
 
 /**
- * No guardamos precio de entrada al publicar la call: solo el instante
- * (`calledAt`, el `createdAt` del post). El resultado se calcula siempre al
- * vuelo, comparando el precio actual (DexScreener) contra la vela de un
- * minuto más cercana a `calledAt` (GeckoTerminal OHLCV). Si la call es tan
- * reciente que esa vela aún no existe, se usa el precio actual como entrada
- * (0%) en vez de fallar.
+ * Precio/MC de un token AHORA MISMO (DexScreener), para guardarlo como
+ * "entrada" en el instante exacto en que se publica una call — evita tener
+ * que reconstruirlo después con una vela de GeckoTerminal, que puede no
+ * existir aún o no alinear bien con el segundo exacto de la call.
  */
-export async function fetchCallResult(network: string, ca: string, calledAt: Date): Promise<CallResult> {
+export async function fetchEntrySnapshot(
+  network: string,
+  ca: string
+): Promise<{ priceUsd: number | null; mc: number | null }> {
+  const dexChain = DEX_CHAIN[network]
+  if (!dexChain) return { priceUsd: null, mc: null }
+  const json = await fetchJson<{ pairs?: DexInfoPair[] }>(
+    `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(ca)}`,
+    5000
+  )
+  const pair = pickPair(json?.pairs ?? [], ca) as DexInfoPair | null
+  if (!pair) return { priceUsd: null, mc: null }
+  const priceUsd = pair.priceUsd ? Number(pair.priceUsd) || null : null
+  const mc = pair.marketCap ?? pair.fdv ?? null
+  return { priceUsd, mc }
+}
+
+/**
+ * Idealmente el precio de entrada se guardó al publicar la call (ver
+ * `fetchEntrySnapshot`, capturado con hora:min:seg exactos en `createdAt`).
+ * Para calls de antes de esa columna (o si el snapshot falló al publicar),
+ * se reconstruye al vuelo comparando el precio actual (DexScreener) contra
+ * la vela de un minuto más cercana a `calledAt` (GeckoTerminal OHLCV). Si la
+ * call es tan reciente que esa vela aún no existe, se usa el precio actual
+ * como entrada (0%) en vez de fallar.
+ */
+export async function fetchCallResult(
+  network: string,
+  ca: string,
+  calledAt: Date,
+  storedEntry?: { priceUsd: number | null; mc: number | null }
+): Promise<CallResult> {
   const dexChain = DEX_CHAIN[network]
   if (!dexChain) return { ...EMPTY_CALL_RESULT }
 
@@ -490,9 +519,12 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
   const currentPriceUsd = pair.priceUsd ? Number(pair.priceUsd) || null : null
   const currentMc = pair.marketCap ?? pair.fdv ?? null
 
-  let entryPriceUsd: number | null = null
   const geckoNet = GECKO_NETWORK[network]
-  if (geckoNet && pair.pairAddress) {
+  // Fuente de verdad: el snapshot guardado al segundo exacto de la call. Solo
+  // si no existe (posts de antes de esta columna, o falló al publicar) se
+  // reconstruye con una vela de GeckoTerminal.
+  let entryPriceUsd: number | null = storedEntry?.priceUsd ?? null
+  if (entryPriceUsd === null && geckoNet && pair.pairAddress) {
     // antes de calledAt + un pequeño margen, para asegurarnos de que la vela
     // de ese minuto ya exista cuando se pide justo después de publicar
     const beforeTs = Math.floor(calledAt.getTime() / 1000) + 90
@@ -517,12 +549,14 @@ export async function fetchCallResult(network: string, ca: string, calledAt: Dat
       ? ((currentPriceUsd - entryPriceUsd) / entryPriceUsd) * 100
       : null
 
-  // MC/FDV al momento de la call: no lo guardamos en la BD, así que se estima
-  // a partir del MC actual escalado por el cambio de precio (supply constante).
+  // MC al momento de la call: el guardado al publicar si existe; si no, se
+  // estima a partir del MC actual escalado por el cambio de precio (supply
+  // constante).
   const entryMc =
-    currentMc && entryPriceUsd && currentPriceUsd && currentPriceUsd > 0
+    storedEntry?.mc ??
+    (currentMc && entryPriceUsd && currentPriceUsd && currentPriceUsd > 0
       ? Math.round(currentMc * (entryPriceUsd / currentPriceUsd))
-      : null
+      : null)
 
   const multiple =
     pctChange !== null && pctChange > 0 && entryPriceUsd && currentPriceUsd

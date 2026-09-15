@@ -280,6 +280,12 @@ model Post {
   token     Token?   @relation(fields: [tokenId], references: [id])
   contract  String? // CA del token: obligatorio para kind == "call"
   network   String? // red del CA: obligatoria para kind == "call"
+  // Precio/MC del token en el instante exacto de la call (createdAt ya trae
+  // hora:min:seg). Se capturan al crear el post — null si DexScreener no
+  // respondió a tiempo, o si el post es de antes de esta columna, en cuyo
+  // caso el resultado se reconstruye estimando con velas históricas.
+  entryPriceUsd Float?
+  entryMc       Float?
   likes     Int      @default(0)
   pnl       Float?
   createdAt DateTime @default(now())

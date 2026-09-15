@@ -38,7 +38,9 @@ export async function GET(req: Request) {
       const chunk = calls.slice(i, i + CONCURRENCY)
       const chunkResults = await Promise.all(
         chunk.map(async (c) => {
-          const r = await cached(`call-result:${c.id}`, 60, () => fetchCallResult(c.network!, c.contract!, c.createdAt))
+          const r = await cached(`call-result:${c.id}`, 60, () =>
+            fetchCallResult(c.network!, c.contract!, c.createdAt, { priceUsd: c.entryPriceUsd, mc: c.entryMc })
+          )
           return {
             id: c.id,
             content: c.content,

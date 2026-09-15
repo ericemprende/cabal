@@ -16,7 +16,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     const result = await cached(`call-result:${id}`, 20, () =>
-      fetchCallResult(post.network!, post.contract!, post.createdAt)
+      fetchCallResult(post.network!, post.contract!, post.createdAt, {
+        priceUsd: post.entryPriceUsd,
+        mc: post.entryMc,
+      })
     )
 
     const avatarUrl = /^https?:\/\/|^\/uploads\//.test(post.user.avatar) ? post.user.avatar : null

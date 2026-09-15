@@ -16,7 +16,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     // 20s de caché: el precio no necesita ser exacto al segundo y evita
     // martillar DexScreener/GeckoTerminal en cada refresco del feed.
     const result = await cached(`call-result:${id}`, 20, () =>
-      fetchCallResult(post.network!, post.contract!, post.createdAt)
+      fetchCallResult(post.network!, post.contract!, post.createdAt, {
+        priceUsd: post.entryPriceUsd,
+        mc: post.entryMc,
+      })
     )
 
     return NextResponse.json({ ...result, calledAt: post.createdAt.toISOString() })

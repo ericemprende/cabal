@@ -5,6 +5,7 @@ import { toPostDTO } from '@/lib/serializers'
 import { invalidate } from '@/lib/cache'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { NETWORKS } from '@/lib/cabal'
+import { fetchEntrySnapshot } from '@/lib/chain-stats'
 
 export async function POST(req: Request) {
   try {
@@ -28,6 +29,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Ingresa el CA/contrato del token para publicar una call' }, { status: 400 })
     }
 
+    // Snapshot del precio/MC en el instante exacto de la call (createdAt ya
+    // trae hora:min:seg): así el resultado no depende de reconstruir el
+    // precio de entrada después con una vela de GeckoTerminal. Best-effort:
+    // si DexScreener no responde a tiempo, la call se publica igual y el
+    // resultado cae al fallback de reconstrucción por velas.
+    let entryPriceUsd: number | null = null
+    let entryMc: number | null = null
+    if (postKind === 'call' && cleanContract) {
+      const snapshot = await fetchEntrySnapshot(cleanNetwork, cleanContract)
+      entryPriceUsd = snapshot.priceUsd
+      entryMc = snapshot.mc
+    }
+
     const post = await db.post.create({
       data: {
         kind: postKind,
@@ -37,6 +51,8 @@ export async function POST(req: Request) {
         tokenId: tokenId || null,
         contract: postKind === 'call' ? cleanContract : null,
         network: postKind === 'call' ? cleanNetwork : null,
+        entryPriceUsd: postKind === 'call' ? entryPriceUsd : null,
+        entryMc: postKind === 'call' ? entryMc : null,
       },
       include: { user: true },
     })
