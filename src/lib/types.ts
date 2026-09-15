@@ -501,6 +501,32 @@ export interface TokenBalanceDTO {
   uiAmount: number
 }
 
+// ---------- Comprar sin salir de Cabal en redes EVM (Ethereum/Base/BSC, vía la API de 0x) ----------
+
+/** Transacción cruda a firmar con una wallet EVM (MetaMask u otro proveedor EIP-1193). */
+export interface EvmTxToSignDTO {
+  to: string
+  data: string
+  value: string
+  chainId: number
+}
+
+/** Typed data de Permit2 a firmar con eth_signTypedData_v4 antes de mandar la transacción (null si 0x no lo pidió). */
+export interface Permit2Eip712DTO {
+  types: Record<string, { name: string; type: string }[]>
+  domain: Record<string, unknown>
+  message: Record<string, unknown>
+  primaryType: string
+}
+
+export interface BuildBuyEvmDTO {
+  ok: boolean
+  transaction: EvmTxToSignDTO
+  permit2Eip712: Permit2Eip712DTO | null
+  buyAmount: string
+  intentId: string | null
+}
+
 // ---------- Perfil público (/u/<handle>) ----------
 
 /** Launch publicado por el usuario, en la lista de proyectos de su perfil. */

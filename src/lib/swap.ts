@@ -72,7 +72,7 @@ export async function swapFeeConfig(network: string): Promise<SwapFeeConfig | nu
 }
 
 /** La comisión efectiva para un monto dado: la mínima si es una operación chiquita, la estándar si no. */
-function effectiveFeeBps(fee: SwapFeeConfig, amountUsd: number): number {
+export function effectiveFeeBps(fee: SwapFeeConfig, amountUsd: number): number {
   if (fee.smallTradeUsd > 0 && amountUsd < fee.smallTradeUsd) return fee.smallTradeFeeBps
   return fee.feeBps
 }
@@ -377,6 +377,24 @@ export async function confirmSwapIntent(opts: { intentId: string; signature: str
   const signer = tx.transaction.message.staticAccountKeys?.[0]?.toBase58()
   if (signer !== intent.walletAddress) throw new InvalidConfirmError('La transacción no es de esa wallet')
 
+  return awardReferralPointsForIntent(intent)
+}
+
+/**
+ * Última parte, compartida, de confirmar una intención de swap: marcarla
+ * consumida y, si quien operó fue invitado por alguien, darle puntos a ese
+ * invitador. La usan tanto confirmSwapIntent (Solana) como
+ * confirmSwapIntentEvm (Ethereum/Base/BNB Chain) — cada una ya validó, a su
+ * manera, que la transacción de verdad corrió on-chain y que la firmó la
+ * wallet de la intención; esta parte de aquí en adelante es idéntica.
+ */
+export async function awardReferralPointsForIntent(intent: {
+  id: string
+  network: string
+  walletAddress: string
+  kind: string
+  feeUsd: number
+}): Promise<{ pointsAwarded: number }> {
   await db.swapIntent.update({ where: { id: intent.id }, data: { consumed: true } })
 
   const wallet = await db.walletLink.findFirst({ where: { network: intent.network, address: intent.walletAddress } })

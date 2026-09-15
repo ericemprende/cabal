@@ -6,7 +6,8 @@ import { ExternalLink, Loader2, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useBuildBuy, useBuildSell, useConfirmSwap, useSwapConfig, useTokenBalance } from '@/lib/api-client'
+import { useBuildBuy, useBuildBuyEvm, useBuildSell, useConfirmSwap, useConfirmSwapEvm, useSwapConfig, useSwapConfigEvm, useTokenBalance } from '@/lib/api-client'
+import { connectEvmWallet, ensureEvmChain, EVM_EXPLORER, evmProvider, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
 
 /**
  * Panel de trading propio, al estilo fomo: pestañas Compra/Venta. Comprar usa
@@ -68,19 +69,33 @@ export function TradePanel({
   ticker: string
   className?: string
 }) {
-  const { data: config } = useSwapConfig()
+  const isEvm = isEvmNetwork(network)
+  const { data: solConfig } = useSwapConfig()
+  const { data: evmConfig } = useSwapConfigEvm(isEvm ? network : 'solana')
+  const config = isEvm ? evmConfig : solConfig
   const build = useBuildBuy()
+  const buildEvm = useBuildBuyEvm()
   const sell = useBuildSell()
   const confirm = useConfirmSwap()
+  const confirmEvm = useConfirmSwapEvm()
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [amount, setAmount] = useState('') // USD (comprar) o % del saldo (vender)
   const [pubkey, setPubkey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const { data: balance } = useTokenBalance(tab === 'sell' ? pubkey : null, tab === 'sell' ? contract : null)
 
-  if (network !== 'solana' || !config?.enabled) return null
+  if ((network !== 'solana' && !isEvm) || !config?.enabled) return null
 
   const connect = async (): Promise<string | null> => {
+    if (isEvm) {
+      if (!evmProvider()) {
+        toast.error('Instala MetaMask para comprar desde Cabal', { description: 'metamask.io' })
+        return null
+      }
+      const pk = await connectEvmWallet()
+      if (pk) setPubkey(pk)
+      return pk
+    }
     const p = phantomProvider()
     if (!p) {
       toast.error('Instala Phantom para comprar desde Cabal', { description: 'phantom.app' })
@@ -96,11 +111,46 @@ export function TradePanel({
     }
   }
 
+  const buyEvmNow = async (pk: string) => {
+    const usd = Number(amount)
+    setBusy(true)
+    try {
+      await ensureEvmChain(network as EvmNetwork)
+      const res = await buildEvm.mutateAsync({ network, outputToken: contract, amountUsd: usd, userAddress: pk })
+      const txHash = await signAndSendEvmBuy({
+        network: network as EvmNetwork,
+        from: pk,
+        transaction: res.transaction,
+        permit2Eip712: res.permit2Eip712,
+      })
+      if (res.intentId) confirmEvm.mutate({ intentId: res.intentId, network, txHash })
+
+      toast.success('Compra enviada', {
+        description: `$${usd} en $${ticker}`,
+        action: { label: 'Ver ↗', onClick: () => window.open(`${EVM_EXPLORER[network as EvmNetwork]}/tx/${txHash}`, '_blank') },
+      })
+      setAmount('')
+    } catch (e) {
+      const msg = (e as Error)?.message ?? ''
+      if (!/user rejected/i.test(msg)) {
+        toast.error('No se pudo completar la compra', { description: msg.slice(0, 140) || 'Inténtalo de nuevo' })
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const buy = async () => {
     const usd = Number(amount)
     if (!(usd > 0)) return
     const pk = pubkey ?? (await connect())
     if (!pk) return
+
+    if (isEvm) {
+      await buyEvmNow(pk)
+      return
+    }
+
     const p = phantomProvider()
     if (!p) return
 
@@ -173,35 +223,38 @@ export function TradePanel({
 
   return (
     <div className={cn('w-full shrink-0 rounded-xl border border-white/10 bg-[#0a0b08] p-3', className)}>
-      <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-[#121410] p-1">
-        <button
-          onClick={() => {
-            setTab('buy')
-            setAmount('')
-          }}
-          style={tab === 'buy' ? { backgroundColor: BUY_GREEN } : undefined}
-          className={cn(
-            'rounded-md py-1.5 text-xs font-bold transition-colors',
-            tab === 'buy' ? 'text-black' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Compra
-        </button>
-        <button
-          onClick={() => {
-            setTab('sell')
-            setAmount('')
-          }}
-          className={cn(
-            'rounded-md py-1.5 text-xs font-bold transition-colors',
-            tab === 'sell' ? 'bg-[#ff5c5c] text-white' : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          Venta
-        </button>
-      </div>
+      {/* En redes EVM solo hay compra todavía (no hay venta integrada), así que no tiene sentido mostrar pestañas */}
+      {!isEvm && (
+        <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-[#121410] p-1">
+          <button
+            onClick={() => {
+              setTab('buy')
+              setAmount('')
+            }}
+            style={tab === 'buy' ? { backgroundColor: BUY_GREEN } : undefined}
+            className={cn(
+              'rounded-md py-1.5 text-xs font-bold transition-colors',
+              tab === 'buy' ? 'text-black' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Compra
+          </button>
+          <button
+            onClick={() => {
+              setTab('sell')
+              setAmount('')
+            }}
+            className={cn(
+              'rounded-md py-1.5 text-xs font-bold transition-colors',
+              tab === 'sell' ? 'bg-[#ff5c5c] text-white' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Venta
+          </button>
+        </div>
+      )}
 
-      {tab === 'buy' ? (
+      {(isEvm || tab === 'buy') ? (
         <div className="mt-3 space-y-2.5">
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 py-2.5">
             <span className="text-lg font-bold text-muted-foreground">$</span>
@@ -306,12 +359,12 @@ export function TradePanel({
       {config.fee?.note && <p className="mt-2.5 text-center text-[10px] leading-relaxed text-muted-foreground/80">{config.fee.note}</p>}
 
       <a
-        href={`https://solscan.io/token/${contract}`}
+        href={isEvm ? `${EVM_EXPLORER[network as EvmNetwork]}/token/${contract}` : `https://solscan.io/token/${contract}`}
         target="_blank"
         rel="noreferrer"
         className="mt-2.5 flex items-center justify-center gap-1 text-[10px] text-muted-foreground hover:text-primary"
       >
-        Ver token en Solscan <ExternalLink className="h-2.5 w-2.5" aria-hidden />
+        Ver token en {isEvm ? 'el explorador' : 'Solscan'} <ExternalLink className="h-2.5 w-2.5" aria-hidden />
       </a>
     </div>
   )

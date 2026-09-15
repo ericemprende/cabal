@@ -7,7 +7,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { useBuildBuy, useConfirmSwap, useSwapConfig } from '@/lib/api-client'
+import { useBuildBuy, useBuildBuyEvm, useConfirmSwap, useConfirmSwapEvm, useSwapConfig, useSwapConfigEvm } from '@/lib/api-client'
+import { connectEvmWallet, ensureEvmChain, EVM_EXPLORER, evmProvider, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
 
 /**
  * Botón compacto de "Comprar" para usar al lado de un token en una lista
@@ -57,19 +58,66 @@ export function QuickBuyButton({
   /** Solo el rayo, sin el texto "Comprar" — para espacios chicos (p. ej. Actividad del Cabal). */
   iconOnly?: boolean
 }) {
-  const { data: config } = useSwapConfig()
+  const isEvm = isEvmNetwork(network)
+  const { data: solConfig } = useSwapConfig()
+  const { data: evmConfig } = useSwapConfigEvm(isEvm ? network : 'solana')
+  const config = isEvm ? evmConfig : solConfig
   const build = useBuildBuy()
+  const buildEvm = useBuildBuyEvm()
   const confirm = useConfirmSwap()
+  const confirmEvm = useConfirmSwapEvm()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [pubkey, setPubkey] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  if (network !== 'solana' || !config?.enabled) return null
+  if ((network !== 'solana' && !isEvm) || !config?.enabled) return null
 
   const buy = async () => {
     const usd = Number(amount)
     if (!(usd > 0)) return
+
+    if (isEvm) {
+      let pk = pubkey
+      if (!evmProvider()) {
+        toast.error('Instala MetaMask para comprar desde Cabal', { description: 'metamask.io' })
+        return
+      }
+      if (!pk) {
+        pk = await connectEvmWallet()
+        if (!pk) return // el usuario canceló la conexión
+        setPubkey(pk)
+      }
+
+      setBusy(true)
+      try {
+        await ensureEvmChain(network as EvmNetwork)
+        const res = await buildEvm.mutateAsync({ network, outputToken: contract, amountUsd: usd, userAddress: pk })
+        const txHash = await signAndSendEvmBuy({
+          network: network as EvmNetwork,
+          from: pk,
+          transaction: res.transaction,
+          permit2Eip712: res.permit2Eip712,
+        })
+        if (res.intentId) confirmEvm.mutate({ intentId: res.intentId, network, txHash })
+
+        toast.success('Compra enviada', {
+          description: `$${usd} en $${ticker}`,
+          action: { label: 'Ver ↗', onClick: () => window.open(`${EVM_EXPLORER[network as EvmNetwork]}/tx/${txHash}`, '_blank') },
+        })
+        setOpen(false)
+        setAmount('')
+      } catch (e) {
+        const msg = (e as Error)?.message ?? ''
+        if (!/user rejected/i.test(msg)) {
+          toast.error('No se pudo completar la compra', { description: msg.slice(0, 140) || 'Inténtalo de nuevo' })
+        }
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
+
     let pk = pubkey
     const p = phantomProvider()
     if (!p) {
