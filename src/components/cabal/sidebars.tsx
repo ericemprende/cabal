@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, ChevronUp, Crown, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crown, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
@@ -25,8 +25,9 @@ export function LeftFeed() {
   const { items: activity, isLoading } = useActivity(30)
   const { openLaunch } = useUI()
   const [filter, setFilter] = useState<ActivityFilter>('all')
-  // Colapsable: el panel ocupa bastante alto en pantallas chicas de laptop y
-  // conviene poder cerrarlo sin perder el resto del feed de vista.
+  // Colapsable hacia la izquierda: en vez de solo ocultar el contenido, el
+  // panel se encoge a una tira angosta y el feed del medio gana ese ancho
+  // (es flex-1 en el layout, así que crece solo).
   const [collapsed, setCollapsed] = useState(false)
 
   const filtered = useMemo(
@@ -35,20 +36,29 @@ export function LeftFeed() {
   )
 
   return (
-    <aside className="hidden w-[440px] shrink-0 lg:block" aria-label="Actividad en vivo">
+    <aside
+      className={cn('hidden shrink-0 transition-[width] duration-200 lg:block', collapsed ? 'w-11' : 'w-[440px]')}
+      aria-label="Actividad en vivo"
+    >
       <div className="sticky top-[72px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1">
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="mb-2 flex w-full items-center gap-2 px-1"
+          className={cn(
+            'mb-2 flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-white/5',
+            collapsed ? 'w-9 justify-center' : 'w-full'
+          )}
           aria-expanded={!collapsed}
           aria-controls="cabal-activity-panel"
+          title={collapsed ? 'Mostrar Actividad del Cabal' : 'Ocultar Actividad del Cabal'}
         >
-          <Radio className="h-3.5 w-3.5 text-primary live-dot" />
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad del Cabal</p>
           {collapsed ? (
-            <ChevronDown className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           ) : (
-            <ChevronUp className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            <>
+              <Radio className="h-3.5 w-3.5 text-primary live-dot" />
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad del Cabal</p>
+              <ChevronLeft className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            </>
           )}
         </button>
 
