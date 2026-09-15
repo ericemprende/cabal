@@ -1287,8 +1287,8 @@ function AdminSwapFees({ enabled }: { enabled: boolean }) {
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         Comisión que cobra Cabal cuando alguien compra o vende un token sin salir de la plataforma, red por red. Solana
-        (vía Jupiter) y la compra en Ethereum/Base/BNB Chain (vía 0x) ya están integradas; Tron y Robinhood quedan
-        listas para cuando se agregue su aggregator.
+        (vía Jupiter) y la compra en Ethereum/Base/BNB Chain/Robinhood Chain (vía 0x) ya están integradas; Tron queda
+        lista para cuando se agregue su aggregator.
       </p>
 
       <div className="rounded-xl border border-[#8FA83F]/25 bg-[#8FA83F]/6 px-3.5 py-2.5">
@@ -1319,10 +1319,11 @@ function SwapFeeRow({ config, enabled }: { config: SwapFeeConfigDTO; enabled: bo
   const meta = networkMeta(config.network)
   const dirty = JSON.stringify(draft) !== JSON.stringify(config)
   // En Solana, quien cobra de verdad es la cuenta de referido de Jupiter — la
-  // wallet es solo informativa. En EVM (Ethereum/Base/BNB Chain) es al revés:
-  // 0x no tiene "cuenta de referido", cobra directo a esta wallet
-  // (swapFeeRecipient), así que aquí SÍ hace falta que sea una dirección real.
-  const isEvm = config.network === 'ethereum' || config.network === 'base' || config.network === 'bsc'
+  // wallet es solo informativa. En EVM (Ethereum/Base/BNB Chain/Robinhood
+  // Chain) es al revés: 0x no tiene "cuenta de referido", cobra directo a
+  // esta wallet (swapFeeRecipient), así que aquí SÍ hace falta que sea una
+  // dirección real.
+  const isEvm = config.network === 'ethereum' || config.network === 'base' || config.network === 'bsc' || config.network === 'robinhood'
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">

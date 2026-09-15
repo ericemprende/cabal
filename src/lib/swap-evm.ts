@@ -35,22 +35,33 @@ const ZEROX_BASE = 'https://api.0x.org'
 /** Dirección "nativa" que usa 0x (y la mayoría de agregadores) para representar ETH/BNB nativo, no un token ERC-20. */
 export const NATIVE_TOKEN_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEeeeeeEeeeeeeeeEEeE'
 
-export type EvmNetwork = 'ethereum' | 'base' | 'bsc'
+export type EvmNetwork = 'ethereum' | 'base' | 'bsc' | 'robinhood'
 
 /** chainId numérico de cada red EVM soportada. */
 export const EVM_CHAIN_ID: Record<EvmNetwork, number> = {
   ethereum: 1,
   base: 8453,
   bsc: 56,
+  robinhood: 4663,
 }
 
-/** USDC canónico en cada red (6 decimales en las tres), para cotizar el precio del nativo en USD. */
+/**
+ * Stablecoin de referencia en cada red, para cotizar el precio del nativo en
+ * USD. En Robinhood Chain no hay USDC nativo: el USDC que llega desde otras
+ * redes se recibe como USDG (Global Dollar, de Paxos). Dirección y decimales
+ * verificados en vivo contra el RPC público (eth_getCode + eth_call a
+ * decimals()/symbol() en 0x5fc5360d0400a0fd4f2af552add042d716f1d168, que
+ * devolvió decimals=6 y symbol="USDG") — la API de Blockscout de Robinhood
+ * Chain está detrás de un challenge de Cloudflare que bloquea peticiones
+ * programáticas, así que no se pudo consultar directamente.
+ */
 const USDC_ADDRESS: Record<EvmNetwork, string> = {
   ethereum: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
   base: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
   bsc: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', // BSC USDC (18 decimales, a diferencia de las otras dos)
+  robinhood: '0x5fc5360d0400a0fd4f2af552add042d716f1d168', // USDG (Global Dollar), 6 decimales
 }
-const USDC_DECIMALS: Record<EvmNetwork, number> = { ethereum: 6, base: 6, bsc: 18 }
+const USDC_DECIMALS: Record<EvmNetwork, number> = { ethereum: 6, base: 6, bsc: 18, robinhood: 6 }
 
 /** RPC público por red, para leer el recibo de la transacción al confirmar. Configurable por variable de entorno. */
 function rpcUrl(network: EvmNetwork): string {
@@ -61,6 +72,8 @@ function rpcUrl(network: EvmNetwork): string {
     ethereum: 'https://eth.llamarpc.com',
     base: 'https://mainnet.base.org',
     bsc: 'https://bsc-dataseed.binance.org',
+    // RPC público oficial de Robinhood Chain: con rate limit, no apto para producción según el propio proyecto.
+    robinhood: 'https://rpc.mainnet.chain.robinhood.com',
   }
   return defaults[network]
 }
@@ -76,7 +89,7 @@ function evmProvider(network: EvmNetwork): ethers.JsonRpcProvider {
 }
 
 export function isEvmNetwork(network: string): network is EvmNetwork {
-  return network === 'ethereum' || network === 'base' || network === 'bsc'
+  return network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood'
 }
 
 export class InvalidBuyEvmError extends Error {}

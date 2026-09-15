@@ -9,18 +9,20 @@
 
 import type { EvmTxToSignDTO, Permit2Eip712DTO } from '@/lib/types'
 
-export type EvmNetwork = 'ethereum' | 'base' | 'bsc'
+export type EvmNetwork = 'ethereum' | 'base' | 'bsc' | 'robinhood'
 
 export const EVM_CHAIN_ID: Record<EvmNetwork, number> = {
   ethereum: 1,
   base: 8453,
   bsc: 56,
+  robinhood: 4663,
 }
 
 export const EVM_EXPLORER: Record<EvmNetwork, string> = {
   ethereum: 'https://etherscan.io',
   base: 'https://basescan.org',
   bsc: 'https://bscscan.com',
+  robinhood: 'https://robinhoodchain.blockscout.com',
 }
 
 /** Parámetros para wallet_addEthereumChain, por si MetaMask no tiene la red agregada todavía. */
@@ -46,10 +48,18 @@ const CHAIN_PARAMS: Record<EvmNetwork, Record<string, unknown>> = {
     rpcUrls: ['https://bsc-dataseed.binance.org'],
     blockExplorerUrls: [EVM_EXPLORER.bsc],
   },
+  robinhood: {
+    chainId: '0x1237', // 4663
+    chainName: 'Robinhood Chain',
+    nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+    // RPC público oficial de Robinhood Chain: con rate limit, no apto para producción según el propio proyecto.
+    rpcUrls: ['https://rpc.mainnet.chain.robinhood.com'],
+    blockExplorerUrls: [EVM_EXPLORER.robinhood],
+  },
 }
 
 export function isEvmNetwork(network: string): network is EvmNetwork {
-  return network === 'ethereum' || network === 'base' || network === 'bsc'
+  return network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood'
 }
 
 type Eip1193Provider = {
