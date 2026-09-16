@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { verifyProjectOwnership } from '@/lib/chain-verify'
 
-const NETWORKS = ['solana', 'base', 'ethereum', 'bsc', 'tron', 'robinhood']
+const NETWORKS = ['solana', 'base', 'ethereum', 'bsc', 'tron', 'robinhood', 'arc']
 
 function normalizeContract(ca: string): string {
   return ca.trim()

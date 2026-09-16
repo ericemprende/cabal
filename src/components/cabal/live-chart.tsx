@@ -23,7 +23,7 @@ const GMGN_SLUGS: Record<string, string> = {
   robinhood: 'robinhood',
 }
 
-// Slugs de DexScreener por red (todas, incluida tron y robinhood)
+// Slugs de DexScreener por red (todas, incluida tron, robinhood y arc)
 const DEXSCREENER_SLUGS: Record<string, string> = {
   solana: 'solana',
   ethereum: 'ethereum',
@@ -31,6 +31,7 @@ const DEXSCREENER_SLUGS: Record<string, string> = {
   bsc: 'bsc',
   tron: 'tron',
   robinhood: 'robinhood',
+  arc: 'arc',
 }
 
 export interface TradeLink {

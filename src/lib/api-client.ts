@@ -78,7 +78,7 @@ export function injectedWalletFor(network: string): 'phantom' | 'evm' | null {
   if (typeof window === 'undefined') return null
   const solana = ['solana'].includes(network)
   if (solana && (window.phantom?.solana || window.solana)) return 'phantom'
-  if (['ethereum', 'base', 'bsc', 'robinhood'].includes(network) && window.ethereum) return 'evm'
+  if (['ethereum', 'base', 'bsc', 'robinhood', 'arc'].includes(network) && window.ethereum) return 'evm'
   return null
 }
 

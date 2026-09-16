@@ -35,7 +35,7 @@ const ZEROX_BASE = 'https://api.0x.org'
 /** Dirección "nativa" que usa 0x (y la mayoría de agregadores) para representar ETH/BNB nativo, no un token ERC-20. */
 export const NATIVE_TOKEN_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEeeeeeEeeeeeeeeEEeE'
 
-export type EvmNetwork = 'ethereum' | 'base' | 'bsc' | 'robinhood'
+export type EvmNetwork = 'ethereum' | 'base' | 'bsc' | 'robinhood' | 'arc'
 
 /** chainId numérico de cada red EVM soportada. */
 export const EVM_CHAIN_ID: Record<EvmNetwork, number> = {
@@ -43,6 +43,7 @@ export const EVM_CHAIN_ID: Record<EvmNetwork, number> = {
   base: 8453,
   bsc: 56,
   robinhood: 4663,
+  arc: 5042,
 }
 
 /**
@@ -60,8 +61,11 @@ const USDC_ADDRESS: Record<EvmNetwork, string> = {
   base: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
   bsc: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', // BSC USDC (18 decimales, a diferencia de las otras dos)
   robinhood: '0x5fc5360d0400a0fd4f2af552add042d716f1d168', // USDG (Global Dollar), 6 decimales
+  // Arc: interfaz ERC-20 del USDC nativo (6 decimales, symbol "USDC", verificado contra rpc.mainnet.arc.io).
+  // No se usa para cotizar: en Arc el nativo ES USDC, ver nativePriceUsd().
+  arc: '0x3600000000000000000000000000000000000000',
 }
-const USDC_DECIMALS: Record<EvmNetwork, number> = { ethereum: 6, base: 6, bsc: 18, robinhood: 6 }
+const USDC_DECIMALS: Record<EvmNetwork, number> = { ethereum: 6, base: 6, bsc: 18, robinhood: 6, arc: 6 }
 
 /** RPC público por red, para leer el recibo de la transacción al confirmar. Configurable por variable de entorno. */
 function rpcUrl(network: EvmNetwork): string {
@@ -74,6 +78,7 @@ function rpcUrl(network: EvmNetwork): string {
     bsc: 'https://bsc-dataseed.binance.org',
     // RPC público oficial de Robinhood Chain: con rate limit, no apto para producción según el propio proyecto.
     robinhood: 'https://rpc.mainnet.chain.robinhood.com',
+    arc: 'https://rpc.mainnet.arc.io',
   }
   return defaults[network]
 }
@@ -89,7 +94,7 @@ function evmProvider(network: EvmNetwork): ethers.JsonRpcProvider {
 }
 
 export function isEvmNetwork(network: string): network is EvmNetwork {
-  return network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood'
+  return network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood' || network === 'arc'
 }
 
 export class InvalidBuyEvmError extends Error {}
@@ -151,6 +156,8 @@ async function zeroxQuote(opts: {
 
 /** Precio del nativo (ETH/BNB) de cada red en USD, a partir de una cotización real de 0x. Cacheado 20s como solPriceUsd(). */
 export async function nativePriceUsd(network: EvmNetwork): Promise<number> {
+  // En Arc el gas nativo es USDC (18 decimales a nivel protocolo): 1 unidad = 1 USD, no hay nada que cotizar.
+  if (network === 'arc') return 1
   return cached(`swap-evm:native-price:${network}`, 20, async () => {
     const quote = await zeroxQuote({
       network,

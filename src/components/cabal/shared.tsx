@@ -506,6 +506,13 @@ export function NetworkIcon({ network, className }: { network: string; className
           <path stroke="#171A06" strokeWidth=".8" strokeLinecap="round" d="M4.6 13.2 5.6 11.7" />
         </svg>
       )
+    case 'arc':
+      return (
+        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
+          <circle cx="8" cy="8" r="6.6" fill="#3D8BFF" />
+          <path stroke="#fff" strokeWidth="1.6" strokeLinecap="round" fill="none" d="M4.6 11.2a3.6 3.6 0 0 1 6.8 0" />
+        </svg>
+      )
     default: {
       const meta = networkMeta(network)
       return <span className={cn('inline-block h-1.5 w-1.5 rounded-full', cls.includes('h-3.5') && 'h-2 w-2')} style={{ background: meta.dot }} />

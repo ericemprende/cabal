@@ -18,7 +18,7 @@ import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import type { LaunchDTO } from '@/lib/types'
 
-const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'tron', 'robinhood'] as const
+const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'tron', 'robinhood', 'arc'] as const
 
 /** Mini-chip de rol: DEV = lo publicó el propio dev · SCOUT = encontrado por la comunidad */
 function RoleChip({ role }: { role: 'dev' | 'community' }) {

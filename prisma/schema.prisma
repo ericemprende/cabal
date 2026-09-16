@@ -363,7 +363,7 @@ model WalletLink {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id])
-  network   String // solana | ethereum | base | bsc | tron | robinhood
+  network   String // solana | ethereum | base | bsc | tron | robinhood | arc
   address   String
   label     String   @default("") // Phantom, MetaMask, manual…
   signature Boolean  @default(false)

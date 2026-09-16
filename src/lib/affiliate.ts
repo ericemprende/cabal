@@ -19,6 +19,7 @@ export const AFFILIATE_NETWORKS: NetworkKey[] = [
   'bsc',
   'tron',
   'robinhood',
+  'arc',
 ]
 
 /**
@@ -33,6 +34,7 @@ export const CHAIN_SLUGS: Record<NetworkKey, string> = {
   bsc: 'bsc',
   tron: 'tron',
   robinhood: 'robinhood',
+  arc: 'arc',
 }
 
 /** Garantiza que los presets existan (idempotente, corre una sola vez por BD vacía). */

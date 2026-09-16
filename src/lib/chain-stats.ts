@@ -52,6 +52,7 @@ const DEX_CHAIN: Record<string, string> = {
   bsc: 'bsc',
   tron: 'tron',
   robinhood: 'robinhood',
+  arc: 'arc',
 }
 
 // network id de GeckoTerminal para el OHLCV del ATH. "robinhood" SÍ es un id
@@ -67,16 +68,17 @@ const GECKO_NETWORK: Record<string, string> = {
   bsc: 'bsc',
   tron: 'tron',
   robinhood: 'robinhood',
+  arc: 'arc', // aparece en GET /networks de GeckoTerminal
 }
 
 export function isValidNetwork(network: string): boolean {
-  return ['solana', 'ethereum', 'base', 'bsc', 'tron', 'robinhood'].includes(network)
+  return ['solana', 'ethereum', 'base', 'bsc', 'tron', 'robinhood', 'arc'].includes(network)
 }
 
 /** Valida el formato del CA según la red. */
 export function isValidContract(network: string, ca: string): boolean {
   if (!ca || ca.length < 2 || ca.length > 90) return false
-  if (network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood') {
+  if (network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood' || network === 'arc') {
     return /^0x[a-fA-F0-9]{40}$/.test(ca)
   }
   // solana / tron: base58 (tron además empieza con T)

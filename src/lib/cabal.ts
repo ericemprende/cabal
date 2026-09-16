@@ -1,4 +1,4 @@
-export type NetworkKey = 'solana' | 'base' | 'ethereum' | 'bsc' | 'tron' | 'robinhood'
+export type NetworkKey = 'solana' | 'base' | 'ethereum' | 'bsc' | 'tron' | 'robinhood' | 'arc'
 
 export const NETWORKS: Record<
   NetworkKey,
@@ -10,6 +10,7 @@ export const NETWORKS: Record<
   bsc: { label: 'BNB Chain', short: 'BSC', dot: '#F0B90B' },
   tron: { label: 'Tron', short: 'TRX', dot: '#FF4D5E' },
   robinhood: { label: 'Robinhood', short: 'RH', dot: '#DFFF3F' },
+  arc: { label: 'Arc', short: 'ARC', dot: '#3D8BFF' },
 }
 
 export function networkMeta(key: string) {
@@ -27,6 +28,7 @@ export const LAUNCHPADS: Record<NetworkKey, string[]> = {
   bsc: ['Four.meme'],
   tron: ['SunPump'],
   robinhood: [],
+  arc: [],
 }
 
 export function fmtMc(n: number): string {

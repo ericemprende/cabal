@@ -9,13 +9,14 @@
 
 import type { EvmTxToSignDTO, Permit2Eip712DTO } from '@/lib/types'
 
-export type EvmNetwork = 'ethereum' | 'base' | 'bsc' | 'robinhood'
+export type EvmNetwork = 'ethereum' | 'base' | 'bsc' | 'robinhood' | 'arc'
 
 export const EVM_CHAIN_ID: Record<EvmNetwork, number> = {
   ethereum: 1,
   base: 8453,
   bsc: 56,
   robinhood: 4663,
+  arc: 5042,
 }
 
 export const EVM_EXPLORER: Record<EvmNetwork, string> = {
@@ -23,6 +24,7 @@ export const EVM_EXPLORER: Record<EvmNetwork, string> = {
   base: 'https://basescan.org',
   bsc: 'https://bscscan.com',
   robinhood: 'https://robinhoodchain.blockscout.com',
+  arc: 'https://explorer.arc.io',
 }
 
 /** Parámetros para wallet_addEthereumChain, por si MetaMask no tiene la red agregada todavía. */
@@ -56,10 +58,18 @@ const CHAIN_PARAMS: Record<EvmNetwork, Record<string, unknown>> = {
     rpcUrls: ['https://rpc.mainnet.chain.robinhood.com'],
     blockExplorerUrls: [EVM_EXPLORER.robinhood],
   },
+  arc: {
+    chainId: '0x13b2', // 5042
+    chainName: 'Arc',
+    // El gas de Arc se paga en USDC, que a nivel protocolo tiene 18 decimales.
+    nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+    rpcUrls: ['https://rpc.mainnet.arc.io'],
+    blockExplorerUrls: [EVM_EXPLORER.arc],
+  },
 }
 
 export function isEvmNetwork(network: string): network is EvmNetwork {
-  return network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood'
+  return network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood' || network === 'arc'
 }
 
 type Eip1193Provider = {

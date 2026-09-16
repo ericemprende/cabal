@@ -1,7 +1,7 @@
 /**
  * Verificación criptográfica de la posesión de una wallet.
  * - Solana (y redes base58): firma ed25519-detached con tweetnacl.
- * - EVM (ethereum/base/bsc/robinhood): personal_sign → ecrecover con ethers.
+ * - EVM (ethereum/base/bsc/robinhood/arc): personal_sign → ecrecover con ethers.
  * El mensaje debe contener la dirección; así la firma queda ligada a ella.
  */
 
@@ -20,7 +20,7 @@ export function verifyWalletSignature(
   signature: string
 ): boolean {
   try {
-    const evm = ['ethereum', 'base', 'bsc', 'robinhood'].includes(network)
+    const evm = ['ethereum', 'base', 'bsc', 'robinhood', 'arc'].includes(network)
     if (evm) {
       // EVM: recover → la dirección recuperada debe coincidir
       const recovered = verifyMessage(message, signature)

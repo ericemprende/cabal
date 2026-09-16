@@ -102,6 +102,7 @@ const NETWORK_PLACEHOLDER: Record<string, string> = {
   bsc: 'https://axiom.trade/t/{ca}/@usuario?chain=bnb',
   tron: 'https://…/token/{ca}',
   robinhood: 'https://axiom.trade/t/{ca}/@usuario?chain=robinhood',
+  arc: 'https://…/token/{ca}',
 }
 
 const RULE_LABELS: Record<string, string> = {
@@ -1287,7 +1288,7 @@ function AdminSwapFees({ enabled }: { enabled: boolean }) {
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         Comisión que cobra Cabal cuando alguien compra o vende un token sin salir de la plataforma, red por red. Solana
-        (vía Jupiter) y la compra en Ethereum/Base/BNB Chain/Robinhood Chain (vía 0x) ya están integradas; Tron queda
+        (vía Jupiter) y la compra en Ethereum/Base/BNB Chain/Robinhood Chain/Arc (vía 0x) ya están integradas; Tron queda
         lista para cuando se agregue su aggregator.
       </p>
 
@@ -1323,7 +1324,7 @@ function SwapFeeRow({ config, enabled }: { config: SwapFeeConfigDTO; enabled: bo
   // Chain) es al revés: 0x no tiene "cuenta de referido", cobra directo a
   // esta wallet (swapFeeRecipient), así que aquí SÍ hace falta que sea una
   // dirección real.
-  const isEvm = config.network === 'ethereum' || config.network === 'base' || config.network === 'bsc' || config.network === 'robinhood'
+  const isEvm = config.network === 'ethereum' || config.network === 'base' || config.network === 'bsc' || config.network === 'robinhood' || config.network === 'arc'
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
