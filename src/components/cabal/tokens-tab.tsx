@@ -18,7 +18,7 @@ const SORTS = [
   { key: 'risk', label: 'Riesgo', icon: ShieldAlert },
 ] as const
 
-const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'tron'] as const
+const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'robinhood', 'arc', 'tron'] as const
 
 export function TokensTab() {
   const [sort, setSort] = useState<string>('trending')
