@@ -5,6 +5,7 @@ import { Flame, Globe, MessageSquare, ShieldAlert, Sparkles, TrendingDown, Trend
 import { cn } from '@/lib/utils'
 import { NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
+import { ContractBuy } from '@/components/cabal/contract-buy'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, networkMeta, timeAgo } from '@/lib/cabal'
 import { useTokens } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -29,6 +30,7 @@ export function TokensTab() {
 
   return (
     <div className="space-y-3">
+      <ContractBuy />
       <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
         {SORTS.map((s) => (
           <button
