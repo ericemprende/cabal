@@ -449,7 +449,7 @@ model WaitlistEntry {
   reason      String    @default("") // "por qué quieres entrar" (texto libre)
   completed   Boolean   @default(false) // ya envió el formulario
   completedAt DateTime?
-  status      String    @default("pending") // pending | approved | rejected
+  status      String    @default("approved") // pending | approved | rejected
   shared      Boolean   @default(false) // pulsó "Compartir en X" al menos una vez
   sharedAt    DateTime?
   referredBy  String? // handle de quien lo invitó (?ref= en la landing)

@@ -116,6 +116,9 @@ export async function GET(req: NextRequest) {
         ...profile,
         ...(userId ? { userId } : {}),
         referredBy: ref,
+        // Sin revisión manual: quien se registra entra directo a la app
+        status: 'approved',
+        approvedAt: new Date(),
         ip: clientIp(req),
         userAgent: (req.headers.get('user-agent') ?? '').slice(0, 200),
       },

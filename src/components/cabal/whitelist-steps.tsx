@@ -453,16 +453,22 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
         <div className="ml-auto text-right">
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Estado</p>
           <p className={cn('text-sm font-bold', approved ? 'text-primary' : 'text-foreground')}>
-            {approved ? 'Acceso habilitado' : e.status === 'rejected' ? 'No aprobada' : 'En revisión'}
+            {approved ? 'Acceso habilitado' : 'No aprobada'}
           </p>
         </div>
       </div>
 
       <p className="mt-4 text-sm text-muted-foreground">
         {approved
-          ? 'Tu acceso está habilitado. Te escribiremos al email el día de la apertura.'
-          : 'Revisamos las solicitudes a mano y habilitamos por tandas. Comparte el post y subes en la cola.'}
+          ? 'Tu acceso está habilitado: ya puedes entrar a la app.'
+          : 'Tu solicitud no fue aprobada.'}
       </p>
+
+      {approved && (
+        <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-xl font-bold">
+          <Link href="/app">Entrar a la app</Link>
+        </Button>
+      )}
 
       {/* Recompensa por difundir */}
       {!e.shared && (
