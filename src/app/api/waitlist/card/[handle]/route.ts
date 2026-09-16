@@ -12,7 +12,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ handle: string 
   const { handle: raw } = await ctx.params
   // Formato actual: <handle>.<idioma>.jpg. Se aceptan también <handle>.jpg y
   // <handle>.png con ?l=<idioma>, que son los formatos de enlaces ya publicados.
-  const match = /^@*(\w{1,15})(?:\.(es|en))?\.(?:jpe?g|png)$/i.exec(raw)
+  const match = /^@*(\w{1,20})(?:\.(es|en))?\.(?:jpe?g|png)$/i.exec(raw)
   if (!match) {
     return NextResponse.json({ error: 'Handle inválido' }, { status: 400 })
   }

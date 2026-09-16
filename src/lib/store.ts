@@ -29,6 +29,8 @@ interface UIState {
   openAuth: (mode?: AuthMode) => void
   premiumOpen: boolean
   setPremiumOpen: (v: boolean) => void
+  welcomeShareOpen: boolean
+  setWelcomeShareOpen: (v: boolean) => void
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -55,4 +57,6 @@ export const useUI = create<UIState>((set) => ({
   openAuth: (mode) => set({ authOpen: true, ...(mode ? { authMode: mode } : {}) }),
   premiumOpen: false,
   setPremiumOpen: (premiumOpen) => set({ premiumOpen }),
+  welcomeShareOpen: false,
+  setWelcomeShareOpen: (welcomeShareOpen) => set({ welcomeShareOpen }),
 }))

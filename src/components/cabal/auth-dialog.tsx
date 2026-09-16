@@ -27,6 +27,7 @@ export function AuthDialog() {
   const { authOpen, setAuthOpen, authMode, setAuthMode } = useUI()
   const login = useLogin()
   const register = useRegister()
+  const setWelcomeShareOpen = useUI((s) => s.setWelcomeShareOpen)
   const { data: authStatus } = useAuthStatus()
   const [handle, setHandle] = useState('')
   const [name, setName] = useState('')
@@ -83,7 +84,12 @@ export function AuthDialog() {
           password,
           referralCode: referralCode.trim() || undefined,
         },
-        { onSuccess: () => close(false) }
+        {
+          onSuccess: () => {
+            close(false)
+            setWelcomeShareOpen(true)
+          },
+        }
       )
     }
   }

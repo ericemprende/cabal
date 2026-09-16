@@ -17,13 +17,14 @@ import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
+import { WelcomeShareDialog } from '@/components/cabal/welcome-share-dialog'
 import { useUI } from '@/lib/store'
 import { qk, useConfirmPremiumCheckout, useMe, usePointRules } from '@/lib/api-client'
 import { usePresenceConnection } from '@/lib/presence'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
-  const { tab, setSearchOpen, setAdminOpen } = useUI()
+  const { tab, setSearchOpen, setAdminOpen, setWelcomeShareOpen } = useUI()
   const { data: me } = useMe()
   const rules = usePointRules()
   // Un solo socket de presencia para toda la app: alimenta el puntico verde
@@ -92,6 +93,7 @@ export default function Home() {
         oauthReturn.created ? `Cuenta creada con ${prov}` : `Sesión iniciada con ${prov}`,
         { description: 'Identidad verificada · +5 puntos Cabal' }
       )
+      if (oauthReturn.created) setWelcomeShareOpen(true)
     } else if (oauthReturn.provider) {
       toast.success(
         oauthReturn.provider === 'x' ? 'Cuenta de X verificada' : 'Cuenta de Google verificada',
@@ -190,6 +192,7 @@ export default function Home() {
       <ProfileDialog />
       <AdminDialog />
       <PremiumDialog />
+      <WelcomeShareDialog />
     </div>
   )
 }
