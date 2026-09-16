@@ -140,8 +140,13 @@ export async function requireAdmin(req?: Request) {
   // La cookie va primero: sin sesión de usuario (p. ej. en incógnito)
   // getCurrentUser lanza "No current user" y todo el panel /admin daba 500.
   if (req && isAdminRequest(req)) return
-  const me = await getCurrentUser().catch(() => null)
-  if (me?.isAdmin) return
+  // Solo cuenta una sesión de usuario real: el usuario invitado/demo
+  // (isCurrentUser) no puede dar acceso de admin a cualquiera sin sesión.
+  const sessionUserId = await sessionUserIdFromCookies().catch(() => null)
+  if (sessionUserId) {
+    const me = await db.user.findUnique({ where: { id: sessionUserId }, select: { isAdmin: true } })
+    if (me?.isAdmin) return
+  }
   throw new ForbiddenError()
 }
 

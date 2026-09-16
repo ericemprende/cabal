@@ -41,7 +41,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     })
     if (!launch) return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
     // Los launches ocultos por el admin solo son visibles para admins
-    if (launch.hidden && !me.isAdmin && !isAdminRequest(req)) {
+    if (launch.hidden && !(await canEditLaunch(req, ''))) {
       return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
     }
 

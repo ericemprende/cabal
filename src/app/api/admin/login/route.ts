@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, adminCookieOptions, createSessionToken, verifyCredentials
 
 /**
  * POST /api/admin/login — inicia sesión del panel /admin.
- * Credenciales por env (demo: admin / admin123@).
+ * Credenciales por env (ADMIN_USER / ADMIN_PASSWORD).
  */
 export async function POST(req: NextRequest) {
   try {
