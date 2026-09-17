@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Crown, Info, Shield, ShieldCheck, Target, TrendingUp, Wrench, Zap } from 'lucide-react'
+import { Crown, Info, Shield, ShieldCheck, Target, TrendingUp, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct } from '@/lib/cabal'
@@ -10,13 +10,49 @@ import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
 import { useIsOnline } from '@/lib/presence'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CALL_PERIODS, LOSS_MULTIPLE, LOSS_POINTS, SCORE_TIERS, WIN_MULTIPLE, fmtMultiple, type CallPeriod } from '@/lib/call-score'
-import type { LeaderboardEntryDTO } from '@/lib/types'
+import type { CommunityDTO, LeaderboardEntryDTO } from '@/lib/types'
 
 type Board = 'callers' | 'devs' | 'points' | 'clans'
 
+/**
+ * Filtra Top Callers por comunidad: los grupos de Telegram y servidores de
+ * Discord donde está el bot. Solo aparecen los que ya han dado alguna call,
+ * así que en una instalación nueva este selector no se ve.
+ */
+function CommunityPicker({
+  communities,
+  value,
+  onChange,
+}: {
+  communities: CommunityDTO[]
+  value: string | null
+  onChange: (v: string | null) => void
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+      <Users className="h-3.5 w-3.5" aria-hidden />
+      <span className="sr-only">Comunidad</span>
+      <select
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value || null)}
+        className="rounded-full border border-white/10 bg-[#121410] px-2.5 py-1 text-[11px] font-bold text-foreground"
+      >
+        <option value="">Todo Cabal</option>
+        {communities.map((c) => (
+          <option key={c.key} value={c.key}>
+            {c.label} ({c.calls})
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function LeaderboardTab() {
   const [period, setPeriod] = useState<CallPeriod>('7d')
-  const { data, isLoading } = useLeaderboard(period)
+  // null = todo Cabal; una clave = solo las calls nacidas en ese grupo/servidor
+  const [community, setCommunity] = useState<string | null>(null)
+  const { data, isLoading } = useLeaderboard(period, community)
   const [board, setBoard] = useState<Board>('callers')
 
   return (
@@ -66,6 +102,13 @@ export function LeaderboardTab() {
             ))}
           </div>
           <ScoreHelp />
+          {!!data?.communities.length && (
+            <CommunityPicker
+              communities={data.communities}
+              value={community}
+              onChange={setCommunity}
+            />
+          )}
         </div>
       )}
 

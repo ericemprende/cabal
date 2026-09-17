@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { CHAT_PREFS, toChatLinkDTO } from '@/lib/chat-links'
 import { isLang } from '@/lib/bot-i18n'
+import { isReminderLead } from '@/lib/notify-types'
 
 async function ownChat(id: string) {
   const userId = await sessionUserIdFromCookies()
@@ -14,16 +15,17 @@ async function ownChat(id: string) {
   return { chat }
 }
 
-/** PATCH /api/me/chats/:id — { notifyLaunches?, notifyReminders?, notifyTheses?, lang?: 'es' | 'en' } */
+/** PATCH /api/me/chats/:id — { notifyLaunches?, notifyReminders?, notifyTheses?, lang?, reminderLeadMin? } */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const { chat, error } = await ownChat(id)
     if (!chat) return error
     const body = await req.json().catch(() => ({}))
-    const data: Record<string, boolean | string> = {}
+    const data: Record<string, boolean | string | number> = {}
     for (const k of CHAT_PREFS) if (typeof body[k] === 'boolean') data[k] = body[k]
     if (isLang(body.lang)) data.lang = body.lang
+    if (isReminderLead(body.reminderLeadMin)) data.reminderLeadMin = body.reminderLeadMin
     if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nada que cambiar' }, { status: 400 })
     const updated = await db.chatLink.update({ where: { id: chat.id }, data })
     return NextResponse.json(toChatLinkDTO(updated))

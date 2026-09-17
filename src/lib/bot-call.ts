@@ -4,33 +4,54 @@ import { invalidate } from '@/lib/cache'
 import { rateLimit } from '@/lib/rate-limit'
 import { networkMeta } from '@/lib/cabal'
 import { siteUrl } from '@/lib/waitlist'
-import { fetchCallSnapshot, isValidContract } from '@/lib/chain-stats'
+import { fetchCallResult, fetchCallSnapshot, isValidContract } from '@/lib/chain-stats'
 import { parseAffiliateLinks, platformLinkFor } from '@/lib/affiliate'
 import { userLink } from '@/lib/notifications'
+import { chatLinkIdsOf, communityKeyOf } from '@/lib/bot-community'
 import { esc, type BotButton, type BotMessage, type BotProvider } from '@/lib/bot-message'
 import { t, type Lang } from '@/lib/bot-i18n'
+import { fmtMultiple } from '@/lib/call-score'
 
 /**
- * El comando /call de los bots: publicar una call de token desde Telegram o
- * Discord y que salga en Cabal como cualquier otra (feed, perfil del autor y
- * ranking de Top Callers).
+ * Contratos que llegan desde Telegram o Discord: la ficha del token y, cuando
+ * toca, la call publicada en Cabal.
  *
- * Es la misma call que se publica desde la web (Post kind="call"): se guarda el
- * precio y el market cap del instante exacto, que es lo que luego compara
- * lib/call-results para sacar el multiplicador. Por eso aquí no se inventa nada
- * nuevo, solo se entra por otra puerta.
+ * Dos puertas, una sola lógica:
+ *   - `command`: alguien escribió /call <CA>. Si algo falla, se le dice.
+ *   - `pasted`:  alguien pegó un CA suelto en el chat. La ficha se enseña a
+ *                todos, pero un CA que no es un token no genera ruido: se
+ *                calla. Requiere que el bot pueda leer los mensajes del grupo
+ *                (en Telegram, /setprivacy → Disable en BotFather).
  *
- * Para publicar hace falta que quien escribe tenga SU cuenta de Cabal conectada
- * (su chat privado con el bot). No vale la cuenta de quien conectó el grupo: la
- * call cuenta para el Cabal Score de quien la da, así que tiene que ser suya.
+ * La call que se crea es la misma que la de la web (Post kind="call"), con su
+ * precio y MC de entrada, así que cuenta para el Cabal Score, el ranking de
+ * Top Callers y el perfil de quien la dio.
  *
- * La respuesta del bot lleva los datos del token y los botones de compra de las
- * plataformas afiliadas, que son los mismos enlaces con referido que la web.
+ * Regla de "primera call": dentro de una comunidad, un token se llama una vez.
+ * Si ya lo llamó alguien allí, se enseña la ficha con quién fue y a qué MC,
+ * pero no se crea otra call — si no, el ranking se llenaría de repeticiones
+ * del mismo token. En el privado con el bot no aplica: ahí no hay comunidad.
  */
 
-export type CallOutcome =
-  | { ok: true; message: BotMessage }
-  | { ok: false; message: BotMessage }
+export type CallOutcome = {
+  /** Se creó una call nueva en Cabal. */
+  created: boolean
+  /** El mensaje interesa a todo el chat (la ficha), no solo a quien escribió. */
+  broadcast: boolean
+  /** null = no hay nada que decir (un CA que no es ningún token). */
+  message: BotMessage | null
+}
+
+/** El chat desde el que llega el contrato, tal y como está en la BD. */
+export type SourceChat = {
+  id: string
+  provider: string
+  chatId: string
+  serverId: string | null
+  chatType: string
+}
+
+const silent: CallOutcome = { created: false, broadcast: false, message: null }
 
 /** Cuenta de Cabal de quien escribe, por su chat privado con el bot. */
 export async function cabalUserForActor(provider: BotProvider, externalUserId: string | null) {
@@ -42,36 +63,68 @@ export async function cabalUserForActor(provider: BotProvider, externalUserId: s
   return link?.user ?? null
 }
 
-/**
- * Publica la call y devuelve el mensaje que contesta el bot. Nunca lanza por
- * un token que no existe o un CA mal escrito: eso se responde como texto.
- */
-export async function createCallFromBot(input: {
+export async function handleContractFromBot(input: {
   provider: BotProvider
   actorId: string | null
+  chat: SourceChat | null
   contract: string
   note: string
   lang: Lang
+  mode: 'command' | 'pasted'
 }): Promise<CallOutcome> {
   const tx = t(input.lang)
   const contract = input.contract.trim()
+  const fail = (text: string): CallOutcome =>
+    input.mode === 'pasted' ? silent : { created: false, broadcast: false, message: { text } }
 
-  const user = await cabalUserForActor(input.provider, input.actorId)
-  if (!user) return { ok: false, message: { text: tx.callNeedsAccount(`${siteUrl()}/app`, input.provider) } }
-
-  // El mismo límite que en la web, para que el bot no sea la puerta de atrás
-  const limit = await rateLimit(`post:${user.id}`, 10, 60)
-  if (!limit.ok) return { ok: false, message: { text: tx.callTooFast } }
-
-  // Sin red no se puede validar el formato: se acepta cualquiera de las conocidas
-  if (!ANY_NETWORK.some((n) => isValidContract(n, contract))) {
-    return { ok: false, message: { text: tx.callBadContract } }
-  }
+  if (!looksLikeContract(contract)) return fail(tx.callBadContract)
 
   // Una sola consulta: DexScreener dice en qué red vive el token (el usuario
   // solo pega el CA) y de paso da el precio y el MC de la entrada
   const snap = await fetchCallSnapshot(contract)
-  if (!snap.found) return { ok: false, message: { text: tx.callTokenNotFound } }
+  if (!snap.found) return fail(tx.callTokenNotFound)
+
+  const token = {
+    contract,
+    network: snap.network,
+    name: snap.name,
+    symbol: snap.symbol,
+    priceUsd: snap.priceUsd,
+    mc: snap.mc,
+    liquidityUsd: snap.liquidityUsd,
+    change24h: snap.change24h,
+  }
+
+  // Sin cuenta conectada no hay call, pero la ficha se enseña igual: es la
+  // forma de que alguien descubra que puede conectar la suya.
+  const user = await cabalUserForActor(input.provider, input.actorId)
+  if (!user) {
+    if (input.mode === 'command') {
+      return { created: false, broadcast: false, message: { text: tx.callNeedsAccount(`${siteUrl()}/app`, input.provider) } }
+    }
+    return {
+      created: false,
+      broadcast: true,
+      message: await tokenCard(token, input.lang, { footer: tx.callConnectHint(`${siteUrl()}/app`, input.provider) }),
+    }
+  }
+
+  // "Primera call": en una comunidad el token se llama una vez
+  const previous = await firstCallInCommunity(input.chat, contract)
+  if (previous) {
+    return {
+      created: false,
+      broadcast: true,
+      message: await tokenCard(token, input.lang, {
+        footer: tx.callFirstBy(userLink(previous.user.handle), previous.entryMc),
+        postId: previous.id,
+      }),
+    }
+  }
+
+  // El mismo límite que en la web, para que el bot no sea la puerta de atrás
+  const limit = await rateLimit(`post:${user.id}`, 10, 60)
+  if (!limit.ok) return fail(tx.callTooFast)
 
   const post = await db.post.create({
     data: {
@@ -82,6 +135,7 @@ export async function createCallFromBot(input: {
       network: snap.network,
       entryPriceUsd: snap.priceUsd,
       entryMc: snap.mc,
+      chatLinkId: input.chat?.id ?? null,
     },
   })
   // Los puntos son los mismos que en la web: una call puntúa como comentario
@@ -89,20 +143,13 @@ export async function createCallFromBot(input: {
   await invalidate('feed:*')
 
   return {
-    ok: true,
-    message: await callMessage({
-      handle: user.handle,
-      postId: post.id,
-      contract,
-      network: snap.network,
-      name: snap.name,
-      symbol: snap.symbol,
-      priceUsd: snap.priceUsd,
-      mc: snap.mc,
-      liquidityUsd: snap.liquidityUsd,
-      change24h: snap.change24h,
+    created: true,
+    broadcast: true,
+    message: await tokenCard(token, input.lang, {
+      head: tx.callHead(userLink(user.handle)),
       note: input.note.trim(),
-      lang: input.lang,
+      footer: tx.callEntrySaved,
+      postId: post.id,
     }),
   }
 }
@@ -110,15 +157,34 @@ export async function createCallFromBot(input: {
 /** Redes contra las que se prueba el formato del CA cuando no se sabe cuál es. */
 const ANY_NETWORK = ['solana', 'ethereum', 'tron'] as const
 
+export function looksLikeContract(v: string): boolean {
+  return ANY_NETWORK.some((n) => isValidContract(n, v))
+}
+
 function defaultNote(symbol: string): string {
   return symbol ? `Call de $${symbol}` : 'Call'
 }
 
-// ---------- Mensaje ----------
+/**
+ * La primera call de ese token en la comunidad del chat, si la hay. En un
+ * privado siempre devuelve null: un DM no es comunidad de nadie.
+ */
+async function firstCallInCommunity(chat: SourceChat | null, contract: string) {
+  if (!chat) return null
+  const key = communityKeyOf(chat)
+  if (!key) return null
+  const scope = await chatLinkIdsOf(key)
+  if (scope.length === 0) return null
+  return db.post.findFirst({
+    where: { kind: 'call', contract, chatLinkId: { in: scope } },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, entryMc: true, user: { select: { handle: true } } },
+  })
+}
 
-async function callMessage(c: {
-  handle: string
-  postId: string
+// ---------- Ficha del token ----------
+
+type TokenInfo = {
   contract: string
   network: string
   name: string
@@ -127,32 +193,39 @@ async function callMessage(c: {
   mc: number | null
   liquidityUsd: number | null
   change24h: number | null
-  note: string
-  lang: Lang
-}): Promise<BotMessage> {
-  const tx = t(c.lang)
-  const label = c.symbol ? `$${esc(c.symbol)}${c.name ? ` · ${esc(c.name)}` : ''}` : esc(c.name || c.contract)
-  const lines = [
-    tx.callHead(userLink(c.handle)),
-    '',
-    `<b>${label}</b> · ${esc(networkMeta(c.network).label)}`,
-  ]
+}
+
+async function tokenCard(
+  token: TokenInfo,
+  lang: Lang,
+  extra: { head?: string; note?: string; footer?: string; postId?: string }
+): Promise<BotMessage> {
+  const tx = t(lang)
+  const label = token.symbol
+    ? `$${esc(token.symbol)}${token.name ? ` · ${esc(token.name)}` : ''}`
+    : esc(token.name || token.contract)
+
+  const lines: string[] = []
+  if (extra.head) lines.push(extra.head, '')
+  lines.push(`<b>${label}</b> · ${esc(networkMeta(token.network).label)}`)
+
   const facts = [
-    c.priceUsd !== null ? `💵 ${fmtPrice(c.priceUsd)}` : null,
-    c.mc !== null ? `📊 MC ${fmtUsd(c.mc)}` : null,
-    c.liquidityUsd !== null ? `💧 ${tx.liquidity} ${fmtUsd(c.liquidityUsd)}` : null,
-    c.change24h !== null ? `${c.change24h >= 0 ? '📈' : '📉'} 24h ${fmtPct(c.change24h)}` : null,
+    token.priceUsd !== null ? `💵 ${fmtPrice(token.priceUsd)}` : null,
+    token.mc !== null ? `📊 MC ${fmtUsd(token.mc)}` : null,
+    token.liquidityUsd !== null ? `💧 ${tx.liquidity} ${fmtUsd(token.liquidityUsd)}` : null,
+    token.change24h !== null ? `${token.change24h >= 0 ? '📈' : '📉'} 24h ${fmtPct(token.change24h)}` : null,
   ].filter(Boolean)
   if (facts.length) lines.push(facts.join(' · '))
-  if (c.note) lines.push('', esc(c.note.slice(0, 600)))
-  lines.push('', `<code>${esc(c.contract)}</code>`)
-  lines.push('', tx.callEntrySaved)
 
-  return { text: lines.join('\n'), buttons: await callButtons(c.network, c.contract, c.postId, c.lang) }
+  if (extra.note) lines.push('', esc(extra.note.slice(0, 600)))
+  lines.push('', `<code>${esc(token.contract)}</code>`)
+  if (extra.footer) lines.push('', extra.footer)
+
+  return { text: lines.join('\n'), buttons: await tokenButtons(token, lang, extra.postId) }
 }
 
 /** Botones de compra de las plataformas afiliadas + ver la call en Cabal. */
-async function callButtons(network: string, contract: string, postId: string, lang: Lang): Promise<BotButton[][]> {
+async function tokenButtons(token: TokenInfo, lang: Lang, postId?: string): Promise<BotButton[][]> {
   const tx = t(lang)
   const platforms = await db.affiliatePlatform
     .findMany({
@@ -163,14 +236,14 @@ async function callButtons(network: string, contract: string, postId: string, la
 
   const buys: BotButton[] = []
   for (const p of platforms) {
-    const url = platformLinkFor({ url: p.url, links: parseAffiliateLinks(p.links) }, network, contract)
+    const url = platformLinkFor({ url: p.url, links: parseAffiliateLinks(p.links) }, token.network, token.contract)
     // Máximo 6 plataformas: más botones que eso tapan el mensaje
     if (url && buys.length < 6) buys.push({ text: p.name, url })
   }
 
   const rows: BotButton[][] = []
   for (let i = 0; i < buys.length; i += 2) rows.push(buys.slice(i, i + 2))
-  rows.push([{ text: tx.viewCallOnCabal, url: callUrl(postId) }])
+  rows.push([{ text: postId ? tx.viewCallOnCabal : tx.openCabal, url: postId ? callUrl(postId) : `${siteUrl()}/app` }])
   return rows
 }
 
@@ -179,9 +252,63 @@ export function callUrl(postId: string): string {
   return `${siteUrl()}/app?post=${encodeURIComponent(postId)}`
 }
 
+/** Imagen con el resultado de la call, la misma que se descarga desde la web. */
+export function callCardUrl(postId: string): string {
+  return `${siteUrl()}/api/posts/${encodeURIComponent(postId)}/card`
+}
+
+// ---------- /pnl ----------
+
+/**
+ * La tarjeta de resultado de una call propia: /pnl <CA> devuelve cómo va la
+ * call que esa persona dio de ese token. Si dio varias del mismo token, la más
+ * reciente. La imagen la genera /api/posts/[id]/card, que ya existía para
+ * compartir resultados desde la web.
+ */
+export async function pnlMessage(input: {
+  provider: BotProvider
+  actorId: string | null
+  contract: string
+  lang: Lang
+}): Promise<BotMessage> {
+  const tx = t(input.lang)
+  const contract = input.contract.trim()
+  if (!looksLikeContract(contract)) return { text: tx.callBadContract }
+
+  const user = await cabalUserForActor(input.provider, input.actorId)
+  if (!user) return { text: tx.callNeedsAccount(`${siteUrl()}/app`, input.provider) }
+
+  const post = await db.post.findFirst({
+    where: { kind: 'call', userId: user.id, contract },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, network: true, contract: true, createdAt: true, entryPriceUsd: true, entryMc: true },
+  })
+  if (!post?.contract || !post.network) return { text: tx.pnlNoCall }
+
+  const result = await fetchCallResult(post.network, post.contract, post.createdAt, {
+    priceUsd: post.entryPriceUsd,
+    mc: post.entryMc,
+  })
+
+  const symbol = result.symbol ? `$${esc(result.symbol)}` : esc(contract.slice(0, 8))
+  const lines = [
+    tx.pnlHead(userLink(user.handle), symbol),
+    `${tx.pnlEntry} ${result.entryMc !== null ? fmtUsd(result.entryMc) : '—'} → ${
+      result.currentMc !== null ? fmtUsd(result.currentMc) : '—'
+    } · <b>${fmtMultiple(result.multiple)}</b>`,
+    `${tx.pnlPeak} <b>${fmtMultiple(result.peakMultiple)}</b>${result.peakMc !== null ? ` (${fmtUsd(result.peakMc)})` : ''}`,
+  ]
+
+  return {
+    text: lines.join('\n'),
+    image: callCardUrl(post.id),
+    buttons: [[{ text: tx.viewCallOnCabal, url: callUrl(post.id) }]],
+  }
+}
+
 // ---------- Formato ----------
 
-function fmtUsd(n: number): string {
+export function fmtUsd(n: number): string {
   if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(2)}B`
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`

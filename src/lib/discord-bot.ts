@@ -1,12 +1,14 @@
 import { db } from '@/lib/db'
-import { CHAT_PREFS, consumeLinkCode, upsertChatLink, type ChatPref } from '@/lib/chat-links'
+import { CHAT_PREFS, consumeLinkCode, setChatLead, upsertChatLink, type ChatPref } from '@/lib/chat-links'
 import { languageButtons, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
 import { siteUrl } from '@/lib/waitlist'
 import { userLink } from '@/lib/notifications'
-import { createCallFromBot } from '@/lib/bot-call'
+import { handleContractFromBot, pnlMessage } from '@/lib/bot-call'
+import { leaderboardMessage } from '@/lib/bot-leaderboard'
 import { dcCall, editInteractionReply, toDiscordPayload, type DiscordConfig } from '@/lib/discord'
 import { esc, type BotMessage } from '@/lib/bot-message'
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
+import { isReminderLead } from '@/lib/notify-types'
 
 /**
  * Qué hace el bot de Discord con cada interacción que llega al endpoint.
@@ -18,6 +20,8 @@ import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
  *  /language       español / inglés
  *  /upcoming       los próximos lanzamientos (visible para todo el canal)
  *  /call <CA>      publica una call de token en Cabal
+ *  /pnl <CA>       tarjeta con el resultado de tu call de ese token
+ *  /leaderboard    ranking del servidor (o de Cabal, en privado)
  *  /unlink         deja de mandar avisos a este chat
  *  /help
  *
@@ -115,7 +119,28 @@ async function onCommand(cfg: DiscordConfig, i: DcInteraction): Promise<DcRespon
       if (!contract) return say(tx.callUsage)
       // Publicar la call consulta DexScreener y Discord corta a los 3 segundos:
       // se acusa recibo ya y el mensaje de verdad se manda al terminar.
-      void finishCall(cfg, i, contract, optionValue(i, 'note') ?? '', lang)
+      void deferred(cfg, i, lang, () =>
+        handleContractFromBot({
+          provider: 'discord',
+          actorId: actorId(i),
+          chat,
+          contract,
+          note: optionValue(i, 'note') ?? '',
+          lang,
+          mode: 'command',
+        }).then((r) => r.message)
+      )
+      return { type: DEFERRED_MESSAGE }
+    }
+    case 'pnl': {
+      const contract = optionValue(i, 'contract')
+      if (!contract) return say(tx.pnlUsage)
+      // La tarjeta se calcula contra DexScreener: tambien en diferido
+      void deferred(cfg, i, lang, () => pnlMessage({ provider: 'discord', actorId: actorId(i), contract, lang }))
+      return { type: DEFERRED_MESSAGE }
+    }
+    case 'leaderboard': {
+      void deferred(cfg, i, lang, () => leaderboardMessage(chat, optionValue(i, 'period'), lang))
       return { type: DEFERRED_MESSAGE }
     }
     case 'unlink':
@@ -161,16 +186,21 @@ async function link(cfg: DiscordConfig, i: DcInteraction, code: string, lang: La
 }
 
 /**
- * Segunda mitad del /call: se ejecuta después de haber contestado el tipo 5 y
- * reescribe ese mensaje con el resultado. Se llama sin await a propósito, así
- * que se traga sus propios errores: aquí ya nadie los recogería.
+ * Segunda mitad de los comandos lentos: se ejecuta después de haber contestado
+ * el tipo 5 y reescribe ese mensaje con el resultado. Se llama sin await a
+ * propósito, así que se traga sus propios errores: aquí ya nadie los recogería.
  */
-async function finishCall(cfg: DiscordConfig, i: DcInteraction, contract: string, note: string, lang: Lang) {
+async function deferred(
+  cfg: DiscordConfig,
+  i: DcInteraction,
+  lang: Lang,
+  work: () => Promise<BotMessage | null>
+) {
   try {
-    const { message } = await createCallFromBot({ provider: 'discord', actorId: actorId(i), contract, note, lang })
-    await editInteractionReply(cfg.appId, i.token, message)
+    const message = await work()
+    await editInteractionReply(cfg.appId, i.token, message ?? { text: t(lang).callFailed })
   } catch (e) {
-    console.error('[discord] /call', (e as Error).message)
+    console.error(`[discord] /${i.data?.name}`, (e as Error).message)
     await editInteractionReply(cfg.appId, i.token, { text: t(lang).callFailed }).catch(() => {})
   }
 }
@@ -193,6 +223,16 @@ async function onComponent(cfg: DiscordConfig, i: DcInteraction): Promise<DcResp
     return chat
       ? update({ text: tx.settingsTitle, buttons: settingsButtons(chat, value) })
       : update(welcomeMessage(chatTypeOf(i) === 'private', 'discord', value))
+  }
+
+  if (kind === 'lead') {
+    const minutes = Number(value)
+    const tx = t(lang)
+    if (!chat) return say(tx.noLongerLinked)
+    if (!isReminderLead(minutes)) return say('…')
+    if (!canManage(chat, i)) return say(tx.onlyAdminChanges)
+    await setChatLead(chat, minutes)
+    return update({ text: tx.settingsTitle, buttons: settingsButtons({ ...chat, reminderLeadMin: minutes }, lang) })
   }
 
   const pref = kind === 'pref' ? (value as ChatPref) : null

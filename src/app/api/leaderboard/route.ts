@@ -5,6 +5,7 @@ import { cached, CACHE_TTL } from '@/lib/cache'
 import { toPublicUserDTO } from '@/lib/serializers'
 import { parsePeriod } from '@/lib/call-score'
 import { kickCallResultsSync, rankCallers } from '@/lib/call-results'
+import { chatLinkIdsOf, listCommunities, parseCommunityKey } from '@/lib/bot-community'
 import type { ClanDTO, LeaderboardDTO, LeaderboardEntryDTO } from '@/lib/types'
 
 const CLANS: ClanDTO[] = [
@@ -15,10 +16,18 @@ const CLANS: ClanDTO[] = [
   { id: 'c5', name: 'Solana Sharks', emoji: '🦈', members: 87, score: 990000, trend: 5.5, tag: 'SHRK' },
 ]
 
-// GET /api/leaderboard?period=24h|7d|30d|all — el periodo solo afecta a Top Callers
+/**
+ * GET /api/leaderboard?period=24h|7d|30d|all&community=<clave>
+ *
+ * El periodo y la comunidad solo afectan a Top Callers. Con `community` el
+ * ranking se limita a las calls nacidas en ese grupo o servidor (ver
+ * lib/bot-community); sin ella, sale el de todo Cabal.
+ */
 export async function GET(req: Request) {
   try {
-    const period = parsePeriod(new URL(req.url).searchParams.get('period'))
+    const params = new URL(req.url).searchParams
+    const period = parsePeriod(params.get('period'))
+    const community = parseCommunityKey(params.get('community')) ? params.get('community') : null
     // Mantiene al día los resultados de las calls sin hacer esperar a nadie
     kickCallResultsSync()
 
@@ -30,7 +39,9 @@ export async function GET(req: Request) {
       cached('leaderboard:users', CACHE_TTL.leaderboard, () =>
         db.user.findMany({ orderBy: { points: 'desc' } }),
       ),
-      cached(`leaderboard:callers:${period}`, 60, () => rankCallers(period)),
+      cached(`leaderboard:callers:${period}:${community ?? 'all'}`, 60, async () =>
+        rankCallers(period, community ? await chatLinkIdsOf(community) : undefined)
+      ),
       viewerId ? db.follow.findMany({ where: { userId: viewerId } }) : Promise.resolve([]),
     ])
     const followedIds = new Set(follows.map((f) => f.targetId))
@@ -65,7 +76,16 @@ export async function GET(req: Request) {
         metric: u.points,
       }))
 
-    const dto: LeaderboardDTO = { period, callers, devs, points, clans: CLANS }
+    const communities = await cached('leaderboard:communities', 300, listCommunities)
+    const dto: LeaderboardDTO = {
+      period,
+      community,
+      communities: communities.map((c) => ({ key: c.key, label: c.label, provider: c.provider, calls: c.calls })),
+      callers,
+      devs,
+      points,
+      clans: CLANS,
+    }
     return NextResponse.json(dto)
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

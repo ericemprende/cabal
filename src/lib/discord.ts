@@ -134,17 +134,29 @@ const opt = (name: string, en: string, es: string, required: boolean) => ({
 
 const CODE_OPT = opt('code', 'The code from Cabal → your profile → Discord', 'El código de Cabal → tu perfil → Discord', true)
 
+/** Los periodos del leaderboard, como lista cerrada para que Discord los sugiera. */
+const PERIOD_CHOICES = [
+  { name: '24h', value: '24h' },
+  { name: '7 days / 7 días', value: '7d' },
+  { name: '30 days / 30 días', value: '30d' },
+  { name: 'All time / Todo', value: 'all' },
+]
+
 /**
  * Argumentos de cada comando. En Telegram se escriben detrás del comando; aquí
  * Discord los pide como campos, así que hay que declararlos.
  */
-const COMMAND_OPTIONS: Record<string, ReturnType<typeof opt>[]> = {
+const COMMAND_OPTIONS: Record<string, Record<string, unknown>[]> = {
   // Sin código, /start solo saluda: por eso el suyo no es obligatorio
   start: [{ ...CODE_OPT, required: false }],
   link: [CODE_OPT],
   call: [
     opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true),
     opt('note', 'Your thesis about the token (optional)', 'Tu tesis sobre el token (opcional)', false),
+  ],
+  pnl: [opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true)],
+  leaderboard: [
+    { ...opt('period', 'Period: 24h, 7d, 30d or all', 'Periodo: 24h, 7d, 30d o all', false), choices: PERIOD_CHOICES },
   ],
 }
 
@@ -256,13 +268,14 @@ export async function openDmChannel(token: string, userId: string): Promise<stri
  * botones de enlace (estilo 5) y los de `callback_data` botones normales cuyo
  * custom_id atiende /api/discord/interactions.
  */
-export function toDiscordPayload(msg: BotMessage): { content: string; components?: unknown[] } {
+export function toDiscordPayload(msg: BotMessage): { content: string; components?: unknown[]; embeds?: unknown[] } {
   const rows = (msg.buttons ?? [])
     .map((row) => row.slice(0, 5).map(toComponent).filter(Boolean))
     .filter((row) => row.length > 0)
     .slice(0, 5)
   return {
     content: htmlToMarkdown(msg.text).slice(0, 2000),
+    ...(msg.image ? { embeds: [{ image: { url: msg.image } }] } : {}),
     ...(rows.length ? { components: rows.map((components) => ({ type: 1, components })) } : {}),
   }
 }

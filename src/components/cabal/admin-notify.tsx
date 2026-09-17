@@ -24,7 +24,7 @@ import type { AdminBotDTO, BotProviderName } from '@/lib/notify-types'
 
 const DISPATCH_LABEL: Record<string, string> = {
   'launch:new': 'Launch nuevo',
-  'launch:soon': 'Recordatorio 1 h',
+  'launch:soon': 'Recordatorio',
   post: 'Tesis',
 }
 
@@ -45,7 +45,7 @@ export function AdminNotify({ enabled }: { enabled: boolean }) {
   return (
     <div className="space-y-4">
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Los bots avisan a los usuarios de la campanita (1 hora antes del lanzamiento) y difunden lanzamientos,
+        Los bots avisan a los usuarios de la campanita (con la antelación que cada uno elija) y difunden lanzamientos,
         recordatorios y tesis en los chats, grupos, canales y servidores que la gente conecta desde su perfil.
       </p>
 
@@ -170,6 +170,18 @@ export function AdminNotify({ enabled }: { enabled: boolean }) {
               valida con una petición firmada antes de aceptarla; no se puede registrar por API.
             </p>
             <CopyLine value={dc.interactionsUrl} />
+            <p className="mt-2 flex items-center gap-1.5 font-semibold">
+              {dc.gateway.connected ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden />
+              ) : (
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-300" aria-hidden />
+              )}
+              Lectura de contratos pegados: {dc.gateway.connected ? 'conectada' : 'sin conectar'}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {dc.gateway.error ??
+                'Necesita el permiso «Message Content» en Developer Portal → tu aplicación → Bot → Privileged Gateway Intents. Tarda hasta un minuto en levantarse tras conectar el bot.'}
+            </p>
           </div>
         }
       />

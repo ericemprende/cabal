@@ -7,6 +7,7 @@ import { dcSend, discordConfig, DiscordApiError } from '@/lib/discord'
 import { esc, type BotMessage, type BotProvider } from '@/lib/bot-message'
 import type { ChatLink } from '@prisma/client'
 import { t, type Lang } from '@/lib/bot-i18n'
+import { DEFAULT_REMINDER_LEAD } from '@/lib/notify-types'
 
 /**
  * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
@@ -32,7 +33,8 @@ import { t, type Lang } from '@/lib/bot-i18n'
  * segundos y también se puede lanzar a mano desde el panel admin.
  */
 
-export const REMINDER_LEAD_MIN = 60
+/** Antelación por defecto; cada usuario y cada grupo puede cambiar la suya. */
+export const REMINDER_LEAD_MIN = DEFAULT_REMINDER_LEAD
 /** Espera antes de difundir algo recién publicado: da margen a borrarlo u ocultarlo. */
 const PUBLISH_GRACE_MS = 60_000
 /** Nunca se difunde nada publicado hace más de esto (worker caído mucho rato). */
@@ -151,23 +153,63 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
 
 // ---------- 3. Recordatorios ----------
 
+/**
+ * Las antelaciones que alguien está usando ahora mismo. Solo esas se recorren:
+ * si nadie ha pedido 5 minutos, no se hace esa pasada.
+ */
+async function leadsInUse(): Promise<number[]> {
+  const [users, chats] = await Promise.all([
+    db.user.findMany({
+      where: { launchReminders: { some: {} } },
+      select: { reminderLeadMin: true },
+      distinct: ['reminderLeadMin'],
+    }),
+    db.chatLink.findMany({
+      where: { active: true, notifyReminders: true },
+      select: { reminderLeadMin: true },
+      distinct: ['reminderLeadMin'],
+    }),
+  ])
+  return [...new Set([...users, ...chats].map((x) => x.reminderLeadMin))].sort((a, b) => b - a)
+}
+
 async function sendReminders(senders: Senders, r: TickResult) {
+  for (const lead of await leadsInUse()) {
+    await sendRemindersForLead(senders, r, lead)
+  }
+}
+
+/**
+ * Los avisos de una antelación concreta. Cada antelación tiene su propia clave
+ * de reserva, así que un mismo launch puede avisar a los 60 minutos a un grupo
+ * y a los 5 a quien lo pidió, sin pisarse.
+ *
+ * La de 60 conserva la clave antigua (sin sufijo) porque es la que tenía todo
+ * el mundo antes de poder elegir: si cambiara, al desplegar se reavisaría de
+ * los launches que ya se habían avisado.
+ */
+async function sendRemindersForLead(senders: Senders, r: TickResult, lead: number) {
   const now = Date.now()
   const providers = providersOf(senders)
   const launches = await db.launch.findMany({
-    where: { hidden: false, launchAt: { gt: new Date(now), lte: new Date(now + REMINDER_LEAD_MIN * 60_000) } },
+    where: { hidden: false, launchAt: { gt: new Date(now), lte: new Date(now + lead * 60_000) } },
     include: { createdBy: { select: { handle: true } } },
   })
-  const keyOf = (l: { id: string; launchAt: Date }) => `launch:soon:${l.id}:${l.launchAt.getTime()}`
+  const suffix = lead === DEFAULT_REMINDER_LEAD ? '' : `:${lead}m`
+  const keyOf = (l: { id: string; launchAt: Date }) => `launch:soon:${l.id}:${l.launchAt.getTime()}${suffix}`
   const pending = await notDispatched(launches.map(keyOf))
   const mail = emailConfig() !== null || process.env.NODE_ENV !== 'production'
 
   for (const l of launches) {
     const key = keyOf(l)
     if (!pending.has(key)) continue
-    const bellUserIds = (await db.launchReminder.findMany({ where: { launchId: l.id }, select: { userId: true } })).map(
-      (x) => x.userId
-    )
+    // Solo quien haya pedido justo esta antelación
+    const bellUserIds = (
+      await db.launchReminder.findMany({
+        where: { launchId: l.id, user: { reminderLeadMin: lead } },
+        select: { userId: true },
+      })
+    ).map((x) => x.userId)
     // Sin ningún bot ni correo no se reserva: se avisará cuando alguno esté listo (si aún da tiempo)
     if (providers.length === 0 && !(mail && bellUserIds.length)) continue
     if (!(await reserve(key))) continue
@@ -185,8 +227,17 @@ async function sendReminders(senders: Senders, r: TickResult) {
         sent += await broadcast(senders, privates, (lang) => launchMessage(l, 'bell', lang, minutes))
         privates.forEach((c) => alreadySent.add(c.id))
       }
+      // En un privado manda la antelación del usuario; en un grupo, la del grupo
       const chats = await db.chatLink.findMany({
-        where: { provider: { in: providers }, active: true, notifyReminders: true },
+        where: {
+          provider: { in: providers },
+          active: true,
+          notifyReminders: true,
+          OR: [
+            { chatType: { not: 'private' }, reminderLeadMin: lead },
+            { chatType: 'private', user: { reminderLeadMin: lead } },
+          ],
+        },
       })
       sent += await broadcast(
         senders,

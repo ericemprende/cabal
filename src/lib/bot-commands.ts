@@ -4,6 +4,7 @@ import { fmtLaunchDate, launchUrl } from '@/lib/notifications'
 import { esc, type BotButton, type BotMessage, type BotProvider } from '@/lib/bot-message'
 import { CHAT_PREFS, type ChatPref } from '@/lib/chat-links'
 import { LANGS, LANG_NAMES, t, type Lang } from '@/lib/bot-i18n'
+import { REMINDER_LEADS, leadLabel } from '@/lib/notify-types'
 
 /**
  * Las respuestas que son iguales en Telegram y en Discord: el saludo, los
@@ -11,12 +12,24 @@ import { LANGS, LANG_NAMES, t, type Lang } from '@/lib/bot-i18n'
  * solo de recibir el comando y de pintar el resultado con su API.
  */
 
-export function settingsButtons(chat: Record<ChatPref, boolean>, lang: Lang): BotButton[][] {
+export function settingsButtons(
+  chat: Record<ChatPref, boolean> & { reminderLeadMin: number },
+  lang: Lang
+): BotButton[][] {
   const tx = t(lang)
   return [
     ...CHAT_PREFS.map((p) => [{ text: `${chat[p] ? '✅' : '⬜️'} ${tx.prefs[p]}`, callback_data: `pref:${p}` }]),
+    leadButtons(chat.reminderLeadMin),
     languageButtons(lang),
   ]
+}
+
+/** Con cuánta antelación avisa este chat de un lanzamiento. */
+export function leadButtons(current: number): BotButton[] {
+  return REMINDER_LEADS.map((m) => ({
+    text: `${current === m ? '• ' : ''}${leadLabel(m)}`,
+    callback_data: `lead:${m}`,
+  }))
 }
 
 export function languageButtons(current?: Lang): BotButton[] {

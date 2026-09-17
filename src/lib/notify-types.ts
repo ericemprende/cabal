@@ -2,6 +2,27 @@
 
 export type BotProviderName = 'telegram' | 'discord'
 
+/**
+ * Antelaciones que se pueden elegir para el aviso de un lanzamiento, en
+ * minutos. Es una lista cerrada a propósito: el worker recorre una vez cada
+ * antelación en uso, así que dejar poner cualquier número multiplicaría el
+ * trabajo de cada pasada sin que nadie lo note.
+ */
+export const REMINDER_LEADS = [5, 15, 30, 60, 180] as const
+export type ReminderLead = (typeof REMINDER_LEADS)[number]
+/** La de siempre: es la que tenían todos antes de poder elegir. */
+export const DEFAULT_REMINDER_LEAD = 60
+
+export function isReminderLead(v: unknown): v is ReminderLead {
+  return typeof v === 'number' && (REMINDER_LEADS as readonly number[]).includes(v)
+}
+
+export function leadLabel(min: number): string {
+  if (min < 60) return `${min} min`
+  const h = min / 60
+  return `${Number.isInteger(h) ? h : h.toFixed(1)} h`
+}
+
 export type ChatLinkDTO = {
   id: string
   provider: BotProviderName
@@ -11,6 +32,8 @@ export type ChatLinkDTO = {
   notifyLaunches: boolean
   notifyReminders: boolean
   notifyTheses: boolean
+  /** Antelación del aviso de lanzamiento en este chat, en minutos. */
+  reminderLeadMin: number
   active: boolean
   lastError: string | null
   createdAt: string
@@ -78,6 +101,12 @@ export type AdminNotifyDTO = {
   discord: AdminBotDTO & {
     /** URL que el admin pega en el portal de Discord (no se puede registrar por API). */
     interactionsUrl: string
+    /**
+     * Conexión permanente que lee los contratos pegados en los canales. Sin el
+     * permiso "Message Content" activado en el portal no conecta, y el error lo
+     * dice aquí.
+     */
+    gateway: { connected: boolean; error: string | null }
     /** Enlace para añadir el bot a un servidor. */
     invite: string | null
     /** Servidores distintos donde hay algún canal conectado. */

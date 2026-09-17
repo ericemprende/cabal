@@ -23,6 +23,7 @@ import {
   registerDiscordCommands,
   setDiscordEnabled,
 } from '@/lib/discord'
+import { discordGatewayStatus, resetDiscordGateway } from '@/lib/discord-gateway'
 import { runNotificationTick } from '@/lib/notifications'
 import { isBotProvider, type BotProvider } from '@/lib/bot-message'
 import type { AdminBotDTO, AdminNotifyDTO } from '@/lib/notify-types'
@@ -100,6 +101,7 @@ export async function GET(req: Request) {
         since: dc ? dc.since.toISOString() : null,
         stats: dcStats,
         interactionsUrl: discordInteractionsUrl(),
+        gateway: await discordGatewayStatus(),
         invite: dc ? discordInviteUrl(dc.appId) : null,
         servers: servers.length,
       },
@@ -145,6 +147,8 @@ export async function PUT(req: Request) {
           return NextResponse.json({ error: 'Ese no parece un token de bot de Discord' }, { status: 400 })
         }
         const { username } = await connectDiscordBot(token)
+        // El gateway vuelve a intentarlo con el token nuevo
+        await resetDiscordGateway()
         return NextResponse.json({ ok: true, username })
       }
       const token = body.token.trim() || process.env.TELEGRAM_BOT_TOKEN?.trim() || ''

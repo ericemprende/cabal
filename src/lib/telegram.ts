@@ -162,26 +162,29 @@ export async function tgSend(
   chatId: string,
   msg: TgMessage
 ): Promise<{ migratedTo?: string }> {
+  // Con imagen es sendPhoto y el texto viaja como pie de foto (máx. 1024)
+  const method = msg.image ? 'sendPhoto' : 'sendMessage'
   const params = (id: string) => ({
     chat_id: id,
-    text: msg.text,
+    ...(msg.image
+      ? { photo: msg.image, caption: msg.text.slice(0, 1024) }
+      : { text: msg.text, link_preview_options: { is_disabled: true } }),
     parse_mode: 'HTML',
-    link_preview_options: { is_disabled: true },
     ...(msg.buttons ? { reply_markup: { inline_keyboard: msg.buttons } } : {}),
   })
   try {
-    await tgCall(token, 'sendMessage', params(chatId))
+    await tgCall(token, method, params(chatId))
     return {}
   } catch (e) {
     if (!(e instanceof TelegramApiError)) throw e
     if (e.retryAfter) {
       await sleep(Math.min(e.retryAfter, 30) * 1000)
-      await tgCall(token, 'sendMessage', params(chatId))
+      await tgCall(token, method, params(chatId))
       return {}
     }
     if (e.migrateToChatId) {
       const to = String(e.migrateToChatId)
-      await tgCall(token, 'sendMessage', params(to))
+      await tgCall(token, method, params(to))
       return { migratedTo: to }
     }
     throw e

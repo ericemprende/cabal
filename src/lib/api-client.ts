@@ -325,10 +325,11 @@ export function useFeed() {
   return useQuery<PostDTO[]>({ queryKey: qk.feed, queryFn: () => jsonFetch('/api/feed') })
 }
 
-export function useLeaderboard(period: CallPeriod = 'all') {
+export function useLeaderboard(period: CallPeriod = 'all', community: string | null = null) {
   return useQuery<LeaderboardDTO>({
-    queryKey: [...qk.leaderboard, period],
-    queryFn: () => jsonFetch(`/api/leaderboard?period=${period}`),
+    queryKey: [...qk.leaderboard, period, community],
+    queryFn: () =>
+      jsonFetch(`/api/leaderboard?period=${period}${community ? `&community=${encodeURIComponent(community)}` : ''}`),
     placeholderData: (prev) => prev,
   })
 }

@@ -33,6 +33,8 @@ export const BOT_COMMANDS: Record<Lang, { command: string; description: string }
     { command: 'settings', description: 'Choose which alerts this chat gets' },
     { command: 'upcoming', description: 'Upcoming launches' },
     { command: 'call', description: 'Post a token call on Cabal' },
+    { command: 'pnl', description: 'How your call on a token is doing' },
+    { command: 'leaderboard', description: 'Top Callers of this community' },
     { command: 'language', description: 'Español / English' },
     { command: 'unlink', description: 'Stop alerts in this chat' },
     { command: 'help', description: 'How the bot works' },
@@ -42,10 +44,20 @@ export const BOT_COMMANDS: Record<Lang, { command: string; description: string }
     { command: 'settings', description: 'Elegir qué avisos llegan a este chat' },
     { command: 'upcoming', description: 'Próximos lanzamientos' },
     { command: 'call', description: 'Publicar una call de token en Cabal' },
+    { command: 'pnl', description: 'Como va tu call de un token' },
+    { command: 'leaderboard', description: 'Top Callers de esta comunidad' },
     { command: 'language', description: 'Español / English' },
     { command: 'unlink', description: 'Dejar de recibir avisos aquí' },
     { command: 'help', description: 'Cómo funciona el bot' },
   ],
+}
+
+/** MC abreviado para los textos ("$3.06M"). */
+function fmtMc(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return `${n.toFixed(0)}`
 }
 
 const es = {
@@ -81,6 +93,7 @@ const es = {
   onlyAdminChanges: 'Solo un administrador puede cambiarlo',
   languagePrompt: '🌐 Elige el idioma del bot en este chat:',
   languageSet: 'Idioma: Español',
+  leadSet: (label: string) => `Aviso ${label} antes`,
   noUpcoming: 'No hay lanzamientos programados ahora mismo.',
   upcomingTitle: '🗓 <b>Próximos lanzamientos</b>',
   welcome: (isPrivate: boolean, p: BotProvider) => {
@@ -112,6 +125,31 @@ const es = {
   callNeedsAccount: (url: string, p: BotProvider) =>
     `Para dar una call necesitas tu cuenta de Cabal conectada a ${PROVIDER_NAMES[p]}. Entra en <a href="${url}">Cabal</a> → tu perfil → ${PROVIDER_NAMES[p]} y conecta tu chat privado con el bot.`,
   viewCallOnCabal: 'Ver la call en Cabal',
+  // ---- /pnl y /leaderboard ----
+  pnlHead: (user: string, symbol: string) => `📈 <b>${symbol}</b> · call de ${user}`,
+  pnlUsage: 'Escribe <code>/pnl CONTRATO</code> para ver cómo va tu call de ese token.',
+  pnlEntry: 'Entrada → ahora:',
+  pnlPeak: 'Pico:',
+  pnlNoCall: 'No encuentro ninguna call tuya de ese token. Dala con /call y luego te enseño cómo va.',
+  lbTitle: (scope: string) => `🏆 <b>Leaderboard · ${scope}</b>`,
+  lbPeriod: (p: string) => `Periodo: <b>${p}</b>`,
+  lbEmpty: 'Todavía no hay calls con resultado en este periodo. Da una con /call y vuelve en un rato.',
+  lbTopCallers: '👑 <b>Top Callers</b>',
+  lbTopCalls: '🎯 <b>Mejores calls</b>',
+  lbStats: '📊 <b>Estadísticas</b>',
+  lbCalls: 'Calls:',
+  lbHitRate: 'Aciertos:',
+  lbMedian: 'Mediana:',
+  lbBest: 'Mejor:',
+  lbSeeOnCabal: 'Ver el ranking en Cabal',
+  lbDay: '24 h',
+  lbWeek: '7 días',
+  lbMonth: '30 días',
+  lbAll: 'Todo',
+  callFirstBy: (user: string, mc: number | null) =>
+    `🔥 Primera call de este token aquí: ${user}${mc ? ` en ${fmtMc(mc)}` : ''}`,
+  callConnectHint: (url: string, p: BotProvider) =>
+    `Conecta tu cuenta en <a href="${url}">Cabal</a> → perfil → ${PROVIDER_NAMES[p]} y tus calls contarán para el ranking.`,
   callFailed: 'No he podido publicar la call. Inténtalo otra vez en un momento.',
   callTooFast: 'Vas muy rápido con las calls. Espera un minuto y vuelve a intentarlo.',
 }
@@ -151,6 +189,7 @@ const en: Dict = {
   onlyAdminChanges: 'Only an admin can change this',
   languagePrompt: '🌐 Choose the bot language for this chat:',
   languageSet: 'Language: English',
+  leadSet: (label: string) => `Alert ${label} before`,
   noUpcoming: 'No launches scheduled right now.',
   upcomingTitle: '🗓 <b>Upcoming launches</b>',
   welcome: (isPrivate: boolean, p: BotProvider) => {
@@ -181,6 +220,30 @@ const en: Dict = {
   callNeedsAccount: (url: string, p: BotProvider) =>
     `To post a call you need your Cabal account connected to ${PROVIDER_NAMES[p]}. Go to <a href="${url}">Cabal</a> → your profile → ${PROVIDER_NAMES[p]} and connect your private chat with the bot.`,
   viewCallOnCabal: 'View the call on Cabal',
+  pnlHead: (user: string, symbol: string) => `📈 <b>${symbol}</b> · call by ${user}`,
+  pnlUsage: 'Send <code>/pnl CONTRACT</code> to see how your call on that token is doing.',
+  pnlEntry: 'Entry → now:',
+  pnlPeak: 'Peak:',
+  pnlNoCall: "I can't find a call of yours for that token. Post one with /call and I'll show you how it's doing.",
+  lbTitle: (scope: string) => `🏆 <b>Leaderboard · ${scope}</b>`,
+  lbPeriod: (p: string) => `Period: <b>${p}</b>`,
+  lbEmpty: 'No calls with a result in this period yet. Post one with /call and come back in a while.',
+  lbTopCallers: '👑 <b>Top Callers</b>',
+  lbTopCalls: '🎯 <b>Best calls</b>',
+  lbStats: '📊 <b>Stats</b>',
+  lbCalls: 'Calls:',
+  lbHitRate: 'Hit rate:',
+  lbMedian: 'Median:',
+  lbBest: 'Best:',
+  lbSeeOnCabal: 'See the ranking on Cabal',
+  lbDay: '24 h',
+  lbWeek: '7 days',
+  lbMonth: '30 days',
+  lbAll: 'All time',
+  callFirstBy: (user: string, mc: number | null) =>
+    `🔥 First call of this token here: ${user}${mc ? ` at ${fmtMc(mc)}` : ''}`,
+  callConnectHint: (url: string, p: BotProvider) =>
+    `Connect your account at <a href="${url}">Cabal</a> → profile → ${PROVIDER_NAMES[p]} and your calls will count for the ranking.`,
   callFailed: "I couldn't post the call. Try again in a moment.",
   callTooFast: "You're posting calls too fast. Wait a minute and try again.",
 }

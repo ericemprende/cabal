@@ -326,8 +326,20 @@ export interface ClanDTO {
   tag: string
 }
 
+/** Grupo o servidor con el bot, para filtrar Top Callers por comunidad. */
+export interface CommunityDTO {
+  key: string
+  label: string
+  provider: 'telegram' | 'discord'
+  calls: number
+}
+
 export interface LeaderboardDTO {
   period: '24h' | '7d' | '30d' | 'all'
+  /** Comunidad por la que está filtrado Top Callers (null = todo Cabal). */
+  community: string | null
+  /** Comunidades que han dado alguna call, para el selector. */
+  communities: CommunityDTO[]
   callers: LeaderboardEntryDTO[]
   devs: LeaderboardEntryDTO[]
   points: LeaderboardEntryDTO[]

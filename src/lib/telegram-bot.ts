@@ -1,11 +1,13 @@
 import { db } from '@/lib/db'
-import { CHAT_PREFS, consumeLinkCode, upsertChatLink, type ChatPref } from '@/lib/chat-links'
+import { CHAT_PREFS, consumeLinkCode, setChatLead, upsertChatLink, type ChatPref } from '@/lib/chat-links'
 import { languageButtons, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
 import { siteUrl } from '@/lib/waitlist'
 import { userLink } from '@/lib/notifications'
-import { createCallFromBot } from '@/lib/bot-call'
+import { handleContractFromBot, looksLikeContract, pnlMessage } from '@/lib/bot-call'
+import { leaderboardMessage } from '@/lib/bot-leaderboard'
 import { esc, tgCall, tgSend, type TelegramConfig, type TgMessage } from '@/lib/telegram'
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
+import { isReminderLead, leadLabel } from '@/lib/notify-types'
 
 /**
  * Qué hace el bot con cada update que llega al webhook. Los comandos son en
@@ -19,6 +21,8 @@ import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
  *  /language          español / inglés
  *  /upcoming          los próximos lanzamientos
  *  /call <CA> [nota]  publica una call de token en Cabal
+ *  /pnl <CA>          tarjeta con el resultado de tu call de ese token
+ *  /leaderboard [per] ranking de la comunidad (o de Cabal, en privado)
  *  /unlink            deja de mandar avisos a este chat
  *  /help
  *
@@ -26,7 +30,7 @@ import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
  * ajustes, el idioma o desvincularlo.
  */
 
-type TgUser = { id: number; username?: string; first_name?: string; language_code?: string }
+type TgUser = { id: number; is_bot?: boolean; username?: string; first_name?: string; language_code?: string }
 type TgChat = { id: number; type: string; title?: string; username?: string; first_name?: string }
 type TgMsg = {
   message_id: number
@@ -51,6 +55,8 @@ const COMMAND_ALIASES: Record<string, string> = {
   config: 'settings',
   proximos: 'upcoming',
   llamada: 'call',
+  ranking: 'leaderboard',
+  lb: 'leaderboard',
   idioma: 'language',
   desvincular: 'unlink',
   ayuda: 'help',
@@ -85,7 +91,9 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
   }
 
   const text = msg.text?.trim()
-  if (!text?.startsWith('/')) return
+  if (!text) return
+  // Un contrato pegado suelto vale como call: ver onPastedContract
+  if (!text.startsWith('/')) return onPastedContract(tg, msg, text)
   const [rawCmd, ...args] = text.split(/\s+/)
   const [name, mention] = rawCmd.slice(1).toLowerCase().split('@')
   // En grupos, un comando dirigido a otro bot no es para nosotros
@@ -112,15 +120,25 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
       return reply(await upcomingMessage(lang))
     case 'call': {
       if (!args[0]) return reply(tx.callUsage)
-      const { message } = await createCallFromBot({
+      const { message } = await handleContractFromBot({
         provider: 'telegram',
         actorId: msg.from ? String(msg.from.id) : null,
+        chat,
         contract: args[0],
         note: args.slice(1).join(' '),
         lang,
+        mode: 'command',
       })
-      return reply(message)
+      return message ? reply(message) : undefined
     }
+    case 'pnl': {
+      if (!args[0]) return reply(tx.pnlUsage)
+      return reply(
+        await pnlMessage({ provider: 'telegram', actorId: msg.from ? String(msg.from.id) : null, contract: args[0], lang })
+      )
+    }
+    case 'leaderboard':
+      return reply(await leaderboardMessage(chat, args[0] ?? null, lang))
     case 'unlink':
       if (!chat) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
       if (!(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyManagerUnlinks)
@@ -194,6 +212,21 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
     return answer(tx.languageSet)
   }
 
+  if (kind === 'lead') {
+    const minutes = Number(value)
+    const tx = t(lang)
+    if (!chat) return answer(tx.noLongerLinked)
+    if (!isReminderLead(minutes)) return answer()
+    if (!(await canManage(tg, chat, q.message.chat, q.from))) return answer(tx.onlyAdminChanges)
+    await setChatLead(chat, minutes)
+    await tgCall(tg.token, 'editMessageReplyMarkup', {
+      chat_id: q.message.chat.id,
+      message_id: q.message.message_id,
+      reply_markup: { inline_keyboard: settingsButtons({ ...chat, reminderLeadMin: minutes }, lang) },
+    }).catch(() => {})
+    return answer(tx.leadSet(leadLabel(minutes)))
+  }
+
   const pref = kind === 'pref' ? (value as ChatPref) : null
   if (!pref || !CHAT_PREFS.includes(pref)) return answer()
   const tx = t(lang)
@@ -231,3 +264,47 @@ async function isChatAdmin(tg: TelegramConfig, chatId: number, userId: number): 
   }
 }
 
+
+/**
+ * Un mensaje normal (sin comando) en un chat vinculado: si trae un contrato, se
+ * responde con la ficha del token y, si quien lo pegó tiene cuenta y nadie
+ * había llamado ese token aquí, se publica la call.
+ *
+ * Telegram solo entrega estos mensajes si el bot tiene el modo privacidad
+ * desactivado (@BotFather → /setprivacy → Disable) o es administrador del
+ * grupo. Sin eso, este código no llega a ejecutarse nunca.
+ */
+async function onPastedContract(tg: TelegramConfig, msg: TgMsg, text: string) {
+  // Solo en chats conectados con Cabal, y nunca respondiendo a otro bot
+  if (msg.from?.is_bot) return
+  const contract = findContract(text)
+  if (!contract) return
+  const chat = await findChat(msg.chat.id)
+  if (!chat?.active) return
+
+  const lang: Lang = isLang(chat.lang) ? chat.lang : langFromLocale(msg.from?.language_code)
+  const { message } = await handleContractFromBot({
+    provider: 'telegram',
+    actorId: msg.from ? String(msg.from.id) : null,
+    chat,
+    contract,
+    note: '',
+    lang,
+    mode: 'pasted',
+  })
+  if (message) await tgSend(tg.token, String(msg.chat.id), message)
+}
+
+/**
+ * Primer contrato que aparece en un texto. El patrón es amplio a propósito
+ * (una palabra en base58 larga puede no ser un CA), así que después se valida
+ * con looksLikeContract y, más adelante, contra DexScreener.
+ */
+const CONTRACT_PATTERN = /(0x[a-fA-F0-9]{40}|[1-9A-HJ-NP-Za-km-z]{32,44})/g
+
+function findContract(text: string): string | null {
+  for (const match of text.match(CONTRACT_PATTERN) ?? []) {
+    if (looksLikeContract(match)) return match
+  }
+  return null
+}

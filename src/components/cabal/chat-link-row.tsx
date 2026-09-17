@@ -3,8 +3,8 @@
 import { Megaphone, Trash2, User, Users } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { useDeleteChat, useUpdateChat } from '@/lib/notify-client'
-import type { ChatLinkDTO } from '@/lib/notify-types'
+import { useDeleteChat, useMyReminders, useUpdateChat, useUpdateReminderLead } from '@/lib/notify-client'
+import { REMINDER_LEADS, leadLabel, type ChatLinkDTO } from '@/lib/notify-types'
 
 /**
  * Un chat vinculado (Telegram o Discord) con sus avisos e idioma. Es el mismo
@@ -14,7 +14,7 @@ import type { ChatLinkDTO } from '@/lib/notify-types'
 
 const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses'; label: string }[] = [
   { key: 'notifyLaunches', label: 'Lanzamientos nuevos' },
-  { key: 'notifyReminders', label: '1 h antes de cada launch' },
+  { key: 'notifyReminders', label: 'Aviso antes de cada launch' },
   { key: 'notifyTheses', label: 'Tesis nuevas' },
 ]
 
@@ -26,6 +26,56 @@ function typeLabel(chat: ChatLinkDTO): string {
   if (chat.chatType === 'private') return 'privado'
   if (chat.provider === 'discord') return chat.chatType === 'channel' ? 'anuncios' : 'canal'
   return chat.chatType === 'channel' ? 'canal' : 'grupo'
+}
+
+/**
+ * Con cuánta antelación llega el aviso de un lanzamiento.
+ *
+ * En un privado la decide el usuario y vale para todos sus avisos (chats y
+ * correo), así que se guarda en su cuenta; en un grupo la decide el grupo y se
+ * guarda en el chat. Es el mismo control en los dos casos para que nadie tenga
+ * que saber esa diferencia.
+ */
+function LeadPicker({ chat, brand, text }: { chat: ChatLinkDTO; brand: string; text: string }) {
+  const isPrivate = chat.chatType === 'private'
+  const mine = useMyReminders()
+  const updateMine = useUpdateReminderLead()
+  const updateChat = useUpdateChat()
+  const value = isPrivate ? mine.data?.leadMinutes ?? chat.reminderLeadMin : chat.reminderLeadMin
+  const busy = updateMine.isPending || updateChat.isPending || !chat.active
+
+  return (
+    <div className="mt-2 space-y-1">
+      <div className="flex items-center justify-between gap-2 text-[12px]">
+        <span className="text-foreground/85">Avisar antes del lanzamiento</span>
+        <div className="flex flex-wrap justify-end gap-1" role="group" aria-label="Antelación del aviso">
+          {REMINDER_LEADS.map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={value === m}
+              disabled={busy}
+              onClick={() => {
+                if (value === m) return
+                if (isPrivate) updateMine.mutate(m)
+                else updateChat.mutate({ id: chat.id, reminderLeadMin: m })
+              }}
+              style={value === m ? { backgroundColor: `${brand}33`, color: text } : undefined}
+              className={cn(
+                'rounded-md border border-white/10 px-1.5 py-0.5 text-[11px] font-bold transition-colors',
+                value !== m && 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {leadLabel(m)}
+            </button>
+          ))}
+        </div>
+      </div>
+      {isPrivate && (
+        <p className="text-[10px] text-muted-foreground">Vale también para los avisos por correo.</p>
+      )}
+    </div>
+  )
 }
 
 export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
@@ -84,6 +134,7 @@ export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
           ))}
         </div>
       </div>
+      <LeadPicker chat={chat} brand={brand} text={text} />
       <div className="mt-2 space-y-1.5">
         {PREFS.map((p) => (
           <label key={p.key} className="flex items-center justify-between gap-2 text-[12px]">

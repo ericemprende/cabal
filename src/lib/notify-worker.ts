@@ -1,4 +1,5 @@
 import { runNotificationTick } from '@/lib/notifications'
+import { syncDiscordGateway } from '@/lib/discord-gateway'
 import { redis } from '@/lib/redis'
 
 /**
@@ -27,6 +28,9 @@ export function startNotifyWorker() {
         const got = await redis.set('cabal:notify:lock', '1', 'EX', Math.ceil(intervalMs / 1000), 'NX').catch(() => 'OK')
         if (got !== 'OK') return
       }
+      // Arranca o para la conexión con Discord según esté el bot: así conectarlo
+      // desde el panel la levanta sola, sin reiniciar el servidor.
+      await syncDiscordGateway().catch((e) => console.error('[discord-gateway]', (e as Error).message))
       const r = await runNotificationTick()
       if (r.messages || r.emails) {
         console.log(

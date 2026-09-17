@@ -24,6 +24,13 @@ export type BotButton = { text: string; url?: string; callback_data?: string }
 export type BotMessage = {
   text: string
   buttons?: BotButton[][]
+  /**
+   * Imagen que acompaña al mensaje (la tarjeta de resultado de una call). En
+   * Telegram va como sendPhoto con el texto de pie; en Discord, como embed.
+   * Telegram corta el pie de foto a 1024 caracteres, bastante menos que un
+   * mensaje normal, así que un texto con imagen conviene que sea corto.
+   */
+  image?: string
 }
 
 /** Escapa texto para el HTML de los mensajes. */

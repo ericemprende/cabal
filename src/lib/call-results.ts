@@ -153,11 +153,21 @@ export type CallerRanking = { userId: string; summary: CallSummary }[]
 /**
  * Top Callers de un periodo: calls publicadas desde el inicio del periodo y ya
  * evaluadas. Orden: Cabal Score, luego aciertos, luego mejor X.
+ *
+ * Con `chatLinkIds` el ranking se limita a las calls nacidas en esos chats: es
+ * el leaderboard de una comunidad (ver lib/bot-community). Una lista vacía no
+ * es "sin filtro", es una comunidad sin chats, así que devuelve vacío.
  */
-export async function rankCallers(period: CallPeriod): Promise<CallerRanking> {
+export async function rankCallers(period: CallPeriod, chatLinkIds?: string[]): Promise<CallerRanking> {
+  if (chatLinkIds && chatLinkIds.length === 0) return []
   const since = periodStart(period)
   const rows = await db.post.findMany({
-    where: { kind: 'call', peakMultiple: { not: null }, ...(since ? { createdAt: { gte: since } } : {}) },
+    where: {
+      kind: 'call',
+      peakMultiple: { not: null },
+      ...(since ? { createdAt: { gte: since } } : {}),
+      ...(chatLinkIds ? { chatLinkId: { in: chatLinkIds } } : {}),
+    },
     select: { userId: true, peakMultiple: true, currentMultiple: true },
   })
   const byUser = new Map<string, typeof rows>()

@@ -32,6 +32,10 @@ model User {
   isCurrentUser Boolean  @default(false)
   isAdmin       Boolean  @default(false)
   points        Int      @default(0)
+  // Con cuánta antelación avisa la campanita de un launch, en minutos. Es del
+  // usuario porque su aviso va a su chat privado y a su correo; el de un grupo
+  // lo decide el grupo (ChatLink.reminderLeadMin).
+  reminderLeadMin Int    @default(60)
   lifetimePoints Int     @default(0)
   referralCode  String?  @unique
   referredById  String?
@@ -284,6 +288,11 @@ model Post {
   token     Token?   @relation(fields: [tokenId], references: [id])
   contract  String? // CA del token: obligatorio para kind == "call"
   network   String? // red del CA: obligatoria para kind == "call"
+  // Chat del que nació la call (bot de Telegram/Discord); null = desde la web.
+  // Con esto salen el leaderboard filtrado por comunidad y el "first call":
+  // si ese token ya se llamó en ese chat, no se crea otra call repetida.
+  chatLinkId String?
+  chatLink   ChatLink? @relation(fields: [chatLinkId], references: [id], onDelete: SetNull)
   // Precio/MC del token en el instante exacto de la call (createdAt ya trae
   // hora:min:seg). Se capturan al crear el post — null si DexScreener no
   // respondió a tiempo, o si el post es de antes de esta columna, en cuyo
@@ -310,6 +319,8 @@ model Post {
   @@index([createdAt])
   @@index([kind, resultFinal, resultCheckedAt])
   @@index([kind, createdAt])
+  @@index([chatLinkId, kind, createdAt])
+  @@index([chatLinkId, contract])
 }
 
 model Vote {
@@ -552,12 +563,15 @@ model ChatLink {
   // Qué se manda a este chat. La campanita de un launch llega siempre al
   // privado del usuario, sin depender de estas opciones.
   notifyLaunches  Boolean  @default(true)  // lanzamiento nuevo publicado
-  notifyReminders Boolean  @default(true)  // "sale en 1 hora", de todos los launches
+  notifyReminders Boolean  @default(true)  // "sale pronto", de todos los launches
+  reminderLeadMin Int      @default(60)     // minutos de antelación de ese aviso
   notifyTheses    Boolean  @default(false) // tesis nuevas del feed
   active          Boolean  @default(true)  // false = el bot fue expulsado o bloqueado
   lastError       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  // Calls que nacieron en este chat (leaderboard por comunidad)
+  posts           Post[]
 
   @@unique([provider, chatId])
   @@index([userId])
