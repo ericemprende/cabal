@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { jsonFetch, qk } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { FollowXCampaign } from '@/components/cabal/follow-x-campaign'
 import type { Locale, ShareVariant } from '@/lib/waitlist'
 
 type ShareInfo = {
@@ -115,6 +116,9 @@ export function WelcomeShareDialog() {
                 {!data.shared && <span className="font-mono">+{data.shareBonus}</span>}
               </a>
             </Button>
+
+            {/* Y de paso, los puntos por seguir la cuenta oficial */}
+            <FollowXCampaign />
           </>
         )}
 

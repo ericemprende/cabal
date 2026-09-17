@@ -87,19 +87,19 @@ export async function upsertChatLink(input: {
  * Guarda la antelación elegida. En un privado se guarda en la cuenta del
  * usuario (vale también para su correo); en un grupo, en el propio chat.
  */
-export async function setChatLead(
+export async function setChatLeads(
   chat: { id: string; userId: string; chatType: string },
-  minutes: number
-): Promise<number> {
+  leads: number[]
+): Promise<number[]> {
   if (chat.chatType === 'private') {
-    await db.user.update({ where: { id: chat.userId }, data: { reminderLeadMin: minutes } })
+    await db.user.update({ where: { id: chat.userId }, data: { reminderLeads: leads } })
   } else {
-    await db.chatLink.update({ where: { id: chat.id }, data: { reminderLeadMin: minutes } })
+    await db.chatLink.update({ where: { id: chat.id }, data: { reminderLeads: leads } })
   }
-  return minutes
+  return leads
 }
 
-export const CHAT_PREFS = ['notifyLaunches', 'notifyReminders', 'notifyTheses'] as const
+export const CHAT_PREFS = ['notifyLaunches', 'notifyReminders', 'notifyTheses', 'notifyCalls'] as const
 export type ChatPref = (typeof CHAT_PREFS)[number]
 
 export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
@@ -112,7 +112,8 @@ export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
     notifyLaunches: c.notifyLaunches,
     notifyReminders: c.notifyReminders,
     notifyTheses: c.notifyTheses,
-    reminderLeadMin: c.reminderLeadMin,
+    reminderLeads: c.reminderLeads,
+    notifyCalls: c.notifyCalls,
     active: c.active,
     lastError: c.lastError,
     createdAt: c.createdAt.toISOString(),

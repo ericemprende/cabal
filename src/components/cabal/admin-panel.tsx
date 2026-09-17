@@ -117,6 +117,8 @@ const RULE_LABELS: Record<string, string> = {
   points_swap_referral_pct: 'Referidos por compra/venta (% de la comisión)',
   points_per_usd_fee: 'Puntos por cada $1 de esa comisión',
   points_share_x: 'Compartir tarjeta en X',
+  points_follow_x: 'Seguir a @Cabal_app en X',
+  points_share_follow_x: 'Compartir la tarjeta de "sigo a Cabal"',
 }
 
 type AdminAnalyticsDTO =
@@ -142,6 +144,8 @@ const REASON_COLORS: Record<string, string> = {
   verify_x: '#9945FF',
   verify_google: '#8A92B2',
   share_x: '#1d9bf0',
+  follow_x: '#1d9bf0',
+  share_follow_x: '#5ec2f7',
 }
 
 type AdminView =
@@ -224,7 +228,9 @@ export function AdminPanel({
     enabled: enabled && view === 'stats',
     refetchInterval: 60_000,
   })
-  const rulesQ = useQuery<Record<string, number>>({
+  // Casi todo son números de puntos; follow_x_deadline es la fecha de cierre de
+  // la campaña de X (yyyy-mm-dd), que se edita en esta misma pantalla.
+  const rulesQ = useQuery<Record<string, number | string>>({
     queryKey: qk.adminRules,
     queryFn: () => jsonFetch('/api/admin/rules'),
     enabled,
@@ -233,9 +239,10 @@ export function AdminPanel({
   const adjust = useAdminAdjustPoints(enabled)
 
   // draft edits over the server rules — no effect needed
-  const [draft, setDraft] = useState<Record<string, number>>({})
-  const ruleValue = (key: string) => draft[key] ?? rulesQ.data?.[key] ?? 0
-  const setRule = (key: string, v: number) => setDraft((d) => ({ ...d, [key]: v }))
+  const [draft, setDraft] = useState<Record<string, number | string>>({})
+  const ruleValue = (key: string) => Number(draft[key] ?? rulesQ.data?.[key] ?? 0)
+  const setRule = (key: string, v: number | string) => setDraft((d) => ({ ...d, [key]: v }))
+  const deadlineValue = String(draft.follow_x_deadline ?? rulesQ.data?.follow_x_deadline ?? '')
   const rulesToSave = () => ({ ...(rulesQ.data ?? {}), ...draft })
 
   const dist = (overview.data?.distribution ?? [])
@@ -369,6 +376,25 @@ export function AdminPanel({
                 </div>
               ))}
             </div>
+            {/* Cierre de la campaña de X. No es un número de puntos, pero se
+                guarda con el mismo botón: quien mueve los 15 puntos suele
+                querer mover también hasta cuándo se dan. */}
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold">Campaña &ldquo;sigue a @Cabal_app&rdquo;: último día</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Pasada esa fecha (23:59 UTC) dejan de abonarse los dos bonus de la campaña.
+                </p>
+              </div>
+              <Input
+                type="date"
+                value={deadlineValue}
+                onChange={(e) => setRule('follow_x_deadline', e.target.value)}
+                className="h-9 w-40 border-white/10 bg-[#121410] text-center font-mono font-bold text-primary"
+                aria-label="Último día de la campaña de X"
+              />
+            </div>
+
             <Button
               onClick={() => saveRules.mutate(rulesToSave())}
               disabled={saveRules.isPending}

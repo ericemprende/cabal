@@ -12,24 +12,48 @@ import { REMINDER_LEADS, leadLabel } from '@/lib/notify-types'
  * solo de recibir el comando y de pintar el resultado con su API.
  */
 
-export function settingsButtons(
-  chat: Record<ChatPref, boolean> & { reminderLeadMin: number },
-  lang: Lang
-): BotButton[][] {
+/** Chat con lo que hace falta para pintar sus ajustes. */
+export type SettingsChat = Record<ChatPref, boolean> & { reminderLeads: number[] }
+
+/**
+ * La pantalla principal de /settings. La antelación no se despliega aquí: sería
+ * una fila de cinco botones más entre los interruptores. Se resume en uno que
+ * lleva a su propia pantalla (leadMenu).
+ */
+export function settingsButtons(chat: SettingsChat, lang: Lang): BotButton[][] {
   const tx = t(lang)
   return [
     ...CHAT_PREFS.map((p) => [{ text: `${chat[p] ? '✅' : '⬜️'} ${tx.prefs[p]}`, callback_data: `pref:${p}` }]),
-    leadButtons(chat.reminderLeadMin),
+    [{ text: `⏰ ${tx.leadMenu}: ${leadSummary(chat.reminderLeads)}`, callback_data: 'menu:lead' }],
     languageButtons(lang),
   ]
 }
 
-/** Con cuánta antelación avisa este chat de un lanzamiento. */
-export function leadButtons(current: number): BotButton[] {
-  return REMINDER_LEADS.map((m) => ({
-    text: `${current === m ? '• ' : ''}${leadLabel(m)}`,
-    callback_data: `lead:${m}`,
-  }))
+/** Segunda pantalla: qué antelaciones quiere este chat. Se pueden marcar varias. */
+export function leadMenuButtons(chat: SettingsChat, lang: Lang): BotButton[][] {
+  const tx = t(lang)
+  const on = new Set(chat.reminderLeads)
+  return [
+    ...chunk(
+      REMINDER_LEADS.map((m) => ({
+        text: `${on.has(m) ? '✅' : '⬜️'} ${leadLabel(m)}`,
+        callback_data: `lead:${m}`,
+      })),
+      3
+    ),
+    [{ text: `‹ ${tx.back}`, callback_data: 'menu:main' }],
+  ]
+}
+
+export function leadSummary(leads: number[]): string {
+  return leads.length ? [...leads].sort((a, b) => b - a).map(leadLabel).join(' · ') : '—'
+}
+
+/** Discord admite 5 botones por fila; con 3 se leen mejor en un móvil. */
+function chunk<T>(items: T[], size: number): T[][] {
+  const rows: T[][] = []
+  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size))
+  return rows
 }
 
 export function languageButtons(current?: Lang): BotButton[] {

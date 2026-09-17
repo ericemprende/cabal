@@ -453,6 +453,8 @@ const POINT_RULES_FALLBACK: Record<string, number> = {
   points_hype_received: 1,
   points_daily_visit: 3,
   points_share_x: 10,
+  points_follow_x: 15,
+  points_share_follow_x: 10,
 }
 
 /** Reglas de puntos vigentes (editables en admin) para los "+N" de la interfaz. */
@@ -937,7 +939,9 @@ export function useAdminAdjustPoints(enabled: boolean) {
 export function useAdminRules(enabled: boolean) {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
-    mutationFn: (rules: Record<string, number>) =>
+    // Los valores son números de puntos, salvo follow_x_deadline, que es la
+    // fecha de cierre de la campaña de X en yyyy-mm-dd.
+    mutationFn: (rules: Record<string, number | string>) =>
       jsonFetch<{ ok: boolean }>('/api/admin/rules', {
         method: 'PUT',
         body: JSON.stringify(rules),

@@ -1,13 +1,13 @@
 import { db } from '@/lib/db'
-import { CHAT_PREFS, consumeLinkCode, setChatLead, upsertChatLink, type ChatPref } from '@/lib/chat-links'
-import { languageButtons, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
+import { CHAT_PREFS, consumeLinkCode, setChatLeads, upsertChatLink, type ChatPref } from '@/lib/chat-links'
+import { languageButtons, leadMenuButtons, leadSummary, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
 import { siteUrl } from '@/lib/waitlist'
 import { userLink } from '@/lib/notifications'
 import { handleContractFromBot, looksLikeContract, pnlMessage } from '@/lib/bot-call'
 import { leaderboardMessage } from '@/lib/bot-leaderboard'
-import { esc, tgCall, tgSend, type TelegramConfig, type TgMessage } from '@/lib/telegram'
+import { esc, tgCall, tgSend, type InlineButton, type TelegramConfig, type TgMessage } from '@/lib/telegram'
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
-import { isReminderLead, leadLabel } from '@/lib/notify-types'
+import { isReminderLead, toggleLead } from '@/lib/notify-types'
 
 /**
  * Qué hace el bot con cada update que llega al webhook. Los comandos son en
@@ -212,19 +212,25 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
     return answer(tx.languageSet)
   }
 
+  // Navegación entre la pantalla de ajustes y la de antelación
+  if (kind === 'menu') {
+    const tx = t(lang)
+    if (!chat) return answer(tx.noLongerLinked)
+    const toLead = value === 'lead'
+    await editSettings(tg, q.message, toLead ? tx.leadTitle : tx.settingsTitle, toLead ? leadMenuButtons(chat, lang) : settingsButtons(chat, lang))
+    return answer()
+  }
+
   if (kind === 'lead') {
     const minutes = Number(value)
     const tx = t(lang)
     if (!chat) return answer(tx.noLongerLinked)
     if (!isReminderLead(minutes)) return answer()
     if (!(await canManage(tg, chat, q.message.chat, q.from))) return answer(tx.onlyAdminChanges)
-    await setChatLead(chat, minutes)
-    await tgCall(tg.token, 'editMessageReplyMarkup', {
-      chat_id: q.message.chat.id,
-      message_id: q.message.message_id,
-      reply_markup: { inline_keyboard: settingsButtons({ ...chat, reminderLeadMin: minutes }, lang) },
-    }).catch(() => {})
-    return answer(tx.leadSet(leadLabel(minutes)))
+    const leads = toggleLead(chat.reminderLeads, minutes)
+    await setChatLeads(chat, leads)
+    await editSettings(tg, q.message, tx.leadTitle, leadMenuButtons({ ...chat, reminderLeads: leads }, lang))
+    return answer(tx.leadSet(leadSummary(leads)))
   }
 
   const pref = kind === 'pref' ? (value as ChatPref) : null
@@ -240,6 +246,18 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
     reply_markup: { inline_keyboard: settingsButtons(updated, lang) },
   }).catch(() => {})
   return answer(`${tx.prefs[pref]}: ${updated[pref] ? tx.on : tx.off}`)
+}
+
+/** Reescribe el mensaje de ajustes con otra pantalla. */
+async function editSettings(tg: TelegramConfig, msg: TgMsg, text: string, buttons: InlineButton[][]) {
+  await tgCall(tg.token, 'editMessageText', {
+    chat_id: msg.chat.id,
+    message_id: msg.message_id,
+    text,
+    parse_mode: 'HTML',
+    link_preview_options: { is_disabled: true },
+    reply_markup: { inline_keyboard: buttons },
+  }).catch(() => {})
 }
 
 async function canManage(

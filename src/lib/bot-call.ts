@@ -145,12 +145,16 @@ export async function handleContractFromBot(input: {
   return {
     created: true,
     broadcast: true,
-    message: await tokenCard(token, input.lang, {
-      head: tx.callHead(userLink(user.handle)),
-      note: input.note.trim(),
-      footer: tx.callEntrySaved,
-      postId: post.id,
-    }),
+    message: {
+      // La misma tarjeta que se ve en Cabal para esa call
+      ...(await tokenCard(token, input.lang, {
+        head: tx.callHead(userLink(user.handle)),
+        note: input.note.trim(),
+        footer: tx.callEntrySaved,
+        postId: post.id,
+      })),
+      image: callCardUrl(post.id),
+    },
   }
 }
 

@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { jsonFetch, qk } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { XLogo } from '@/components/cabal/x-logo'
+import { CABAL_X_HANDLE, CABAL_X_URL } from '@/lib/cabal-x'
 import type { WaitlistStatusDTO } from '@/lib/waitlist'
 
 /**
@@ -167,6 +168,14 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
             consejo financiero.
           </p>
           <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <a
+              href={CABAL_X_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 font-bold text-foreground hover:text-primary"
+            >
+              <XLogo className="h-3 w-3" />@{CABAL_X_HANDLE}
+            </a>
             <Link href="/terminos" className="hover:text-foreground">
               Términos de Servicio
             </Link>

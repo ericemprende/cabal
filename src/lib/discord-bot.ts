@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { CHAT_PREFS, consumeLinkCode, setChatLead, upsertChatLink, type ChatPref } from '@/lib/chat-links'
-import { languageButtons, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
+import { CHAT_PREFS, consumeLinkCode, setChatLeads, upsertChatLink, type ChatPref } from '@/lib/chat-links'
+import { languageButtons, leadMenuButtons, leadSummary, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
 import { siteUrl } from '@/lib/waitlist'
 import { userLink } from '@/lib/notifications'
 import { handleContractFromBot, pnlMessage } from '@/lib/bot-call'
@@ -8,7 +8,7 @@ import { leaderboardMessage } from '@/lib/bot-leaderboard'
 import { dcCall, editInteractionReply, toDiscordPayload, type DiscordConfig } from '@/lib/discord'
 import { esc, type BotMessage } from '@/lib/bot-message'
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
-import { isReminderLead } from '@/lib/notify-types'
+import { isReminderLead, toggleLead } from '@/lib/notify-types'
 
 /**
  * Qué hace el bot de Discord con cada interacción que llega al endpoint.
@@ -225,14 +225,26 @@ async function onComponent(cfg: DiscordConfig, i: DcInteraction): Promise<DcResp
       : update(welcomeMessage(chatTypeOf(i) === 'private', 'discord', value))
   }
 
+  // Navegación entre la pantalla de ajustes y la de antelación
+  if (kind === 'menu') {
+    const tx = t(lang)
+    if (!chat) return say(tx.noLongerLinked)
+    return value === 'lead'
+      ? update({ text: tx.leadTitle, buttons: leadMenuButtons(chat, lang) })
+      : update({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang) })
+  }
+
   if (kind === 'lead') {
     const minutes = Number(value)
     const tx = t(lang)
     if (!chat) return say(tx.noLongerLinked)
     if (!isReminderLead(minutes)) return say('…')
     if (!canManage(chat, i)) return say(tx.onlyAdminChanges)
-    await setChatLead(chat, minutes)
-    return update({ text: tx.settingsTitle, buttons: settingsButtons({ ...chat, reminderLeadMin: minutes }, lang) })
+    const leads = toggleLead(chat.reminderLeads, minutes)
+    await setChatLeads(chat, leads)
+    return update({ text: `${tx.leadTitle}
+
+${tx.leadSet(leadSummary(leads))}`, buttons: leadMenuButtons({ ...chat, reminderLeads: leads }, lang) })
   }
 
   const pref = kind === 'pref' ? (value as ChatPref) : null

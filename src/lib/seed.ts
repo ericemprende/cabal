@@ -33,6 +33,8 @@ async function seed(): Promise<void> {
       { key: 'points_hype_received', value: '1' },
       { key: 'points_daily_visit', value: '3' },
       { key: 'points_share_x', value: '10' },
+      { key: 'points_follow_x', value: '15' },
+      { key: 'points_share_follow_x', value: '10' },
     ],
   })
 

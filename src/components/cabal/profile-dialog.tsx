@@ -22,6 +22,7 @@ import {
   MessageSquare,
   RefreshCw,
   Rocket,
+  Send,
   ShieldCheck,
   Trash2,
   TrendingUp,
@@ -61,6 +62,7 @@ import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 import { TelegramConnect } from '@/components/cabal/telegram-connect'
 import { DiscordConnect } from '@/components/cabal/discord-connect'
+import { FollowXCampaign } from '@/components/cabal/follow-x-campaign'
 
 const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   thesis: { label: 'Tesis publicada', icon: GraduationCap },
@@ -75,6 +77,9 @@ const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   verify_google: { label: 'Cuenta de Google verificada', icon: Mail },
   verify_wallet: { label: 'Wallet verificada con firma', icon: ShieldCheck },
   referral: { label: 'Puntos por referidos', icon: Users },
+  share_x: { label: 'Tarjeta compartida en X', icon: Send },
+  follow_x: { label: 'Sigues a @Cabal_app en X', icon: AtSign },
+  share_follow_x: { label: 'Compartiste que sigues a Cabal', icon: Send },
 }
 
 export function ProfileDialog() {
@@ -230,6 +235,9 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
               Cuando lancemos <span className="font-bold text-primary">$CABAL</span>, tus puntos se canjean por tokens del airdrop comunitario. 1 punto = 1 cupo del pool comunitario.
             </p>
           </div>
+
+          {/* Campaña de X: puntos por seguir la cuenta y compartir la tarjeta */}
+          <FollowXCampaign className="mt-3" />
 
           {/* history */}
           <p className="pb-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Historial de puntos</p>

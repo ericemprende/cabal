@@ -77,14 +77,14 @@ export function useCreateChatLinkCode<P extends BotProviderName>(provider: P) {
   })
 }
 
-/** Antelación del aviso de la campanita (del usuario, no de un chat). */
-export function useUpdateReminderLead() {
+/** Antelaciones del aviso de la campanita (del usuario, no de un chat). */
+export function useUpdateReminderLeads() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (leadMinutes: number) =>
-      jsonFetch<{ leadMinutes: number }>('/api/me/reminders', {
+    mutationFn: (leads: number[]) =>
+      jsonFetch<{ leads: number[] }>('/api/me/reminders', {
         method: 'PATCH',
-        body: JSON.stringify({ leadMinutes }),
+        body: JSON.stringify({ leads }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.reminders }),
     onError: (e: Error) => toast.error(e.message),
@@ -98,7 +98,7 @@ export function useUpdateChat() {
       id,
       ...prefs
     }: { id: string } & Partial<
-      Pick<ChatLinkDTO, 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'lang' | 'reminderLeadMin'>
+      Pick<ChatLinkDTO, 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'lang' | 'reminderLeads'>
     >) =>
       jsonFetch<ChatLinkDTO>(`/api/me/chats/${id}`, { method: 'PATCH', body: JSON.stringify(prefs) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.chats }),

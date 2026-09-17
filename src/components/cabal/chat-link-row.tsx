@@ -1,10 +1,12 @@
 'use client'
 
-import { Megaphone, Trash2, User, Users } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, Megaphone, Trash2, User, Users } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { useDeleteChat, useMyReminders, useUpdateChat, useUpdateReminderLead } from '@/lib/notify-client'
-import { REMINDER_LEADS, leadLabel, type ChatLinkDTO } from '@/lib/notify-types'
+import { useDeleteChat, useMyReminders, useUpdateChat, useUpdateReminderLeads } from '@/lib/notify-client'
+
+import { REMINDER_LEADS, leadLabel, toggleLead, type ChatLinkDTO } from '@/lib/notify-types'
 
 /**
  * Un chat vinculado (Telegram o Discord) con sus avisos e idioma. Es el mismo
@@ -12,9 +14,10 @@ import { REMINDER_LEADS, leadLabel, type ChatLinkDTO } from '@/lib/notify-types'
  * tipo de chat (un "grupo" de Telegram es un "canal" de servidor en Discord).
  */
 
-const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses'; label: string }[] = [
+const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls'; label: string }[] = [
   { key: 'notifyLaunches', label: 'Lanzamientos nuevos' },
   { key: 'notifyReminders', label: 'Aviso antes de cada launch' },
+  { key: 'notifyCalls', label: 'Calls nuevas de Cabal' },
   { key: 'notifyTheses', label: 'Tesis nuevas' },
 ]
 
@@ -37,42 +40,63 @@ function typeLabel(chat: ChatLinkDTO): string {
  * que saber esa diferencia.
  */
 function LeadPicker({ chat, brand, text }: { chat: ChatLinkDTO; brand: string; text: string }) {
+  const [open, setOpen] = useState(false)
   const isPrivate = chat.chatType === 'private'
   const mine = useMyReminders()
-  const updateMine = useUpdateReminderLead()
+  const updateMine = useUpdateReminderLeads()
   const updateChat = useUpdateChat()
-  const value = isPrivate ? mine.data?.leadMinutes ?? chat.reminderLeadMin : chat.reminderLeadMin
+  const value = isPrivate ? mine.data?.leads ?? chat.reminderLeads : chat.reminderLeads
   const busy = updateMine.isPending || updateChat.isPending || !chat.active
 
+  const toggle = (m: number) => {
+    const next = toggleLead(value, m)
+    if (next === value) return // era el último: no se puede quedar sin ninguno
+    if (isPrivate) updateMine.mutate(next)
+    else updateChat.mutate({ id: chat.id, reminderLeads: next })
+  }
+
   return (
-    <div className="mt-2 space-y-1">
-      <div className="flex items-center justify-between gap-2 text-[12px]">
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 text-[12px]"
+      >
         <span className="text-foreground/85">Avisar antes del lanzamiento</span>
-        <div className="flex flex-wrap justify-end gap-1" role="group" aria-label="Antelación del aviso">
-          {REMINDER_LEADS.map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={value === m}
-              disabled={busy}
-              onClick={() => {
-                if (value === m) return
-                if (isPrivate) updateMine.mutate(m)
-                else updateChat.mutate({ id: chat.id, reminderLeadMin: m })
-              }}
-              style={value === m ? { backgroundColor: `${brand}33`, color: text } : undefined}
-              className={cn(
-                'rounded-md border border-white/10 px-1.5 py-0.5 text-[11px] font-bold transition-colors',
-                value !== m && 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {leadLabel(m)}
-            </button>
-          ))}
+        <span className="flex items-center gap-1 font-bold" style={{ color: text }}>
+          {value.map(leadLabel).join(' · ')}
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
+        </span>
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1 rounded-lg border border-white/10 p-2">
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Antelación del aviso">
+            {REMINDER_LEADS.map((m) => {
+              const active = value.includes(m)
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={busy}
+                  onClick={() => toggle(m)}
+                  style={active ? { backgroundColor: `${brand}33`, color: text } : undefined}
+                  className={cn(
+                    'rounded-md border border-white/10 px-2 py-0.5 text-[11px] font-bold transition-colors',
+                    !active && 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {leadLabel(m)}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Puedes marcar varias y recibirás un aviso en cada una.
+            {isPrivate && ' Vale también para tus avisos por correo.'}
+          </p>
         </div>
-      </div>
-      {isPrivate && (
-        <p className="text-[10px] text-muted-foreground">Vale también para los avisos por correo.</p>
       )}
     </div>
   )

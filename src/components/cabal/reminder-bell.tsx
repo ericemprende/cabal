@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useUI } from '@/lib/store'
 import { LoginRequiredError, useMyReminders, useToggleReminder } from '@/lib/notify-client'
+import { leadLabel } from '@/lib/notify-types'
 
 /**
  * Campanita de un launch: avisa al usuario (Telegram y/o correo) cuando falta
@@ -28,8 +29,9 @@ export function ReminderBell({
 
   if (new Date(launchAt).getTime() <= Date.now()) return null
 
-  const lead = data?.leadMinutes ?? 60
-  const leadText = lead % 60 === 0 ? `${lead / 60} hora${lead === 60 ? '' : 's'}` : `${lead} minutos`
+  // Se anuncia el primer aviso, que es el de mayor antelación
+  const leads = data?.leads?.length ? data.leads : [60]
+  const leadText = leadLabel(Math.max(...leads))
 
   const onClick = (e: React.MouseEvent) => {
     e.stopPropagation()

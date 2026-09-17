@@ -17,6 +17,26 @@ export function isReminderLead(v: unknown): v is ReminderLead {
   return typeof v === 'number' && (REMINDER_LEADS as readonly number[]).includes(v)
 }
 
+/**
+ * Limpia una lista de antelaciones: solo valores conocidos, sin repetidos y de
+ * mayor a menor. Nunca devuelve vacío — sin ninguna antelación, la campanita no
+ * avisaría jamás y quedaría encendida sin hacer nada.
+ */
+/**
+ * Enciende o apaga una antelación. Devuelve la lista tal cual si el cambio la
+ * dejaría vacía: quedarse sin ninguna equivale a una campanita que no avisa.
+ */
+export function toggleLead(current: number[], minutes: number): number[] {
+  const next = current.includes(minutes) ? current.filter((m) => m !== minutes) : [...current, minutes]
+  return next.length ? next.sort((a, b) => b - a) : current
+}
+
+export function sanitizeLeads(input: unknown): number[] | null {
+  if (!Array.isArray(input)) return null
+  const clean = [...new Set(input.filter(isReminderLead))].sort((a, b) => b - a)
+  return clean.length ? clean : null
+}
+
 export function leadLabel(min: number): string {
   if (min < 60) return `${min} min`
   const h = min / 60
@@ -32,8 +52,10 @@ export type ChatLinkDTO = {
   notifyLaunches: boolean
   notifyReminders: boolean
   notifyTheses: boolean
-  /** Antelación del aviso de lanzamiento en este chat, en minutos. */
-  reminderLeadMin: number
+  /** Antelaciones del aviso de lanzamiento en este chat, en minutos. */
+  reminderLeads: number[]
+  /** Difundir aquí las calls nuevas publicadas en Cabal. */
+  notifyCalls: boolean
   active: boolean
   lastError: string | null
   createdAt: string
@@ -49,8 +71,8 @@ export type ReminderChannelsDTO = {
 export type MyRemindersDTO = {
   launchIds: string[]
   channels: ReminderChannelsDTO
-  /** Minutos de antelación con los que avisa la campanita. */
-  leadMinutes: number
+  /** Minutos de antelación con los que avisa la campanita (pueden ser varios). */
+  leads: number[]
 }
 
 export type MyChatsDTO = {

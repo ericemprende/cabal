@@ -187,6 +187,18 @@ export async function tgSend(
       await tgCall(token, method, params(to))
       return { migratedTo: to }
     }
+    // La tarjeta puede fallar (aún generándose, URL caída…): que al menos
+    // llegue el texto en vez de perderse el aviso entero
+    if (msg.image && !e.chatGone) {
+      await tgCall(token, 'sendMessage', {
+        chat_id: chatId,
+        text: msg.text,
+        parse_mode: 'HTML',
+        link_preview_options: { is_disabled: true },
+        ...(msg.buttons ? { reply_markup: { inline_keyboard: msg.buttons } } : {}),
+      })
+      return {}
+    }
     throw e
   }
 }

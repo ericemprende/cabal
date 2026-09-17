@@ -23,6 +23,9 @@ type DbUser = {
   followers: number
   points: number
   lifetimePoints: number
+  repUp: number
+  repDown: number
+  repScore: number
   email?: string | null
   emailVerified?: boolean
   twoFactorEnabled?: boolean
@@ -53,6 +56,12 @@ export function toPublicUserDTO(u: DbUser, isFollowed?: boolean): PublicUserDTO 
     followers: u.followers,
     points: u.points,
     lifetimePoints: u.lifetimePoints,
+    reputation: {
+      score: u.repScore,
+      up: u.repUp,
+      down: u.repDown,
+      votes: u.repUp + u.repDown,
+    },
     isFollowed,
   }
 }

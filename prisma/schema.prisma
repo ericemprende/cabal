@@ -11,119 +11,155 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  handle        String   @unique
-  name          String
-  avatar        String   @default("🐺")
-  bio           String?
-  wallet        String?
-  passwordHash  String?  // hash scrypt (login/registro por credenciales; null = cuenta demo/sin password)
-  walletVerified Boolean @default(false)
-  xHandle       String?
-  xVerified     Boolean  @default(false)
-  googleEmail   String?
-  googleVerified Boolean @default(false)
-  tgHandle      String?
-  isDev         Boolean  @default(false)
-  cabalScore    Int      @default(0)
-  callsWon      Int      @default(0)
-  callsTotal    Int      @default(0)
-  followers     Int      @default(0)
-  isCurrentUser Boolean  @default(false)
-  isAdmin       Boolean  @default(false)
-  points        Int      @default(0)
-  // Con cuánta antelación avisa la campanita de un launch, en minutos. Es del
-  // usuario porque su aviso va a su chat privado y a su correo; el de un grupo
-  // lo decide el grupo (ChatLink.reminderLeadMin).
-  reminderLeadMin Int    @default(60)
-  lifetimePoints Int     @default(0)
-  referralCode  String?  @unique
-  referredById  String?
-  referredBy    User?    @relation("ReferralTree", fields: [referredById], references: [id])
-  referrals     User[]   @relation("ReferralTree")
+  id                String           @id @default(cuid())
+  handle            String           @unique
+  name              String
+  avatar            String           @default("🐺")
+  bio               String?
+  wallet            String?
+  passwordHash      String? // hash scrypt (login/registro por credenciales; null = cuenta demo/sin password)
+  walletVerified    Boolean          @default(false)
+  xHandle           String?
+  xVerified         Boolean          @default(false)
+  googleEmail       String?
+  googleVerified    Boolean          @default(false)
+  tgHandle          String?
+  isDev             Boolean          @default(false)
+  cabalScore        Int              @default(0)
+  // Reputación de la comunidad (👍/👎, ver lib/reputation.ts). Se guardan aquí
+  // ya calculados para poder enseñar la insignia en cualquier lista sin pedir
+  // las valoraciones una por una; la fuente de verdad son las filas Reputation.
+  repUp             Int              @default(0) // votos positivos (sin ponderar)
+  repDown           Int              @default(0) // votos negativos (sin ponderar)
+  repScore          Int              @default(50) // % de confianza ponderado y suavizado
+  callsWon          Int              @default(0)
+  callsTotal        Int              @default(0)
+  followers         Int              @default(0)
+  isCurrentUser     Boolean          @default(false)
+  isAdmin           Boolean          @default(false)
+  points            Int              @default(0)
+  // Con cuánta antelación avisa la campanita de un launch, en minutos. Son
+  // varias a la vez: quien quiera aviso a 1 h y otro a 5 min los tiene los dos.
+  // Es del usuario porque su aviso va a su chat privado y a su correo; el de un
+  // grupo lo decide el grupo (ChatLink.reminderLeads).
+  reminderLeads     Int[]            @default([60])
+  lifetimePoints    Int              @default(0)
+  referralCode      String?          @unique
+  referredById      String?
+  referredBy        User?            @relation("ReferralTree", fields: [referredById], references: [id])
+  referrals         User[]           @relation("ReferralTree")
   // Correo de la cuenta: seguridad (códigos por correo) y contacto (GHL). No es
   // único en la base: dos cuentas pueden escribir el mismo sin verificarlo, y
   // gana la primera que lo verifica (la unicidad se comprueba al verificar).
-  email            String?
-  emailVerified    Boolean  @default(false)
+  email             String?
+  emailVerified     Boolean          @default(false)
   // Pide un código por correo al iniciar sesión con usuario y contraseña
-  twoFactorEnabled Boolean  @default(false)
+  twoFactorEnabled  Boolean          @default(false)
   // Cliente de Stripe, para abrir su portal de facturación
-  stripeCustomerId String?  @unique
+  stripeCustomerId  String?          @unique
   // Sincronización con Go High Level (contacto etiquetado "Cabal")
-  ghlContactId  String?
-  ghlSyncedAt   DateTime?
-  ghlError      String?
+  ghlContactId      String?
+  ghlSyncedAt       DateTime?
+  ghlError          String?
   // Avisos de lanzamientos por correo (perk Premium): activado por defecto,
   // el usuario lo puede apagar. Sin correo verificado o sin Premium no llega
   // nada de todos modos (ver lib/launch-alerts.ts).
-  notifyEmail   Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  posts         Post[]
-  launches      Launch[]
-  tokens        Token[]
-  votes         Vote[]
-  followersRel  Follow[] @relation("followTarget")
-  followingRel  Follow[] @relation("followUser")
-  pointEvents   PointEvent[]
-  wallets       WalletLink[]
-  devClaims     DevClaim[]
-  projectClaims ProjectClaim[]
-  subscriptions Subscription[]
-  payments      Payment[]
-  emailCodes    EmailCode[]
-  launchMemberships LaunchMember[] @relation("launchMember")
-  launchInvitesSent LaunchMember[] @relation("launchInviter")
-  chatMessages  ChatMessage[]
-  launchReminders LaunchReminder[]
-  chatLinks     ChatLink[]
-  chatLinkCodes ChatLinkCode[]
+  notifyEmail       Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  posts             Post[]
+  launches          Launch[]
+  tokens            Token[]
+  votes             Vote[]
+  followersRel      Follow[]         @relation("followTarget")
+  followingRel      Follow[]         @relation("followUser")
+  pointEvents       PointEvent[]
+  wallets           WalletLink[]
+  devClaims         DevClaim[]
+  projectClaims     ProjectClaim[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  emailCodes        EmailCode[]
+  launchMemberships LaunchMember[]   @relation("launchMember")
+  launchInvitesSent LaunchMember[]   @relation("launchInviter")
+  chatMessages      ChatMessage[]
+  launchReminders   LaunchReminder[]
+  chatLinks         ChatLink[]
+  chatLinkCodes     ChatLinkCode[]
+  repReceived       Reputation[]     @relation("repTarget")
+  repGiven          Reputation[]     @relation("repAuthor")
 
   @@index([points])
+  @@index([repScore])
   @@index([referredById])
   @@index([createdAt])
   @@index([email])
 }
 
+// Valoración de un usuario por otro: 👍 confío / 👎 no confío, con una reseña
+// escrita opcional. Una fila por par (autor, valorado): volver a votar cambia
+// el voto en vez de sumar otro, y retirarlo borra la fila.
+//
+// "weight" se congela al votar (ver repWeight): el voto de una cuenta
+// verificada y con recorrido pesa más, y que no cambie después evita que el
+// porcentaje de un dev se mueva solo porque alguien que le votó hace meses
+// acaba de verificar su wallet.
+model Reputation {
+  id        String   @id @default(cuid())
+  targetId  String
+  target    User     @relation("repTarget", fields: [targetId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation("repAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  value     Int // 1 = confío | -1 = no confío
+  weight    Int      @default(1)
+  body      String   @default("") // reseña opcional
+  hidden    Boolean  @default(false) // ocultada por moderación: no cuenta ni se lista
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([authorId, targetId])
+  @@index([targetId, hidden, createdAt])
+  @@index([authorId])
+}
+
 model Launch {
-  id            String   @id @default(cuid())
-  name          String
-  ticker        String?
-  emoji         String   @default("🚀")
-  image         String?
-  banner        String?
-  isPrivate     Boolean  @default(false)
-  hidden        Boolean  @default(false)
-  submitterRole String   @default("community") // dev = lo sube su propio dev | community = scout que comparte info
-  contract      String?  // CA del token si ya fue desplegado (para gráfico en vivo)
+  id             String           @id @default(cuid())
+  name           String
+  ticker         String?
+  emoji          String           @default("🚀")
+  image          String?
+  banner         String?
+  isPrivate      Boolean          @default(false)
+  hidden         Boolean          @default(false)
+  submitterRole  String           @default("community") // dev = lo sube su propio dev | community = scout que comparte info
+  contract       String? // CA del token si ya fue desplegado (para gráfico en vivo)
   // Datos premium: su visibilidad la decide el admin (ver lib/premium.ts)
-  devWallet     String?  // wallet del dev, si se conoce
-  launchpad     String?  // plataforma donde sale el token (pump.fun, Zora…)
-  network       String   @default("solana")
-  launchAt      DateTime
-  dateConfirmed Boolean  @default(true) // false = fecha estimada por quien sube el proyecto, no confirmada por el equipo
-  description   String
-  website       String?
-  twitter       String?
-  telegram      String?
-  isLive        Boolean  @default(false) // el launch se emite/emitirá en vivo (streaming): activa el video incrustado en la ficha
-  liveUrl       String? // link del stream (YouTube, Twitch, Vimeo…) para incrustar en el detalle
-  status        String   @default("upcoming")
-  hype          Int      @default(0)
-  lpLocked      Boolean  @default(false)
-  mintRevoked   Boolean  @default(false)
-  top10Pct      Float    @default(25)
-  createdById   String
-  createdAt     DateTime @default(now())
+  devWallet      String? // wallet del dev, si se conoce
+  launchpad      String? // plataforma donde sale el token (pump.fun, Zora…)
+  network        String           @default("solana")
+  launchAt       DateTime
+  dateConfirmed  Boolean          @default(true) // false = fecha estimada por quien sube el proyecto, no confirmada por el equipo
+  description    String
+  website        String?
+  twitter        String?
+  telegram       String?
+  isLive         Boolean          @default(false) // el launch se emite/emitirá en vivo (streaming): activa el video incrustado en la ficha
+  liveUrl        String? // link del stream (YouTube, Twitch, Vimeo…) para incrustar en el detalle
+  status         String           @default("upcoming")
+  hype           Int              @default(0)
+  lpLocked       Boolean          @default(false)
+  mintRevoked    Boolean          @default(false)
+  top10Pct       Float            @default(25)
+  createdById    String
+  createdAt      DateTime         @default(now())
   // Última edición con cambios de verdad (no se toca si se guarda sin cambiar nada),
   // para mostrarla como actividad reciente ("actualizó la fecha", "cambió la descripción"…)
-  lastEditedAt  DateTime?
+  lastEditedAt   DateTime?
   lastChangeNote String?
-  createdBy     User     @relation(fields: [createdById], references: [id])
-  posts         Post[]
-  token         Token?
-  members       LaunchMember[]
-  reminders     LaunchReminder[]
+  createdBy      User             @relation(fields: [createdById], references: [id])
+  posts          Post[]
+  token          Token?
+  members        LaunchMember[]
+  reminders      LaunchReminder[]
 
   @@index([status, launchAt])
   @@index([createdById])
@@ -139,7 +175,7 @@ model LaunchMember {
   launch      Launch    @relation(fields: [launchId], references: [id], onDelete: Cascade)
   userId      String
   user        User      @relation("launchMember", fields: [userId], references: [id])
-  role        String    // programador | team | moderador (ver lib/launch-team.ts)
+  role        String // programador | team | moderador (ver lib/launch-team.ts)
   status      String    @default("pending") // pending | accepted | declined
   invitedById String
   invitedBy   User      @relation("launchInviter", fields: [invitedById], references: [id])
@@ -157,9 +193,9 @@ model Subscription {
   id                   String    @id @default(cuid())
   userId               String
   user                 User      @relation(fields: [userId], references: [id])
-  provider             String    // stripe | nowpayments | admin
-  plan                 String    // monthly | biannual | annual | custom
-  status               String    // active | trialing | past_due | canceled | unpaid | incomplete | incomplete_expired | paused
+  provider             String // stripe | nowpayments | admin
+  plan                 String // monthly | biannual | annual | custom
+  status               String // active | trialing | past_due | canceled | unpaid | incomplete | incomplete_expired | paused
   currentPeriodEnd     DateTime? // null = sin caducidad (solo concesiones del admin)
   cancelAtPeriodEnd    Boolean   @default(false)
   stripeSubscriptionId String?   @unique
@@ -181,14 +217,14 @@ model Payment {
   id                String   @id @default(cuid())
   userId            String
   user              User     @relation(fields: [userId], references: [id])
-  provider          String   // stripe | nowpayments
+  provider          String // stripe | nowpayments
   plan              String
   amountUsd         Float
   // stripe: paid | failed · nowpayments: waiting | confirming | confirmed |
   // sending | partially_paid | finished | failed | refunded | expired
   status            String
-  externalId        String?  // id de la factura en el proveedor
-  providerPaymentId String?  // payment_id de NOWPayments
+  externalId        String? // id de la factura en el proveedor
+  providerPaymentId String? // payment_id de NOWPayments
   payCurrency       String?
   actuallyPaid      Float?
   invoiceUrl        String?
@@ -206,7 +242,7 @@ model EmailCode {
   id         String    @id @default(cuid())
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purpose    String    // verify_email | login | two_factor
+  purpose    String // verify_email | login | two_factor
   email      String
   codeHash   String
   attempts   Int       @default(0)
@@ -277,28 +313,28 @@ model ChatMessage {
 }
 
 model Post {
-  id        String   @id @default(cuid())
-  kind      String   @default("comment") // thesis | comment | call | trade
-  content   String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  launchId  String?
-  launch    Launch?  @relation(fields: [launchId], references: [id])
-  tokenId   String?
-  token     Token?   @relation(fields: [tokenId], references: [id])
-  contract  String? // CA del token: obligatorio para kind == "call"
-  network   String? // red del CA: obligatoria para kind == "call"
+  id              String    @id @default(cuid())
+  kind            String    @default("comment") // thesis | comment | call | trade
+  content         String
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  launchId        String?
+  launch          Launch?   @relation(fields: [launchId], references: [id])
+  tokenId         String?
+  token           Token?    @relation(fields: [tokenId], references: [id])
+  contract        String? // CA del token: obligatorio para kind == "call"
+  network         String? // red del CA: obligatoria para kind == "call"
   // Chat del que nació la call (bot de Telegram/Discord); null = desde la web.
   // Con esto salen el leaderboard filtrado por comunidad y el "first call":
   // si ese token ya se llamó en ese chat, no se crea otra call repetida.
-  chatLinkId String?
-  chatLink   ChatLink? @relation(fields: [chatLinkId], references: [id], onDelete: SetNull)
+  chatLinkId      String?
+  chatLink        ChatLink? @relation(fields: [chatLinkId], references: [id], onDelete: SetNull)
   // Precio/MC del token en el instante exacto de la call (createdAt ya trae
   // hora:min:seg). Se capturan al crear el post — null si DexScreener no
   // respondió a tiempo, o si el post es de antes de esta columna, en cuyo
   // caso el resultado se reconstruye estimando con velas históricas.
-  entryPriceUsd Float?
-  entryMc       Float?
+  entryPriceUsd   Float?
+  entryMc         Float?
   // Resultado guardado de la call (lo rellena lib/call-results en segundo
   // plano). peakMultiple = precio máximo desde la call / precio de entrada;
   // currentMultiple = precio en la última revisión / entrada. A los 30 días
@@ -309,9 +345,9 @@ model Post {
   resultImage     String?
   resultCheckedAt DateTime?
   resultFinal     Boolean   @default(false)
-  likes     Int      @default(0)
-  pnl       Float?
-  createdAt DateTime @default(now())
+  likes           Int       @default(0)
+  pnl             Float?
+  createdAt       DateTime  @default(now())
 
   @@index([launchId, createdAt])
   @@index([tokenId, createdAt])
@@ -331,20 +367,19 @@ model Vote {
   targetId String
 
   @@unique([userId, target, targetId])
-
   @@index([target, targetId])
 }
 
 model PointEvent {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  amount    Int
-  reason    String   // thesis | comment | launch | like_received | hype_received | admin_adjust | redeem
-  note      String?
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  amount       Int
+  reason       String // thesis | comment | launch | like_received | hype_received | admin_adjust | redeem
+  note         String?
   // En los "referral": el afiliado cuyos puntos generaron este bonus
   sourceUserId String?
-  createdAt DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])
   @@index([userId, reason, sourceUserId])
@@ -378,8 +413,8 @@ model Follow {
   user     User   @relation("followUser", fields: [userId], references: [id])
   targetId String
   target   User   @relation("followTarget", fields: [targetId], references: [id])
-  @@unique([userId, targetId])
 
+  @@unique([userId, targetId])
   @@index([targetId])
 }
 
@@ -419,7 +454,6 @@ model DevClaim {
   verifiedAt    DateTime?
 
   @@unique([userId, network, contract])
-
   @@index([userId])
   @@index([status])
 }
@@ -444,7 +478,6 @@ model ProjectClaim {
   verifiedAt DateTime?
 
   @@unique([userId, targetType, targetId])
-
   @@index([targetType, targetId])
   @@index([status])
 }
@@ -549,24 +582,25 @@ model LaunchReminder {
 // abierta a Discord (chatId = id del canal) sin otra tabla.
 model ChatLink {
   id              String   @id @default(cuid())
-  provider        String   // telegram | discord
-  chatId          String   // id del chat en el proveedor (texto: los de Telegram no caben en Int)
-  chatType        String   // private | group | supergroup | channel
+  provider        String // telegram | discord
+  chatId          String // id del chat en el proveedor (texto: los de Telegram no caben en Int)
+  chatType        String // private | group | supergroup | channel
   title           String?
-  userId          String   // cuenta de Cabal que lo vinculó
+  userId          String // cuenta de Cabal que lo vinculó
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  externalUserId  String?  // id en el proveedor de quien lo vinculó (para permitirle /settings)
+  externalUserId  String? // id en el proveedor de quien lo vinculó (para permitirle /settings)
   // Discord: id del servidor del canal (en Telegram el chat ya es el grupo).
   // Sirve para contar comunidades y para las métricas del panel admin.
   serverId        String?
   lang            String   @default("es") // es | en: idioma de los mensajes del bot en este chat
   // Qué se manda a este chat. La campanita de un launch llega siempre al
   // privado del usuario, sin depender de estas opciones.
-  notifyLaunches  Boolean  @default(true)  // lanzamiento nuevo publicado
-  notifyReminders Boolean  @default(true)  // "sale pronto", de todos los launches
-  reminderLeadMin Int      @default(60)     // minutos de antelación de ese aviso
+  notifyLaunches  Boolean  @default(true) // lanzamiento nuevo publicado
+  notifyReminders Boolean  @default(true) // "sale pronto", de todos los launches
+  notifyCalls     Boolean  @default(false) // calls nuevas publicadas en Cabal
+  reminderLeads   Int[]    @default([60]) // minutos de antelación de ese aviso
   notifyTheses    Boolean  @default(false) // tesis nuevas del feed
-  active          Boolean  @default(true)  // false = el bot fue expulsado o bloqueado
+  active          Boolean  @default(true) // false = el bot fue expulsado o bloqueado
   lastError       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -586,7 +620,7 @@ model ChatLinkCode {
   codeHash   String    @unique
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider   String    // telegram | discord
+  provider   String // telegram | discord
   expiresAt  DateTime
   consumedAt DateTime?
   createdAt  DateTime  @default(now())

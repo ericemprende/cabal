@@ -42,7 +42,14 @@ const MAX_BACKLOG_MS = 6 * 3600_000
 /** Telegram admite ~30 mensajes/s y Discord ~50: se va holgado. */
 const SEND_GAP_MS = 50
 
-export type TickResult = { launches: number; theses: number; reminders: number; messages: number; emails: number }
+export type TickResult = {
+  launches: number
+  calls: number
+  theses: number
+  reminders: number
+  messages: number
+  emails: number
+}
 
 /** Un bot listo para enviar. `since` es desde cuándo difunde ese proveedor. */
 type Sender = {
@@ -80,11 +87,12 @@ async function activeSenders(): Promise<Senders> {
 const providersOf = (s: Senders) => Object.keys(s) as BotProvider[]
 
 export async function runNotificationTick(): Promise<TickResult> {
-  const result: TickResult = { launches: 0, theses: 0, reminders: 0, messages: 0, emails: 0 }
+  const result: TickResult = { launches: 0, calls: 0, theses: 0, reminders: 0, messages: 0, emails: 0 }
   const senders = await activeSenders()
 
   if (providersOf(senders).length > 0) {
     await announceNewLaunches(senders, result)
+    await announceNewCalls(senders, result)
     await announceNewTheses(senders, result)
   }
   await sendReminders(senders, result)
@@ -119,7 +127,47 @@ async function announceNewLaunches(senders: Senders, r: TickResult) {
   }
 }
 
-// ---------- 2. Tesis nuevas ----------
+// ---------- 2. Calls nuevas ----------
+
+/**
+ * Las calls publicadas en Cabal (desde la web o desde otro chat) llegan a los
+ * chats que lo hayan activado. Es el sentido contrario al de lib/bot-call, que
+ * trae a Cabal las que se dan en Telegram o Discord.
+ *
+ * Al chat donde nació la call no se le reenvía: allí ya la vieron al darla.
+ */
+async function announceNewCalls(senders: Senders, r: TickResult) {
+  const now = Date.now()
+  const calls = await db.post.findMany({
+    where: {
+      kind: 'call',
+      contract: { not: null },
+      createdAt: { gte: lowerBound(senders, now), lte: new Date(now - PUBLISH_GRACE_MS) },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 20,
+    include: { user: { select: { handle: true } } },
+  })
+  const pending = await notDispatched(calls.map((c) => `call:${c.id}`))
+  for (const c of calls) {
+    const key = `call:${c.id}`
+    if (!pending.has(key) || !(await reserve(key))) continue
+    const chats = await db.chatLink.findMany({
+      where: {
+        provider: { in: providersOf(senders) },
+        active: true,
+        notifyCalls: true,
+        ...(c.chatLinkId ? { id: { not: c.chatLinkId } } : {}),
+      },
+    })
+    const sent = await broadcast(senders, chats, (lang) => callMessage(c, lang), c.createdAt)
+    await markSent(key, sent)
+    r.calls++
+    r.messages += sent
+  }
+}
+
+// ---------- 3. Tesis nuevas ----------
 
 async function announceNewTheses(senders: Senders, r: TickResult) {
   const now = Date.now()
@@ -151,7 +199,7 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
   }
 }
 
-// ---------- 3. Recordatorios ----------
+// ---------- 4. Recordatorios ----------
 
 /**
  * Las antelaciones que alguien está usando ahora mismo. Solo esas se recorren:
@@ -159,18 +207,10 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
  */
 async function leadsInUse(): Promise<number[]> {
   const [users, chats] = await Promise.all([
-    db.user.findMany({
-      where: { launchReminders: { some: {} } },
-      select: { reminderLeadMin: true },
-      distinct: ['reminderLeadMin'],
-    }),
-    db.chatLink.findMany({
-      where: { active: true, notifyReminders: true },
-      select: { reminderLeadMin: true },
-      distinct: ['reminderLeadMin'],
-    }),
+    db.user.findMany({ where: { launchReminders: { some: {} } }, select: { reminderLeads: true } }),
+    db.chatLink.findMany({ where: { active: true, notifyReminders: true }, select: { reminderLeads: true } }),
   ])
-  return [...new Set([...users, ...chats].map((x) => x.reminderLeadMin))].sort((a, b) => b - a)
+  return [...new Set([...users, ...chats].flatMap((x) => x.reminderLeads))].sort((a, b) => b - a)
 }
 
 async function sendReminders(senders: Senders, r: TickResult) {
@@ -206,7 +246,7 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
     // Solo quien haya pedido justo esta antelación
     const bellUserIds = (
       await db.launchReminder.findMany({
-        where: { launchId: l.id, user: { reminderLeadMin: lead } },
+        where: { launchId: l.id, user: { reminderLeads: { has: lead } } },
         select: { userId: true },
       })
     ).map((x) => x.userId)
@@ -234,8 +274,8 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
           active: true,
           notifyReminders: true,
           OR: [
-            { chatType: { not: 'private' }, reminderLeadMin: lead },
-            { chatType: 'private', user: { reminderLeadMin: lead } },
+            { chatType: { not: 'private' }, reminderLeads: { has: lead } },
+            { chatType: 'private', user: { reminderLeads: { has: lead } } },
           ],
         },
       })
@@ -426,6 +466,42 @@ export function launchMessage(l: LaunchForMessage, kind: 'new' | 'soon' | 'bell'
   if (kind === 'new' && l.description) lines.push('', esc(snippet(l.description, 280)))
   lines.push('', `${l.submitterRole === 'dev' ? tx.byDev : tx.byCommunity} ${userLink(l.createdBy.handle)}`)
   return { text: lines.join('\n'), buttons: [[{ text: tx.viewOnCabal, url: launchUrl(l.id) }]] }
+}
+
+/**
+ * Una call para difundir. Lleva la misma tarjeta que se ve en Cabal
+ * (/api/posts/[id]/card): es la imagen del resultado, que al publicarla marca
+ * 1.0X y luego cuenta la historia sola.
+ */
+function callMessage(
+  c: {
+    id: string
+    content: string
+    contract: string | null
+    network: string | null
+    entryMc: number | null
+    resultSymbol: string | null
+    user: { handle: string }
+  },
+  lang: Lang
+): BotMessage {
+  const tx = t(lang)
+  const symbol = c.resultSymbol ? `$${esc(c.resultSymbol)}` : esc((c.contract ?? '').slice(0, 8))
+  const lines = [tx.callHead(userLink(c.user.handle)), '', `<b>${symbol}</b>`]
+  if (c.entryMc !== null) lines.push(`${tx.callEntryAt} ${fmtMcShort(c.entryMc)}`)
+  if (c.content) lines.push('', esc(c.content.slice(0, 400)))
+  return {
+    text: lines.join('\n'),
+    image: `${siteUrl()}/api/posts/${encodeURIComponent(c.id)}/card`,
+    buttons: [[{ text: tx.viewCallOnCabal, url: `${siteUrl()}/app?post=${encodeURIComponent(c.id)}` }]],
+  }
+}
+
+function fmtMcShort(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
+  return `${n.toFixed(0)}`
 }
 
 function thesisMessage(

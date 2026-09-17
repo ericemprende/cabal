@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { CABAL_X_HANDLE, followCardUrl, followRefUrl } from '@/lib/follow-x'
 import { shareCardUrl, shareRefUrl, siteUrl, type Locale } from '@/lib/waitlist'
 
 /**
@@ -46,6 +47,59 @@ export function buildShareMetadata(handle: string | null, locale: Locale): Metad
   // Cada invitación es canónica de sí misma, nunca de la home: X guarda la
   // tarjeta de la home de cuando era la app, sin imagen válida.
   const url = shareRefUrl(handle, locale)
+
+  return {
+    title: TITLE,
+    description: DESCRIPTION,
+    metadataBase: new URL(siteUrl()),
+    alternates: { canonical: handle ? url : '/' },
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      url,
+      siteName: 'Cabal',
+      type: 'website',
+      images: [image],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: ogDescription,
+      images: [image.url],
+    },
+  }
+}
+
+/**
+ * Metadatos del enlace de la campaña "sigue a @Cabal_app" (`/f/<handle>`).
+ *
+ * Es una ruta aparte de `/r/<handle>` porque X guarda UNA tarjeta por URL: si
+ * las dos campañas compartieran enlace, la segunda heredaría la imagen que X
+ * cacheó de la primera y no habría forma de refrescarla (retiraron el validador
+ * en 2022). Con una URL propia, cada post lleva su tarjeta.
+ */
+export function buildFollowMetadata(handle: string | null, locale: Locale): Metadata {
+  const image = handle
+    ? {
+        url: followCardUrl(handle, locale),
+        width: 1672,
+        height: 941,
+        alt: `@${handle} sigue a @${CABAL_X_HANDLE}`,
+      }
+    : { url: '/og-cabal.png', width: 1200, height: 630, alt: 'Cabal' }
+
+  const ogTitle = handle
+    ? locale === 'en'
+      ? `@${handle} follows @${CABAL_X_HANDLE}`
+      : `@${handle} ya sigue a @${CABAL_X_HANDLE}`
+    : TITLE
+  const ogDescription = handle
+    ? locale === 'en'
+      ? `Follow @${CABAL_X_HANDLE} and join @${handle} on the Cabal radar: memecoins spotted before they launch.`
+      : `Sigue a @${CABAL_X_HANDLE} y entra con @${handle} al radar de Cabal: los memecoins, antes de que salgan.`
+    : DESCRIPTION
+
+  const url = followRefUrl(handle, locale)
 
   return {
     title: TITLE,

@@ -25,7 +25,53 @@ export interface PublicUserDTO {
   followers: number
   points: number
   lifetimePoints: number
+  /** Reputación de la comunidad (👍/👎). Va en el usuario público para poder
+   *  enseñar la insignia donde aparezca, sobre todo en el dev de un launch. */
+  reputation: ReputationSummaryDTO
   isFollowed?: boolean
+}
+
+/** Resumen de la reputación de un usuario. Ver lib/reputation.ts. */
+export interface ReputationSummaryDTO {
+  /** % de confianza ponderado y suavizado (0-100). */
+  score: number
+  up: number
+  down: number
+  /** up + down: por debajo de REP_MIN_VOTES no se enseña el porcentaje. */
+  votes: number
+}
+
+/** Una valoración escrita, tal y como se lista en el perfil. */
+export interface ReputationReviewDTO {
+  id: string
+  value: 1 | -1
+  body: string
+  createdAt: string
+  /** true si la reseña se editó después de publicarla. */
+  edited: boolean
+  author: {
+    id: string
+    handle: string
+    name: string
+    avatar: string
+    walletVerified: boolean
+    xVerified: boolean
+  }
+}
+
+/** GET /api/users/<handle>/reputation */
+export interface ReputationDTO {
+  summary: ReputationSummaryDTO
+  /** Valoraciones con texto, las más nuevas primero. */
+  reviews: ReputationReviewDTO[]
+  /** Cuántas valoraciones más con texto hay sin cargar. */
+  more: number
+  /** Voto de quien mira, si ya votó. */
+  mine: { value: 1 | -1; body: string } | null
+  /** Puede votar a este usuario: con sesión, verificado y no siendo él mismo. */
+  canVote: boolean
+  /** Por qué no puede votar, para explicarlo en vez de esconder los botones. */
+  reason: 'ok' | 'anon' | 'self' | 'unverified'
 }
 
 /** El usuario visto por sí mismo o por el panel de admin: incluye lo privado. */

@@ -14,6 +14,8 @@ export const POINT_RULE_KEYS = [
   'points_daily_visit',
   'points_referral_percent',
   'points_share_x',
+  'points_follow_x',
+  'points_share_follow_x',
   'points_swap_referral_pct',
   'points_per_usd_fee',
 ] as const
@@ -32,6 +34,8 @@ export type PointReason =
   | 'verify_wallet'
   | 'referral'
   | 'share_x'
+  | 'follow_x'
+  | 'share_follow_x'
   | 'swap_referral'
 
 const REASON_TO_KEY: Record<string, string> = {
@@ -42,6 +46,8 @@ const REASON_TO_KEY: Record<string, string> = {
   hype_received: 'points_hype_received',
   daily_visit: 'points_daily_visit',
   share_x: 'points_share_x',
+  follow_x: 'points_follow_x',
+  share_follow_x: 'points_share_follow_x',
 }
 
 // Valores por defecto si la Setting no existe en la BD. El seed solo las crea
@@ -55,6 +61,8 @@ const POINT_RULE_DEFAULTS: Record<string, number> = {
   points_hype_received: 1,
   points_daily_visit: 3,
   points_share_x: 10,
+  points_follow_x: 15,
+  points_share_follow_x: 10,
 }
 
 export async function getPointRules(): Promise<Record<string, number>> {

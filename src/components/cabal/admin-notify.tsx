@@ -25,6 +25,7 @@ import type { AdminBotDTO, BotProviderName } from '@/lib/notify-types'
 const DISPATCH_LABEL: Record<string, string> = {
   'launch:new': 'Launch nuevo',
   'launch:soon': 'Recordatorio',
+  call: 'Call nueva',
   post: 'Tesis',
 }
 
