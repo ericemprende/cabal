@@ -71,6 +71,9 @@ model User {
   launchMemberships LaunchMember[] @relation("launchMember")
   launchInvitesSent LaunchMember[] @relation("launchInviter")
   chatMessages  ChatMessage[]
+  launchReminders LaunchReminder[]
+  chatLinks     ChatLink[]
+  chatLinkCodes ChatLinkCode[]
 
   @@index([points])
   @@index([referredById])
@@ -116,6 +119,7 @@ model Launch {
   posts         Post[]
   token         Token?
   members       LaunchMember[]
+  reminders     LaunchReminder[]
 
   @@index([status, launchAt])
   @@index([createdById])
@@ -286,6 +290,16 @@ model Post {
   // caso el resultado se reconstruye estimando con velas históricas.
   entryPriceUsd Float?
   entryMc       Float?
+  // Resultado guardado de la call (lo rellena lib/call-results en segundo
+  // plano). peakMultiple = precio máximo desde la call / precio de entrada;
+  // currentMultiple = precio en la última revisión / entrada. A los 30 días
+  // se deja de revisar (resultFinal) y el resultado queda fijo.
+  peakMultiple    Float?
+  currentMultiple Float?
+  resultSymbol    String?
+  resultImage     String?
+  resultCheckedAt DateTime?
+  resultFinal     Boolean   @default(false)
   likes     Int      @default(0)
   pnl       Float?
   createdAt DateTime @default(now())
@@ -294,6 +308,8 @@ model Post {
   @@index([tokenId, createdAt])
   @@index([userId, createdAt])
   @@index([createdAt])
+  @@index([kind, resultFinal, resultCheckedAt])
+  @@index([kind, createdAt])
 }
 
 model Vote {
@@ -500,4 +516,72 @@ model SwapIntent {
   createdAt     DateTime @default(now())
 
   @@index([walletAddress, createdAt])
+}
+
+// Campanita de un launch: el usuario pide que le avisen cuando falte poco
+// (1 hora, ver lib/notifications.ts). El aviso llega a su Telegram vinculado
+// y a su correo verificado.
+model LaunchReminder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  launchId  String
+  launch    Launch   @relation(fields: [launchId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, launchId])
+  @@index([launchId])
+}
+
+// Chat externo conectado a una cuenta de Cabal: el privado del usuario con el
+// bot, o un grupo/canal donde el usuario metió el bot. provider deja la puerta
+// abierta a Discord (chatId = id del canal) sin otra tabla.
+model ChatLink {
+  id              String   @id @default(cuid())
+  provider        String   // telegram | discord
+  chatId          String   // id del chat en el proveedor (texto: los de Telegram no caben en Int)
+  chatType        String   // private | group | supergroup | channel
+  title           String?
+  userId          String   // cuenta de Cabal que lo vinculó
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  externalUserId  String?  // id en el proveedor de quien lo vinculó (para permitirle /ajustes)
+  // Qué se manda a este chat. La campanita de un launch llega siempre al
+  // privado del usuario, sin depender de estas opciones.
+  notifyLaunches  Boolean  @default(true)  // lanzamiento nuevo publicado
+  notifyReminders Boolean  @default(true)  // "sale en 1 hora", de todos los launches
+  notifyTheses    Boolean  @default(false) // tesis nuevas del feed
+  active          Boolean  @default(true)  // false = el bot fue expulsado o bloqueado
+  lastError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([provider, chatId])
+  @@index([userId])
+  @@index([provider, active])
+}
+
+// Código de un solo uso para vincular un chat: la web lo genera con la sesión
+// del usuario y el bot lo recibe en /start. Se guarda el hash, no el código.
+model ChatLinkCode {
+  id         String    @id @default(cuid())
+  codeHash   String    @unique
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String    // telegram | discord
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Reserva de cada envío masivo ("launch:new:<id>", "post:<id>"…). Se crea ANTES
+// de mandar: si dos pasadas del worker se solapan, la segunda choca con la
+// clave y no repite el aviso.
+model NotificationDispatch {
+  key       String   @id
+  sentCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

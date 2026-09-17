@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { sessionUserIdFromCookies } from '@/lib/auth'
 import { cached, CACHE_TTL } from '@/lib/cache'
 import { toPublicUserDTO } from '@/lib/serializers'
+import { parsePeriod } from '@/lib/call-score'
+import { kickCallResultsSync, rankCallers } from '@/lib/call-results'
 import type { ClanDTO, LeaderboardDTO, LeaderboardEntryDTO } from '@/lib/types'
 
 const CLANS: ClanDTO[] = [
@@ -13,26 +15,36 @@ const CLANS: ClanDTO[] = [
   { id: 'c5', name: 'Solana Sharks', emoji: '🦈', members: 87, score: 990000, trend: 5.5, tag: 'SHRK' },
 ]
 
-export async function GET() {
+// GET /api/leaderboard?period=24h|7d|30d|all — el periodo solo afecta a Top Callers
+export async function GET(req: Request) {
   try {
-    const me = await getCurrentUser()
-    // Solo se cachea la tabla de usuarios, que es idéntica para todos. Los
-    // follows son por usuario y se consultan siempre en fresco.
-    const [users, follows] = await Promise.all([
+    const period = parsePeriod(new URL(req.url).searchParams.get('period'))
+    // Mantiene al día los resultados de las calls sin hacer esperar a nadie
+    kickCallResultsSync()
+
+    // Público: sin sesión también se ve (antes getCurrentUser fallaba sin cuenta)
+    const viewerId = await sessionUserIdFromCookies()
+    // Solo se cachea lo que es idéntico para todos. Los follows son por
+    // usuario y se consultan siempre en fresco.
+    const [users, ranking, follows] = await Promise.all([
       cached('leaderboard:users', CACHE_TTL.leaderboard, () =>
-        db.user.findMany({ orderBy: { cabalScore: 'desc' } }),
+        db.user.findMany({ orderBy: { points: 'desc' } }),
       ),
-      db.follow.findMany({ where: { userId: me.id } }),
+      cached(`leaderboard:callers:${period}`, 60, () => rankCallers(period)),
+      viewerId ? db.follow.findMany({ where: { userId: viewerId } }) : Promise.resolve([]),
     ])
     const followedIds = new Set(follows.map((f) => f.targetId))
+    const userById = new Map(users.map((u) => [u.id, u]))
 
-    const callers: LeaderboardEntryDTO[] = [...users]
-      .sort((a, b) => b.cabalScore - a.cabalScore)
-      .map((u, i) => ({
+    const callers: LeaderboardEntryDTO[] = ranking
+      .filter((r) => userById.has(r.userId))
+      .slice(0, 100)
+      .map((r, i) => ({
         rank: i + 1,
-        user: toPublicUserDTO(u, followedIds.has(u.id)),
-        metric: u.cabalScore,
-        winRate: u.callsTotal > 0 ? Math.round((u.callsWon / u.callsTotal) * 100) : 0,
+        user: toPublicUserDTO(userById.get(r.userId)!, followedIds.has(r.userId)),
+        metric: r.summary.score,
+        winRate: r.summary.winRate,
+        calls: r.summary,
       }))
 
     const devs: LeaderboardEntryDTO[] = users
@@ -53,7 +65,7 @@ export async function GET() {
         metric: u.points,
       }))
 
-    const dto: LeaderboardDTO = { callers, devs, points, clans: CLANS }
+    const dto: LeaderboardDTO = { period, callers, devs, points, clans: CLANS }
     return NextResponse.json(dto)
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

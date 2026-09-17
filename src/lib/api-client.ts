@@ -29,8 +29,10 @@ import type {
   TokenBalanceDTO,
   TokenDTO,
   TokenDetailDTO,
+  UserCallStatsDTO,
   UserDTO,
 } from '@/lib/types'
+import type { CallPeriod } from '@/lib/call-score'
 
 export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -323,10 +325,21 @@ export function useFeed() {
   return useQuery<PostDTO[]>({ queryKey: qk.feed, queryFn: () => jsonFetch('/api/feed') })
 }
 
-export function useLeaderboard() {
+export function useLeaderboard(period: CallPeriod = 'all') {
   return useQuery<LeaderboardDTO>({
-    queryKey: qk.leaderboard,
-    queryFn: () => jsonFetch('/api/leaderboard'),
+    queryKey: [...qk.leaderboard, period],
+    queryFn: () => jsonFetch(`/api/leaderboard?period=${period}`),
+    placeholderData: (prev) => prev,
+  })
+}
+
+/** Estadísticas públicas de las calls de un usuario (perfil). */
+export function useUserCallStats(handle: string, period: CallPeriod) {
+  return useQuery<UserCallStatsDTO>({
+    queryKey: ['user-calls', handle.toLowerCase(), period],
+    queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/calls?period=${period}`),
+    enabled: Boolean(handle),
+    placeholderData: (prev) => prev,
   })
 }
 

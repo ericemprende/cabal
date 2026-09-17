@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { fmtMc, timeAgo } from '@/lib/cabal'
 import { BadgesRow, NetworkBadge, PremiumPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
+import { CallStats } from '@/components/cabal/call-stats'
 import { XLogo } from '@/components/cabal/x-logo'
 import { Header } from '@/components/cabal/header'
 import { LeftFeed, RightRail } from '@/components/cabal/sidebars'
@@ -82,21 +83,15 @@ export function ProfileView({ handle }: { handle: string }) {
 function ProfileContent({ profile }: { profile: PublicProfileDTO }) {
   const { user, counts } = profile
   const [list, setList] = useState<'followers' | 'following' | null>(null)
-  const winRate = user.callsTotal > 0 ? Math.round((user.callsWon / user.callsTotal) * 100) : null
 
   return (
     <div className="space-y-5">
       <ProfileHeader profile={profile} onOpenList={setList} />
 
-      {/* Estadísticas */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat icon={Trophy} label="Cabal Score" value={user.cabalScore.toLocaleString('es')} />
-        <Stat
-          icon={Target}
-          label="Aciertos"
-          value={winRate === null ? '—' : `${winRate}%`}
-          hint={user.callsTotal > 0 ? `${user.callsWon} de ${user.callsTotal} calls` : 'Sin calls todavía'}
-        />
+      {/* Estadísticas de calls: públicas, con filtro de periodo */}
+      <CallStats handle={user.handle} />
+
+      <div className="grid grid-cols-2 gap-2.5">
         <Stat icon={Rocket} label="Launches" value={String(counts.launches)} />
         <Stat
           icon={Code2}

@@ -276,6 +276,44 @@ export interface LeaderboardEntryDTO {
   user: PublicUserDTO
   metric: number // cabalScore or points or winrate-based
   winRate?: number
+  /** Solo en Top Callers: resumen de sus calls en el periodo elegido. */
+  calls?: CallSummaryDTO
+}
+
+export interface CallSummaryDTO {
+  score: number
+  calls: number
+  wins: number
+  winRate: number
+  bestMultiple: number | null
+  avgPeak: number | null
+}
+
+/** Una call con su resultado guardado (perfil → estadísticas). */
+export interface CallRowDTO {
+  id: string
+  content: string
+  network: string
+  contract: string
+  symbol: string | null
+  image: string | null
+  entryMc: number | null
+  peakMultiple: number | null
+  currentMultiple: number | null
+  points: number
+  final: boolean
+  createdAt: string
+}
+
+export interface UserCallStatsDTO {
+  period: '24h' | '7d' | '30d' | 'all'
+  summary: CallSummaryDTO
+  /** Posición en Top Callers en ese periodo (null si no tiene calls con resultado). */
+  rank: number | null
+  best: CallRowDTO[]
+  calls: CallRowDTO[]
+  /** Calls publicadas cuyo resultado aún no se ha calculado. */
+  pending: number
 }
 
 export interface ClanDTO {
@@ -289,6 +327,7 @@ export interface ClanDTO {
 }
 
 export interface LeaderboardDTO {
+  period: '24h' | '7d' | '30d' | 'all'
   callers: LeaderboardEntryDTO[]
   devs: LeaderboardEntryDTO[]
   points: LeaderboardEntryDTO[]

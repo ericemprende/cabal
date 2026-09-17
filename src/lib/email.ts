@@ -149,6 +149,34 @@ export function launchAlertEmail(
   return { subject, html, text }
 }
 
+/**
+ * Aviso de la campanita: el usuario pidió que le avisaran de este launch.
+ * `minutes` es lo que falta de verdad (normalmente 60).
+ */
+export function launchReminderEmail(
+  launch: { name: string; ticker: string | null; isPrivate: boolean },
+  minutes: number,
+  launchUrl: string
+): { subject: string; html: string; text: string } {
+  const raw = launch.ticker && !launch.isPrivate ? `$${launch.ticker} · ${launch.name}` : launch.name
+  const label = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const when = minutes >= 60 ? `${Math.round(minutes / 60)} hora${Math.round(minutes / 60) === 1 ? '' : 's'}` : `${minutes} minutos`
+  const subject = `🔔 ${raw} sale en ${when}`
+  const intro = `Activaste la campanita de este proyecto. Sale en ${when}:`
+  const text = `${intro}\n\n${raw}\n\n${launchUrl}\n\n— Cabal. Quita la campanita en la tarjeta del proyecto para no recibir más avisos de él.`
+  const html = `<!doctype html>
+<html lang="es"><body style="margin:0;padding:24px;background:#0a0b08;font-family:Arial,Helvetica,sans-serif;color:#e8ebe2">
+  <div style="max-width:440px;margin:0 auto;background:#121410;border:1px solid #2a2e24;border-radius:16px;padding:28px">
+    <p style="margin:0 0 18px;font-size:13px;font-weight:bold;letter-spacing:2px;color:#8FA83F">CABAL · RECORDATORIO</p>
+    <p style="margin:0 0 14px;font-size:15px;line-height:1.5">${intro}</p>
+    <p style="margin:0 0 20px;font-size:20px;font-weight:bold;color:#cddc8f">${label}</p>
+    <a href="${launchUrl}" style="display:inline-block;background:#8FA83F;color:#0a0b08;font-weight:bold;text-decoration:none;padding:10px 18px;border-radius:10px;font-size:14px">Ver en Cabal →</a>
+    <p style="margin:22px 0 0;font-size:11px;line-height:1.5;color:#7c8272">Quita la campanita en la tarjeta del proyecto para no recibir más avisos de él.</p>
+  </div>
+</body></html>`
+  return { subject, html, text }
+}
+
 /** "e••••@gmail.com": para decir a dónde se mandó el código sin revelarlo entero. */
 export function maskEmail(email: string): string {
   const [user, domain] = email.split('@')

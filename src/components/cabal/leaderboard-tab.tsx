@@ -2,18 +2,21 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Crown, Shield, ShieldCheck, Target, TrendingUp, Wrench, Zap } from 'lucide-react'
+import { Crown, Info, Shield, ShieldCheck, Target, TrendingUp, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar } from '@/components/cabal/shared'
 import { fmtMc, fmtPct } from '@/lib/cabal'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
 import { useIsOnline } from '@/lib/presence'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CALL_PERIODS, LOSS_MULTIPLE, LOSS_POINTS, SCORE_TIERS, WIN_MULTIPLE, fmtMultiple, type CallPeriod } from '@/lib/call-score'
 import type { LeaderboardEntryDTO } from '@/lib/types'
 
 type Board = 'callers' | 'devs' | 'points' | 'clans'
 
 export function LeaderboardTab() {
-  const { data, isLoading } = useLeaderboard()
+  const [period, setPeriod] = useState<CallPeriod>('7d')
+  const { data, isLoading } = useLeaderboard(period)
   const [board, setBoard] = useState<Board>('callers')
 
   return (
@@ -42,6 +45,29 @@ export function LeaderboardTab() {
           </button>
         ))}
       </div>
+
+      {/* Periodo: solo cambia Top Callers (calls publicadas dentro del periodo) */}
+      {board === 'callers' && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#121410] p-0.5" role="tablist" aria-label="Periodo">
+            {CALL_PERIODS.map((p) => (
+              <button
+                key={p.key}
+                role="tab"
+                aria-selected={period === p.key}
+                onClick={() => setPeriod(p.key)}
+                className={cn(
+                  'rounded-full px-3 py-1 text-[11px] font-bold transition-colors',
+                  period === p.key ? 'bg-[#8FA83F]/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <ScoreHelp />
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -74,6 +100,15 @@ export function LeaderboardTab() {
         </div>
       ) : (
         <div className="space-y-1.5">
+          {board === 'callers' && data?.callers.length === 0 && (
+            <div className="rounded-xl border border-dashed border-white/10 px-4 py-10 text-center">
+              <Target className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden />
+              <p className="mt-2 text-sm font-semibold">Nadie tiene calls con resultado en este periodo</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Publica una call con el CA del token en el Feed: su resultado se calcula en unos minutos.
+              </p>
+            </div>
+          )}
           {(board === 'callers' ? data?.callers : board === 'devs' ? data?.devs : data?.points)?.map((entry) => (
             <Row key={entry.user.id} entry={entry} board={board} />
           ))}
@@ -106,8 +141,19 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
           </p>
           <p className="truncate text-xs text-muted-foreground">@{user.handle}</p>
         </Link>
-        {/* win rate bar for callers/devs */}
-        {(board === 'callers' || board === 'devs') && (
+        {board === 'callers' && entry.calls && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="h-1 w-20 overflow-hidden rounded-full bg-[#8FA83F]/8">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/50 to-[#8FA83F]" style={{ width: `${entry.calls.winRate}%` }} />
+            </div>
+            <span className="text-[10px] font-semibold text-muted-foreground">
+              {entry.calls.wins}/{entry.calls.calls} aciertos · {entry.calls.winRate}%
+            </span>
+            <span className="text-[10px] font-semibold text-amber-300/90">mejor {fmtMultiple(entry.calls.bestMultiple)}</span>
+          </div>
+        )}
+        {/* win rate bar for devs */}
+        {board === 'devs' && (
           <div className="mt-1.5 flex items-center gap-2">
             <div className="h-1 w-24 overflow-hidden rounded-full bg-[#8FA83F]/8">
               <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/50 to-[#8FA83F]" style={{ width: `${winRate}%` }} />
@@ -118,7 +164,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
           </div>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
         {board === 'points' && <PointsPill points={entry.metric} />}
         {board === 'callers' && (
           <div className="text-right">
@@ -135,14 +181,47 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
           </div>
         )}
         {!user.isFollowed && (
+          // En móvil no cabe junto al score: se sigue desde el perfil
           <button
             onClick={() => follow.mutate(user.id)}
-            className="rounded-full border border-[#8FA83F]/30 px-3 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-[#8FA83F]/10"
+            className="hidden rounded-full sm:block border border-[#8FA83F]/30 px-3 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-[#8FA83F]/10"
           >
             Seguir
           </button>
         )}
       </div>
     </div>
+  )
+}
+
+/** Cómo se calcula el Cabal Score de las calls. */
+function ScoreHelp() {
+  return (
+    <Popover>
+      <PopoverTrigger className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-primary">
+        <Info className="h-3.5 w-3.5" aria-hidden /> ¿Cómo se calcula?
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 border-white/10 bg-popover p-3 text-xs">
+        <p className="font-bold text-foreground">Cabal Score</p>
+        <p className="mt-1 leading-relaxed text-muted-foreground">
+          Cada call suma puntos según el pico que alcanzó el token después de publicarla (máximo desde la call ÷ precio de entrada).
+        </p>
+        <ul className="mt-2 space-y-1">
+          {SCORE_TIERS.map((t) => (
+            <li key={t.min} className="flex justify-between">
+              <span>{t.label}</span>
+              <span className="font-bold text-primary">+{t.points}</span>
+            </li>
+          ))}
+          <li className="flex justify-between">
+            <span>Sin llegar a {WIN_MULTIPLE}X y cae más de {Math.round((1 - LOSS_MULTIPLE) * 100)}%</span>
+            <span className="font-bold text-[#ff8080]">{LOSS_POINTS}</span>
+          </li>
+        </ul>
+        <p className="mt-2 leading-relaxed text-muted-foreground">
+          Acierto = pico de {WIN_MULTIPLE}X o más. Los resultados se actualizan cada pocos minutos y quedan fijos a los 30 días.
+        </p>
+      </PopoverContent>
+    </Popover>
   )
 }

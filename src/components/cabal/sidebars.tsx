@@ -14,6 +14,7 @@ import { useIsOnline, useOnlineCount, useOnlineMembers } from '@/lib/presence'
 import { LiveChat } from '@/components/cabal/live-chat'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { fmtNum } from '@/lib/cabal'
+import { fmtMultiple } from '@/lib/call-score'
 
 type ActivityFilter = 'all' | 'launch' | 'post' | 'chat'
 
@@ -266,6 +267,11 @@ export function RightRail() {
             {top.map((c, i) => (
               <TopCallerRow key={c.user.id} caller={c} rank={i} onFollow={() => follow.mutate(c.user.id)} />
             ))}
+            {top.length === 0 && (
+              <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+                Aún no hay calls con resultado. Publica una con su CA en el Feed.
+              </p>
+            )}
           </div>
         </section>
 
@@ -305,7 +311,11 @@ function TopCallerRow({
         <UserAvatar name={caller.user.name} handle={caller.user.handle} src={caller.user.avatar} size="xs" verified={caller.user.walletVerified} online={online} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold">{caller.user.name}</p>
-          <p className="truncate text-[10px] text-muted-foreground">{fmtNum(caller.user.followers)} seguidores</p>
+          <p className="truncate text-[10px] text-muted-foreground">
+            {caller.calls
+              ? `${caller.calls.score} pts · mejor ${fmtMultiple(caller.calls.bestMultiple)}`
+              : `${fmtNum(caller.user.followers)} seguidores`}
+          </p>
         </div>
       </Link>
       {caller.user.isFollowed ? (
