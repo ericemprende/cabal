@@ -24,7 +24,6 @@ import {
   Save,
   Settings2,
   ShieldCheck,
-  Ticket,
   Trash2,
   TrendingUp,
   Users,
@@ -54,7 +53,7 @@ import { NETWORKS, fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
 import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
 import { CopyCA, PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
-import { AdminWaitlist } from '@/components/cabal/admin-waitlist'
+import { AdminUsers } from '@/components/cabal/admin-users'
 import {
   jsonFetch,
   qk,
@@ -144,7 +143,6 @@ const REASON_COLORS: Record<string, string> = {
 }
 
 type AdminView =
-  | 'whitelist'
   | 'usuarios'
   | 'premium'
   | 'reclamos'
@@ -214,7 +212,7 @@ export function AdminPanel({
   /** Acción opcional de cierre (muestra un botón "Cerrar" junto al título). */
   onClose?: () => void
 }) {
-  const [view, setView] = useState<AdminView>('whitelist')
+  const [view, setView] = useState<AdminView>('usuarios')
   const overview = useAdminOverview(enabled)
   const users = useAdminUsers(enabled)
   const analytics = useQuery<AdminAnalyticsDTO>({
@@ -242,7 +240,6 @@ export function AdminPanel({
     .map((d) => ({ name: RULE_LABELS[`points_${d.reason}`] ?? d.reason, value: d.total, key: d.reason }))
 
   const NAV_ITEMS = [
-    { key: 'whitelist', label: 'Lista de espera', icon: Ticket },
     { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
     { key: 'premium', label: 'Plan Premium', icon: Crown },
     { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
@@ -312,32 +309,23 @@ export function AdminPanel({
 
       <div className="min-w-0 flex-1 p-4">
         {view === 'usuarios' && (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">
-              Ajusta puntos, edita perfiles (X, Telegram, Google) y gestiona insignias y roles. Cada cambio queda registrado.
-            </p>
-            {users.data && (
-              <p className="flex items-center gap-1.5 text-sm font-bold">
-                <Users className="h-4 w-4 text-primary" aria-hidden />
-                {users.data.length.toLocaleString('es')} usuarios registrados
-              </p>
-            )}
-            {users.isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-            {(users.data ?? []).map((u, i) => (
+          <AdminUsers
+            enabled={enabled}
+            users={users.data}
+            loading={users.isLoading}
+            renderRow={(u, i) => (
               <AdminUserRow
                 key={u.id}
-                index={i + 1}
+                index={i}
                 user={u}
                 enabled={enabled}
                 onAdjust={(amount, note) => adjust.mutate({ userId: u.id, amount, note })}
               />
-            ))}
-          </div>
+            )}
+          />
         )}
 
         {view === 'premium' && <AdminPremium enabled={enabled} />}
-
-        {view === 'whitelist' && <AdminWaitlist enabled={enabled} />}
 
         {view === 'reclamos' && <AdminClaims enabled={enabled} />}
 
@@ -594,7 +582,7 @@ function AdminUserRow({
             {user.googleVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">G</span>}
           </p>
           <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-            @{user.handle} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
+            @{user.handle} · {user.contactEmail ?? 'sin correo'}{user.shared ? ' · compartió' : ''} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
             <Heart className="h-3 w-3" aria-hidden />
           </p>
         </div>

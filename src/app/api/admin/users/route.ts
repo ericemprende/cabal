@@ -8,12 +8,19 @@ export async function GET(req: Request) {
   try {
     await requireAdmin(req)
     const users = await db.user.findMany({ orderBy: { points: 'desc' } })
-    const [postCounts, launchCounts, likeSums, lastEvents] = await Promise.all([
+    const [postCounts, launchCounts, likeSums, lastEvents, shares, waitlist] = await Promise.all([
       db.post.groupBy({ by: ['userId'], _count: { _all: true } }),
       db.launch.groupBy({ by: ['createdById'], _count: { _all: true } }),
       db.post.groupBy({ by: ['userId'], _sum: { likes: true } }),
       db.pointEvent.groupBy({ by: ['userId'], _max: { createdAt: true } }),
+      db.pointEvent.findMany({ where: { reason: 'share_x' }, select: { userId: true } }),
+      db.waitlistEntry.findMany({
+        where: { userId: { not: null } },
+        select: { userId: true, email: true, shared: true, telegram: true, xFollowers: true },
+      }),
     ])
+    const sharedSet = new Set(shares.map((s) => s.userId))
+    const waitMap = new Map(waitlist.map((w) => [w.userId, w]))
     const postMap = new Map(postCounts.map((p) => [p.userId, p._count._all]))
     const launchMap = new Map(launchCounts.map((l) => [l.createdById, l._count._all]))
     const likeMap = new Map(likeSums.map((l) => [l.userId, l._sum.likes ?? 0]))
@@ -25,6 +32,10 @@ export async function GET(req: Request) {
       launchesCount: launchMap.get(u.id) ?? 0,
       likesReceived: likeMap.get(u.id) ?? 0,
       lastActivity: lastMap.get(u.id)?.toISOString() ?? null,
+      // Correo visible: el de la cuenta, el de Google o el que dejó en la whitelist
+      contactEmail: u.email || u.googleEmail || waitMap.get(u.id)?.email || null,
+      shared: sharedSet.has(u.id) || Boolean(waitMap.get(u.id)?.shared),
+      xFollowers: waitMap.get(u.id)?.xFollowers ?? null,
     }))
     return NextResponse.json(rows)
   } catch (e) {

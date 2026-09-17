@@ -397,6 +397,9 @@ export interface AdminUserRowDTO extends UserDTO {
   launchesCount: number
   likesReceived: number
   lastActivity?: string | null
+  contactEmail: string | null
+  shared: boolean
+  xFollowers: number | null
 }
 
 // ---------- Lista de espera (whitelist) ----------
