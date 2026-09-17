@@ -545,6 +545,9 @@ model ChatLink {
   userId          String   // cuenta de Cabal que lo vinculó
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   externalUserId  String?  // id en el proveedor de quien lo vinculó (para permitirle /settings)
+  // Discord: id del servidor del canal (en Telegram el chat ya es el grupo).
+  // Sirve para contar comunidades y para las métricas del panel admin.
+  serverId        String?
   lang            String   @default("es") // es | en: idioma de los mensajes del bot en este chat
   // Qué se manda a este chat. La campanita de un launch llega siempre al
   // privado del usuario, sin depender de estas opciones.
@@ -559,6 +562,7 @@ model ChatLink {
   @@unique([provider, chatId])
   @@index([userId])
   @@index([provider, active])
+  @@index([provider, serverId])
 }
 
 // Código de un solo uso para vincular un chat: la web lo genera con la sesión

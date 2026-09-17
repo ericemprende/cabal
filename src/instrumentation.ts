@@ -1,7 +1,7 @@
 /**
- * Arranque del servidor de Next. Aquí vive el worker de avisos (Telegram y
- * campanita de launches): ver lib/notify-worker.ts. NOTIFY_WORKER=off lo apaga
- * (p. ej. si algún día se ejecuta como proceso aparte).
+ * Arranque del servidor de Next. Aquí vive el worker de avisos (Telegram,
+ * Discord y campanita de launches): ver lib/notify-worker.ts. NOTIFY_WORKER=off
+ * lo apaga (p. ej. si algún día se ejecuta como proceso aparte).
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return

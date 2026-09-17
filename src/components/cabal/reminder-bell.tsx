@@ -36,14 +36,15 @@ export function ReminderBell({
     toggle.mutate(launchId, {
       onSuccess: ({ reminded, channels }) => {
         if (!reminded) return toast('Aviso desactivado')
-        if (channels.telegram) return toast.success(`Te avisaremos por Telegram ${leadText} antes`)
+        const chat = channels.telegram ? 'Telegram' : channels.discord ? 'Discord' : null
+        if (chat) return toast.success(`Te avisaremos por ${chat} ${leadText} antes`)
         if (channels.email) {
           return toast.success(`Te avisaremos por correo ${leadText} antes`, {
-            action: { label: 'Añadir Telegram', onClick: () => setProfileOpen(true) },
+            action: { label: 'Añadir Telegram o Discord', onClick: () => setProfileOpen(true) },
           })
         }
         toast(`Aviso activado, pero aún no tienes dónde recibirlo`, {
-          description: 'Conecta tu Telegram o verifica tu correo desde tu perfil.',
+          description: 'Conecta tu Telegram o tu Discord, o verifica tu correo desde tu perfil.',
           action: { label: 'Conectar', onClick: () => setProfileOpen(true) },
           duration: 8000,
         })

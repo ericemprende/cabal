@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { CHAT_PREFS, toChatLinkDTO } from '@/lib/chat-links'
-import { isLang } from '@/lib/telegram-i18n'
+import { isLang } from '@/lib/bot-i18n'
 
 async function ownChat(id: string) {
   const userId = await sessionUserIdFromCookies()

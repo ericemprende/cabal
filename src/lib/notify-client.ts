@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { jsonFetch } from '@/lib/api-client'
 import type {
   AdminNotifyDTO,
+  BotProviderName,
   ChatLinkCodeDTO,
   ChatLinkDTO,
   MyChatsDTO,
@@ -64,10 +65,14 @@ export function useMyChats(enabled = true) {
   return useQuery<MyChatsDTO>({ queryKey: notifyKeys.chats, queryFn: () => jsonFetch('/api/me/chats'), enabled })
 }
 
-export function useCreateChatLinkCode() {
+/** Código para vincular un chat. El DTO que vuelve depende del proveedor. */
+export function useCreateChatLinkCode<P extends BotProviderName>(provider: P) {
   return useMutation({
     mutationFn: () =>
-      jsonFetch<ChatLinkCodeDTO>('/api/me/chats/link', { method: 'POST', body: JSON.stringify({ provider: 'telegram' }) }),
+      jsonFetch<Extract<ChatLinkCodeDTO, { provider: P }>>('/api/me/chats/link', {
+        method: 'POST',
+        body: JSON.stringify({ provider }),
+      }),
     onError: (e: Error) => toast.error(e.message),
   })
 }
@@ -107,7 +112,7 @@ export function useAdminNotify(enabled = true) {
 export function useAdminNotifyUpdate() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { token?: string; enabled?: boolean; disconnect?: boolean }) =>
+    mutationFn: (body: { provider: BotProviderName; token?: string; enabled?: boolean; disconnect?: boolean }) =>
       jsonFetch<{ ok: boolean; username?: string }>('/api/admin/notifications', { method: 'PUT', body: JSON.stringify(body) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.admin }),
     onError: (e: Error) => toast.error(e.message),
@@ -117,7 +122,7 @@ export function useAdminNotifyUpdate() {
 export function useAdminNotifyAction() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { action: 'webhook' | 'test' | 'run'; chatId?: string }) =>
+    mutationFn: (body: { action: 'refresh' | 'test' | 'run'; provider?: BotProviderName; chatId?: string }) =>
       jsonFetch<{ ok: boolean; sent?: number; result?: Record<string, number> }>('/api/admin/notifications', {
         method: 'POST',
         body: JSON.stringify(body),

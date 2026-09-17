@@ -12,7 +12,7 @@ export async function GET() {
     if (!userId) {
       const empty: MyRemindersDTO = {
         launchIds: [],
-        channels: { telegram: false, email: false },
+        channels: { telegram: false, discord: false, email: false },
         leadMinutes: REMINDER_LEAD_MIN,
       }
       return NextResponse.json(empty)

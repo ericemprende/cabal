@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { telegramConfig } from '@/lib/telegram'
+import { discordConfig, discordInviteUrl } from '@/lib/discord'
 import { toChatLinkDTO } from '@/lib/chat-links'
 import type { MyChatsDTO } from '@/lib/notify-types'
 
@@ -10,13 +11,18 @@ export async function GET() {
   try {
     const userId = await sessionUserIdFromCookies()
     if (!userId) return NextResponse.json({ error: 'Inicia sesión' }, { status: 401 })
-    const [tg, chats] = await Promise.all([
+    const [tg, dc, chats] = await Promise.all([
       telegramConfig(),
+      discordConfig(),
       db.chatLink.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } }),
     ])
     const dto: MyChatsDTO = {
       telegram: { configured: Boolean(tg?.enabled), botUsername: tg?.username ?? null },
-      discord: { configured: false },
+      discord: {
+        configured: Boolean(dc?.enabled),
+        botUsername: dc?.username ?? null,
+        invite: dc ? discordInviteUrl(dc.appId) : null,
+      },
       chats: chats.map(toChatLinkDTO),
     }
     return NextResponse.json(dto)

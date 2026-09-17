@@ -1,9 +1,11 @@
 import { db } from '@/lib/db'
 import { CHAT_PREFS, consumeLinkCode, upsertChatLink, type ChatPref } from '@/lib/chat-links'
-import { fmtLaunchDate, launchUrl } from '@/lib/notifications'
+import { languageButtons, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
 import { siteUrl } from '@/lib/waitlist'
-import { esc, tgCall, tgSend, type InlineButton, type TelegramConfig, type TgMessage } from '@/lib/telegram'
-import { LANG_NAMES, LANGS, isLang, langFromTelegram, t, type Lang } from '@/lib/telegram-i18n'
+import { userLink } from '@/lib/notifications'
+import { createCallFromBot } from '@/lib/bot-call'
+import { esc, tgCall, tgSend, type TelegramConfig, type TgMessage } from '@/lib/telegram'
+import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
 
 /**
  * Qué hace el bot con cada update que llega al webhook. Los comandos son en
@@ -16,6 +18,7 @@ import { LANG_NAMES, LANGS, isLang, langFromTelegram, t, type Lang } from '@/lib
  *  /settings          botones para elegir qué avisos llegan al chat
  *  /language          español / inglés
  *  /upcoming          los próximos lanzamientos
+ *  /call <CA> [nota]  publica una call de token en Cabal
  *  /unlink            deja de mandar avisos a este chat
  *  /help
  *
@@ -47,6 +50,7 @@ const COMMAND_ALIASES: Record<string, string> = {
   ajustes: 'settings',
   config: 'settings',
   proximos: 'upcoming',
+  llamada: 'call',
   idioma: 'language',
   desvincular: 'unlink',
   ayuda: 'help',
@@ -89,7 +93,7 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
   const cmd = COMMAND_ALIASES[name] ?? name
 
   const chat = await findChat(msg.chat.id)
-  const lang: Lang = chat ? (isLang(chat.lang) ? chat.lang : 'es') : langFromTelegram(msg.from?.language_code)
+  const lang: Lang = chat ? (isLang(chat.lang) ? chat.lang : 'es') : langFromLocale(msg.from?.language_code)
   const tx = t(lang)
   const reply: Reply = (m) => tgSend(tg.token, String(msg.chat.id), typeof m === 'string' ? { text: m } : m)
 
@@ -97,22 +101,33 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
     case 'start':
     case 'link':
       // ?startgroup=true (sin código) llega como "/start true"
-      return args[0] && args[0] !== 'true' ? link(tg, msg, args[0], reply) : reply(welcome(msg.chat.type, lang))
+      return args[0] && args[0] !== 'true' ? link(tg, msg, args[0], reply) : reply(welcomeMessage(msg.chat.type === 'private', 'telegram', lang))
     case 'settings':
-      if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`))
+      if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
       return reply({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang) })
     case 'language':
       if (chat && !(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyAdminChanges)
       return reply({ text: tx.languagePrompt, buttons: [languageButtons()] })
     case 'upcoming':
-      return reply(await upcoming(lang))
+      return reply(await upcomingMessage(lang))
+    case 'call': {
+      if (!args[0]) return reply(tx.callUsage)
+      const { message } = await createCallFromBot({
+        provider: 'telegram',
+        actorId: msg.from ? String(msg.from.id) : null,
+        contract: args[0],
+        note: args.slice(1).join(' '),
+        lang,
+      })
+      return reply(message)
+    }
     case 'unlink':
-      if (!chat) return reply(tx.notLinked(`${siteUrl()}/app`))
+      if (!chat) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
       if (!(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyManagerUnlinks)
       await db.chatLink.delete({ where: { id: chat.id } })
       return reply(tx.unlinked)
     case 'help':
-      return reply(welcome(msg.chat.type, lang))
+      return reply(welcomeMessage(msg.chat.type === 'private', 'telegram', lang))
   }
 }
 
@@ -124,7 +139,7 @@ async function link(tg: TelegramConfig, msg: TgMsg, code: string, reply: Reply) 
   const isPrivate = msg.chat.type === 'private'
   // El idioma lo pone la app de Telegram de quien conecta; si ya estaba vinculado, se conserva
   const existing = await findChat(msg.chat.id)
-  const lang: Lang = existing && isLang(existing.lang) ? existing.lang : langFromTelegram(msg.from?.language_code)
+  const lang: Lang = existing && isLang(existing.lang) ? existing.lang : langFromLocale(msg.from?.language_code)
   const tx = t(lang)
 
   // En grupos solo un admin del grupo puede conectarlo a una cuenta
@@ -132,10 +147,10 @@ async function link(tg: TelegramConfig, msg: TgMsg, code: string, reply: Reply) 
   // anónimo de un grupo escribe "como el grupo", con sender_chat = el chat)
   const anonymousAdmin = msg.sender_chat?.id === msg.chat.id
   if (!isPrivate && !anonymousAdmin && msg.from && !(await isChatAdmin(tg, msg.chat.id, msg.from.id))) {
-    return reply(tx.onlyGroupAdminLinks)
+    return reply(tx.onlyGroupAdminLinks('telegram'))
   }
   const user = await consumeLinkCode(code, 'telegram')
-  if (!user) return reply(tx.badCode(`${siteUrl()}/app`))
+  if (!user) return reply(tx.badCode(`${siteUrl()}/app`, 'telegram'))
 
   const title = msg.chat.title ?? (msg.chat.username ? `@${msg.chat.username}` : msg.chat.first_name ?? null)
   const chat = await upsertChatLink({
@@ -148,7 +163,7 @@ async function link(tg: TelegramConfig, msg: TgMsg, code: string, reply: Reply) 
     lang,
   })
   return reply({
-    text: isPrivate ? tx.linkedPrivate(esc(user.handle)) : tx.linkedGroup(esc(title ?? tx.thisChat), esc(user.handle)),
+    text: isPrivate ? tx.linkedPrivate(userLink(user.handle)) : tx.linkedGroup(esc(title ?? tx.thisChat), userLink(user.handle)),
     buttons: settingsButtons(chat, lang),
   })
 }
@@ -159,7 +174,7 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
   const [kind, value] = q.data.split(':')
 
   const chat = await findChat(q.message.chat.id)
-  const lang: Lang = chat && isLang(chat.lang) ? chat.lang : langFromTelegram(q.from.language_code)
+  const lang: Lang = chat && isLang(chat.lang) ? chat.lang : langFromLocale(q.from.language_code)
 
   if (kind === 'lang' && isLang(value)) {
     // Sin vincular, el idioma no se guarda en ningún sitio: solo se contesta
@@ -171,10 +186,10 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
     await tgCall(tg.token, 'editMessageText', {
       chat_id: q.message.chat.id,
       message_id: q.message.message_id,
-      text: chat ? tx.settingsTitle : tx.welcome(q.message.chat.type === 'private'),
+      text: chat ? tx.settingsTitle : tx.welcome(q.message.chat.type === 'private', 'telegram'),
       parse_mode: 'HTML',
       link_preview_options: { is_disabled: true },
-      reply_markup: { inline_keyboard: chat ? settingsButtons(chat, value) : welcome(q.message.chat.type, value).buttons },
+      reply_markup: { inline_keyboard: chat ? settingsButtons(chat, value) : welcomeMessage(q.message.chat.type === 'private', 'telegram', value).buttons },
     }).catch(() => {})
     return answer(tx.languageSet)
   }
@@ -192,18 +207,6 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
     reply_markup: { inline_keyboard: settingsButtons(updated, lang) },
   }).catch(() => {})
   return answer(`${tx.prefs[pref]}: ${updated[pref] ? tx.on : tx.off}`)
-}
-
-function settingsButtons(chat: Record<ChatPref, boolean>, lang: Lang): InlineButton[][] {
-  const tx = t(lang)
-  return [
-    ...CHAT_PREFS.map((p) => [{ text: `${chat[p] ? '✅' : '⬜️'} ${tx.prefs[p]}`, callback_data: `pref:${p}` }]),
-    languageButtons(lang),
-  ]
-}
-
-function languageButtons(current?: Lang): InlineButton[] {
-  return LANGS.map((l) => ({ text: `${current === l ? '• ' : ''}${LANG_NAMES[l]}`, callback_data: `lang:${l}` }))
 }
 
 async function canManage(
@@ -228,29 +231,3 @@ async function isChatAdmin(tg: TelegramConfig, chatId: number, userId: number): 
   }
 }
 
-async function upcoming(lang: Lang): Promise<TgMessage> {
-  const tx = t(lang)
-  const launches = await db.launch.findMany({
-    where: { hidden: false, launchAt: { gt: new Date() } },
-    orderBy: { launchAt: 'asc' },
-    take: 8,
-    select: { id: true, name: true, ticker: true, isPrivate: true, launchAt: true, dateConfirmed: true },
-  })
-  if (launches.length === 0) return { text: tx.noUpcoming }
-  const lines = launches.map((l) => {
-    const label = l.ticker && !l.isPrivate ? `$${esc(l.ticker)} · ${esc(l.name)}` : esc(l.name)
-    return `• <a href="${launchUrl(l.id)}">${label}</a> — ${fmtLaunchDate(l.launchAt, lang)}${l.dateConfirmed ? '' : ` (${tx.estimated})`}`
-  })
-  return {
-    text: `${tx.upcomingTitle}\n\n${lines.join('\n')}`,
-    buttons: [[{ text: tx.seeAll, url: `${siteUrl()}/app` }]],
-  }
-}
-
-function welcome(chatType: string, lang: Lang): TgMessage {
-  const tx = t(lang)
-  return {
-    text: tx.welcome(chatType === 'private'),
-    buttons: [[{ text: tx.openCabal, url: `${siteUrl()}/app` }], languageButtons(lang)],
-  }
-}

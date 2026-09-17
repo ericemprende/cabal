@@ -2,24 +2,31 @@ import { db } from '@/lib/db'
 import { emailConfig, launchReminderEmail, sendEmail } from '@/lib/email'
 import { networkMeta } from '@/lib/cabal'
 import { siteUrl } from '@/lib/waitlist'
-import { esc, sleep, TelegramApiError, telegramConfig, tgSend, type TelegramConfig, type TgMessage } from '@/lib/telegram'
+import { sleep, TelegramApiError, telegramConfig, tgSend } from '@/lib/telegram'
+import { dcSend, discordConfig, DiscordApiError } from '@/lib/discord'
+import { esc, type BotMessage, type BotProvider } from '@/lib/bot-message'
 import type { ChatLink } from '@prisma/client'
-import { t, type Lang } from '@/lib/telegram-i18n'
+import { t, type Lang } from '@/lib/bot-i18n'
 
 /**
- * Avisos a Telegram (y correo para la campanita). Una pasada (`runNotificationTick`)
- * hace tres cosas:
+ * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
+ * (`runNotificationTick`) hace tres cosas:
  *
  *  1. Launch nuevo publicado      → chats con notifyLaunches
  *  2. Tesis nueva en el feed      → chats con notifyTheses
- *  3. Falta ≤ REMINDER_LEAD_MIN   → quien activó la campanita (su Telegram
- *                                   privado + su correo verificado) y los chats
- *                                   con notifyReminders
+ *  3. Falta ≤ REMINDER_LEAD_MIN   → quien activó la campanita (su chat privado
+ *                                   con el bot + su correo verificado) y los
+ *                                   chats con notifyReminders
  *
  * No hay cola: cada envío se reserva en NotificationDispatch con una clave
  * única ANTES de mandar, así una pasada solapada o relanzada no repite nada.
  * El recordatorio lleva la fecha en la clave: si el launch cambia de hora,
  * se vuelve a avisar con la hora nueva.
+ *
+ * La clave de reserva es una por aviso, no una por proveedor: un mismo launch
+ * se difunde de una vez a los chats de los dos bots. Por eso cada proveedor
+ * lleva su propio `since` hasta el momento de enviar (ver `Sender`): conectar
+ * Discord hoy no reenvía a sus canales lo que ya se publicó ayer.
  *
  * Lo llama el worker en proceso (instrumentation.ts) cada NOTIFY_INTERVAL
  * segundos y también se puede lanzar a mano desde el panel admin.
@@ -30,32 +37,66 @@ export const REMINDER_LEAD_MIN = 60
 const PUBLISH_GRACE_MS = 60_000
 /** Nunca se difunde nada publicado hace más de esto (worker caído mucho rato). */
 const MAX_BACKLOG_MS = 6 * 3600_000
-/** Telegram admite ~30 mensajes/s en total: se va holgado. */
+/** Telegram admite ~30 mensajes/s y Discord ~50: se va holgado. */
 const SEND_GAP_MS = 50
 
 export type TickResult = { launches: number; theses: number; reminders: number; messages: number; emails: number }
 
+/** Un bot listo para enviar. `since` es desde cuándo difunde ese proveedor. */
+type Sender = {
+  since: Date
+  send: (chatId: string, msg: BotMessage) => Promise<{ migratedTo?: string }>
+  /** El chat ya no admite mensajes del bot: se desactiva en vez de reintentar. */
+  gone: (e: unknown) => boolean
+}
+
+type Senders = Partial<Record<BotProvider, Sender>>
+
+async function activeSenders(): Promise<Senders> {
+  const [tg, dc] = await Promise.all([telegramConfig(), discordConfig()])
+  const senders: Senders = {}
+  if (tg?.enabled) {
+    senders.telegram = {
+      since: tg.since,
+      send: (chatId, msg) => tgSend(tg.token, chatId, msg),
+      gone: (e) => e instanceof TelegramApiError && e.chatGone,
+    }
+  }
+  if (dc?.enabled) {
+    senders.discord = {
+      since: dc.since,
+      send: async (chatId, msg) => {
+        await dcSend(dc.token, chatId, msg)
+        return {}
+      },
+      gone: (e) => e instanceof DiscordApiError && e.chatGone,
+    }
+  }
+  return senders
+}
+
+const providersOf = (s: Senders) => Object.keys(s) as BotProvider[]
+
 export async function runNotificationTick(): Promise<TickResult> {
   const result: TickResult = { launches: 0, theses: 0, reminders: 0, messages: 0, emails: 0 }
-  const tg = await telegramConfig()
-  const telegram = tg?.enabled ? tg : null
+  const senders = await activeSenders()
 
-  if (telegram) {
-    await announceNewLaunches(telegram, result)
-    await announceNewTheses(telegram, result)
+  if (providersOf(senders).length > 0) {
+    await announceNewLaunches(senders, result)
+    await announceNewTheses(senders, result)
   }
-  await sendReminders(telegram, result)
+  await sendReminders(senders, result)
   return result
 }
 
 // ---------- 1. Launches nuevos ----------
 
-async function announceNewLaunches(tg: TelegramConfig, r: TickResult) {
+async function announceNewLaunches(senders: Senders, r: TickResult) {
   const now = Date.now()
   const launches = await db.launch.findMany({
     where: {
       hidden: false,
-      createdAt: { gte: lowerBound(tg.since, now), lte: new Date(now - PUBLISH_GRACE_MS) },
+      createdAt: { gte: lowerBound(senders, now), lte: new Date(now - PUBLISH_GRACE_MS) },
       launchAt: { gt: new Date(now) },
     },
     orderBy: { createdAt: 'asc' },
@@ -66,8 +107,10 @@ async function announceNewLaunches(tg: TelegramConfig, r: TickResult) {
   for (const l of launches) {
     const key = `launch:new:${l.id}`
     if (!pending.has(key) || !(await reserve(key))) continue
-    const chats = await db.chatLink.findMany({ where: { provider: 'telegram', active: true, notifyLaunches: true } })
-    const sent = await broadcast(tg, chats, (lang) => launchMessage(l, 'new', lang))
+    const chats = await db.chatLink.findMany({
+      where: { provider: { in: providersOf(senders) }, active: true, notifyLaunches: true },
+    })
+    const sent = await broadcast(senders, chats, (lang) => launchMessage(l, 'new', lang), l.createdAt)
     await markSent(key, sent)
     r.launches++
     r.messages += sent
@@ -76,10 +119,10 @@ async function announceNewLaunches(tg: TelegramConfig, r: TickResult) {
 
 // ---------- 2. Tesis nuevas ----------
 
-async function announceNewTheses(tg: TelegramConfig, r: TickResult) {
+async function announceNewTheses(senders: Senders, r: TickResult) {
   const now = Date.now()
   const posts = await db.post.findMany({
-    where: { kind: 'thesis', createdAt: { gte: lowerBound(tg.since, now), lte: new Date(now - PUBLISH_GRACE_MS) } },
+    where: { kind: 'thesis', createdAt: { gte: lowerBound(senders, now), lte: new Date(now - PUBLISH_GRACE_MS) } },
     orderBy: { createdAt: 'asc' },
     take: 20,
     include: {
@@ -96,8 +139,10 @@ async function announceNewTheses(tg: TelegramConfig, r: TickResult) {
       await markSent(key, 0)
       continue
     }
-    const chats = await db.chatLink.findMany({ where: { provider: 'telegram', active: true, notifyTheses: true } })
-    const sent = await broadcast(tg, chats, (lang) => thesisMessage(p, lang))
+    const chats = await db.chatLink.findMany({
+      where: { provider: { in: providersOf(senders) }, active: true, notifyTheses: true },
+    })
+    const sent = await broadcast(senders, chats, (lang) => thesisMessage(p, lang), p.createdAt)
     await markSent(key, sent)
     r.theses++
     r.messages += sent
@@ -106,8 +151,9 @@ async function announceNewTheses(tg: TelegramConfig, r: TickResult) {
 
 // ---------- 3. Recordatorios ----------
 
-async function sendReminders(tg: TelegramConfig | null, r: TickResult) {
+async function sendReminders(senders: Senders, r: TickResult) {
   const now = Date.now()
+  const providers = providersOf(senders)
   const launches = await db.launch.findMany({
     where: { hidden: false, launchAt: { gt: new Date(now), lte: new Date(now + REMINDER_LEAD_MIN * 60_000) } },
     include: { createdBy: { select: { handle: true } } },
@@ -122,26 +168,28 @@ async function sendReminders(tg: TelegramConfig | null, r: TickResult) {
     const bellUserIds = (await db.launchReminder.findMany({ where: { launchId: l.id }, select: { userId: true } })).map(
       (x) => x.userId
     )
-    // Sin Telegram ni correo no se reserva: se avisará cuando alguno esté listo (si aún da tiempo)
-    if (!tg && !(mail && bellUserIds.length)) continue
+    // Sin ningún bot ni correo no se reserva: se avisará cuando alguno esté listo (si aún da tiempo)
+    if (providers.length === 0 && !(mail && bellUserIds.length)) continue
     if (!(await reserve(key))) continue
 
     let sent = 0
     const minutes = Math.max(1, Math.round((l.launchAt.getTime() - now) / 60_000))
     const alreadySent = new Set<string>()
 
-    if (tg) {
+    if (providers.length > 0) {
       // Campanita: al privado de cada usuario, aunque no tenga notifyReminders
       if (bellUserIds.length) {
         const privates = await db.chatLink.findMany({
-          where: { provider: 'telegram', active: true, chatType: 'private', userId: { in: bellUserIds } },
+          where: { provider: { in: providers }, active: true, chatType: 'private', userId: { in: bellUserIds } },
         })
-        sent += await broadcast(tg, privates, (lang) => launchMessage(l, 'bell', lang, minutes))
+        sent += await broadcast(senders, privates, (lang) => launchMessage(l, 'bell', lang, minutes))
         privates.forEach((c) => alreadySent.add(c.id))
       }
-      const chats = await db.chatLink.findMany({ where: { provider: 'telegram', active: true, notifyReminders: true } })
+      const chats = await db.chatLink.findMany({
+        where: { provider: { in: providers }, active: true, notifyReminders: true },
+      })
       sent += await broadcast(
-        tg,
+        senders,
         chats.filter((c) => !alreadySent.has(c.id)),
         (lang) => launchMessage(l, 'soon', lang, minutes)
       )
@@ -172,17 +220,26 @@ async function sendReminders(tg: TelegramConfig | null, r: TickResult) {
 // ---------- Envío ----------
 
 /**
- * Manda un aviso a varios chats, cada uno en su idioma; desactiva los que ya
- * no existen. Devuelve los enviados.
+ * Manda un aviso a varios chats, cada uno con el bot de su proveedor y en su
+ * idioma; desactiva los que ya no existen. `publishedAt` deja fuera a los bots
+ * conectados después de que se publicara. Devuelve los enviados.
  */
-export async function broadcast(tg: TelegramConfig, chats: ChatLink[], render: (lang: Lang) => TgMessage): Promise<number> {
+async function broadcast(
+  senders: Senders,
+  chats: ChatLink[],
+  render: (lang: Lang) => BotMessage,
+  publishedAt?: Date
+): Promise<number> {
   let ok = 0
-  const byLang = new Map<string, TgMessage>()
+  const byLang = new Map<string, BotMessage>()
   for (const chat of chats) {
+    const sender = senders[chat.provider as BotProvider]
+    if (!sender) continue
+    if (publishedAt && sender.since > publishedAt) continue
     const lang: Lang = chat.lang === 'en' ? 'en' : 'es'
     if (!byLang.has(lang)) byLang.set(lang, render(lang))
     try {
-      const { migratedTo } = await tgSend(tg.token, chat.chatId, byLang.get(lang)!)
+      const { migratedTo } = await sender.send(chat.chatId, byLang.get(lang)!)
       if (migratedTo) {
         await db.chatLink
           .update({ where: { id: chat.id }, data: { chatId: migratedTo, chatType: 'supergroup' } })
@@ -190,14 +247,14 @@ export async function broadcast(tg: TelegramConfig, chats: ChatLink[], render: (
       }
       ok++
     } catch (e) {
-      const gone = e instanceof TelegramApiError && e.chatGone
+      const gone = sender.gone(e)
       await db.chatLink
         .update({
           where: { id: chat.id },
           data: { lastError: (e as Error).message.slice(0, 300), ...(gone ? { active: false } : {}) },
         })
         .catch(() => {})
-      if (!gone) console.error(`[notify] telegram ${chat.chatId}:`, (e as Error).message)
+      if (!gone) console.error(`[notify] ${chat.provider} ${chat.chatId}:`, (e as Error).message)
     }
     await sleep(SEND_GAP_MS)
   }
@@ -225,14 +282,33 @@ async function notDispatched(keys: string[]): Promise<Set<string>> {
   return new Set(keys.filter((k) => !doneSet.has(k)))
 }
 
-function lowerBound(since: Date, now: number): Date {
-  return new Date(Math.max(since.getTime(), now - MAX_BACKLOG_MS))
+/** Lo más antiguo que se mira: el `since` más viejo de los bots activos, con tope. */
+function lowerBound(senders: Senders, now: number): Date {
+  const sinces = Object.values(senders).map((s) => s.since.getTime())
+  const oldest = sinces.length ? Math.min(...sinces) : now
+  return new Date(Math.max(oldest, now - MAX_BACKLOG_MS))
 }
 
 // ---------- Mensajes ----------
 
 export function launchUrl(launchId: string): string {
   return `${siteUrl()}/app?launch=${encodeURIComponent(launchId)}`
+}
+
+export function profileUrl(handle: string): string {
+  return `${siteUrl()}/u/${encodeURIComponent(handle)}`
+}
+
+/**
+ * "@handle" como enlace al perfil en Cabal, con la arroba DENTRO del enlace.
+ *
+ * Si se deja como texto suelto, Telegram lo detecta como mención suya y al
+ * tocarlo abre una búsqueda de usuarios de Telegram (que no existe). Lo mismo
+ * le pasa a "$TICKER", que Telegram convierte en búsqueda de cashtag: por eso
+ * el ticker sale siempre dentro de `launchLink`.
+ */
+export function userLink(handle: string): string {
+  return `<a href="${profileUrl(handle)}">@${esc(handle)}</a>`
 }
 
 type LaunchForMessage = {
@@ -249,8 +325,13 @@ type LaunchForMessage = {
 }
 
 /** El ticker de un launch privado no se publica (igual que en la web). */
-function launchLabel(l: { name: string; ticker: string | null; isPrivate: boolean }): string {
+export function launchLabel(l: { name: string; ticker: string | null; isPrivate: boolean }): string {
   return l.ticker && !l.isPrivate ? `$${esc(l.ticker)} · ${esc(l.name)}` : esc(l.name)
+}
+
+/** El mismo nombre, enlazado a la ficha del launch en Cabal (ver `userLink`). */
+export function launchLink(l: { id: string; name: string; ticker: string | null; isPrivate: boolean }): string {
+  return `<a href="${launchUrl(l.id)}">${launchLabel(l)}</a>`
 }
 
 export function fmtLaunchDate(d: Date, lang: Lang): string {
@@ -278,9 +359,9 @@ function snippet(s: string, max: number): string {
   return one.length > max ? `${one.slice(0, max - 1)}…` : one
 }
 
-export function launchMessage(l: LaunchForMessage, kind: 'new' | 'soon' | 'bell', lang: Lang, minutes?: number): TgMessage {
+export function launchMessage(l: LaunchForMessage, kind: 'new' | 'soon' | 'bell', lang: Lang, minutes?: number): BotMessage {
   const tx = t(lang)
-  const label = launchLabel(l)
+  const label = launchLink(l)
   const net = networkMeta(l.network).label
   const when = `${fmtLaunchDate(l.launchAt, lang)}${l.dateConfirmed ? '' : ` (${tx.estimated})`}`
   const left = fmtIn((minutes ?? 0) * 60_000, lang)
@@ -292,7 +373,7 @@ export function launchMessage(l: LaunchForMessage, kind: 'new' | 'soon' | 'bell'
     `🗓 ${when}${kind === 'new' ? ` · ${tx.inPrefix} ${fmtIn(l.launchAt.getTime() - Date.now(), lang)}` : ''}`,
   ]
   if (kind === 'new' && l.description) lines.push('', esc(snippet(l.description, 280)))
-  lines.push('', `${l.submitterRole === 'dev' ? tx.byDev : tx.byCommunity} @${esc(l.createdBy.handle)}`)
+  lines.push('', `${l.submitterRole === 'dev' ? tx.byDev : tx.byCommunity} ${userLink(l.createdBy.handle)}`)
   return { text: lines.join('\n'), buttons: [[{ text: tx.viewOnCabal, url: launchUrl(l.id) }]] }
 }
 
@@ -303,10 +384,10 @@ function thesisMessage(
     launch: { id: string; name: string; ticker: string | null; isPrivate: boolean } | null
   },
   lang: Lang
-): TgMessage {
+): BotMessage {
   const tx = t(lang)
-  const lines = [tx.thesisHead(esc(p.user.handle))]
-  if (p.launch) lines.push(`${tx.about} <b>${launchLabel(p.launch)}</b>`)
+  const lines = [tx.thesisHead(userLink(p.user.handle))]
+  if (p.launch) lines.push(`${tx.about} <b>${launchLink(p.launch)}</b>`)
   lines.push('', esc(snippet(p.content, 600)))
   const url = p.launch ? launchUrl(p.launch.id) : `${siteUrl()}/app`
   return { text: lines.join('\n'), buttons: [[{ text: tx.readOnCabal, url }]] }

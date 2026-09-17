@@ -375,6 +375,53 @@ export async function fetchTokenMeta(ca: string): Promise<TokenMeta> {
   return meta
 }
 
+export type CallSnapshot = {
+  found: boolean
+  /** Red detectada a partir del par: quien da la call solo pega el CA. */
+  network: string
+  name: string
+  symbol: string
+  priceUsd: number | null
+  mc: number | null
+  liquidityUsd: number | null
+  volume24h: number | null
+  change24h: number | null
+}
+
+/**
+ * Todo lo que necesita una call, con UNA sola petición a DexScreener: red,
+ * nombre, símbolo y las métricas del momento.
+ *
+ * Existe aparte de `fetchTokenStats` porque aquélla encadena además el ATH y la
+ * concentración top-10, y un bot no puede permitirse esas esperas: Discord
+ * corta la interacción a los 3 segundos. Nunca lanza.
+ */
+export async function fetchCallSnapshot(ca: string): Promise<CallSnapshot> {
+  const empty: CallSnapshot = {
+    found: false, network: '', name: '', symbol: '',
+    priceUsd: null, mc: null, liquidityUsd: null, volume24h: null, change24h: null,
+  }
+  const json = await fetchJson<{ pairs?: DexPair[] }>(
+    `https://api.dexscreener.com/latest/dex/tokens/${encodeURIComponent(ca)}`,
+    6000
+  )
+  const pair = pickPair(json?.pairs ?? [], ca)
+  if (!pair) return empty
+  const network = NETWORK_BY_DEX_CHAIN[pair.chainId] ?? ''
+  if (!network) return empty
+  return {
+    found: true,
+    network,
+    name: (pair.baseToken?.name ?? '').slice(0, 60),
+    symbol: (pair.baseToken?.symbol ?? '').replace(/^\$/, '').toUpperCase().slice(0, 20),
+    priceUsd: pair.priceUsd ? Number(pair.priceUsd) || null : null,
+    mc: pair.marketCap ?? pair.fdv ?? null,
+    liquidityUsd: pair.liquidity?.usd ?? null,
+    volume24h: pair.volume?.h24 ?? null,
+    change24h: pair.priceChange?.h24 ?? null,
+  }
+}
+
 /** Métricas reales del token (DexScreener + ATH + top10). Nunca lanza. */
 export async function fetchTokenStats(network: string, ca: string): Promise<ChainStats> {
   const dexChain = DEX_CHAIN[network]

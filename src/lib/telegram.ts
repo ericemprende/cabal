@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto'
 import { db } from '@/lib/db'
 import { siteUrl } from '@/lib/waitlist'
-import { BOT_COMMANDS } from '@/lib/telegram-i18n'
+import { BOT_COMMANDS } from '@/lib/bot-i18n'
+import { esc, type BotButton, type BotMessage } from '@/lib/bot-message'
 
 /**
  * Bot de Telegram de Cabal: configuración y llamadas a la Bot API.
@@ -147,12 +148,10 @@ export async function tgCall<T = unknown>(token: string, method: string, params:
   return body.result as T
 }
 
-export type InlineButton = { text: string; url?: string; callback_data?: string }
-
-export type TgMessage = {
-  text: string
-  buttons?: InlineButton[][]
-}
+// El mensaje de un bot es el mismo para Telegram y Discord: ver lib/bot-message.
+export type InlineButton = BotButton
+export type TgMessage = BotMessage
+export { esc }
 
 /**
  * Envía un mensaje HTML. Reintenta una vez si Telegram pide esperar (429) o
@@ -190,11 +189,6 @@ export async function tgSend(
 }
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-/** Escapa texto para parse_mode HTML. */
-export function esc(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
 
 export function botLinks(username: string, code?: string) {
   return {
