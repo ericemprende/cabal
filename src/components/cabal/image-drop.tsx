@@ -77,7 +77,7 @@ export function ImageDrop({
       <input
         ref={inputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept="image/*"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]
@@ -212,7 +212,7 @@ export function ImageDrop({
         </>
       )}
       {square && !urlMode && (
-        <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP o GIF · máx 2.5 MB</p>
+        <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP, GIF o foto del móvil · máx 8 MB</p>
       )}
     </div>
   )

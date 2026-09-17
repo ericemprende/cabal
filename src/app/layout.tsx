@@ -58,7 +58,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased bg-background text-foreground`}
       >
         <Providers>{children}</Providers>
-        <Toaster position="bottom-center" />
+        {/* En móvil, por encima de la barra de navegación inferior */}
+        <Toaster position="bottom-center" mobileOffset={{ bottom: "calc(80px + env(safe-area-inset-bottom))" }} />
         {process.env.NODE_ENV === "production" && (
           <Script
             src="https://analytics.cabal.army/script.js"

@@ -3,7 +3,8 @@
 import { create } from 'zustand'
 import type { AuthMode } from '@/components/cabal/auth-dialog'
 
-export type TabKey = 'radar' | 'tokens' | 'feed' | 'leaderboard'
+/** 'chat' solo tiene botón en la barra móvil: en escritorio el chat vive en la columna izquierda. */
+export type TabKey = 'radar' | 'tokens' | 'feed' | 'leaderboard' | 'chat'
 
 interface UIState {
   tab: TabKey

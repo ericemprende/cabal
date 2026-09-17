@@ -110,7 +110,7 @@ export function AuthDialog() {
   return (
     <>
     <Dialog open={authOpen} onOpenChange={close}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-sm" aria-describedby={undefined}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-sm" aria-describedby={undefined}>
         <div className="p-6">
           <div className="flex flex-col items-center gap-1.5 text-center">
             <CabalWordmark size="lg" />

@@ -33,7 +33,7 @@ export function PremiumDialog() {
 
   return (
     <Dialog open={premiumOpen} onOpenChange={setPremiumOpen}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto border-amber-400/20 bg-[#121410] p-0 sm:max-w-md" aria-describedby={undefined}>
+      <DialogContent className="max-h-[88dvh] overflow-y-auto border-amber-400/20 bg-[#121410] p-0 sm:max-w-md" aria-describedby={undefined}>
         <div className="relative overflow-hidden border-b border-white/10 p-5">
           <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-amber-400/10 blur-3xl" />
           <div className="relative flex items-center gap-2.5">

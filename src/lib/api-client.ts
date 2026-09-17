@@ -607,9 +607,43 @@ export function useAdminSaveSwapFee(enabled: boolean) {
 }
 
 // ---------- upload ----------
+/**
+ * Las fotos del móvil suelen pesar 3-6 MB, llegar en HEIC (iPhone) o sin tipo
+ * MIME (algunas galerías de Android): el servidor las rechazaba y la imagen no
+ * salía. Aquí se reducen a 1500px y se pasan a JPEG en el navegador antes de
+ * subirlas. Los GIF se dejan tal cual para no perder la animación; si el
+ * navegador no sabe decodificar el archivo se sube el original.
+ */
+const CLIENT_MAX_SIDE = 1500
+
+async function shrinkForUpload(file: File): Promise<File> {
+  if (file.type === 'image/gif') return file
+  if (typeof document === 'undefined' || typeof createImageBitmap === 'undefined') return file
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+    const scale = Math.min(1, CLIENT_MAX_SIDE / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * scale)
+    canvas.height = Math.round(bitmap.height * scale)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return file
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close?.()
+    // PNG/WebP pequeños conservan su transparencia (logos)
+    const keepAlpha = (file.type === 'image/png' || file.type === 'image/webp') && file.size < 1.5 * 1024 * 1024
+    const type = keepAlpha ? 'image/png' : 'image/jpeg'
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.86))
+    if (!blob) return file
+    if (keepAlpha && blob.size > file.size) return file
+    return new File([blob], `imagen.${type === 'image/png' ? 'png' : 'jpg'}`, { type })
+  } catch {
+    return file
+  }
+}
+
 export async function uploadImage(file: File): Promise<string> {
   const fd = new FormData()
-  fd.append('file', file)
+  fd.append('file', await shrinkForUpload(file))
   const res = await fetch('/api/upload', { method: 'POST', body: fd })
   const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string }
   if (!res.ok || !body.url) throw new Error(body.error ?? 'No se pudo subir la imagen')

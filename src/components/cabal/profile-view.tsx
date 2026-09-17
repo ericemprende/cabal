@@ -460,11 +460,11 @@ function FollowListDialog({
 
   return (
     <Dialog open={type !== null} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[80vh] overflow-hidden border-white/10 bg-[#121410] p-0 sm:max-w-md">
+      <DialogContent className="max-h-[80dvh] overflow-hidden border-white/10 bg-[#121410] p-0 sm:max-w-md">
         <DialogTitle className="border-b border-white/10 px-5 py-4 text-base font-bold">
           {type === 'following' ? `@${handle} sigue a` : `Seguidores de @${handle}`}
         </DialogTitle>
-        <div className="max-h-[60vh] overflow-y-auto p-2">
+        <div className="max-h-[60dvh] overflow-y-auto p-2">
           {isPending ? (
             <div className="space-y-2 p-2">
               {[...Array(4)].map((_, i) => (

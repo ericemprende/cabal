@@ -19,12 +19,12 @@ import sharp from 'sharp'
 
 const DIR = path.join(process.cwd(), 'upload', 'uploads')
 
-/** Máximo que se acepta (el aviso de la interfaz dice 2.5 MB). */
-export const MAX_UPLOAD_BYTES = 2.5 * 1024 * 1024
+/** Máximo que se acepta (el navegador ya reduce las fotos antes de subirlas). */
+export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 /** Lado máximo guardado: da para un banner a pantalla completa. */
 const MAX_SIDE = 1500
 /** Formatos de entrada admitidos. */
-export const UPLOAD_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+export const UPLOAD_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/heic', 'image/heif'])
 
 /** Nombre de archivo que genera saveUpload: nada de rutas ni extensiones raras. */
 const NAME_RE = /^[a-z0-9]{6,14}-[a-f0-9]{8}\.webp$/

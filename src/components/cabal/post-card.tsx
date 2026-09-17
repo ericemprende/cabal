@@ -171,7 +171,7 @@ function CallShareDialog({ post, open, onOpenChange }: { post: PostDTO; open: bo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+      <DialogContent className="max-h-[92dvh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
         <DialogTitle className="sr-only">Compartir el resultado de la call</DialogTitle>
         <img
           key={cardPath}

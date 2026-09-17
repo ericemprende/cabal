@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
  * por Pusher (evento `chat-message` en el canal de presencia). El punto
  * verde de "conectado" viene de la misma suscripción (ver lib/presence.ts).
  */
-export function LiveChat() {
+export function LiveChat({ className, showUnavailable }: { className?: string; showUnavailable?: boolean } = {}) {
   const { data: history } = useChatMessages()
   const [live, setLive] = useState<ChatMessageDTO[]>([])
   const onlineIds = useOnlineIds()
@@ -56,10 +56,17 @@ export function LiveChat() {
     setText('')
   }
 
-  if (!canChat) return null
+  if (!canChat) {
+    if (!showUnavailable) return null
+    return (
+      <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
+        El chat en vivo no está disponible en este momento
+      </p>
+    )
+  }
 
   return (
-    <section className="card-surface flex h-[420px] flex-col rounded-xl border border-white/10">
+    <section className={cn('card-surface flex h-[420px] flex-col rounded-xl border border-white/10', className)}>
       <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2.5">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -90,7 +97,7 @@ export function LiveChat() {
           }}
           maxLength={500}
           placeholder="Escribe al Cabal…"
-          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0f110c] px-3 py-2 text-[13px] outline-none focus:border-[#8FA83F]/40"
+          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0f110c] px-3 py-2 text-base outline-none sm:text-[13px] focus:border-[#8FA83F]/40"
         />
         <button
           onClick={handleSend}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Coins, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
+import { Coins, MessageCircle, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
 import { Ticker } from '@/components/cabal/ticker'
@@ -18,6 +18,7 @@ import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { WelcomeShareDialog } from '@/components/cabal/welcome-share-dialog'
+import { LiveChat } from '@/components/cabal/live-chat'
 import { useUI } from '@/lib/store'
 import { qk, useConfirmPremiumCheckout, useMe, usePointRules } from '@/lib/api-client'
 import { usePresenceConnection } from '@/lib/presence'
@@ -155,8 +156,14 @@ export default function Home() {
 
             {/* Mobile section title */}
             <div className="mb-3 flex items-center gap-2 md:hidden">
-              <RadarIcon className="h-4 w-4 text-primary" />
-              <h1 className="font-display text-lg font-bold capitalize">{tab === 'leaderboard' ? 'líderes' : tab}</h1>
+              {tab === 'chat' ? (
+                <MessageCircle className="h-4 w-4 text-primary" aria-hidden />
+              ) : (
+                <RadarIcon className="h-4 w-4 text-primary" aria-hidden />
+              )}
+              <h1 className="font-display text-lg font-bold capitalize">
+                {tab === 'leaderboard' ? 'líderes' : tab === 'chat' ? 'Chat en vivo' : tab}
+              </h1>
             </div>
 
             <div role="tabpanel" aria-label={tab}>
@@ -164,6 +171,8 @@ export default function Home() {
               {tab === 'tokens' && <TokensTab />}
               {tab === 'feed' && <FeedTab />}
               {tab === 'leaderboard' && <LeaderboardTab />}
+              {/* Alto de pantalla menos header, título y barra inferior */}
+              {tab === 'chat' && <LiveChat showUnavailable className="h-[calc(100dvh-12rem)] min-h-[320px] md:h-[600px]" />}
             </div>
           </div>
 

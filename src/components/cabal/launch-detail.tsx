@@ -41,15 +41,15 @@ export function LaunchDetailDialog() {
     >
       <DialogContent
         className={cn(
-          'overflow-y-auto border-white/10 bg-[#121410] p-0',
-          expanded ? 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[90vh] sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl'
+          'gap-0 overflow-x-hidden overflow-y-auto border-white/10 bg-[#121410] p-0',
+          expanded ? 'max-h-[96dvh] sm:max-w-[96vw] lg:max-w-[1440px]' : 'max-h-[90dvh] sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl'
         )}
         aria-describedby={undefined}
       >
         <button
           onClick={() => setExpanded((v) => !v)}
           aria-label={expanded ? 'Achicar' : 'Ampliar'}
-          className="absolute right-12 top-4 z-10 rounded-xs text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
+          className="absolute right-12 top-4 z-10 hidden rounded-xs sm:block text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
         >
           {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
         </button>
@@ -63,9 +63,9 @@ export function LaunchDetailDialog() {
         ) : (
           <>
             <LaunchBanner src={launch.banner} name={launch.name} />
-            <div className="relative border-b border-white/10 p-5">
+            <div className="relative border-b border-white/10 p-4 sm:p-5">
               <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-[#8FA83F]/8 blur-3xl" />
-              <DialogTitle className="flex items-start gap-3 text-left">
+              <DialogTitle className="flex items-start gap-3 pr-8 text-left sm:pr-10">
                 <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="xl" />
                 <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -146,8 +146,8 @@ export function LaunchDetailDialog() {
                 </div>
               )}
 
-              <div className="mt-4 flex items-center gap-3">
-                <div className="flex items-center gap-2">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2">
                   <Link
                     href={`/u/${launch.createdBy.handle}`}
                     onClick={() => openLaunch(null)}
@@ -165,7 +165,7 @@ export function LaunchDetailDialog() {
                     </Link>
                     <button
                       onClick={() => !launch.createdBy.isFollowed && follow.mutate(launch.createdBy.id)}
-                      className="text-[11px] text-muted-foreground hover:text-primary"
+                      className="block truncate text-[11px] text-muted-foreground hover:text-primary"
                     >
                       @{launch.createdBy.handle} · {launch.createdBy.isFollowed ? 'siguiendo' : 'seguir'}
                     </button>
@@ -243,9 +243,9 @@ export function LaunchDetailDialog() {
             {/* Gráfico en vivo + panel de compra (solo si el launch tiene CA del token desplegado) */}
             {launch.contract ? (
               <section className="border-b border-white/10 p-4" aria-label="Gráfico en vivo y compra del token">
-                <div className="mb-2.5 flex items-center justify-between gap-2">
+                <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gráfico en vivo</p>
-                  <CopyCA contract={launch.contract} className="max-w-[60%] text-[10px]" />
+                  <CopyCA contract={launch.contract} className="min-w-0 max-w-full text-[10px] sm:max-w-[60%]" />
                 </div>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                   <div className="min-w-0 flex-1">
@@ -313,7 +313,7 @@ export function LaunchDetailDialog() {
                   </Button>
                 </div>
               </div>
-              <div className="max-h-[40vh] space-y-2.5 overflow-y-auto pr-1">
+              <div className="space-y-2.5 sm:max-h-[40dvh] sm:overflow-y-auto sm:pr-1">
                 {launch.posts.length === 0 && (
                   <p className="py-6 text-center text-sm text-muted-foreground">Sé el primero en dar tu tesis</p>
                 )}

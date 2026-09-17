@@ -254,7 +254,7 @@ function SearchDialog({
 
   return (
     <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-      <DialogContent className="max-h-[80vh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+      <DialogContent className="max-h-[80dvh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
         <DialogTitle className="sr-only">Buscar</DialogTitle>
         <div className="sticky top-0 border-b border-white/10 bg-[#121410] p-3">
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] px-3">

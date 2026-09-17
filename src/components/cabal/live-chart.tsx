@@ -86,12 +86,15 @@ export function LiveChart({ network, contract, height = 320 }: { network: string
   const dexSrc = dexSlug && contract ? `https://dexscreener.com/${dexSlug}/${contract}?embed=1&theme=dark&info=0&trades=0` : null
   // Birdeye no cubre todas las redes: si no la tiene, cae a DexScreener
   const src = birdeyeSrc ?? dexSrc
+  // En móvil un iframe de 400-600px ocupaba toda la pantalla y atrapaba el
+  // scroll táctil: nunca más alto que la mitad del alto visible.
+  const boxHeight = `min(${height}px, 55dvh)`
 
   if (!src) {
     return (
       <div
         className="flex flex-col items-center justify-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-4 text-center"
-        style={{ height }}
+        style={{ height: boxHeight }}
       >
         <WifiOff className="h-5 w-5 text-muted-foreground/60" aria-hidden />
         <div>
@@ -108,7 +111,7 @@ export function LiveChart({ network, contract, height = 320 }: { network: string
       <iframe
         src={src}
         className="w-full rounded-xl border border-white/10"
-        style={{ height }}
+        style={{ height: boxHeight }}
         loading="lazy"
         sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
         allow="clipboard-write"

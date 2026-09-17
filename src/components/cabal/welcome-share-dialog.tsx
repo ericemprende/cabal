@@ -53,7 +53,7 @@ export function WelcomeShareDialog() {
 
   return (
     <Dialog open={welcomeShareOpen} onOpenChange={setWelcomeShareOpen}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
           <DialogTitle className="font-display text-xl font-bold">

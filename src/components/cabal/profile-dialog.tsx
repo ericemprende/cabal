@@ -81,7 +81,7 @@ export function ProfileDialog() {
 
   return (
     <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-      <DialogContent className="max-h-[88vh] grid-cols-[minmax(0,1fr)] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+      <DialogContent className="max-h-[88dvh] grid-cols-[minmax(0,1fr)] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
         {me && <ProfileContent me={me} />}
       </DialogContent>
     </Dialog>
@@ -1324,12 +1324,12 @@ function AvatarEditor({
         <UserAvatar name={name} src={isUrl ? avatar : null} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-bold">Foto de perfil</p>
-          <p className="text-[11px] text-muted-foreground">JPG o PNG, máx. 2.5 MB</p>
+          <p className="text-[11px] text-muted-foreground">JPG, PNG o foto del móvil, máx. 8 MB</p>
         </div>
         <input
           ref={fileRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
+          accept="image/*"
           className="hidden"
           onChange={(e) => pickFile(e.target.files?.[0])}
           aria-label="Subir foto de perfil"

@@ -55,17 +55,17 @@ export function TokenDetailDialog() {
     >
       <DialogContent
         className={cn(
-          'overflow-y-auto border-white/10 bg-[#121410] p-0',
+          'gap-0 overflow-x-hidden overflow-y-auto border-white/10 bg-[#121410] p-0',
           expanded
-            ? 'h-screen max-h-screen w-screen max-w-none rounded-none sm:max-w-none'
-            : 'max-h-[96vh] sm:max-w-[96vw] lg:max-w-[1440px]'
+            ? 'h-dvh max-h-dvh w-screen max-w-none rounded-none sm:max-w-none'
+            : 'max-h-[96dvh] sm:max-w-[96vw] lg:max-w-[1440px]'
         )}
         aria-describedby={undefined}
       >
         <button
           onClick={() => setExpanded((v) => !v)}
           aria-label={expanded ? 'Achicar' : 'Ampliar'}
-          className="absolute right-12 top-4 z-10 rounded-xs text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
+          className="absolute right-12 top-4 z-10 hidden rounded-xs sm:block text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
         >
           {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
         </button>
@@ -79,18 +79,18 @@ export function TokenDetailDialog() {
         ) : (
           <div className="space-y-0">
             {/* header */}
-            <div className="border-b border-white/10 p-5">
-              <DialogTitle className="flex items-start gap-3 text-left">
+            <div className="border-b border-white/10 p-4 sm:p-5">
+              <DialogTitle className="flex items-start gap-3 pr-8 text-left sm:pr-10">
                 <TokenGlyph src={token.image} ticker={token.ticker} size="xl" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="font-display truncate text-xl font-bold">
+                    <h2 className="font-display min-w-0 truncate text-lg font-bold sm:text-xl">
                       {token.name} <span className="text-primary text-glow">${token.ticker}</span>
                     </h2>
                     <NetworkBadge network={token.network} />
                     {token.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1.5 py-0.5 text-[10px] font-black text-[#ff8080]">RUG</span>}
                   </div>
-                  <div className="mt-1 flex items-baseline gap-2">
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
                     <span className="font-mono text-lg font-bold">{fmtPrice(token.price)}</span>
                     <span className={cn('text-sm font-bold', token.change24h >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
                       {fmtPct(token.change24h)} 24h
@@ -235,7 +235,7 @@ export function TokenDetailDialog() {
                   </Button>
                 </div>
               </div>
-              <div className="max-h-[40vh] space-y-2.5 overflow-y-auto pr-1">
+              <div className="max-h-[40dvh] space-y-2.5 overflow-y-auto pr-1">
                 {token.posts.length === 0 && (
                   <p className="py-6 text-center text-sm text-muted-foreground">Nadie ha publicado tesis todavía. Tú puedes ser el primero</p>
                 )}

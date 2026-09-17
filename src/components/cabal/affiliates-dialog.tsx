@@ -34,7 +34,7 @@ export function AffiliatesDialog() {
   return (
     <Dialog open={affiliatesOpen} onOpenChange={setAffiliatesOpen}>
       <DialogContent
-        className="max-h-[88vh] grid-cols-[minmax(0,1fr)] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-2xl"
+        className="max-h-[88dvh] grid-cols-[minmax(0,1fr)] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-2xl"
         aria-describedby={undefined}
       >
         <div className="border-b border-white/10 p-5">

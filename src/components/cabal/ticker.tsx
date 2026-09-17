@@ -166,7 +166,7 @@ function TickerEmbedDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#0d0e0a] sm:max-w-2xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto border-white/10 bg-[#0d0e0a] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Code2 className="h-4 w-4 text-primary" /> Incrustar la barra de tokens

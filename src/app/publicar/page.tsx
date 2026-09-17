@@ -207,8 +207,15 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     }
   }
 
+  const uploading = form.image === 'uploading' || form.banner === 'uploading'
+
   const submit = () => {
     setError('')
+    // En móvil la subida tarda: publicar antes de que termine dejaba el launch sin imagen
+    if (uploading) {
+      setError('Espera a que termine de subir la imagen')
+      return
+    }
     if (!form.name.trim() || !form.launchAt) {
       setError('Nombre y fecha son obligatorios')
       return
@@ -294,20 +301,20 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
             href="/app"
             className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" aria-hidden /> Volver
+            <ArrowLeft className="h-4 w-4" aria-hidden /> <span className="hidden min-[400px]:inline">Volver</span>
           </Link>
-          <Link href="/app" className="ml-1 flex items-center outline-none" aria-label="Ir al inicio">
+          <Link href="/app" className="ml-1 flex min-w-0 items-center outline-none" aria-label="Ir al inicio">
             <CabalWordmark />
           </Link>
           {!editId && (
-            <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-2.5 py-1 text-xs font-semibold text-primary">
+            <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-2.5 py-1 text-xs font-semibold text-primary">
               <Zap className="h-3 w-3" aria-hidden /> +{rules.points_launch} pts por launch
             </span>
           )}
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-16 pt-6 sm:pt-8">
+      <main className="mx-auto w-full min-w-0 max-w-2xl flex-1 px-3 pb-16 pt-6 sm:px-4 sm:pt-8">
         {done ? (
           <SuccessPanel
             earned={earned || rules.points_launch}
@@ -319,7 +326,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
           <>
             {/* Page heading */}
             <div className="mb-5">
-              <h1 className="font-machina flex items-center gap-2.5 text-2xl font-bold uppercase tracking-wide">
+              <h1 className="font-machina flex items-center gap-2.5 text-xl font-bold sm:text-2xl uppercase tracking-wide">
                 <Rocket className="h-6 w-6 text-primary" aria-hidden /> {editId ? 'Editar lanzamiento' : 'Publicar lanzamiento'}
               </h1>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
@@ -330,7 +337,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
             </div>
 
             {/* Form */}
-            <div className="card-surface space-y-5 rounded-2xl border border-white/10 p-5 sm:p-6">
+            <div className="card-surface min-w-0 space-y-5 rounded-2xl border border-white/10 p-4 sm:p-6">
               {/* ¿Quién publica este launch? (obligatorio) */}
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">¿Quién publica este launch? *</Label>
@@ -580,7 +587,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                   type="datetime-local"
                   value={form.launchAt}
                   onChange={(e) => set('launchAt', e.target.value)}
-                  className="h-10 max-w-sm bg-[#0a0b08] [color-scheme:dark]"
+                  className="h-10 w-full min-w-0 max-w-sm appearance-none bg-[#0a0b08] text-left [color-scheme:dark] [&::-webkit-date-and-time-value]:text-left"
                 />
                 <TimezoneHint value={form.launchAt} className="max-w-sm" />
                 <button
@@ -620,7 +627,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
               </div>
 
               {/* Identidad visual: imagen del token + banner */}
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 [&>*]:min-w-0">
                 <ImageDrop
                   url={form.image === 'uploading' ? '' : form.image}
                   uploading={form.image === 'uploading'}
@@ -685,7 +692,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                 </p>
                 <Button
                   onClick={submit}
-                  disabled={saving}
+                  disabled={saving || uploading}
                   className="h-11 shrink-0 gap-2 rounded-xl bg-primary px-6 font-bold text-primary-foreground neon-shadow hover:bg-[#8FA83F]"
                 >
                   <Zap className="h-4 w-4" strokeWidth={2.5} />
@@ -695,6 +702,8 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                       : 'Guardar cambios'
                     : saving
                       ? 'Publicando…'
+                      : uploading
+                        ? 'Subiendo imagen…'
                       : `Publicar · +${rules.points_launch} pts`}
                 </Button>
               </div>

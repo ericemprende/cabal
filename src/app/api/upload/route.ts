@@ -23,7 +23,9 @@ export async function POST(req: Request) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: 'No se recibió ningún archivo' }, { status: 400 })
     }
-    if (!UPLOAD_TYPES.has(file.type)) {
+    // Algunos móviles mandan el archivo sin tipo MIME o en HEIC: se dejan pasar
+    // y sharp decide si es una imagen de verdad (InvalidImageError si no).
+    if (file.type && !UPLOAD_TYPES.has(file.type)) {
       return NextResponse.json(
         { error: 'Formato no permitido. Usa PNG, JPG, WebP o GIF (o pega la URL de la imagen).' },
         { status: 400 }
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
     }
     if (file.size > MAX_UPLOAD_BYTES) {
       return NextResponse.json(
-        { error: 'La imagen supera el máximo de 2.5 MB. Reduce el tamaño o pega la URL.' },
+        { error: 'La imagen supera el máximo de 8 MB. Reduce el tamaño o pega la URL.' },
         { status: 400 }
       )
     }

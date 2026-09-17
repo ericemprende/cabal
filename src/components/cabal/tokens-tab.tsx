@@ -95,7 +95,7 @@ export function TokensTab() {
               className="card-surface group flex w-full items-center gap-3 rounded-xl border border-white/8 p-3 text-left transition-all hover:border-[#8FA83F]/30 hover:bg-white/3 md:gap-3 md:px-4"
             >
               <TokenGlyph src={t.image} ticker={t.ticker} size="md" />
-              <div className="w-40 min-w-0 flex-1 md:w-56 md:flex-none">
+              <div className="min-w-0 flex-1 md:w-56 md:flex-none">
                 <p className="flex items-center gap-1.5 truncate text-sm font-bold">
                   {t.ticker}
                   {t.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1 py-px text-[9px] font-black text-[#ff8080]">RUG</span>}
@@ -116,22 +116,24 @@ export function TokensTab() {
                   <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/40 to-[#8FA83F]" style={{ width: `${Math.max((t.mc / maxMc) * 100, 4)}%` }} />
                 </div>
               </div>
-              <p className={cn('w-14 text-right text-[13px] font-bold tabular-nums md:w-20', t.change24h >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+              <p className={cn('w-14 shrink-0 text-right text-[13px] font-bold tabular-nums md:w-20', t.change24h >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
                 {fmtPct(t.change24h)}
               </p>
               <p className="hidden text-right text-xs text-muted-foreground md:block md:w-16">{fmtNum(t.holders)}</p>
               <p className="hidden text-right text-xs text-muted-foreground md:block md:w-20">{fmtMc(t.volume24h)}</p>
-              <div className="ml-auto flex items-center gap-1.5 md:w-32 md:justify-end">
+              <div className="ml-auto flex shrink-0 items-center gap-1.5 md:w-32 md:justify-end">
                 {t.dev ? (
                   <>
-                    <UserAvatar name={t.dev.name} src={t.dev.avatar} size="xs" verified={t.dev.walletVerified} ring={false} />
+                    <span className="hidden sm:block">
+                      <UserAvatar name={t.dev.name} src={t.dev.avatar} size="xs" verified={t.dev.walletVerified} ring={false} />
+                    </span>
                     <span className="hidden truncate text-[11px] text-muted-foreground lg:block">@{t.dev.handle}</span>
                   </>
                 ) : (
                   // Lo publicó un scout y nadie lo ha reclamado todavía
                   <span className="hidden text-[11px] text-muted-foreground/70 lg:block">Dev sin verificar</span>
                 )}
-                <span className="rounded-md bg-[#8FA83F]/8 px-1.5 py-0.5 text-[10px] font-bold text-primary group-hover:bg-[#8FA83F]/15">
+                <span className="hidden items-center gap-0.5 rounded-md bg-[#8FA83F]/8 px-1.5 py-0.5 text-[10px] font-bold text-primary group-hover:bg-[#8FA83F]/15 sm:inline-flex">
                   <MessageSquare className="h-3 w-3" aria-hidden /> {t.postsCount}
                 </span>
                 <QuickBuyButton contract={t.contract} network={t.network} ticker={t.ticker} />

@@ -127,6 +127,8 @@
     @apply bg-background text-foreground;
     background-image: radial-gradient(1200px 500px at 70% -10%, rgba(143, 168, 63, 0.035), transparent 60%);
     font-feature-settings: "tnum";
+    /* Red de seguridad en móvil: nada puede provocar scroll horizontal (clip no rompe sticky) */
+    overflow-x: clip;
   }
 }
 
