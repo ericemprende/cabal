@@ -48,6 +48,18 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKey)
   }, [setSearchOpen])
 
+  // Deep link de un launch (enlaces del bot de Telegram y de los correos): /app?launch=<id>
+  const openLaunch = useUI((s) => s.openLaunch)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const launchId = params.get('launch')
+    if (!launchId) return
+    params.delete('launch')
+    const rest = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+    openLaunch(launchId)
+  }, [openLaunch])
+
   // Deep link del panel admin: /app?admin=1
   useEffect(() => {
     if (!wantsAdmin) return

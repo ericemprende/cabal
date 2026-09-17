@@ -22,6 +22,7 @@ import {
   Plus,
   Rocket,
   Save,
+  Send,
   Settings2,
   ShieldCheck,
   Trash2,
@@ -54,6 +55,7 @@ import { AFFILIATE_NETWORKS, platformLinkFor } from '@/lib/affiliate'
 import { CopyCA, PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { AdminUsers } from '@/components/cabal/admin-users'
+import { AdminNotify } from '@/components/cabal/admin-notify'
 import {
   jsonFetch,
   qk,
@@ -143,6 +145,7 @@ const REASON_COLORS: Record<string, string> = {
 }
 
 type AdminView =
+  | 'notificaciones'
   | 'usuarios'
   | 'premium'
   | 'reclamos'
@@ -250,6 +253,7 @@ export function AdminPanel({
     { key: 'calls', label: 'Calls por usuario', icon: Megaphone },
     { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
     { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
+    { key: 'notificaciones', label: 'Telegram y Discord', icon: Send },
     { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
   ] as { key: AdminView; label: string; icon: typeof Zap }[]
 
@@ -340,6 +344,8 @@ export function AdminPanel({
         {view === 'calls' && <AdminCalls enabled={enabled} />}
 
         {view === 'moderacion' && <AdminModeration enabled={enabled} />}
+
+        {view === 'notificaciones' && <AdminNotify enabled={enabled} />}
 
         {view === 'reglas' && (
           <div className="space-y-3">

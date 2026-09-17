@@ -1,0 +1,128 @@
+'use client'
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { jsonFetch } from '@/lib/api-client'
+import type {
+  AdminNotifyDTO,
+  ChatLinkCodeDTO,
+  ChatLinkDTO,
+  MyChatsDTO,
+  MyRemindersDTO,
+  ReminderChannelsDTO,
+} from '@/lib/notify-types'
+
+// Hooks de la campanita de launches y de los chats de Telegram/Discord.
+
+export const notifyKeys = {
+  reminders: ['me', 'reminders'] as const,
+  chats: ['me', 'chats'] as const,
+  admin: ['admin', 'notifications'] as const,
+}
+
+export function useMyReminders() {
+  return useQuery<MyRemindersDTO>({
+    queryKey: notifyKeys.reminders,
+    queryFn: () => jsonFetch('/api/me/reminders'),
+    staleTime: 30_000,
+  })
+}
+
+export class LoginRequiredError extends Error {}
+
+export function useToggleReminder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (launchId: string) => {
+      const res = await fetch(`/api/launches/${launchId}/remind`, { method: 'POST' })
+      const body = await res.json().catch(() => ({}))
+      if (res.status === 401) throw new LoginRequiredError(body.error ?? 'Inicia sesión')
+      if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`)
+      return body as { reminded: boolean; channels: ReminderChannelsDTO }
+    },
+    // Respuesta inmediata en la campanita, sin esperar al servidor
+    onMutate: async (launchId) => {
+      await qc.cancelQueries({ queryKey: notifyKeys.reminders })
+      const prev = qc.getQueryData<MyRemindersDTO>(notifyKeys.reminders)
+      if (prev) {
+        const on = prev.launchIds.includes(launchId)
+        qc.setQueryData<MyRemindersDTO>(notifyKeys.reminders, {
+          ...prev,
+          launchIds: on ? prev.launchIds.filter((id) => id !== launchId) : [...prev.launchIds, launchId],
+        })
+      }
+      return { prev }
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(notifyKeys.reminders, ctx.prev)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: notifyKeys.reminders }),
+  })
+}
+
+export function useMyChats(enabled = true) {
+  return useQuery<MyChatsDTO>({ queryKey: notifyKeys.chats, queryFn: () => jsonFetch('/api/me/chats'), enabled })
+}
+
+export function useCreateChatLinkCode() {
+  return useMutation({
+    mutationFn: () =>
+      jsonFetch<ChatLinkCodeDTO>('/api/me/chats/link', { method: 'POST', body: JSON.stringify({ provider: 'telegram' }) }),
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useUpdateChat() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...prefs }: { id: string } & Partial<Pick<ChatLinkDTO, 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'lang'>>) =>
+      jsonFetch<ChatLinkDTO>(`/api/me/chats/${id}`, { method: 'PATCH', body: JSON.stringify(prefs) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.chats }),
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useDeleteChat() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => jsonFetch(`/api/me/chats/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: notifyKeys.chats })
+      qc.invalidateQueries({ queryKey: notifyKeys.reminders })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ---------- Admin ----------
+
+export function useAdminNotify(enabled = true) {
+  return useQuery<AdminNotifyDTO>({
+    queryKey: notifyKeys.admin,
+    queryFn: () => jsonFetch('/api/admin/notifications'),
+    enabled,
+  })
+}
+
+export function useAdminNotifyUpdate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { token?: string; enabled?: boolean; disconnect?: boolean }) =>
+      jsonFetch<{ ok: boolean; username?: string }>('/api/admin/notifications', { method: 'PUT', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.admin }),
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminNotifyAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { action: 'webhook' | 'test' | 'run'; chatId?: string }) =>
+      jsonFetch<{ ok: boolean; sent?: number; result?: Record<string, number> }>('/api/admin/notifications', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.admin }),
+    onError: (e: Error) => toast.error(e.message),
+  })
+}

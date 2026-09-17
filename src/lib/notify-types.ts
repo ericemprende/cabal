@@ -4,6 +4,7 @@ export type ChatLinkDTO = {
   id: string
   provider: 'telegram' | 'discord'
   chatType: string // private | group | supergroup | channel
+  lang: 'es' | 'en' // idioma de los mensajes del bot en este chat
   title: string | null
   notifyLaunches: boolean
   notifyReminders: boolean

@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { db } from '@/lib/db'
 import { siteUrl } from '@/lib/waitlist'
+import { BOT_COMMANDS } from '@/lib/telegram-i18n'
 
 /**
  * Bot de Telegram de Cabal: configuración y llamadas a la Bot API.
@@ -88,15 +89,9 @@ export async function registerWebhook(token: string, secret: string) {
     allowed_updates: ['message', 'channel_post', 'callback_query', 'my_chat_member'],
     drop_pending_updates: true,
   })
-  await tgCall(token, 'setMyCommands', {
-    commands: [
-      { command: 'start', description: 'Conectar con tu cuenta de Cabal' },
-      { command: 'ajustes', description: 'Elegir qué avisos llegan a este chat' },
-      { command: 'proximos', description: 'Próximos lanzamientos' },
-      { command: 'desvincular', description: 'Dejar de recibir avisos aquí' },
-      { command: 'ayuda', description: 'Cómo funciona el bot' },
-    ],
-  })
+  // Mismos comandos (en inglés); la descripción del menú sale en el idioma de la app de Telegram
+  await tgCall(token, 'setMyCommands', { commands: BOT_COMMANDS.en })
+  await tgCall(token, 'setMyCommands', { commands: BOT_COMMANDS.es, language_code: 'es' })
 }
 
 /** Quita el bot: borra el webhook en Telegram y la configuración guardada. */

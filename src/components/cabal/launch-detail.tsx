@@ -17,6 +17,7 @@ import { TradePanel } from '@/components/cabal/trade-panel'
 import { timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { ReminderBell } from '@/components/cabal/reminder-bell'
 
 export function LaunchDetailDialog() {
   const { launchDetailId, openLaunch, setPremiumOpen } = useUI()
@@ -194,6 +195,7 @@ export function LaunchDetailDialog() {
                   <Flame className={cn('h-4 w-4', launch.hyped && 'fill-primary')} />
                   {launch.hype}
                 </button>
+                <ReminderBell launchId={launch.id} launchAt={launch.launchAt} size="md" />
               </div>
 
               {/* Rol de quien publicó: dev del proyecto o scout de la comunidad */}

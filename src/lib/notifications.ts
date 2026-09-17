@@ -4,6 +4,7 @@ import { networkMeta } from '@/lib/cabal'
 import { siteUrl } from '@/lib/waitlist'
 import { esc, sleep, TelegramApiError, telegramConfig, tgSend, type TelegramConfig, type TgMessage } from '@/lib/telegram'
 import type { ChatLink } from '@prisma/client'
+import { t, type Lang } from '@/lib/telegram-i18n'
 
 /**
  * Avisos a Telegram (y correo para la campanita). Una pasada (`runNotificationTick`)
@@ -66,7 +67,7 @@ async function announceNewLaunches(tg: TelegramConfig, r: TickResult) {
     const key = `launch:new:${l.id}`
     if (!pending.has(key) || !(await reserve(key))) continue
     const chats = await db.chatLink.findMany({ where: { provider: 'telegram', active: true, notifyLaunches: true } })
-    const sent = await broadcast(tg, chats, launchMessage(l, 'new'))
+    const sent = await broadcast(tg, chats, (lang) => launchMessage(l, 'new', lang))
     await markSent(key, sent)
     r.launches++
     r.messages += sent
@@ -96,7 +97,7 @@ async function announceNewTheses(tg: TelegramConfig, r: TickResult) {
       continue
     }
     const chats = await db.chatLink.findMany({ where: { provider: 'telegram', active: true, notifyTheses: true } })
-    const sent = await broadcast(tg, chats, thesisMessage(p))
+    const sent = await broadcast(tg, chats, (lang) => thesisMessage(p, lang))
     await markSent(key, sent)
     r.theses++
     r.messages += sent
@@ -127,7 +128,6 @@ async function sendReminders(tg: TelegramConfig | null, r: TickResult) {
 
     let sent = 0
     const minutes = Math.max(1, Math.round((l.launchAt.getTime() - now) / 60_000))
-    const msg = launchMessage(l, 'soon', minutes)
     const alreadySent = new Set<string>()
 
     if (tg) {
@@ -136,14 +136,14 @@ async function sendReminders(tg: TelegramConfig | null, r: TickResult) {
         const privates = await db.chatLink.findMany({
           where: { provider: 'telegram', active: true, chatType: 'private', userId: { in: bellUserIds } },
         })
-        sent += await broadcast(tg, privates, launchMessage(l, 'bell', minutes))
+        sent += await broadcast(tg, privates, (lang) => launchMessage(l, 'bell', lang, minutes))
         privates.forEach((c) => alreadySent.add(c.id))
       }
       const chats = await db.chatLink.findMany({ where: { provider: 'telegram', active: true, notifyReminders: true } })
       sent += await broadcast(
         tg,
         chats.filter((c) => !alreadySent.has(c.id)),
-        msg
+        (lang) => launchMessage(l, 'soon', lang, minutes)
       )
     }
 
@@ -171,12 +171,18 @@ async function sendReminders(tg: TelegramConfig | null, r: TickResult) {
 
 // ---------- Envío ----------
 
-/** Manda el mismo mensaje a varios chats; desactiva los que ya no existen. Devuelve los enviados. */
-export async function broadcast(tg: TelegramConfig, chats: ChatLink[], msg: TgMessage): Promise<number> {
+/**
+ * Manda un aviso a varios chats, cada uno en su idioma; desactiva los que ya
+ * no existen. Devuelve los enviados.
+ */
+export async function broadcast(tg: TelegramConfig, chats: ChatLink[], render: (lang: Lang) => TgMessage): Promise<number> {
   let ok = 0
+  const byLang = new Map<string, TgMessage>()
   for (const chat of chats) {
+    const lang: Lang = chat.lang === 'en' ? 'en' : 'es'
+    if (!byLang.has(lang)) byLang.set(lang, render(lang))
     try {
-      const { migratedTo } = await tgSend(tg.token, chat.chatId, msg)
+      const { migratedTo } = await tgSend(tg.token, chat.chatId, byLang.get(lang)!)
       if (migratedTo) {
         await db.chatLink
           .update({ where: { id: chat.id }, data: { chatId: migratedTo, chatType: 'supergroup' } })
@@ -247,9 +253,9 @@ function launchLabel(l: { name: string; ticker: string | null; isPrivate: boolea
   return l.ticker && !l.isPrivate ? `$${esc(l.ticker)} · ${esc(l.name)}` : esc(l.name)
 }
 
-export function fmtLaunchDate(d: Date): string {
+export function fmtLaunchDate(d: Date, lang: Lang): string {
   return (
-    d.toLocaleString('es', {
+    d.toLocaleString(t(lang).locale, {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',
@@ -259,12 +265,12 @@ export function fmtLaunchDate(d: Date): string {
   )
 }
 
-function fmtIn(ms: number): string {
+function fmtIn(ms: number, lang: Lang): string {
   const min = Math.max(1, Math.round(ms / 60_000))
   if (min < 60) return `${min} min`
   const h = Math.floor(min / 60)
   if (h < 48) return `${h} h${min % 60 ? ` ${min % 60} min` : ''}`
-  return `${Math.round(h / 24)} días`
+  return `${Math.round(h / 24)} ${t(lang).days}`
 }
 
 function snippet(s: string, max: number): string {
@@ -272,35 +278,36 @@ function snippet(s: string, max: number): string {
   return one.length > max ? `${one.slice(0, max - 1)}…` : one
 }
 
-export function launchMessage(l: LaunchForMessage, kind: 'new' | 'soon' | 'bell', minutes?: number): TgMessage {
+export function launchMessage(l: LaunchForMessage, kind: 'new' | 'soon' | 'bell', lang: Lang, minutes?: number): TgMessage {
+  const tx = t(lang)
   const label = launchLabel(l)
   const net = networkMeta(l.network).label
-  const when = `${fmtLaunchDate(l.launchAt)}${l.dateConfirmed ? '' : ' (estimada)'}`
-  const head =
-    kind === 'new'
-      ? '🚀 <b>Nuevo lanzamiento en Cabal</b>'
-      : kind === 'bell'
-        ? `🔔 <b>Tu recordatorio: sale en ${minutes} min</b>`
-        : `⏰ <b>Sale en ${minutes} min</b>`
+  const when = `${fmtLaunchDate(l.launchAt, lang)}${l.dateConfirmed ? '' : ` (${tx.estimated})`}`
+  const left = fmtIn((minutes ?? 0) * 60_000, lang)
+  const head = kind === 'new' ? tx.newLaunch : kind === 'bell' ? tx.bellHead(left) : tx.soonHead(left)
   const lines = [
     head,
     '',
     `<b>${label}</b> · ${esc(net)}`,
-    `🗓 ${when}${kind === 'new' ? ` · en ${fmtIn(l.launchAt.getTime() - Date.now())}` : ''}`,
+    `🗓 ${when}${kind === 'new' ? ` · ${tx.inPrefix} ${fmtIn(l.launchAt.getTime() - Date.now(), lang)}` : ''}`,
   ]
   if (kind === 'new' && l.description) lines.push('', esc(snippet(l.description, 280)))
-  lines.push('', `${l.submitterRole === 'dev' ? 'Publicado por el dev' : 'Compartido por'} @${esc(l.createdBy.handle)}`)
-  return { text: lines.join('\n'), buttons: [[{ text: 'Ver en Cabal', url: launchUrl(l.id) }]] }
+  lines.push('', `${l.submitterRole === 'dev' ? tx.byDev : tx.byCommunity} @${esc(l.createdBy.handle)}`)
+  return { text: lines.join('\n'), buttons: [[{ text: tx.viewOnCabal, url: launchUrl(l.id) }]] }
 }
 
-function thesisMessage(p: {
-  content: string
-  user: { handle: string }
-  launch: { id: string; name: string; ticker: string | null; isPrivate: boolean } | null
-}): TgMessage {
-  const lines = [`🧠 <b>Nueva tesis de @${esc(p.user.handle)}</b>`]
-  if (p.launch) lines.push(`Sobre <b>${launchLabel(p.launch)}</b>`)
+function thesisMessage(
+  p: {
+    content: string
+    user: { handle: string }
+    launch: { id: string; name: string; ticker: string | null; isPrivate: boolean } | null
+  },
+  lang: Lang
+): TgMessage {
+  const tx = t(lang)
+  const lines = [tx.thesisHead(esc(p.user.handle))]
+  if (p.launch) lines.push(`${tx.about} <b>${launchLabel(p.launch)}</b>`)
   lines.push('', esc(snippet(p.content, 600)))
   const url = p.launch ? launchUrl(p.launch.id) : `${siteUrl()}/app`
-  return { text: lines.join('\n'), buttons: [[{ text: 'Leer en Cabal', url }]] }
+  return { text: lines.join('\n'), buttons: [[{ text: tx.readOnCabal, url }]] }
 }

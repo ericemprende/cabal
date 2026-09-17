@@ -59,6 +59,7 @@ import {
 import type { DevClaimDTO, MeDTO, WalletLinkDTO } from '@/lib/types'
 import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
+import { TelegramConnect } from '@/components/cabal/telegram-connect'
 
 const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   thesis: { label: 'Tesis publicada', icon: GraduationCap },
@@ -198,6 +199,9 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             />
           </div>
         </div>
+
+        {/* Telegram: campanita de launches y avisos en grupos/canales */}
+        <TelegramConnect />
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2 border-b border-white/10 p-4">

@@ -16,6 +16,7 @@ import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, To
 import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
 import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { ReminderBell } from '@/components/cabal/reminder-bell'
 import type { LaunchDTO } from '@/lib/types'
 
 const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'tron', 'robinhood', 'arc'] as const
@@ -316,6 +317,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           <MessageSquare className="h-3.5 w-3.5" aria-hidden />
           {launch.postsCount}
         </span>
+        <ReminderBell launchId={launch.id} launchAt={launch.launchAt} />
         {launch.contract && (
           <button
             onClick={(e) => {

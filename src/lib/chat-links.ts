@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { db } from '@/lib/db'
 import type { ChatLink } from '@prisma/client'
 import type { ChatLinkDTO } from '@/lib/notify-types'
+import type { Lang } from '@/lib/telegram-i18n'
 
 /**
  * Vincular un chat externo (Telegram hoy, Discord después) a una cuenta.
@@ -53,6 +54,7 @@ export async function upsertChatLink(input: {
   title: string | null
   userId: string
   externalUserId: string | null
+  lang: Lang
 }) {
   const isPrivate = input.chatType === 'private'
   const base = {
@@ -60,6 +62,7 @@ export async function upsertChatLink(input: {
     title: input.title,
     userId: input.userId,
     externalUserId: input.externalUserId,
+    lang: input.lang,
     active: true,
     lastError: null,
   }
@@ -85,6 +88,7 @@ export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
     id: c.id,
     provider: c.provider === 'discord' ? 'discord' : 'telegram',
     chatType: c.chatType,
+    lang: c.lang === 'en' ? 'en' : 'es',
     title: c.title,
     notifyLaunches: c.notifyLaunches,
     notifyReminders: c.notifyReminders,
