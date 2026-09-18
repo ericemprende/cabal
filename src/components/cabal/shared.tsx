@@ -27,17 +27,17 @@ import { displayImageUrl } from '@/lib/remote-image'
 import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
 
 // ---------- Wordmark (sin logo: solo la fuente en mayúscula) ----------
-export function CabalWordmark({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
-  const text = size === 'lg' ? 'text-3xl' : size === 'md' ? 'text-xl' : 'text-base'
+export function CabalWordmark({ size = 'md', className }: { size?: 'sm' | 'md' | 'lg'; className?: string }) {
+  const h = size === 'lg' ? 'h-10' : size === 'md' ? 'h-7' : 'h-6'
   return (
-    <span
-      className={cn(
-        'font-machina font-bold uppercase tracking-[0.08em] text-foreground select-none',
-        text
-      )}
-    >
-      Cabal
-    </span>
+    <img
+      src="/cabal-wordmark.webp"
+      alt="Cabal"
+      width={305}
+      height={128}
+      draggable={false}
+      className={cn('w-auto shrink-0 select-none', h, className)}
+    />
   )
 }
 

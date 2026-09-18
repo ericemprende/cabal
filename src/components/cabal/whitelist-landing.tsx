@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { CabalWordmark } from '@/components/cabal/shared'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowRight,
@@ -115,8 +116,9 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
 
         <div className="relative mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 md:py-12">
           <header className="flex items-center gap-2.5">
-            <Image src="/cabal-logo.png" alt="" width={36} height={36} className="rounded-lg" priority />
-            <span className="font-machina text-lg font-bold uppercase tracking-[0.08em]">Cabal</span>
+            <Link href="/app" className="transition-opacity hover:opacity-80">
+              <CabalWordmark className="h-8" />
+            </Link>
             <span className="ml-auto rounded-full border border-[#8FA83F]/40 bg-[#8FA83F]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-primary">
               Acceso anticipado
             </span>

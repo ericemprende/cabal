@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
+import Link from 'next/link'
+import { CabalWordmark } from '@/components/cabal/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Loader2, LogOut, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
@@ -72,14 +73,9 @@ function AdminLogin() {
       <div className="relative w-full max-w-sm">
         {/* Logo de la plataforma */}
         <div className="mb-5 flex justify-center">
-          <Image
-            src="/cabal-logo.png"
-            alt="Logo de Cabal"
-            width={96}
-            height={96}
-            priority
-            className="h-20 w-20 rounded-2xl border border-white/10 object-cover shadow-[0_0_48px_rgba(143,168,63,0.35)] sm:h-24 sm:w-24"
-          />
+          <Link href="/app" aria-label="Ir a la app" className="cursor-pointer transition-opacity hover:opacity-80">
+            <CabalWordmark className="h-14 sm:h-16" />
+          </Link>
         </div>
         <h1 className="font-machina text-glow text-center text-4xl font-bold tracking-[0.35em] text-primary">
           CABAL
@@ -158,15 +154,11 @@ function AdminDashboard() {
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0b08]/95 backdrop-blur">
         <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6">
           <p className="flex min-w-0 items-center gap-2.5">
-            <Image
-              src="/cabal-logo.png"
-              alt=""
-              width={28}
-              height={28}
-              className="h-7 w-7 shrink-0 rounded-lg border border-white/10 object-cover"
-            />
-            <span className="font-machina truncate text-sm font-bold uppercase tracking-[0.25em] text-primary">
-              CABAL <span className="text-muted-foreground">· Panel Admin</span>
+            <Link href="/app" aria-label="Ir a la app" className="shrink-0 cursor-pointer transition-opacity hover:opacity-80">
+              <CabalWordmark size="sm" />
+            </Link>
+            <span className="font-machina truncate text-sm font-bold uppercase tracking-[0.25em] text-muted-foreground">
+              · Panel Admin
             </span>
           </p>
           <Button

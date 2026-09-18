@@ -71,7 +71,7 @@ export function TickerBrand({ variant }: { variant: TickerLogo }) {
     <div className="flex shrink-0 items-center gap-2 border-r border-white/15 pl-4 pr-4">
       {variant !== 'text' && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src="/cabal-logo.png" alt="Cabal" className="h-7 w-7 object-contain" />
+        <img src="/cabal-logo.webp" alt="Cabal" className="h-7 w-7 object-contain" />
       )}
       {variant !== 'icon' && (
         <span className="flex flex-col leading-none">

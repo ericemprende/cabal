@@ -53,7 +53,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0b08]/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1800px] items-center gap-3 px-3 sm:px-4">
         <button
-          className="flex items-center outline-none"
+          className="flex cursor-pointer items-center outline-none transition-opacity hover:opacity-80"
           onClick={() => goToTab('radar')}
           aria-label="Ir al Radar"
         >

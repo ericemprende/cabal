@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import Image from 'next/image'
+import { CabalWordmark } from '@/components/cabal/shared'
 
 /**
  * Marco visual compartido por las páginas legales (/terminos y /privacidad).
@@ -19,9 +19,8 @@ export function LegalPage({
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-white/10">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/cabal-logo.png" alt="Cabal" width={28} height={28} className="rounded" />
-            <span className="font-semibold tracking-tight">Cabal</span>
+          <Link href="/app" className="flex items-center transition-opacity hover:opacity-80">
+            <CabalWordmark />
           </Link>
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link href="/terminos" className="hover:text-foreground">Términos</Link>

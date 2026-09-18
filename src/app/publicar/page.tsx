@@ -303,7 +303,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
           >
             <ArrowLeft className="h-4 w-4" aria-hidden /> <span className="hidden min-[400px]:inline">Volver</span>
           </Link>
-          <Link href="/app" className="ml-1 flex min-w-0 items-center outline-none" aria-label="Ir al inicio">
+          <Link href="/app" className="ml-1 flex min-w-0 items-center outline-none transition-opacity hover:opacity-80" aria-label="Ir al inicio">
             <CabalWordmark />
           </Link>
           {!editId && (

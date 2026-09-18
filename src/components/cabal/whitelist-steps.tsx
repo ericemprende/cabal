@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
+import { CabalWordmark } from '@/components/cabal/shared'
 import Link from 'next/link'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -90,8 +90,7 @@ export function WhitelistSteps() {
       <div className="relative mx-auto w-full max-w-xl px-4 py-8 sm:px-6 md:py-12">
         <header className="flex items-center gap-2.5">
           <Link href="/" className="flex items-center gap-2.5 outline-none">
-            <Image src="/cabal-logo.png" alt="" width={32} height={32} className="rounded-lg" priority />
-            <span className="font-machina text-base font-bold uppercase tracking-[0.08em]">Cabal</span>
+            <CabalWordmark />
           </Link>
           <Link
             href="/"
