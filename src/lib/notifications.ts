@@ -18,6 +18,8 @@ import { DEFAULT_REMINDER_LEAD } from '@/lib/notify-types'
  *  3. Falta ≤ REMINDER_LEAD_MIN   → quien activó la campanita (su chat privado
  *                                   con el bot + su correo verificado) y los
  *                                   chats con notifyReminders
+ *  4. Respuesta en el chat en vivo → chat privado con el bot de quien recibe
+ *                                   la respuesta
  *
  * No hay cola: cada envío se reserva en NotificationDispatch con una clave
  * única ANTES de mandar, así una pasada solapada o relanzada no repite nada.
@@ -94,6 +96,7 @@ export async function runNotificationTick(): Promise<TickResult> {
     await announceNewLaunches(senders, result)
     await announceNewCalls(senders, result)
     await announceNewTheses(senders, result)
+    await sendChatReplies(senders, result)
   }
   await sendReminders(senders, result)
   return result
@@ -195,6 +198,38 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
     const sent = await broadcast(senders, chats, (lang) => thesisMessage(p, lang), p.createdAt)
     await markSent(key, sent)
     r.theses++
+    r.messages += sent
+  }
+}
+
+// ---------- Respuestas del chat en vivo ----------
+
+/** Una respuesta más vieja que esto ya no se avisa (worker caído): llegaría tarde. */
+const CHAT_REPLY_MAX_AGE_MS = 30 * 60_000
+
+async function sendChatReplies(senders: Senders, r: TickResult) {
+  const now = Date.now()
+  const since = new Date(Math.max(lowerBound(senders, now).getTime(), now - CHAT_REPLY_MAX_AGE_MS))
+  const replies = await db.chatMessage.findMany({
+    where: { replyToId: { not: null }, createdAt: { gte: since } },
+    orderBy: { createdAt: 'asc' },
+    take: 50,
+    include: {
+      user: { select: { id: true, handle: true } },
+      replyTo: { select: { body: true, userId: true } },
+    },
+  })
+  // Responderse a uno mismo no avisa.
+  const toNotify = replies.filter((m) => m.replyTo && m.replyTo.userId !== m.user.id)
+  const pending = await notDispatched(toNotify.map((m) => `chat-reply:${m.id}`))
+  for (const m of toNotify) {
+    const key = `chat-reply:${m.id}`
+    if (!pending.has(key) || !(await reserve(key))) continue
+    const privates = await db.chatLink.findMany({
+      where: { provider: { in: providersOf(senders) }, active: true, chatType: 'private', userId: m.replyTo!.userId },
+    })
+    const sent = await broadcast(senders, privates, (lang) => chatReplyMessage(m, lang), m.createdAt)
+    await markSent(key, sent)
     r.messages += sent
   }
 }
@@ -502,6 +537,13 @@ function fmtMcShort(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return `${n.toFixed(0)}`
+}
+
+function chatReplyMessage(m: { body: string; user: { handle: string }; replyTo: { body: string } | null }, lang: Lang): BotMessage {
+  const tx = t(lang)
+  const lines = [tx.chatReplyHead(userLink(m.user.handle)), '', esc(snippet(m.body, 500))]
+  if (m.replyTo) lines.push('', `<i>${tx.yourMessage}: ${esc(snippet(m.replyTo.body, 140))}</i>`)
+  return { text: lines.join('\n'), buttons: [[{ text: tx.replyOnCabal, url: `${siteUrl()}/app` }]] }
 }
 
 function thesisMessage(
