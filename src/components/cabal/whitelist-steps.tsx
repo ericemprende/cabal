@@ -310,7 +310,7 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
         ) : (
           <Sparkles className="h-4 w-4" aria-hidden />
         )}
-        Unirme a la lista de espera
+        Confirmar datos
       </Button>
 
       <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
@@ -466,7 +466,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
       </p>
 
       {approved && (
-        <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-xl font-bold">
+        <Button asChild className="animate-cta-glow mt-3 h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#9dba46]">
           <Link href="/app">Entrar a la app</Link>
         </Button>
       )}
