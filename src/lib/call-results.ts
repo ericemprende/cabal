@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
-import { fetchCallResult } from '@/lib/chain-stats'
-import { invalidate } from '@/lib/cache'
+import { fetchCallResult, type CallResult } from '@/lib/chain-stats'
+import { cached, invalidate } from '@/lib/cache'
 import { safeRedis } from '@/lib/redis'
 import { periodStart, summarizeCalls, type CallPeriod, type CallSummary } from '@/lib/call-score'
 
@@ -109,6 +109,51 @@ export async function syncCallResults(limit = BATCH): Promise<number> {
   for (const userId of touchedUsers) await refreshUserCallTotals(userId)
   if (touchedUsers.size) await invalidate('leaderboard:*')
   return due.length
+}
+
+type CallPost = {
+  id: string
+  userId: string
+  network: string
+  contract: string
+  createdAt: Date
+  entryPriceUsd: number | null
+  entryMc: number | null
+  peakMultiple: number | null
+}
+
+/**
+ * Resultado en vivo de una call (tarjeta, feed, /pnl) sin que el pico pueda
+ * "desaparecer". El pico se calcula con velas de GeckoTerminal, que a menudo
+ * falla o limita peticiones: sin esto, la misma call salía unas veces con
+ * "llegó a 5.1x" y otras solo con el %. Ahora:
+ *  - si el pico en vivo falta o es menor, se usa el guardado (nunca baja);
+ *  - si es mayor, se guarda enseguida, para que el perfil no espere a la
+ *    siguiente pasada de syncCallResults.
+ */
+export async function liveCallResult(post: CallPost): Promise<CallResult> {
+  const result = await cached(`call-result:${post.id}`, 20, () =>
+    fetchCallResult(post.network, post.contract, post.createdAt, { priceUsd: post.entryPriceUsd, mc: post.entryMc })
+  )
+  if (!result.found) return result
+  const stored = post.peakMultiple
+  const live = result.peakMultiple
+  if (stored !== null && (live === null || stored > live)) {
+    const entryMc = result.entryMc
+    return {
+      ...result,
+      peakMultiple: stored,
+      peakMc: entryMc !== null ? Math.round(entryMc * stored) : result.peakMc,
+      peakPriceUsd: result.entryPriceUsd !== null ? result.entryPriceUsd * stored : result.peakPriceUsd,
+      peakAt: null,
+    }
+  }
+  if (live !== null && (stored === null || live > stored + 0.005)) {
+    await db.post.update({ where: { id: post.id }, data: { peakMultiple: live } }).catch(() => {})
+    await refreshUserCallTotals(post.userId).catch(() => {})
+    await invalidate('leaderboard:*').catch(() => {})
+  }
+  return result
 }
 
 /** Totales de siempre del usuario (perfil, badges, pestaña Devs). */

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { fetchCallResult } from '@/lib/chain-stats'
 import { renderCallResultCard } from '@/lib/call-result-card'
-import { cached } from '@/lib/cache'
+import { liveCallResult } from '@/lib/call-results'
 
 // GET /api/posts/[id]/card — imagen JPEG con el resultado de una call, para
 // que el autor la descargue/comparta a mano. Pública: las calls son
@@ -15,12 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: 'Esta call no tiene contrato/red' }, { status: 404 })
     }
 
-    const result = await cached(`call-result:${id}`, 20, () =>
-      fetchCallResult(post.network!, post.contract!, post.createdAt, {
-        priceUsd: post.entryPriceUsd,
-        mc: post.entryMc,
-      })
-    )
+    const result = await liveCallResult({ ...post, network: post.network, contract: post.contract })
 
     const avatarUrl = /^https?:\/\/|^\/uploads\//.test(post.user.avatar) ? post.user.avatar : null
     const jpeg = await renderCallResultCard({

@@ -4,7 +4,8 @@ import { invalidate } from '@/lib/cache'
 import { rateLimit } from '@/lib/rate-limit'
 import { networkMeta } from '@/lib/cabal'
 import { siteUrl } from '@/lib/waitlist'
-import { fetchCallResult, fetchCallSnapshot, isValidContract } from '@/lib/chain-stats'
+import { fetchCallSnapshot, isValidContract } from '@/lib/chain-stats'
+import { liveCallResult } from '@/lib/call-results'
 import { parseAffiliateLinks, platformLinkFor } from '@/lib/affiliate'
 import { userLink } from '@/lib/notifications'
 import { chatLinkIdsOf, communityKeyOf } from '@/lib/bot-community'
@@ -285,14 +286,11 @@ export async function pnlMessage(input: {
   const post = await db.post.findFirst({
     where: { kind: 'call', userId: user.id, contract },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, network: true, contract: true, createdAt: true, entryPriceUsd: true, entryMc: true },
+    select: { id: true, userId: true, network: true, contract: true, createdAt: true, entryPriceUsd: true, entryMc: true, peakMultiple: true },
   })
   if (!post?.contract || !post.network) return { text: tx.pnlNoCall }
 
-  const result = await fetchCallResult(post.network, post.contract, post.createdAt, {
-    priceUsd: post.entryPriceUsd,
-    mc: post.entryMc,
-  })
+  const result = await liveCallResult({ ...post, network: post.network, contract: post.contract })
 
   const symbol = result.symbol ? `$${esc(result.symbol)}` : esc(contract.slice(0, 8))
   const lines = [
