@@ -1,6 +1,7 @@
 import { runNotificationTick } from '@/lib/notifications'
 import { syncDiscordGateway } from '@/lib/discord-gateway'
 import { redis } from '@/lib/redis'
+import { syncPremiumVerifications } from '@/lib/verification'
 
 /**
  * Worker de avisos dentro del propio servidor de Next (lo arranca
@@ -31,6 +32,8 @@ export function startNotifyWorker() {
       // Arranca o para la conexión con Discord según esté el bot: así conectarlo
       // desde el panel la levanta sola, sin reiniciar el servidor.
       await syncDiscordGateway().catch((e) => console.error('[discord-gateway]', (e as Error).message))
+      // Verificaciones Premium: se apagan si el dueño dejó de pagar y vuelven si renueva
+      await syncPremiumVerifications().catch((e) => console.error('[verify]', (e as Error).message))
       const r = await runNotificationTick()
       if (r.messages || r.emails) {
         console.log(

@@ -58,6 +58,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       launchedAt: token.launchedAt.toISOString(),
       athMc: token.athMc,
       isRug: token.isRug,
+      verified: token.verified || Boolean(token.launch?.verified),
       dev: token.dev ? toPublicUserDTO(token.dev, followedIds.has(token.dev.id)) : null,
       publishedBy: token.launch
         ? toPublicUserDTO(token.launch.createdBy, followedIds.has(token.launch.createdById))

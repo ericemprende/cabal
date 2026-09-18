@@ -65,6 +65,12 @@ model User {
   // el usuario lo puede apagar. Sin correo verificado o sin Premium no llega
   // nada de todos modos (ver lib/launch-alerts.ts).
   notifyEmail       Boolean          @default(true)
+  // Verificación oficial de Cabal (insignia + destello en el avatar). "admin" =
+  // la dio el admin y es permanente; "premium" = aprobada a partir de una
+  // solicitud Premium: el worker la apaga si deja de pagar y la vuelve a
+  // encender si renueva (ver lib/verification.ts).
+  verified          Boolean          @default(false)
+  verifiedVia       String? // admin | premium
   createdAt         DateTime         @default(now())
   posts             Post[]
   launches          Launch[]
@@ -87,6 +93,7 @@ model User {
   chatLinkCodes     ChatLinkCode[]
   repReceived       Reputation[]     @relation("repTarget")
   repGiven          Reputation[]     @relation("repAuthor")
+  verifyRequests    VerificationRequest[]
 
   @@index([points])
   @@index([repScore])
@@ -155,11 +162,15 @@ model Launch {
   // para mostrarla como actividad reciente ("actualizó la fecha", "cambió la descripción"…)
   lastEditedAt   DateTime?
   lastChangeNote String?
+  // Launch oficial (ver User.verified): marca frente a clones
+  verified       Boolean          @default(false)
+  verifiedVia    String? // admin | premium
   createdBy      User             @relation(fields: [createdById], references: [id])
   posts          Post[]
   token          Token?
   members        LaunchMember[]
   reminders      LaunchReminder[]
+  verifyRequests VerificationRequest[]
 
   @@index([status, launchAt])
   @@index([createdById])
@@ -293,6 +304,9 @@ model Token {
   launchedAt DateTime
   athMc      Float    @default(0)
   isRug      Boolean  @default(false)
+  // Token oficial, marcado por el admin. También cuenta como oficial si su
+  // launch del Radar está verificado.
+  verified   Boolean  @default(false)
   posts      Post[]
 
   @@index([devId])
@@ -642,4 +656,23 @@ model NotificationDispatch {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// Solicitud de verificación (perk Premium): el usuario pide verificar su perfil
+// o uno de sus launches y el admin la aprueba o la rechaza.
+model VerificationRequest {
+  id         String    @id @default(cuid())
+  kind       String // user | launch
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  launchId   String?
+  launch     Launch?   @relation(fields: [launchId], references: [id], onDelete: Cascade)
+  note       String    @default("") // pruebas que aporta: web oficial, X del proyecto…
+  status     String    @default("pending") // pending | approved | rejected
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@index([launchId])
 }

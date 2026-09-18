@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown } from '@/components/cabal/shared'
+import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown, OfficialBadge } from '@/components/cabal/shared'
 import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
 import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -234,6 +234,7 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
           <h2 className="font-display mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xl font-bold sm:text-2xl">
             <span className="min-w-0 truncate">{launch.name}</span>
             <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary text-glow" />
+            {launch.verified && <OfficialBadge label title="Launch oficial verificado por Cabal" />}
           </h2>
           <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{launch.description}</p>
         </div>
@@ -280,6 +281,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           <div className="flex min-w-0 items-baseline gap-1.5">
             <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="shrink-0 font-display text-[15px] font-bold text-primary" />
             <span className="min-w-0 truncate text-[13px] font-semibold text-foreground/80">{launch.name}</span>
+            {launch.verified && <OfficialBadge className="self-center" title="Launch oficial verificado por Cabal" />}
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-1.5">
             <NetworkBadge network={launch.network} className="shrink-0" />

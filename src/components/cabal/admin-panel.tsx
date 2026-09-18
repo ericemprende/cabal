@@ -84,6 +84,8 @@ import {
   useAdminUpdateToken,
   useAdminUpdateUser,
   useAdminUsers,
+  useAdminReviewVerification,
+  useAdminVerifyRequests,
 } from '@/lib/api-client'
 import type {
   AdminSubscriptionDTO,
@@ -153,6 +155,7 @@ type AdminView =
   | 'usuarios'
   | 'premium'
   | 'reclamos'
+  | 'verificacion'
   | 'reglas'
   | 'proyectos'
   | 'tokens'
@@ -252,6 +255,7 @@ export function AdminPanel({
   const NAV_ITEMS = [
     { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
     { key: 'premium', label: 'Plan Premium', icon: Crown },
+    { key: 'verificacion', label: 'Verificación oficial', icon: ShieldCheck },
     { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
     { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
     { key: 'tokens', label: 'Tokens', icon: Coins },
@@ -338,6 +342,7 @@ export function AdminPanel({
 
         {view === 'premium' && <AdminPremium enabled={enabled} />}
 
+        {view === 'verificacion' && <AdminVerification enabled={enabled} />}
         {view === 'reclamos' && <AdminClaims enabled={enabled} />}
 
         {view === 'proyectos' && <AdminLaunches enabled={enabled} />}
@@ -568,6 +573,7 @@ function AdminUserRow({
     googleVerified: user.googleVerified,
     isDev: user.isDev,
     isAdmin: user.isAdmin ?? false,
+    verified: user.verified,
   })
   const amt = parseInt(amount, 10) || 0
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
@@ -596,6 +602,8 @@ function AdminUserRow({
         googleVerified: form.googleVerified,
         isDev: form.isDev,
         isAdmin: form.isAdmin,
+        // Solo si cambió: guardar sin tocarlo no convierte una verificación Premium en permanente
+        ...(form.verified !== user.verified && { verified: form.verified }),
       },
       { onSuccess: () => setEditing(false) }
     )
@@ -605,7 +613,7 @@ function AdminUserRow({
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
       <div className="flex flex-wrap items-center gap-2.5">
         <span className="w-8 shrink-0 text-right font-mono text-xs font-bold tabular-nums text-muted-foreground">#{index}</span>
-        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} />
+        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} official={user.verified} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">
             {user.name}
@@ -681,6 +689,7 @@ function AdminUserRow({
             <ChipToggle label="Google verificada" checked={form.googleVerified} onChange={(v) => set('googleVerified', v)} />
             <ChipToggle label="Dev" checked={form.isDev} onChange={(v) => set('isDev', v)} okIcon={false} />
             <ChipToggle label="Admin" checked={form.isAdmin} onChange={(v) => set('isAdmin', v)} okIcon={false} />
+            <ChipToggle label="Verificado oficial" checked={form.verified} onChange={(v) => set('verified', v)} />
           </div>
           <div className="flex justify-end">
             <Button
@@ -751,6 +760,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
     lpLocked: launch.lpLocked,
     mintRevoked: launch.mintRevoked,
     top10Pct: String(launch.top10Pct),
+    verified: launch.verified,
   })
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -787,6 +797,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
         lpLocked: form.lpLocked,
         mintRevoked: form.mintRevoked,
         top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
+        ...(form.verified !== launch.verified && { verified: form.verified }),
       },
       { onSuccess: () => setEditing(false) }
     )
@@ -944,6 +955,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
           <div className="flex flex-wrap items-center gap-1.5">
             <ChipToggle label="Ticker privado" checked={form.isPrivate} onChange={(v) => set('isPrivate', v)} okIcon={false} />
             <ChipToggle label="Oculto del radar" checked={form.hidden} onChange={(v) => set('hidden', v)} />
+            <ChipToggle label="Launch oficial (verificado)" checked={form.verified} onChange={(v) => set('verified', v)} />
             <ChipToggle
               label="Es el dev"
               checked={form.submitterRole === 'dev'}
@@ -1584,6 +1596,7 @@ function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }
     holders: String(token.holders),
     top10Pct: String(token.top10Pct),
     isRug: token.isRug,
+    verified: token.verifiedSelf ?? false,
   })
   const set = (k: string, v: string | boolean) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -1602,6 +1615,7 @@ function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }
         holders: Math.max(0, Math.round(Number(form.holders) || 0)),
         top10Pct: Math.max(0, Math.min(100, Math.round(Number(form.top10Pct) || 0))),
         isRug: form.isRug,
+        verified: form.verified,
       },
       { onSuccess: () => setEditing(false) }
     )
@@ -1704,6 +1718,7 @@ function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <ChipToggle label="Marcado como rug" checked={form.isRug} onChange={(v) => set('isRug', v)} okIcon={false} />
+            <ChipToggle label="Token oficial (verificado)" checked={form.verified} onChange={(v) => set('verified', v)} />
             <Button
               size="sm"
               onClick={save}
@@ -2024,6 +2039,106 @@ function AdminClaims({ enabled }: { enabled: boolean }) {
                       size="sm"
                       variant="ghost"
                       onClick={() => act.mutate({ id: c.id, action: 'reject' })}
+                      disabled={act.isPending}
+                      className="h-8 gap-1 rounded-lg border border-[#ff8080]/30 px-2.5 text-[11px] font-bold text-[#ff8080] hover:bg-[#ff8080]/10"
+                    >
+                      <XCircle className="h-3 w-3" aria-hidden /> Rechazar
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+const VERIFY_STATUS: Record<string, { label: string; cls: string }> = {
+  approved: { label: 'APROBADA', cls: 'border-[#7fe04a]/40 bg-[#7fe04a]/10 text-[#a6f27a]' },
+  pending: { label: 'PENDIENTE', cls: 'border-white/15 bg-white/5 text-muted-foreground' },
+  rejected: { label: 'RECHAZADA', cls: 'border-[#ff8080]/30 bg-[#ff8080]/10 text-[#ff8080]' },
+}
+
+/**
+ * Solicitudes de verificación de usuarios Premium (perfil o launch). Aprobar
+ * da la insignia mientras sigan en Premium; para verificar a alguien sin
+ * solicitud, o de forma permanente, está el interruptor "Verificado" de su
+ * ficha en Usuarios / Proyectos / Tokens.
+ */
+function AdminVerification({ enabled }: { enabled: boolean }) {
+  const q = useAdminVerifyRequests(enabled)
+  const act = useAdminReviewVerification()
+  const rows = q.data ?? []
+  const pending = rows.filter((r) => r.status === 'pending').length
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Solicitudes de verificación de usuarios Premium. Revisa las pruebas antes de aprobar: la insignia marca el perfil
+        o el launch como oficial frente a clones y se apaga sola si dejan de pagar. Para verificar de forma permanente,
+        usa el interruptor en su ficha de Usuarios, Proyectos o Tokens.
+        {pending > 0 && <span className="ml-1 font-bold text-primary">{pending} pendiente{pending === 1 ? '' : 's'}</span>}
+      </p>
+
+      {q.isLoading && [...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+
+      {!q.isLoading && rows.length === 0 && (
+        <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-muted-foreground">
+          Todavía no hay solicitudes de verificación
+        </p>
+      )}
+
+      {rows.map((r) => {
+        const meta = VERIFY_STATUS[r.status] ?? VERIFY_STATUS.pending
+        return (
+          <div key={r.id} className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-bold">
+                  {r.kind === 'launch' ? (
+                    <>
+                      <Rocket className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span className="truncate">Launch: {r.launch?.name ?? '(borrado)'}</span>
+                      {r.launch?.ticker && (
+                        <span className="font-mono text-[11px] font-normal text-muted-foreground">${r.launch.ticker}</span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Users className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span className="truncate">Perfil</span>
+                    </>
+                  )}
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  por{' '}
+                  <a href={`/u/${r.user?.handle}`} target="_blank" rel="noreferrer" className="hover:underline">
+                    {r.user?.name} (@{r.user?.handle})
+                  </a>{' '}
+                  · {timeAgo(r.createdAt)}
+                </p>
+                {r.note && <p className="mt-0.5 break-words text-[11px] leading-relaxed text-foreground/75">{r.note}</p>}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <span className={cn('rounded-full border px-2 py-0.5 text-[9px] font-bold tracking-wider', meta.cls)}>
+                  {meta.label}
+                </span>
+                {r.status === 'pending' && (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => act.mutate({ id: r.id, action: 'approve' })}
+                      disabled={act.isPending}
+                      className="h-8 gap-1 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                    >
+                      <CheckCircle2 className="h-3 w-3" aria-hidden /> Aprobar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => act.mutate({ id: r.id, action: 'reject' })}
                       disabled={act.isPending}
                       className="h-8 gap-1 rounded-lg border border-[#ff8080]/30 px-2.5 text-[11px] font-bold text-[#ff8080] hover:bg-[#ff8080]/10"
                     >

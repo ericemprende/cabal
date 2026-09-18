@@ -11,19 +11,21 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { displayImageUrl } from '@/lib/remote-image'
 import { TrustBadge } from '@/components/cabal/reputation'
-import { CopyCA, CountdownPill, EstimatedDateBadge, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, CountdownPill, EstimatedDateBadge, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
 import { timeAgo } from '@/lib/cabal'
-import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch, usePointRules } from '@/lib/api-client'
+import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch, useMe, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
+import { VerifyRequestRow } from '@/components/cabal/verify-request'
 
 export function LaunchDetailDialog() {
   const { launchDetailId, openLaunch, setPremiumOpen } = useUI()
   const { data: launch, isLoading } = useLaunch(launchDetailId)
   const hype = useHypeToggle()
+  const { data: me } = useMe()
   const follow = useFollowToggle()
   const createPost = useCreatePost()
   const rules = usePointRules()
@@ -75,6 +77,7 @@ export function LaunchDetailDialog() {
                       <span className="min-w-0 truncate">{launch.name}</span>
                       <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary" />
                     </h2>
+                    {launch.verified && <OfficialBadge label title="Launch oficial verificado por Cabal" />}
                     <NetworkBadge network={launch.network} />
                   </div>
                   {launch.isPrivate && !launch.ticker && (
@@ -155,7 +158,7 @@ export function LaunchDetailDialog() {
                     onClick={() => openLaunch(null)}
                     aria-label={`Perfil de @${launch.createdBy.handle}`}
                   >
-                    <UserAvatar name={launch.createdBy.name} handle={launch.createdBy.handle} src={launch.createdBy.avatar} size="sm" verified={launch.createdBy.walletVerified} />
+                    <UserAvatar name={launch.createdBy.name} handle={launch.createdBy.handle} src={launch.createdBy.avatar} size="sm" verified={launch.createdBy.walletVerified} official={launch.createdBy.verified} />
                   </Link>
                   <div>
                     <Link
@@ -165,6 +168,7 @@ export function LaunchDetailDialog() {
                     >
                       {launch.createdBy.name}
                     </Link>
+                    {launch.createdBy.verified && <OfficialBadge className="ml-1 align-middle" />}
                     {/* Reputación de la persona, no del proyecto: el fueguito
                         ya mide las ganas que hay por el launch. */}
                     <TrustBadge
@@ -205,6 +209,13 @@ export function LaunchDetailDialog() {
                 </button>
                 <ReminderBell launchId={launch.id} launchAt={launch.launchAt} size="md" />
               </div>
+
+              {/* Quien lo publicó puede pedir la insignia de launch oficial (perk Premium) */}
+              {me?.id === launch.createdBy.id && (
+                <div className="mt-3">
+                  <VerifyRequestRow kind="launch" launchId={launch.id} verified={launch.verified} />
+                </div>
+              )}
 
               {/* Rol de quien publicó: dev del proyecto o scout de la comunidad */}
               <div className="mt-2.5 flex flex-wrap items-center gap-1.5">

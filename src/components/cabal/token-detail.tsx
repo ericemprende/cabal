@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CopyCA, NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { CopyCA, NetworkBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { TrustBadge } from '@/components/cabal/reputation'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
@@ -89,6 +89,7 @@ export function TokenDetailDialog() {
                       {token.name} <span className="text-primary text-glow">${token.ticker}</span>
                     </h2>
                     <NetworkBadge network={token.network} />
+                    {token.verified && <OfficialBadge label title="Token oficial verificado por Cabal" />}
                     {token.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1.5 py-0.5 text-[10px] font-black text-[#ff8080]">RUG</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
@@ -286,7 +287,7 @@ function DevTrackRecord({
           onClick={() => openToken(null)}
           className="flex items-center gap-2.5 rounded-lg hover:opacity-90"
         >
-          <UserAvatar name={dev.name} handle={dev.handle} src={dev.avatar} size="lg" verified={dev.walletVerified} />
+          <UserAvatar name={dev.name} handle={dev.handle} src={dev.avatar} size="lg" verified={dev.walletVerified} official={dev.verified} />
           <div>
             <p className="flex items-center gap-1 text-sm font-bold">
               {dev.name}

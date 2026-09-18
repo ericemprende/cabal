@@ -28,6 +28,8 @@ export interface PublicUserDTO {
   /** Reputación de la comunidad (👍/👎). Va en el usuario público para poder
    *  enseñar la insignia donde aparezca, sobre todo en el dev de un launch. */
   reputation: ReputationSummaryDTO
+  /** Verificación oficial de Cabal (insignia + destello en el avatar). */
+  verified: boolean
   isFollowed?: boolean
 }
 
@@ -97,6 +99,7 @@ export interface LaunchRefDTO {
   isPrivate: boolean
   network: string
   launchAt: string
+  verified?: boolean
 }
 
 export interface TokenRefDTO {
@@ -160,6 +163,10 @@ export interface LaunchDTO {
   lpLocked: boolean
   mintRevoked: boolean
   top10Pct: number
+  /** Launch oficial verificado por Cabal (frente a clones). */
+  verified: boolean
+  /** Solo en el panel de admin: admin | premium. */
+  verifiedVia?: string | null
   createdAt: string
   createdBy: PublicUserDTO
   postsCount: number
@@ -182,6 +189,10 @@ export interface TokenDTO {
   launchedAt: string
   athMc: number
   isRug: boolean
+  /** Token oficial: marcado por el admin o salido de un launch verificado. */
+  verified: boolean
+  /** Solo en el panel de admin: marcado en el propio token (no heredado del launch). */
+  verifiedSelf?: boolean
   /**
    * Su dev, solo si se sabe de verdad: publicó el launch él mismo o lo reclamó y
    * se verificó. null = "dev sin verificar" (lo encontró un scout).
@@ -757,4 +768,17 @@ export interface ChatMessageDTO {
   }
   /** Mensaje al que responde (cita corta), o null si no es respuesta. */
   replyTo: { id: string; body: string; user: { id: string; name: string; handle: string } } | null
+}
+
+/** Solicitud de verificación oficial (perk Premium). */
+export interface VerifyRequestDTO {
+  id: string
+  kind: 'user' | 'launch'
+  note: string
+  status: 'pending' | 'approved' | 'rejected' | string
+  createdAt: string
+  reviewedAt: string | null
+  launch: { id: string; name: string; ticker: string | null } | null
+  /** Solo en el panel de admin: quien la pide. */
+  user: { id: string; handle: string; name: string; avatar: string } | null
 }

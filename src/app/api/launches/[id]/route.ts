@@ -108,6 +108,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       lpLocked: launch.lpLocked,
       mintRevoked: launch.mintRevoked,
       top10Pct: launch.top10Pct,
+      verified: launch.verified,
       createdAt: launch.createdAt.toISOString(),
       createdBy: toPublicUserDTO(launch.createdBy, followedIds.has(launch.createdById)),
       postsCount: posts.length,

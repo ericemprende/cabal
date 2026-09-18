@@ -30,6 +30,8 @@ type DbUser = {
   emailVerified?: boolean
   twoFactorEnabled?: boolean
   notifyEmail?: boolean
+  verified?: boolean
+  verifiedVia?: string | null
 }
 
 /**
@@ -62,6 +64,7 @@ export function toPublicUserDTO(u: DbUser, isFollowed?: boolean): PublicUserDTO 
       down: u.repDown,
       votes: u.repUp + u.repDown,
     },
+    verified: u.verified ?? false,
     isFollowed,
   }
 }
@@ -114,6 +117,7 @@ export async function toPostDTO(
         isPrivate: l.isPrivate,
         network: l.network,
         launchAt: l.launchAt.toISOString(),
+        verified: l.verified,
       }
   }
   if (p.tokenId) {

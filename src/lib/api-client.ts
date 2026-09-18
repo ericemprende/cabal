@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import bs58 from 'bs58'
 import { toast } from 'sonner'
 import type {
+  VerifyRequestDTO,
   AdminOverviewDTO,
   AdminPremiumDTO,
   AdminUserRowDTO,
@@ -1303,5 +1304,49 @@ export function useSendChatMessage() {
   return useMutation({
     mutationFn: ({ body, replyToId }: { body: string; replyToId?: string | null }) =>
       jsonFetch<ChatMessageDTO>('/api/chat/messages', { method: 'POST', body: JSON.stringify({ body, replyToId }) }),
+  })
+}
+
+// ---------- Verificación oficial (perk Premium, la aprueba el admin) ----------
+
+export function useMyVerifyRequests(enabled = true) {
+  return useQuery<VerifyRequestDTO[]>({
+    queryKey: ['verification', 'mine'],
+    queryFn: () => jsonFetch('/api/me/verification'),
+    enabled,
+  })
+}
+
+export function useRequestVerification() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { kind: 'user' | 'launch'; launchId?: string; note?: string }) =>
+      jsonFetch<VerifyRequestDTO>('/api/me/verification', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['verification'] })
+      toast.success('Solicitud enviada: la revisamos y te avisamos con la insignia')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+export function useAdminVerifyRequests(enabled: boolean) {
+  return useQuery<VerifyRequestDTO[]>({
+    queryKey: ['verification', 'admin'],
+    queryFn: () => jsonFetch('/api/admin/verification'),
+    enabled,
+  })
+}
+
+export function useAdminReviewVerification() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { id: string; action: 'approve' | 'reject' }) =>
+      jsonFetch<{ ok: boolean }>('/api/admin/verification', { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: (_r, v) => {
+      invalidate()
+      toast.success(v.action === 'approve' ? 'Verificación aprobada' : 'Solicitud rechazada')
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 }

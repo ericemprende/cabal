@@ -308,7 +308,7 @@ function TopCallerRow({
         {rank + 1}
       </span>
       <Link href={`/u/${caller.user.handle}`} className="flex min-w-0 flex-1 items-center gap-2.5">
-        <UserAvatar name={caller.user.name} handle={caller.user.handle} src={caller.user.avatar} size="xs" verified={caller.user.walletVerified} online={online} />
+        <UserAvatar name={caller.user.name} handle={caller.user.handle} src={caller.user.avatar} size="xs" verified={caller.user.walletVerified} official={caller.user.verified} online={online} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold">{caller.user.name}</p>
           <p className="truncate text-[10px] text-muted-foreground">

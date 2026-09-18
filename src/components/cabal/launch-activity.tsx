@@ -62,7 +62,7 @@ export function LaunchActivityCard({
     >
       <div className="flex items-start gap-2.5">
         <Link href={`/u/${u.handle}`} className="shrink-0" aria-label={`Perfil de @${u.handle}`}>
-          <UserAvatar name={u.name} handle={u.handle} src={u.avatar} size={compact ? 'sm' : 'md'} verified={u.walletVerified} />
+          <UserAvatar name={u.name} handle={u.handle} src={u.avatar} size={compact ? 'sm' : 'md'} verified={u.walletVerified} official={u.verified} />
         </Link>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-x-1.5">

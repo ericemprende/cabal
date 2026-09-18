@@ -60,6 +60,8 @@ export async function GET(req: Request) {
       lpLocked: l.lpLocked,
       mintRevoked: l.mintRevoked,
       top10Pct: l.top10Pct,
+      verified: l.verified,
+      verifiedVia: l.verifiedVia,
       createdAt: l.createdAt.toISOString(),
       createdBy: toUserDTO(l.createdBy),
       postsCount: 0,
@@ -122,6 +124,12 @@ export async function PATCH(req: Request) {
     }
     if (typeof body.top10Pct === 'number' && body.top10Pct >= 0 && body.top10Pct <= 100) {
       data.top10Pct = body.top10Pct
+    }
+
+    // Verificación oficial dada por el admin: permanente, no depende de Premium
+    if (typeof body.verified === 'boolean') {
+      data.verified = body.verified
+      data.verifiedVia = body.verified ? 'admin' : null
     }
 
     // Solo se registra como "actualización" si de verdad cambió algo visible;

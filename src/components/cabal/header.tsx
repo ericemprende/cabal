@@ -168,7 +168,7 @@ export function Header() {
                     handle={me?.handle}
                     src={me?.avatar}
                     size="sm"
-                    verified={me?.walletVerified}
+                    verified={me?.walletVerified} official={me?.verified}
                     premium={me?.premium.active}
                   />
                   <ChevronDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />

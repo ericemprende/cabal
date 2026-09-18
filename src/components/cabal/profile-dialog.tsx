@@ -40,6 +40,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { NETWORKS, shortWallet, timeAgo } from '@/lib/cabal'
 import { BadgesRow, PointsPill, PremiumPill, UserAvatar, NetworkIcon } from '@/components/cabal/shared'
+import { VerifyRequestRow } from '@/components/cabal/verify-request'
 import {
   injectedWalletFor,
   uploadImage,
@@ -132,7 +133,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
               handle={me?.handle}
               src={avatar}
               size="xl"
-              verified={me?.walletVerified}
+              verified={me?.walletVerified} official={me?.verified}
               premium={me?.premium.active}
             />
             <div className="min-w-0 flex-1">
@@ -187,6 +188,13 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             </span>
             <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground" aria-hidden />
           </button>
+
+          {/* Verificación oficial del perfil: perk Premium con revisión del admin */}
+          {me && (
+            <div className="mt-2.5">
+              <VerifyRequestRow kind="user" verified={me.verified} />
+            </div>
+          )}
 
           {/* Avisos de lanzamientos por correo (10 y 5 min antes): perk Premium, requiere correo verificado */}
           <div className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">

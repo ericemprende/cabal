@@ -13,6 +13,7 @@ const BENEFITS = [
   'La wallet del dev, si se conoce',
   'El launchpad donde sale el token',
   'El contrato, si ya existe antes del lanzamiento',
+  'Insignia de verificado para tu perfil y tus launches, frente a clones',
 ]
 
 /**

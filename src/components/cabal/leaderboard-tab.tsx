@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Crown, Info, Shield, ShieldCheck, Target, TrendingUp, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PointsPill, UserAvatar } from '@/components/cabal/shared'
+import { PointsPill, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { fmtMc, fmtPct } from '@/lib/cabal'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
 import { useIsOnline } from '@/lib/presence'
@@ -173,12 +173,13 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
         {String(rank).padStart(2, '0')}
       </span>
       <Link href={`/u/${user.handle}`} className="shrink-0" aria-label={`Perfil de @${user.handle}`}>
-        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} online={online} />
+        <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} official={user.verified} online={online} />
       </Link>
       <div className="min-w-0 flex-1">
         <Link href={`/u/${user.handle}`} className="block hover:underline">
           <p className="flex items-center gap-1.5 truncate text-sm font-bold">
             {user.name}
+            {user.verified && <OfficialBadge />}
             {user.isDev && <ShieldCheck className="h-3.5 w-3.5 text-primary" />}
             {rank === 1 && <Crown className="h-3.5 w-3.5 text-amber-300" />}
           </p>

@@ -65,6 +65,7 @@ export async function GET(req: Request) {
       lpLocked: l.lpLocked,
       mintRevoked: l.mintRevoked,
       top10Pct: l.top10Pct,
+      verified: l.verified,
       createdAt: new Date(l.createdAt).toISOString(),
       createdBy: toPublicUserDTO(l.createdBy, followedIds.has(l.createdById)),
       postsCount: countMap.get(l.id) ?? 0,

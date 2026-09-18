@@ -85,6 +85,11 @@ export async function PATCH(req: Request) {
     for (const flag of ['walletVerified', 'xVerified', 'googleVerified', 'isDev', 'isAdmin'] as const) {
       if (typeof body[flag] === 'boolean') data[flag] = body[flag]
     }
+    // Verificación oficial dada por el admin: permanente, no depende de Premium
+    if (typeof body.verified === 'boolean') {
+      data.verified = body.verified
+      data.verifiedVia = body.verified ? 'admin' : null
+    }
     // Evita que el admin se quite su propio rol
     if (data.isAdmin === false && target.isAdmin && target.isCurrentUser) {
       return NextResponse.json({ error: 'No puedes quitarte tu propio rol de admin' }, { status: 400 })

@@ -34,6 +34,8 @@ export async function GET(req: Request) {
       launchedAt: t.launchedAt.toISOString(),
       athMc: t.athMc,
       isRug: t.isRug,
+      verified: t.verified || Boolean(t.launch?.verified),
+      verifiedSelf: t.verified,
       dev: t.dev ? toUserDTO(t.dev) : null,
       publishedBy: t.launch ? toUserDTO(t.launch.createdBy) : null,
       postsCount: 0,
@@ -64,6 +66,7 @@ export async function PATCH(req: Request) {
     if ('image' in body) data.image = safeUrl(body.image)
     if (typeof body.contract === 'string') data.contract = body.contract.slice(0, 80)
     if (typeof body.isRug === 'boolean') data.isRug = body.isRug
+    if (typeof body.verified === 'boolean') data.verified = body.verified
     for (const num of ['price', 'mc', 'change24h', 'volume24h', 'athMc'] as const) {
       if (typeof body[num] === 'number' && Number.isFinite(body[num]) && body[num] >= 0) data[num] = body[num]
     }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Flame, Globe, MessageSquare, ShieldAlert, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { NetworkBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { ContractBuy } from '@/components/cabal/contract-buy'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, networkMeta, timeAgo } from '@/lib/cabal'
@@ -98,6 +98,7 @@ export function TokensTab() {
               <div className="min-w-0 flex-1 md:w-56 md:flex-none">
                 <p className="flex items-center gap-1.5 truncate text-sm font-bold">
                   {t.ticker}
+                  {t.verified && <OfficialBadge title="Token oficial verificado por Cabal" />}
                   {t.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1 py-px text-[9px] font-black text-[#ff8080]">RUG</span>}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
@@ -125,7 +126,7 @@ export function TokensTab() {
                 {t.dev ? (
                   <>
                     <span className="hidden sm:block">
-                      <UserAvatar name={t.dev.name} src={t.dev.avatar} size="xs" verified={t.dev.walletVerified} ring={false} />
+                      <UserAvatar name={t.dev.name} src={t.dev.avatar} size="xs" verified={t.dev.walletVerified} official={t.dev.verified} ring={false} />
                     </span>
                     <span className="hidden truncate text-[11px] text-muted-foreground lg:block">@{t.dev.handle}</span>
                   </>

@@ -44,6 +44,7 @@ export async function GET(req: Request) {
       launchedAt: t.launchedAt.toISOString(),
       athMc: t.athMc,
       isRug: t.isRug,
+      verified: t.verified || Boolean(t.launch?.verified),
       dev: t.dev ? toPublicUserDTO(t.dev) : null,
       publishedBy: t.launch ? toPublicUserDTO(t.launch.createdBy) : null,
       postsCount: countMap.get(t.id) ?? 0,

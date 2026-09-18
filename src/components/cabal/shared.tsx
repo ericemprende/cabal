@@ -141,6 +141,7 @@ export function UserAvatar({
   src,
   size = 'md',
   verified,
+  official,
   premium,
   online,
   className,
@@ -152,6 +153,8 @@ export function UserAvatar({
   src?: string | null
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   verified?: boolean
+  /** Verificado oficialmente por Cabal: aro verde con destello y sello. */
+  official?: boolean
   /** Plan Premium activo: la coronita, arriba a la derecha. */
   premium?: boolean
   /** Puntico verde: el usuario tiene el chat en vivo abierto ahora mismo (ver useIsOnline). */
@@ -179,7 +182,7 @@ export function UserAvatar({
   return (
     <div className="relative shrink-0">
       {showImg ? (
-        <div className={cn('relative overflow-hidden rounded-full', ring && 'ring-1 ring-white/10', dims, className)}>
+        <div className={cn('relative overflow-hidden rounded-full', ring && !official && 'ring-1 ring-white/10', official && 'official-glow', dims, className)}>
           <Image
             src={src!}
             alt={`Foto de ${name ?? handle ?? 'usuario'}`}
@@ -195,7 +198,8 @@ export function UserAvatar({
           className={cn(
             'flex items-center justify-center rounded-full bg-gradient-to-br font-machina font-bold',
             tone,
-            ring && 'ring-1 ring-white/10',
+            ring && !official && 'ring-1 ring-white/10',
+            official && 'official-glow',
             dims,
             className
           )}
@@ -204,13 +208,13 @@ export function UserAvatar({
           {initialOf(name ?? handle)}
         </div>
       )}
-      {verified && (
+      {(verified || official) && (
         <span
           className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#0a0b08]"
-          title="Wallet verificada"
+          title={official ? 'Verificado por Cabal' : 'Wallet verificada'}
         >
           <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-label="Verificado">
-            <circle cx="8" cy="8" r="8" fill="#8FA83F" />
+            <circle cx="8" cy="8" r="8" fill={official ? '#7fe04a' : '#8FA83F'} />
             <path d="M4.5 8.2 7 10.6 11.5 5.6" stroke="#101403" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
@@ -231,6 +235,46 @@ export function UserAvatar({
         />
       )}
     </div>
+  )
+}
+
+// ---------- Sello de verificación oficial junto al nombre (perfil, launch o token) ----------
+export function OfficialBadge({
+  label = false,
+  title = 'Verificado por Cabal',
+  className,
+}: {
+  /** true = sello + texto "Verificado"; false = solo el sello. */
+  label?: boolean
+  title?: string
+  className?: string
+}) {
+  const seal = (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 drop-shadow-[0_0_4px_rgba(127,224,74,0.6)]" aria-hidden>
+      <path
+        fill="#7fe04a"
+        d="M12 1.5l2.4 1.9 3-.3 1 2.9 2.7 1.4-.6 3 1.6 2.6-2.2 2.1.1 3.1-3 .7-1.6 2.6-2.9-1-2.9 1-1.6-2.6-3-.7.1-3.1-2.2-2.1 1.6-2.6-.6-3 2.7-1.4 1-2.9 3 .3z"
+      />
+      <path d="M7.8 12.3l2.8 2.8 5.6-6" stroke="#0d1a05" strokeWidth="2.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+  if (!label)
+    return (
+      <span className={cn('inline-flex shrink-0 items-center', className)} title={title} aria-label={title} role="img">
+        {seal}
+      </span>
+    )
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1 rounded-md border border-[#7fe04a]/40 bg-[#7fe04a]/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#a6f27a]',
+        className
+      )}
+      title={title}
+    >
+      {seal}
+      Verificado
+    </span>
   )
 }
 
