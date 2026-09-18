@@ -155,6 +155,8 @@ export async function DELETE(req: Request) {
       db.post.updateMany({ where: { launchId: id }, data: { launchId: null } }),
       db.launch.delete({ where: { id } }),
     ])
+    // Sin esto el Radar sigue sirviendo el launch borrado desde la caché
+    await invalidate('launches:*')
     return NextResponse.json({ ok: true })
   } catch (e) {
     if (e instanceof ForbiddenError) return NextResponse.json({ error: e.message }, { status: 403 })
