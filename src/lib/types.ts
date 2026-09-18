@@ -755,4 +755,6 @@ export interface ChatMessageDTO {
     avatar: string
     walletVerified: boolean
   }
+  /** Mensaje al que responde (cita corta), o null si no es respuesta. */
+  replyTo: { id: string; body: string; user: { id: string; name: string; handle: string } } | null
 }

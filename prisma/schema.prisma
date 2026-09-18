@@ -307,6 +307,11 @@ model ChatMessage {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   body      String
+  // Respuesta puntual a otro mensaje del chat. Si el original se borra, la
+  // respuesta queda sin cita en vez de desaparecer.
+  replyToId String?
+  replyTo   ChatMessage?  @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[] @relation("ChatReplies")
   createdAt DateTime @default(now())
 
   @@index([createdAt])

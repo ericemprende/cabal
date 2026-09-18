@@ -1301,7 +1301,7 @@ export function useChatMessages() {
 
 export function useSendChatMessage() {
   return useMutation({
-    mutationFn: (body: string) =>
-      jsonFetch<ChatMessageDTO>('/api/chat/messages', { method: 'POST', body: JSON.stringify({ body }) }),
+    mutationFn: ({ body, replyToId }: { body: string; replyToId?: string | null }) =>
+      jsonFetch<ChatMessageDTO>('/api/chat/messages', { method: 'POST', body: JSON.stringify({ body, replyToId }) }),
   })
 }

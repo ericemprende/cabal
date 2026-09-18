@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Send, Users } from 'lucide-react'
+import { CornerUpLeft, Send, Users, X } from 'lucide-react'
 import { UserAvatar } from '@/components/cabal/shared'
 import { useChatMessages, useSendChatMessage, useSession } from '@/lib/api-client'
 import { useOnlineIds, useIsOnline } from '@/lib/presence'
@@ -24,7 +24,9 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
   const send = useSendChatMessage()
   const { openAuth } = useUI()
   const [text, setText] = useState('')
+  const [replyTo, setReplyTo] = useState<ChatMessageDTO | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const pusher = getPusherClient()
@@ -48,12 +50,28 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
   const handleSend = () => {
     const body = text.trim()
     if (!body) return
-    send.mutate(body, {
+    send.mutate({ body, replyToId: replyTo?.id ?? null }, {
       // El eco por Pusher puede llegar antes de que resuelva este POST: sin
       // este chequeo, el mensaje propio quedaba agregado dos veces.
       onSuccess: (msg) => setLive((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg])),
     })
     setText('')
+    setReplyTo(null)
+  }
+
+  const startReply = (msg: ChatMessageDTO) => {
+    if (!session?.loggedIn) return openAuth('login')
+    setReplyTo(msg)
+    inputRef.current?.focus()
+  }
+
+  // Salta al mensaje citado y lo resalta un momento.
+  const jumpTo = (id: string) => {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-msg-id="${id}"]`)
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.classList.add('bg-white/5')
+    setTimeout(() => el.classList.remove('bg-white/5'), 1200)
   }
 
   if (!canChat) {
@@ -83,15 +101,31 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
           <p className="pt-6 text-center text-xs text-muted-foreground">Sé el primero en escribir</p>
         )}
         {messages.map((m) => (
-          <ChatLine key={m.id} msg={m} />
+          <ChatLine key={m.id} msg={m} onReply={startReply} onJump={jumpTo} />
         ))}
       </div>
 
+      {replyTo && (
+        <div className="flex items-center gap-2 border-t border-white/10 px-3 py-1.5 text-[11px] text-muted-foreground">
+          <CornerUpLeft className="h-3 w-3 shrink-0" aria-hidden />
+          <p className="min-w-0 flex-1 truncate">
+            Respondiendo a <span className="font-bold text-foreground">{replyTo.user.name}</span>: {replyTo.body}
+          </p>
+          <button onClick={() => setReplyTo(null)} className="shrink-0 hover:text-foreground" aria-label="Cancelar respuesta">
+            <X className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 border-t border-white/10 p-2.5">
         <input
+          ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSend()
+            else if (e.key === 'Escape') setReplyTo(null)
+          }}
           onFocus={() => {
             if (!session?.loggedIn) openAuth('login')
           }}
@@ -112,10 +146,18 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
   )
 }
 
-function ChatLine({ msg }: { msg: ChatMessageDTO }) {
+function ChatLine({
+  msg,
+  onReply,
+  onJump,
+}: {
+  msg: ChatMessageDTO
+  onReply: (msg: ChatMessageDTO) => void
+  onJump: (id: string) => void
+}) {
   const online = useIsOnline(msg.user.id)
   return (
-    <div className="flex items-start gap-2">
+    <div data-msg-id={msg.id} className="group relative -mx-1 flex items-start gap-2 rounded-md px-1 transition-colors">
       <UserAvatar name={msg.user.name} handle={msg.user.handle} src={msg.user.avatar} size="xs" online={online} />
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline gap-1.5">
@@ -123,8 +165,25 @@ function ChatLine({ msg }: { msg: ChatMessageDTO }) {
             {msg.user.name}
           </Link>
         </p>
+        {msg.replyTo && (
+          <button
+            onClick={() => onJump(msg.replyTo!.id)}
+            className="mb-0.5 block w-full truncate border-l-2 border-[#8FA83F]/50 pl-1.5 text-left text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            <span className="font-bold">@{msg.replyTo.user.handle}</span> {msg.replyTo.body}
+          </button>
+        )}
         <p className={cn('break-words text-[13px] leading-snug text-foreground/90')}>{msg.body}</p>
       </div>
+      {/* Visible siempre en táctil; en escritorio aparece al pasar el mouse. */}
+      <button
+        onClick={() => onReply(msg)}
+        className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+        aria-label={`Responder a ${msg.user.name}`}
+        title="Responder"
+      >
+        <CornerUpLeft className="h-3.5 w-3.5" aria-hidden />
+      </button>
     </div>
   )
 }

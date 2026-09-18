@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, ChevronDown, Crown, Eye, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
+import { Bell, ChevronDown, CornerUpLeft, Crown, Eye, LogIn, LogOut, Plus, Search, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -26,6 +26,7 @@ import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens } 
 import { useUI } from '@/lib/store'
 import { useGoToTab } from '@/lib/use-go-to-tab'
 import { timeAgo } from '@/lib/cabal'
+import { useChatReplies } from '@/lib/chat-replies'
 
 export function Header() {
   const { data: me } = useMe()
@@ -37,6 +38,7 @@ export function Header() {
   const { setSearchOpen, setProfileOpen, setAdminOpen, setAffiliatesOpen, setPremiumOpen, setTab, openLaunch, openAuth } = useUI()
   const goToTab = useGoToTab()
   const loggedIn = !!session?.loggedIn
+  const chatReplies = useChatReplies(loggedIn ? me?.id : undefined)
 
   const soon = useMemo(() => {
     if (!launches) return []
@@ -82,16 +84,45 @@ export function Header() {
           </Button>
 
           {/* Notifications */}
-          <Popover>
+          <Popover onOpenChange={(open) => open && chatReplies.markSeen()}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-primary" aria-label="Notificaciones">
                 <Bell className="h-[18px] w-[18px]" />
-                {soon.length > 0 && (
+                {(soon.length > 0 || chatReplies.unread > 0) && (
                   <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary live-dot" />
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-80 border-white/10 bg-popover p-2">
+              {chatReplies.replies.length > 0 && (
+                <div className="mb-1.5 border-b border-white/10 pb-1.5">
+                  <p className="flex items-center gap-1.5 px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Chat · Te respondieron
+                    {chatReplies.unread > 0 && (
+                      <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{chatReplies.unread}</span>
+                    )}
+                  </p>
+                  {chatReplies.replies.slice(0, 5).map((r) => (
+                    <button
+                      key={r.id}
+                      onClick={() => goToTab('chat')}
+                      className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/5"
+                    >
+                      <UserAvatar name={r.user.name} handle={r.user.handle} src={r.user.avatar} size="xs" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px]">
+                          <span className="font-semibold">{r.user.name}</span>{' '}
+                          <span className="text-muted-foreground">· {timeAgo(r.createdAt)}</span>
+                        </p>
+                        <p className="truncate text-[12px] text-foreground/90">{r.body}</p>
+                        <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-muted-foreground">
+                          <CornerUpLeft className="h-3 w-3 shrink-0" aria-hidden /> {r.replyTo?.body}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
               <p className="px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Radar · Próximos lanzamientos
               </p>
