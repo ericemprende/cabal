@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
-import { useCallResult, useCreatePost, useFollowToggle, useLikeToggle } from '@/lib/api-client'
+import { useCallResult, useCreatePost, useFollowToggle, useLikeToggle, useMe } from '@/lib/api-client'
 import {
   canCopyImages,
   copyImage,
@@ -156,7 +156,11 @@ export function CallShareDialog({
         ? `${symbol} va ${fmtPct(data.pctChange)} desde esta call`
         : `Resultado de la call de ${symbol}`
   const shareText = `${headline} en @cabal_app 🐺`
-  const intentUrl = `https://x.com/intent/post?${new URLSearchParams({ text: shareText, url: 'https://cabal.army' }).toString()}`
+  // Enlace de invitación de quien comparte (/r/<handle>): quien entre por ahí
+  // queda como su referido.
+  const { data: me } = useMe()
+  const shareUrl = me?.handle ? `https://cabal.army/r/${encodeURIComponent(me.handle)}` : 'https://cabal.army'
+  const intentUrl = `https://x.com/intent/post?${new URLSearchParams({ text: shareText, url: shareUrl }).toString()}`
 
   const shareFromDevice = async () => {
     if (!cardFile) return
