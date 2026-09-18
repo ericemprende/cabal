@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { jsonFetch, qk } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { XLogo } from '@/components/cabal/x-logo'
+import { FollowXCampaign } from '@/components/cabal/follow-x-campaign'
 import type { Locale, WaitlistStatusDTO } from '@/lib/waitlist'
 import {
   canCopyImages,
@@ -566,6 +567,12 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
         Tu tarjeta lleva tu enlace de afiliado: quien se registre desde ella queda en tu equipo y te genera el{' '}
         <span className="font-bold text-primary">10%</span> de todos los puntos que consiga dentro de la plataforma.
       </p>
+
+      {/* Campaña de X: aquí es donde está la gente antes del lanzamiento, así que
+          los puntos por seguir la cuenta se cobran sin tener que entrar a la app.
+          El alta de la whitelist ya deja la sesión de Cabal puesta (ver el
+          callback de /api/waitlist/x), que es lo que /api/me/follow-x necesita. */}
+      <FollowXCampaign className="mt-5 text-left" />
     </div>
   )
 }
