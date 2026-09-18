@@ -8,6 +8,7 @@ import { esc, type BotMessage, type BotProvider } from '@/lib/bot-message'
 import type { ChatLink } from '@prisma/client'
 import { t, type Lang } from '@/lib/bot-i18n'
 import { DEFAULT_REMINDER_LEAD } from '@/lib/notify-types'
+import { matchesTokenFilter, type FilterSubject } from '@/lib/token-filter'
 
 /**
  * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
@@ -123,7 +124,7 @@ async function announceNewLaunches(senders: Senders, r: TickResult) {
     const chats = await db.chatLink.findMany({
       where: { provider: { in: providersOf(senders) }, active: true, notifyLaunches: true },
     })
-    const sent = await broadcast(senders, chats, (lang) => launchMessage(l, 'new', lang), l.createdAt)
+    const sent = await broadcast(senders, onlyMatching(chats, launchSubject(l)), (lang) => launchMessage(l, 'new', lang), l.createdAt)
     await markSent(key, sent)
     r.launches++
     r.messages += sent
@@ -149,7 +150,7 @@ async function announceNewCalls(senders: Senders, r: TickResult) {
     },
     orderBy: { createdAt: 'asc' },
     take: 20,
-    include: { user: { select: { handle: true } } },
+    include: { user: { select: { handle: true } }, token: { select: { ticker: true, contract: true } } },
   })
   const pending = await notDispatched(calls.map((c) => `call:${c.id}`))
   for (const c of calls) {
@@ -163,7 +164,8 @@ async function announceNewCalls(senders: Senders, r: TickResult) {
         ...(c.chatLinkId ? { id: { not: c.chatLinkId } } : {}),
       },
     })
-    const sent = await broadcast(senders, chats, (lang) => callMessage(c, lang), c.createdAt)
+    const subject = { contracts: [c.contract, c.token?.contract], tickers: [c.token?.ticker] }
+    const sent = await broadcast(senders, onlyMatching(chats, subject), (lang) => callMessage(c, lang), c.createdAt)
     await markSent(key, sent)
     r.calls++
     r.messages += sent
@@ -180,7 +182,8 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
     take: 20,
     include: {
       user: { select: { handle: true } },
-      launch: { select: { id: true, name: true, ticker: true, isPrivate: true, hidden: true } },
+      launch: { select: { id: true, name: true, ticker: true, isPrivate: true, hidden: true, contract: true } },
+      token: { select: { ticker: true, contract: true } },
     },
   })
   const pending = await notDispatched(posts.map((p) => `post:${p.id}`))
@@ -195,7 +198,11 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
     const chats = await db.chatLink.findMany({
       where: { provider: { in: providersOf(senders) }, active: true, notifyTheses: true },
     })
-    const sent = await broadcast(senders, chats, (lang) => thesisMessage(p, lang), p.createdAt)
+    const subject = {
+      contracts: [p.contract, p.token?.contract, p.launch?.contract],
+      tickers: [p.token?.ticker, p.launch?.ticker],
+    }
+    const sent = await broadcast(senders, onlyMatching(chats, subject), (lang) => thesisMessage(p, lang), p.createdAt)
     await markSent(key, sent)
     r.theses++
     r.messages += sent
@@ -316,7 +323,7 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
       })
       sent += await broadcast(
         senders,
-        chats.filter((c) => !alreadySent.has(c.id)),
+        onlyMatching(chats, launchSubject(l)).filter((c) => !alreadySent.has(c.id)),
         (lang) => launchMessage(l, 'soon', lang, minutes)
       )
     }
@@ -344,6 +351,18 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
 }
 
 // ---------- Envío ----------
+
+/**
+ * Deja fuera los chats con filtro por token que no incluye el de este aviso.
+ * Los privados no se filtran: el filtro es cosa de comunidades.
+ */
+function onlyMatching(chats: ChatLink[], subject: FilterSubject): ChatLink[] {
+  return chats.filter((c) => c.chatType === 'private' || matchesTokenFilter(c.tokenFilter, subject))
+}
+
+function launchSubject(l: { contract: string | null; ticker: string | null }): FilterSubject {
+  return { contracts: [l.contract], tickers: [l.ticker] }
+}
 
 /**
  * Manda un aviso a varios chats, cada uno con el bot de su proveedor y en su

@@ -5,6 +5,7 @@ import { esc, type BotButton, type BotMessage, type BotProvider } from '@/lib/bo
 import { CHAT_PREFS, type ChatPref } from '@/lib/chat-links'
 import { LANGS, LANG_NAMES, t, type Lang } from '@/lib/bot-i18n'
 import { REMINDER_LEADS, leadLabel } from '@/lib/notify-types'
+import { MAX_TOKEN_FILTER, normalizeFilterEntry, toggleFilterEntry } from '@/lib/token-filter'
 
 /**
  * Las respuestas que son iguales en Telegram y en Discord: el saludo, los
@@ -85,4 +86,35 @@ export async function upcomingMessage(lang: Lang): Promise<BotMessage> {
     text: `${tx.upcomingTitle}\n\n${lines.join('\n')}`,
     buttons: [[{ text: tx.seeAll, url: `${siteUrl()}/app` }]],
   }
+}
+
+/**
+ * /filter: sin argumento enseña el filtro del chat; con un contrato o $TICKER
+ * lo añade (o lo quita si ya estaba); con "off" lo vacía. Quien llama ya ha
+ * comprobado que el chat existe y, si hay argumento, que puede cambiarlo.
+ */
+export async function filterCommand(
+  chat: { id: string; chatType: string; tokenFilter: string[] },
+  arg: string | null,
+  lang: Lang
+): Promise<string> {
+  const tx = t(lang)
+  if (chat.chatType === 'private') return tx.filterPrivate
+  let filter = chat.tokenFilter
+  if (arg) {
+    if (['off', 'clear', 'none', 'todos', 'all'].includes(arg.toLowerCase())) {
+      filter = []
+    } else {
+      const entry = normalizeFilterEntry(arg)
+      if (!entry) return tx.filterBad
+      const next = toggleFilterEntry(filter, entry)
+      if (next.length === filter.length && !filter.some((f) => f.toLowerCase() === entry.toLowerCase())) {
+        return tx.filterFull(MAX_TOKEN_FILTER)
+      }
+      filter = next
+    }
+    await db.chatLink.update({ where: { id: chat.id }, data: { tokenFilter: filter } })
+  }
+  if (filter.length === 0) return tx.filterOff
+  return tx.filterOn(filter.map((f) => `• <code>${esc(f)}</code>`).join('\n'))
 }

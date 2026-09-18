@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { CHAT_PREFS, consumeLinkCode, setChatLeads, upsertChatLink, type ChatPref } from '@/lib/chat-links'
-import { languageButtons, leadMenuButtons, leadSummary, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
+import { filterCommand, languageButtons, leadMenuButtons, leadSummary, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
 import { siteUrl } from '@/lib/waitlist'
 import { userLink } from '@/lib/notifications'
 import { handleContractFromBot, looksLikeContract, pnlMessage } from '@/lib/bot-call'
@@ -23,6 +23,7 @@ import { isReminderLead, toggleLead } from '@/lib/notify-types'
  *  /call <CA> [nota]  publica una call de token en Cabal
  *  /pnl <CA>          tarjeta con el resultado de tu call de ese token
  *  /leaderboard [per] ranking de la comunidad (o de Cabal, en privado)
+ *  /filter [CA|$TICKER|off] avisos solo de ciertos tokens
  *  /unlink            deja de mandar avisos a este chat
  *  /help
  *
@@ -57,6 +58,7 @@ const COMMAND_ALIASES: Record<string, string> = {
   llamada: 'call',
   ranking: 'leaderboard',
   lb: 'leaderboard',
+  filtro: 'filter',
   idioma: 'language',
   desvincular: 'unlink',
   ayuda: 'help',
@@ -139,6 +141,10 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
     }
     case 'leaderboard':
       return reply(await leaderboardMessage(chat, args[0] ?? null, lang))
+    case 'filter':
+      if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
+      if (args[0] && !(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyAdminChanges)
+      return reply(await filterCommand(chat, args[0] ?? null, lang))
     case 'unlink':
       if (!chat) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
       if (!(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyManagerUnlinks)

@@ -35,6 +35,7 @@ export const BOT_COMMANDS: Record<Lang, { command: string; description: string }
     { command: 'call', description: 'Post a token call on Cabal' },
     { command: 'pnl', description: 'How your call on a token is doing' },
     { command: 'leaderboard', description: 'Top Callers of this community' },
+    { command: 'filter', description: 'Only get alerts about certain tokens' },
     { command: 'language', description: 'Español / English' },
     { command: 'unlink', description: 'Stop alerts in this chat' },
     { command: 'help', description: 'How the bot works' },
@@ -46,6 +47,7 @@ export const BOT_COMMANDS: Record<Lang, { command: string; description: string }
     { command: 'call', description: 'Publicar una call de token en Cabal' },
     { command: 'pnl', description: 'Como va tu call de un token' },
     { command: 'leaderboard', description: 'Top Callers de esta comunidad' },
+    { command: 'filter', description: 'Recibir avisos solo de ciertos tokens' },
     { command: 'language', description: 'Español / English' },
     { command: 'unlink', description: 'Dejar de recibir avisos aquí' },
     { command: 'help', description: 'Cómo funciona el bot' },
@@ -160,6 +162,17 @@ const es = {
     `Conecta tu cuenta en <a href="${url}">Cabal</a> → perfil → ${PROVIDER_NAMES[p]} y tus calls contarán para el ranking.`,
   callFailed: 'No he podido publicar la call. Inténtalo otra vez en un momento.',
   callTooFast: 'Vas muy rápido con las calls. Espera un minuto y vuelve a intentarlo.',
+  filterOff:
+    '🔎 <b>Filtro por token: apagado</b>\nAquí llegan avisos de todos los tokens.\n\nPara recibir solo los de tu token: <code>/filter CONTRATO</code> o <code>/filter $TICKER</code>.',
+  filterOn: (list: string) =>
+    `🔎 <b>Filtro por token: activo</b>
+Aquí solo llegan calls, tesis, lanzamientos y avisos de:
+${list}
+
+<code>/filter X</code> añade o quita un token · <code>/filter off</code> lo quita todo.`,
+  filterBad: 'Eso no parece un contrato ni un ticker. Prueba con <code>/filter CONTRATO</code> o <code>/filter $TICKER</code>.',
+  filterPrivate: 'El filtro por token es para grupos y canales. En tu privado llegan los avisos que tú eliges.',
+  filterFull: (max: number) => `Máximo ${max} tokens en el filtro. Quita alguno antes con <code>/filter X</code>.`,
 }
 
 type Dict = typeof es
@@ -262,6 +275,17 @@ const en: Dict = {
     `Connect your account at <a href="${url}">Cabal</a> → profile → ${PROVIDER_NAMES[p]} and your calls will count for the ranking.`,
   callFailed: "I couldn't post the call. Try again in a moment.",
   callTooFast: "You're posting calls too fast. Wait a minute and try again.",
+  filterOff:
+    '🔎 <b>Token filter: off</b>\nThis chat gets alerts about every token.\n\nTo only get your token: <code>/filter CONTRACT</code> or <code>/filter $TICKER</code>.',
+  filterOn: (list: string) =>
+    `🔎 <b>Token filter: on</b>
+This chat only gets calls, theses, launches and alerts about:
+${list}
+
+<code>/filter X</code> adds or removes a token · <code>/filter off</code> clears it.`,
+  filterBad: "That doesn't look like a contract or a ticker. Try <code>/filter CONTRACT</code> or <code>/filter $TICKER</code>.",
+  filterPrivate: 'The token filter is for groups and channels. Your private chat gets the alerts you choose.',
+  filterFull: (max: number) => `Up to ${max} tokens in the filter. Remove one first with <code>/filter X</code>.`,
 }
 
 const DICTS: Record<Lang, Dict> = { es, en }

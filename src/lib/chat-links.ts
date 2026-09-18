@@ -114,6 +114,7 @@ export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
     notifyTheses: c.notifyTheses,
     reminderLeads: c.reminderLeads,
     notifyCalls: c.notifyCalls,
+    tokenFilter: c.tokenFilter,
     active: c.active,
     lastError: c.lastError,
     createdAt: c.createdAt.toISOString(),

@@ -98,7 +98,7 @@ export function useUpdateChat() {
       id,
       ...prefs
     }: { id: string } & Partial<
-      Pick<ChatLinkDTO, 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'lang' | 'reminderLeads'>
+      Pick<ChatLinkDTO, 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'lang' | 'reminderLeads' | 'tokenFilter'>
     >) =>
       jsonFetch<ChatLinkDTO>(`/api/me/chats/${id}`, { method: 'PATCH', body: JSON.stringify(prefs) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.chats }),

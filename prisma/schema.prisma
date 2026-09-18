@@ -619,6 +619,8 @@ model ChatLink {
   notifyCalls     Boolean  @default(false) // calls nuevas publicadas en Cabal
   reminderLeads   Int[]    @default([60]) // minutos de antelación de ese aviso
   notifyTheses    Boolean  @default(false) // tesis nuevas del feed
+  // Solo avisos de estos tokens (contratos o "$TICKER"). Vacío = todos.
+  tokenFilter     String[] @default([])
   active          Boolean  @default(true) // false = el bot fue expulsado o bloqueado
   lastError       String?
   createdAt       DateTime @default(now())

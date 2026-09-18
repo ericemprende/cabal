@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { CHAT_PREFS, consumeLinkCode, setChatLeads, upsertChatLink, type ChatPref } from '@/lib/chat-links'
-import { languageButtons, leadMenuButtons, leadSummary, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
+import { filterCommand, languageButtons, leadMenuButtons, leadSummary, settingsButtons, upcomingMessage, welcomeMessage } from '@/lib/bot-commands'
 import { siteUrl } from '@/lib/waitlist'
 import { userLink } from '@/lib/notifications'
 import { handleContractFromBot, pnlMessage } from '@/lib/bot-call'
@@ -22,6 +22,7 @@ import { isReminderLead, toggleLead } from '@/lib/notify-types'
  *  /call <CA>      publica una call de token en Cabal
  *  /pnl <CA>       tarjeta con el resultado de tu call de ese token
  *  /leaderboard    ranking del servidor (o de Cabal, en privado)
+ *  /filter [token] avisos solo de ciertos tokens (CA, $TICKER u off)
  *  /unlink         deja de mandar avisos a este chat
  *  /help
  *
@@ -142,6 +143,12 @@ async function onCommand(cfg: DiscordConfig, i: DcInteraction): Promise<DcRespon
     case 'leaderboard': {
       void deferred(cfg, i, lang, () => leaderboardMessage(chat, optionValue(i, 'period'), lang))
       return { type: DEFERRED_MESSAGE }
+    }
+    case 'filter': {
+      if (!chat || !chat.active) return say(tx.notLinked(`${siteUrl()}/app`, 'discord'))
+      const token = optionValue(i, 'token')
+      if (token && !canManage(chat, i)) return say(tx.onlyAdminChanges)
+      return reply({ text: await filterCommand(chat, token, lang) })
     }
     case 'unlink':
       if (!chat) return say(tx.notLinked(`${siteUrl()}/app`, 'discord'))

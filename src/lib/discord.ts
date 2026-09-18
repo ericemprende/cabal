@@ -154,6 +154,14 @@ const COMMAND_OPTIONS: Record<string, Record<string, unknown>[]> = {
     opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true),
     opt('note', 'Your thesis about the token (optional)', 'Tu tesis sobre el token (opcional)', false),
   ],
+  filter: [
+    opt(
+      'token',
+      'Contract, $TICKER or "off". Adds it, or removes it if already there',
+      'Contrato, $TICKER u "off". Lo añade, o lo quita si ya estaba',
+      false
+    ),
+  ],
   pnl: [opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true)],
   leaderboard: [
     { ...opt('period', 'Period: 24h, 7d, 30d or all', 'Periodo: 24h, 7d, 30d o all', false), choices: PERIOD_CHOICES },

@@ -56,6 +56,8 @@ export type ChatLinkDTO = {
   reminderLeads: number[]
   /** Difundir aquí las calls nuevas publicadas en Cabal. */
   notifyCalls: boolean
+  /** Solo avisos de estos tokens (contratos o "$TICKER"). Vacío = todos. */
+  tokenFilter: string[]
   active: boolean
   lastError: string | null
   createdAt: string
