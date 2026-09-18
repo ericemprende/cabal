@@ -155,7 +155,7 @@ export function CallShareDialog({
       : data?.pctChange !== null && data
         ? `${symbol} va ${fmtPct(data.pctChange)} desde esta call`
         : `Resultado de la call de ${symbol}`
-  const shareText = `${headline} en @cabalarmy 🐺`
+  const shareText = `${headline} en @cabal_app 🐺`
   const intentUrl = `https://x.com/intent/post?${new URLSearchParams({ text: shareText, url: 'https://cabal.army' }).toString()}`
 
   const shareFromDevice = async () => {
