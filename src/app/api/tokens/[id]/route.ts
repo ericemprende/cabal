@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { generateChart, getCurrentUser } from '@/lib/api-helpers'
+import { generateChart, getReaderId } from '@/lib/api-helpers'
 import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import type { TokenDetailDTO } from '@/lib/types'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const me = await getCurrentUser()
+    const meId = await getReaderId()
     const token = await db.token.findUnique({
       where: { id },
       include: { dev: true, launch: { include: { createdBy: true } } },
@@ -20,8 +20,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         include: { user: true },
         orderBy: { createdAt: 'desc' },
       }),
-      db.vote.findMany({ where: { userId: me.id } }),
-      db.follow.findMany({ where: { userId: me.id } }),
+      db.vote.findMany({ where: { userId: meId } }),
+      db.follow.findMany({ where: { userId: meId } }),
       // Sin dev no hay historial. Ojo: un where { devId: null } devolvería todos
       // los tokens sin dev, como si fueran de esta persona.
       token.devId

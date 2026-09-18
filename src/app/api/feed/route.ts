@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { getReaderId } from '@/lib/api-helpers'
 import { toPostDTO } from '@/lib/serializers'
 import { cached, CACHE_TTL } from '@/lib/cache'
 import { pendingMany } from '@/lib/counters'
@@ -8,7 +8,7 @@ import type { PostDTO } from '@/lib/types'
 
 export async function GET() {
   try {
-    const me = await getCurrentUser()
+    const meId = await getReaderId()
 
     // La lista de posts es la misma para todos, así que se cachea una vez.
     // Los votos son por usuario y NO se cachean: mezclarlos filtraría los
@@ -17,7 +17,7 @@ export async function GET() {
       cached('feed:latest:60', CACHE_TTL.feed, () =>
         db.post.findMany({ include: { user: true }, orderBy: { createdAt: 'desc' }, take: 60 }),
       ),
-      db.vote.findMany({ where: { userId: me.id, target: 'post' } }),
+      db.vote.findMany({ where: { userId: meId, target: 'post' } }),
     ])
 
     const likedIds = new Set(votes.map((v) => v.targetId))

@@ -178,6 +178,19 @@ export async function getCurrentUser() {
   return user
 }
 
+/**
+ * Para lecturas públicas (GET): nunca falla. Devuelve el id de quien mira o,
+ * sin sesión ni usuario demo, un id que no existe (sus votos/follows salen vacíos).
+ * Así un visitante sin cuenta ve el radar, el feed y los tokens.
+ */
+export async function getReaderId(): Promise<string> {
+  try {
+    return (await getCurrentUser()).id
+  } catch {
+    return '__guest__'
+  }
+}
+
 export async function getUserVotes(userId: string) {
   const votes = await db.vote.findMany({ where: { userId } })
   return {

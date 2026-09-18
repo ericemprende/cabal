@@ -35,6 +35,7 @@ import type {
   UserDTO,
 } from '@/lib/types'
 import type { CallPeriod } from '@/lib/call-score'
+import { useUI } from '@/lib/store'
 
 export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -43,7 +44,15 @@ export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> 
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error((body as { error?: string }).error ?? `Error ${res.status}`)
+    const error = (body as { error?: string }).error
+    // Un visitante sin cuenta puede mirar todo; si intenta interactuar, lo
+    // llevamos al registro en lugar de mostrarle un error.
+    const isWrite = (init?.method ?? 'GET').toUpperCase() !== 'GET'
+    if (isWrite && (res.status === 401 || error === 'No current user')) {
+      useUI.getState().openAuth('register')
+      throw new Error('Crea tu cuenta gratis para participar')
+    }
+    throw new Error(error ?? `Error ${res.status}`)
   }
   return res.json() as Promise<T>
 }

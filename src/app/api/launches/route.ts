@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { awardPoints, computeLaunchStatus, getCurrentUser } from '@/lib/api-helpers'
+import { awardPoints, computeLaunchStatus, getCurrentUser, getReaderId } from '@/lib/api-helpers'
 import { toPublicUserDTO } from '@/lib/serializers'
 import { cached, CACHE_TTL, invalidate } from '@/lib/cache'
 import { pendingMany } from '@/lib/counters'
@@ -12,7 +12,7 @@ import { getPremiumSettings, getViewer, launchAccess, premiumLaunchFields, teamL
 
 export async function GET(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const meId = await getReaderId()
     const [launches, votes, follows, postCounts, viewer, settings] = await Promise.all([
       // Compartido entre todos los usuarios -> cacheable. Los votos y follows
       // de más abajo son personales y se leen siempre en fresco. Los datos
@@ -24,8 +24,8 @@ export async function GET(req: Request) {
           orderBy: { launchAt: 'asc' },
         }),
       ),
-      db.vote.findMany({ where: { userId: me.id, target: 'launch' } }),
-      db.follow.findMany({ where: { userId: me.id } }),
+      db.vote.findMany({ where: { userId: meId, target: 'launch' } }),
+      db.follow.findMany({ where: { userId: meId } }),
       db.post.groupBy({ by: ['launchId'], _count: { _all: true } }),
       getViewer(req),
       getPremiumSettings(),

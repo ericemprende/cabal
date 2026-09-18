@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { computeLaunchStatus, getCurrentUser } from '@/lib/api-helpers'
+import { computeLaunchStatus, getCurrentUser, getReaderId } from '@/lib/api-helpers'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import { pending } from '@/lib/counters'
@@ -34,7 +34,7 @@ async function canEditLaunch(req: Request, createdById: string): Promise<boolean
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const me = await getCurrentUser()
+    const meId = await getReaderId()
     const launch = await db.launch.findUnique({
       where: { id },
       include: { createdBy: true },
@@ -51,8 +51,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         include: { user: true },
         orderBy: { createdAt: 'desc' },
       }),
-      db.vote.findMany({ where: { userId: me.id } }),
-      db.follow.findMany({ where: { userId: me.id } }),
+      db.vote.findMany({ where: { userId: meId } }),
+      db.follow.findMany({ where: { userId: meId } }),
       db.launchMember.findMany({
         where: { launchId: launch.id, status: { in: ['accepted', 'pending'] } },
         include: { user: true },

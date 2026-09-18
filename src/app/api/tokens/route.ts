@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/api-helpers'
 import { toPublicUserDTO } from '@/lib/serializers'
 import { ensureTokensFresh } from '@/lib/tokens-sync'
 import type { TokenDTO } from '@/lib/types'
@@ -10,7 +9,6 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const sort = searchParams.get('sort') ?? 'trending'
     const network = searchParams.get('network') ?? 'all'
-    const me = await getCurrentUser()
 
     // Convierte en token los launches que ya salieron y refresca el mercado
     await ensureTokensFresh()
