@@ -100,9 +100,19 @@ function CallResultBadge({ post }: { post: PostDTO }) {
 }
 
 /** Popup con la tarjeta de resultado de una call y el botón para compartirla en X. */
-function CallShareDialog({ post, open, onOpenChange }: { post: PostDTO; open: boolean; onOpenChange: (v: boolean) => void }) {
-  const { data } = useCallResult(post.id, open && post.kind === 'call' && !!post.contract)
-  const cardPath = `/api/posts/${post.id}/card`
+export function CallShareDialog({
+  postId,
+  handle,
+  open,
+  onOpenChange,
+}: {
+  postId: string
+  handle: string
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const { data } = useCallResult(postId, open)
+  const cardPath = `/api/posts/${postId}/card`
 
   // Capacidades del navegador: se leen tras montar, igual que en el flujo de
   // la lista de espera, para no descuadrar la hidratación.
@@ -126,7 +136,7 @@ function CallShareDialog({ post, open, onOpenChange }: { post: PostDTO; open: bo
   useEffect(() => {
     if (!open) return
     let alive = true
-    fetchCardFile(absCardUrl, post.user.handle)
+    fetchCardFile(absCardUrl, handle)
       .then((file) => alive && setLoaded({ url: cardPath, file }))
       .catch(() => {})
     return () => {
@@ -316,7 +326,7 @@ export function PostCard({
                   <ImageDown className="h-3.5 w-3.5" />
                 </button>
               </span>
-              <CallShareDialog post={post} open={shareOpen} onOpenChange={setShareOpen} />
+              <CallShareDialog postId={post.id} handle={post.user.handle} open={shareOpen} onOpenChange={setShareOpen} />
             </div>
           )}
 

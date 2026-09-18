@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { fmtMc, timeAgo } from '@/lib/cabal'
 import { CALL_PERIODS, WIN_MULTIPLE, fmtMultiple, type CallPeriod } from '@/lib/call-score'
 import { NetworkBadge, TokenGlyph } from '@/components/cabal/shared'
+import { CallShareDialog } from '@/components/cabal/post-card'
 import { useUserCallStats } from '@/lib/api-client'
 import type { CallRowDTO } from '@/lib/types'
 
@@ -19,6 +20,7 @@ export function CallStats({ handle }: { handle: string }) {
   const [period, setPeriod] = useState<CallPeriod>('all')
   const [sort, setSort] = useState<Sort>('recent')
   const [showAll, setShowAll] = useState(false)
+  const [shareId, setShareId] = useState<string | null>(null)
   const { data, isPending } = useUserCallStats(handle, period)
 
   const history = useMemo(() => {
@@ -78,7 +80,13 @@ export function CallStats({ handle }: { handle: string }) {
           <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Mejores calls</p>
           <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {data.best.map((c, i) => (
-              <div key={c.id} className="w-[150px] shrink-0 rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setShareId(c.id)}
+                title="Ver la tarjeta del resultado y compartirla"
+                className="w-[150px] shrink-0 rounded-xl border border-white/10 bg-[#0a0b08] p-3 text-left transition-colors hover:border-[#8FA83F]/40"
+              >
                 <div className="flex items-center gap-2">
                   <TokenGlyph src={c.image} ticker={c.symbol ?? '?'} size="sm" />
                   <div className="min-w-0">
@@ -90,9 +98,10 @@ export function CallStats({ handle }: { handle: string }) {
                 <p className="text-[10px] text-muted-foreground">
                   {c.entryMc ? `desde ${fmtMc(c.entryMc)} MC` : 'pico desde la call'}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
+          <CallShareDialog postId={shareId ?? ''} handle={handle} open={!!shareId} onOpenChange={(v) => !v && setShareId(null)} />
         </div>
       )}
 
