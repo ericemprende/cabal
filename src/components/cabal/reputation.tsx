@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BadgeCheck, ShieldQuestion, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { BadgeCheck, MessageSquareText, ShieldQuestion, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { timeAgo } from '@/lib/cabal'
 import { UserAvatar } from '@/components/cabal/shared'
@@ -25,7 +26,7 @@ export function TrustBadge({
   className,
 }: {
   rep: ReputationSummaryDTO
-  /** Si se pasa, la insignia lleva al perfil, que es donde se vota. */
+  /** Si se pasa, la insignia lleva al perfil, que abre el pop-up de reputación. */
   handle?: string
   className?: string
 }) {
@@ -81,40 +82,47 @@ export function TrustBadge({
 }
 
 /**
- * Panel de reputación del perfil: el marcador, los botones de voto y las
- * reseñas escritas por la comunidad.
+ * Reputación en la cabecera del perfil: los botones Confío / No confío con sus
+ * contadores, y un pop-up con el marcador, la reseña propia y las de la
+ * comunidad. Votar abre el pop-up para escribir la reseña (opcional).
+ *
+ * `open` / `onOpenChange` dejan que la cabecera abra el pop-up desde la
+ * insignia de confianza o desde un enlace /u/x#reputacion.
  */
-export function ReputationPanel({ handle, name }: { handle: string; name: string }) {
-  const { data, isPending } = useUserReputation(handle)
+export function ReputationActions({
+  handle,
+  name,
+  open,
+  onOpenChange,
+}: {
+  handle: string
+  name: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const { data } = useUserReputation(handle)
   const rate = useRateUser(handle)
   const { openAuth } = useUI()
   const { data: session } = useSession()
   const [draft, setDraft] = useState('')
-  const [writing, setWriting] = useState(false)
-
-  // El borrador se rellena al abrir el editor, no en un efecto: así editar
-  // una reseña ya escrita arranca con su texto y nada pisa lo que se teclea
-  // mientras la consulta se revalida de fondo.
-  const openEditor = (body: string) => {
-    setDraft(body)
-    setWriting(true)
-  }
 
   const summary = data?.summary ?? { score: 50, up: 0, down: 0, votes: 0 }
-  const label = repLabel(summary.score, summary.votes)
-  const tone = REP_TONE_CLASS[label.tone]
-  const enough = summary.votes >= REP_MIN_VOTES
   const mine = data?.mine ?? null
+  const self = data?.reason === 'self'
+
+  // El borrador se rellena al abrir, no en un efecto: así editar una reseña ya
+  // escrita arranca con su texto y nada pisa lo que se teclea mientras la
+  // consulta se revalida de fondo.
+  const openDialog = (body = mine?.body ?? '') => {
+    setDraft(body)
+    onOpenChange(true)
+  }
 
   const vote = (value: 1 | -1) => {
     // Sin sesión no se vota: se pide entrar en vez de fallar contra la API
     if (!session?.loggedIn) return openAuth('login')
     if (!data?.canVote) {
-      toast.error(
-        data?.reason === 'self'
-          ? 'No puedes valorarte a ti mismo'
-          : 'Verifica tu correo, tu X o tu wallet para poder valorar'
-      )
+      toast.error(self ? 'No puedes valorarte a ti mismo' : 'Verifica tu correo, tu X o tu wallet para poder valorar')
       return
     }
     // Pulsar el voto que ya tenías lo retira: el mismo botón es el interruptor.
@@ -123,12 +131,9 @@ export function ReputationPanel({ handle, name }: { handle: string; name: string
       { value: next, body: next === 0 ? '' : mine?.body ?? '' },
       {
         onSuccess: (res) => {
-          if (next === 0) {
-            toast.success('Valoración retirada')
-            setWriting(false)
-          } else {
-            openEditor(res.mine?.body ?? '')
-          }
+          if (next === 0) toast.success('Valoración retirada')
+          // Tras votar, el pop-up invita a contar por qué
+          else if (!open) openDialog(res.mine?.body ?? '')
         },
       }
     )
@@ -140,158 +145,161 @@ export function ReputationPanel({ handle, name }: { handle: string; name: string
       { value: mine.value, body: draft.trim() },
       {
         onSuccess: () => {
-          setWriting(false)
           toast.success(draft.trim() ? 'Reseña publicada' : 'Reseña borrada')
+          onOpenChange(false)
         },
       }
     )
   }
 
+  const reviewsCount = (data?.reviews.length ?? 0) + (data?.more ?? 0)
+
   return (
-    <section
-      id="reputacion"
-      className="card-surface scroll-mt-24 space-y-4 rounded-2xl border border-white/10 p-4 sm:p-5"
-      aria-label="Reputación de la comunidad"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="flex items-center gap-1.5 font-display text-base font-bold">
-          <ThumbsUp className="h-4 w-4 text-primary" aria-hidden /> Reputación
-        </h2>
-        <p className="text-[11px] text-muted-foreground sm:ml-auto">
-          Qué opina el Cabal de esta persona, no de sus proyectos
-        </p>
+    <>
+      <div className="flex items-center gap-1.5">
+        {!self && (
+          <>
+            <VoteButton kind="up" count={summary.up} active={mine?.value === 1} disabled={rate.isPending} onClick={() => vote(1)} />
+            <VoteButton kind="down" count={summary.down} active={mine?.value === -1} disabled={rate.isPending} onClick={() => vote(-1)} />
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => openDialog()}
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-white/25 hover:text-foreground"
+        >
+          <MessageSquareText className="h-3.5 w-3.5" aria-hidden />
+          Reseñas{reviewsCount > 0 && <span className="tabular-nums">{reviewsCount}</span>}
+        </button>
       </div>
 
-      {/* Marcador */}
-      <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
-        <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
-          {isPending ? (
-            <div className="h-9 w-24 animate-pulse rounded bg-white/5" />
-          ) : enough ? (
-            <p className={cn('font-display text-3xl font-black leading-none tabular-nums', tone.text)}>
-              {summary.score}%
-            </p>
-          ) : (
-            <p className="font-display text-xl font-bold leading-none text-muted-foreground">Sin reputación</p>
-          )}
-          {enough && <p className={cn('text-sm font-bold', tone.text)}>{label.text}</p>}
-          <p className="ml-auto text-[11px] text-muted-foreground">
-            {summary.votes === 0
-              ? 'Nadie la ha valorado todavía'
-              : `${summary.votes.toLocaleString('es')} ${summary.votes === 1 ? 'valoración' : 'valoraciones'}`}
-          </p>
-        </div>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto border-white/10 bg-[#0d0e0a] sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-1.5 font-display text-base">
+              <ThumbsUp className="h-4 w-4 text-primary" aria-hidden /> Reputación de {name}
+            </DialogTitle>
+            <DialogDescription className="text-[11px]">Qué opina el Cabal de esta persona, no de sus proyectos</DialogDescription>
+          </DialogHeader>
 
-        {/* Barra: proporción real de 👍 sobre el total, sin suavizar, para que
-            lo que se ve encaje con los dos contadores de abajo. */}
-        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/8">
-          <div
-            className={cn('h-full rounded-full transition-all', tone.bar)}
-            style={{ width: `${summary.votes ? (100 * summary.up) / summary.votes : 0}%` }}
-          />
-        </div>
+          <Scoreboard summary={summary} loading={!data} />
 
-        <div className="mt-2.5 flex items-center gap-4 text-[12px] font-semibold">
-          <span className="flex items-center gap-1.5 text-primary">
-            <ThumbsUp className="h-3.5 w-3.5" aria-hidden /> {summary.up.toLocaleString('es')}
-          </span>
-          <span className="flex items-center gap-1.5 text-[#ff8080]">
-            <ThumbsDown className="h-3.5 w-3.5" aria-hidden /> {summary.down.toLocaleString('es')}
-          </span>
-          {!enough && summary.votes > 0 && (
-            <span className="ml-auto text-[11px] font-normal text-muted-foreground">
-              Faltan {REP_MIN_VOTES - summary.votes} para el porcentaje
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Voto de quien mira. A uno mismo no se le enseñan los botones. */}
-      {data?.reason !== 'self' && (
-        <div className="space-y-2.5">
-          <div className="grid grid-cols-2 gap-2">
-            <VoteButton kind="up" active={mine?.value === 1} disabled={rate.isPending} onClick={() => vote(1)} />
-            <VoteButton kind="down" active={mine?.value === -1} disabled={rate.isPending} onClick={() => vote(-1)} />
-          </div>
-
-          {data?.reason === 'unverified' && (
-            <p className="text-[11px] text-amber-300/90">
-              Verifica tu correo, tu X o tu wallet en tu perfil para poder valorar.
-            </p>
-          )}
-
-          {mine && !writing && (
-            <button
-              onClick={() => openEditor(mine.body)}
-              className="text-[11px] font-semibold text-primary hover:underline"
-            >
-              {mine.body ? 'Editar mi reseña' : 'Añadir una reseña (opcional)'}
-            </button>
-          )}
-
-          {mine && writing && (
-            <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
-              <Textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value.slice(0, REP_BODY_MAX))}
-                placeholder={`¿Por qué ${mine.value === 1 ? 'confías' : 'no confías'} en ${name}? Cuenta tu experiencia.`}
-                className="min-h-[72px] resize-none border-white/10 bg-transparent text-sm"
-              />
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-[11px] tabular-nums text-muted-foreground">
-                  {draft.length}/{REP_BODY_MAX}
-                </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="ml-auto h-8 text-xs"
-                  onClick={() => {
-                    setDraft(mine.body)
-                    setWriting(false)
-                  }}
-                >
-                  Cancelar
-                </Button>
-                <Button size="sm" className="h-8 text-xs font-bold" onClick={saveReview} disabled={rate.isPending}>
-                  Publicar
-                </Button>
+          {/* Voto y reseña de quien mira. A uno mismo no se le enseñan. */}
+          {!self && (
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-2">
+                <VoteButton kind="up" wide active={mine?.value === 1} disabled={rate.isPending} onClick={() => vote(1)} />
+                <VoteButton kind="down" wide active={mine?.value === -1} disabled={rate.isPending} onClick={() => vote(-1)} />
               </div>
+
+              {data?.reason === 'unverified' && (
+                <p className="text-[11px] text-amber-300/90">Verifica tu correo, tu X o tu wallet en tu perfil para poder valorar.</p>
+              )}
+
+              {mine ? (
+                <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+                  <Textarea
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value.slice(0, REP_BODY_MAX))}
+                    placeholder={`¿Por qué ${mine.value === 1 ? 'confías' : 'no confías'} en ${name}? Cuenta tu experiencia (opcional).`}
+                    className="min-h-[72px] resize-none border-white/10 bg-transparent text-sm"
+                  />
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-[11px] tabular-nums text-muted-foreground">
+                      {draft.length}/{REP_BODY_MAX}
+                    </span>
+                    <Button
+                      size="sm"
+                      className="ml-auto h-8 text-xs font-bold"
+                      onClick={saveReview}
+                      disabled={rate.isPending || draft.trim() === mine.body}
+                    >
+                      {mine.body ? 'Guardar reseña' : 'Publicar reseña'}
+                    </Button>
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">Pulsa de nuevo tu voto para retirarlo.</p>
+                </div>
+              ) : (
+                data?.canVote && <p className="text-[11px] text-muted-foreground">Vota para poder dejar una reseña.</p>
+              )}
             </div>
           )}
 
-          {mine && !writing && (
-            <p className="text-[11px] text-muted-foreground">
-              Ya la valoraste. Pulsa de nuevo el mismo botón para retirar tu voto.
+          {/* Reseñas de la comunidad */}
+          {!data ? (
+            <div className="space-y-1.5">
+              {[...Array(2)].map((_, i) => (
+                <div key={i} className="h-16 animate-pulse rounded-xl bg-[#0a0b08]" />
+              ))}
+            </div>
+          ) : data.reviews.length > 0 ? (
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Reseñas</p>
+              {data.reviews.map((r) => (
+                <ReviewRow key={r.id} review={r} />
+              ))}
+              {data.more > 0 && (
+                <p className="pt-1 text-center text-[11px] text-muted-foreground">
+                  y {data.more} {data.more === 1 ? 'reseña más' : 'reseñas más'}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
+              Todavía no hay reseñas escritas.{!self && ' Sé el primero en contar tu experiencia.'}
             </p>
           )}
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
 
-      {/* Reseñas */}
-      {isPending ? (
-        <div className="space-y-1.5">
-          {[...Array(2)].map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-[#0a0b08]" />
-          ))}
-        </div>
-      ) : data && data.reviews.length > 0 ? (
-        <div className="space-y-1.5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Reseñas</p>
-          {data.reviews.map((r) => (
-            <ReviewRow key={r.id} review={r} />
-          ))}
-          {data.more > 0 && (
-            <p className="pt-1 text-center text-[11px] text-muted-foreground">
-              y {data.more} {data.more === 1 ? 'reseña más' : 'reseñas más'}
-            </p>
-          )}
-        </div>
-      ) : (
-        <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
-          Todavía no hay reseñas escritas. Sé el primero en contar tu experiencia.
+function Scoreboard({ summary, loading }: { summary: ReputationSummaryDTO; loading: boolean }) {
+  const label = repLabel(summary.score, summary.votes)
+  const tone = REP_TONE_CLASS[label.tone]
+  const enough = summary.votes >= REP_MIN_VOTES
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
+      <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+        {loading ? (
+          <div className="h-9 w-24 animate-pulse rounded bg-white/5" />
+        ) : enough ? (
+          <p className={cn('font-display text-3xl font-black leading-none tabular-nums', tone.text)}>{summary.score}%</p>
+        ) : (
+          <p className="font-display text-xl font-bold leading-none text-muted-foreground">Sin reputación</p>
+        )}
+        {enough && <p className={cn('text-sm font-bold', tone.text)}>{label.text}</p>}
+        <p className="ml-auto text-[11px] text-muted-foreground">
+          {summary.votes === 0
+            ? 'Nadie la ha valorado todavía'
+            : `${summary.votes.toLocaleString('es')} ${summary.votes === 1 ? 'valoración' : 'valoraciones'}`}
         </p>
-      )}
-    </section>
+      </div>
+
+      {/* Barra: proporción real de 👍 sobre el total, sin suavizar, para que
+          lo que se ve encaje con los dos contadores de abajo. */}
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/8">
+        <div
+          className={cn('h-full rounded-full transition-all', tone.bar)}
+          style={{ width: `${summary.votes ? (100 * summary.up) / summary.votes : 0}%` }}
+        />
+      </div>
+
+      <div className="mt-2.5 flex items-center gap-4 text-[12px] font-semibold">
+        <span className="flex items-center gap-1.5 text-primary">
+          <ThumbsUp className="h-3.5 w-3.5" aria-hidden /> {summary.up.toLocaleString('es')}
+        </span>
+        <span className="flex items-center gap-1.5 text-[#ff8080]">
+          <ThumbsDown className="h-3.5 w-3.5" aria-hidden /> {summary.down.toLocaleString('es')}
+        </span>
+        {!enough && summary.votes > 0 && (
+          <span className="ml-auto text-[11px] font-normal text-muted-foreground">
+            Faltan {REP_MIN_VOTES - summary.votes} para el porcentaje
+          </span>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -300,20 +308,30 @@ function VoteButton({
   active,
   disabled,
   onClick,
+  count,
+  wide = false,
 }: {
   kind: 'up' | 'down'
   active: boolean
   disabled: boolean
   onClick: () => void
+  /** Versión compacta de la cabecera: enseña el contador en vez del texto largo. */
+  count?: number
+  wide?: boolean
 }) {
   const Icon = kind === 'up' ? ThumbsUp : ThumbsDown
+  const text = kind === 'up' ? 'Confío' : 'No confío'
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
+      aria-label={count !== undefined ? `${text} (${count})` : undefined}
+      title={text}
       className={cn(
-        'flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-bold transition-all active:scale-95 disabled:opacity-50',
+        'flex items-center justify-center gap-1.5 border font-bold transition-all active:scale-95 disabled:opacity-50',
+        wide ? 'rounded-xl px-3 py-2.5 text-sm' : 'h-8 rounded-lg px-2.5 text-[12px]',
         active
           ? kind === 'up'
             ? 'neon-shadow border-[#8FA83F]/50 bg-[#8FA83F]/15 text-primary'
@@ -321,8 +339,8 @@ function VoteButton({
           : 'border-white/10 text-muted-foreground hover:border-white/25 hover:text-foreground'
       )}
     >
-      <Icon className={cn('h-4 w-4', active && 'fill-current')} aria-hidden />
-      {kind === 'up' ? 'Confío' : 'No confío'}
+      <Icon className={cn(wide ? 'h-4 w-4' : 'h-3.5 w-3.5', active && 'fill-current')} aria-hidden />
+      {wide ? text : <span className="tabular-nums">{count ?? 0}</span>}
     </button>
   )
 }

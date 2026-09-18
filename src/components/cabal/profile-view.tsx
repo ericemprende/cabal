@@ -8,10 +8,10 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { fmtMc, timeAgo } from '@/lib/cabal'
-import { BadgesRow, NetworkBadge, PremiumPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { BadgesRow, NetworkBadge, PremiumPill, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { CallStats } from '@/components/cabal/call-stats'
-import { ReputationPanel, TrustBadge } from '@/components/cabal/reputation'
+import { ReputationActions, TrustBadge } from '@/components/cabal/reputation'
 import { XLogo } from '@/components/cabal/x-logo'
 import { Header } from '@/components/cabal/header'
 import { LeftFeed, RightRail } from '@/components/cabal/sidebars'
@@ -92,9 +92,6 @@ function ProfileContent({ profile }: { profile: PublicProfileDTO }) {
       {/* Estadísticas de calls: públicas, con filtro de periodo */}
       <CallStats handle={user.handle} />
 
-      {/* Qué opina la comunidad de la persona: 👍 / 👎 y reseñas */}
-      <ReputationPanel handle={user.handle} name={user.name} />
-
       <div className="grid grid-cols-2 gap-2.5">
         <Stat icon={Rocket} label="Launches" value={String(counts.launches)} />
         <Stat
@@ -129,6 +126,8 @@ function ProfileHeader({
   const { data: session } = useSession()
   const follow = useFollowToggle()
   const online = useIsOnline(user.id)
+  // Pop-up de reputación: desde la insignia, el botón Reseñas o un enlace /u/x#reputacion
+  const [repOpen, setRepOpen] = useState(() => typeof window !== 'undefined' && window.location.hash === '#reputacion')
   const joined = new Date(profile.joinedAt).toLocaleDateString('es', { month: 'long', year: 'numeric' })
 
   const toggleFollow = () => {
@@ -145,7 +144,7 @@ function ProfileHeader({
           handle={user.handle}
           src={user.avatar}
           size="xl"
-          verified={user.walletVerified}
+          verified={user.walletVerified} official={user.verified}
           premium={profile.premium}
           online={online}
           className="h-20 w-20 text-2xl sm:h-24 sm:w-24"
@@ -156,6 +155,7 @@ function ProfileHeader({
             <div className="min-w-0">
               <h1 className="font-display flex items-center gap-1.5 text-2xl font-bold">
                 <span className="truncate">{user.name}</span>
+                {user.verified && <OfficialBadge label />}
                 {user.isDev && (
                   <span className="rounded-md bg-[#8FA83F]/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
                     Dev
@@ -165,9 +165,9 @@ function ProfileHeader({
               </h1>
               {/* Confianza de la comunidad, arriba del todo: es lo primero que
                   se mira antes de entrar a un launch de esta persona. */}
-              <a href="#reputacion" className="mt-1 inline-flex">
+              <button type="button" onClick={() => setRepOpen(true)} className="mt-1 inline-flex transition-opacity hover:opacity-80">
                 <TrustBadge rep={user.reputation} />
-              </a>
+              </button>
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 @{user.handle}
                 {online && (
@@ -178,7 +178,8 @@ function ProfileHeader({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 sm:ml-auto">
+            <div className="flex flex-col items-start gap-2 sm:ml-auto sm:items-end">
+            <div className="flex items-center gap-2">
               <CountButton label="Siguiendo" value={counts.following} onClick={() => onOpenList('following')} />
               <CountButton label="Seguidores" value={counts.followers} onClick={() => onOpenList('followers')} />
               {isMe ? (
@@ -213,6 +214,9 @@ function ProfileHeader({
                   {user.isFollowed ? 'Siguiendo' : 'Seguir'}
                 </Button>
               )}
+            </div>
+            {/* Confío / No confío justo debajo de seguir; la reseña va en el pop-up */}
+            <ReputationActions handle={user.handle} name={user.name} open={repOpen} onOpenChange={setRepOpen} />
             </div>
           </div>
 
@@ -487,7 +491,7 @@ function FollowListDialog({
                 onClick={onClose}
                 className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/5"
               >
-                <UserAvatar name={u.name} handle={u.handle} src={u.avatar} size="sm" verified={u.walletVerified} />
+                <UserAvatar name={u.name} handle={u.handle} src={u.avatar} size="sm" verified={u.walletVerified} official={u.verified} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{u.name}</p>
                   <p className="truncate text-xs text-muted-foreground">@{u.handle}</p>
