@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { CopyCA, NetworkBadge, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
+import { TrustBadge } from '@/components/cabal/reputation'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
@@ -295,6 +296,8 @@ function DevTrackRecord({
             <p className="mt-0.5 text-[10px] text-muted-foreground">
               {dev.walletVerified ? 'Wallet verificada' : 'Wallet sin verificar'}
             </p>
+            {/* Qué opina la comunidad del dev, no del token */}
+            <TrustBadge rep={dev.reputation} className="mt-1" />
           </div>
         </Link>
         <div className="flex items-center gap-4 sm:ml-auto sm:justify-end">

@@ -23,6 +23,8 @@ import type {
   ProjectClaimDTO,
   PublicProfileDTO,
   PublicUserDTO,
+  ReputationDTO,
+  ReputationSummaryDTO,
   ReferralDTO,
   SwapConfigDTO,
   SwapFeeConfigDTO,
@@ -141,6 +143,7 @@ export const qk = {
   user: (handle: string) => ['user', handle.toLowerCase()] as const,
   userFollows: (handle: string, type: 'followers' | 'following') =>
     ['user', handle.toLowerCase(), type] as const,
+  userReputation: (handle: string) => ['user', handle.toLowerCase(), 'reputation'] as const,
   premium: ['premium'] as const,
   adminPremium: ['admin', 'premium'] as const,
 }
@@ -1160,6 +1163,42 @@ export function useUserFollows(handle: string, type: 'followers' | 'following', 
     queryKey: qk.userFollows(handle, type),
     queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/follows?type=${type}`),
     enabled: enabled && Boolean(handle),
+  })
+}
+
+// ---------- Reputación (👍 / 👎) ----------
+
+/** Resumen, reseñas escritas y el voto de quien mira. */
+export function useUserReputation(handle: string, enabled = true) {
+  return useQuery<ReputationDTO>({
+    queryKey: qk.userReputation(handle),
+    queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/reputation`),
+    enabled: enabled && Boolean(handle),
+  })
+}
+
+/**
+ * Vota, cambia el voto o lo retira (value 0). Escribe la respuesta en la
+ * caché de la propia reputación para que el marcador se mueva al instante, y
+ * revalida el perfil, donde el mismo número viaja dentro del usuario.
+ */
+export function useRateUser(handle: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: { value: 1 | -1 | 0; body?: string }) =>
+      jsonFetch<{ ok: boolean; summary: ReputationSummaryDTO; mine: { value: 1 | -1; body: string } | null }>(
+        `/api/users/${encodeURIComponent(handle)}/reputation`,
+        { method: 'POST', body: JSON.stringify(vars) }
+      ),
+    onSuccess: (res) => {
+      qc.setQueryData<ReputationDTO>(qk.userReputation(handle), (prev) =>
+        prev ? { ...prev, summary: res.summary, mine: res.mine } : prev
+      )
+      qc.invalidateQueries({ queryKey: qk.userReputation(handle) })
+      qc.invalidateQueries({ queryKey: qk.user(handle) })
+      qc.invalidateQueries({ queryKey: qk.launches })
+    },
+    onError: (e: Error) => toast.error(e.message),
   })
 }
 

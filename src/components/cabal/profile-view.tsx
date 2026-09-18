@@ -11,6 +11,7 @@ import { fmtMc, timeAgo } from '@/lib/cabal'
 import { BadgesRow, NetworkBadge, PremiumPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { CallStats } from '@/components/cabal/call-stats'
+import { ReputationPanel, TrustBadge } from '@/components/cabal/reputation'
 import { XLogo } from '@/components/cabal/x-logo'
 import { Header } from '@/components/cabal/header'
 import { LeftFeed, RightRail } from '@/components/cabal/sidebars'
@@ -91,6 +92,9 @@ function ProfileContent({ profile }: { profile: PublicProfileDTO }) {
       {/* Estadísticas de calls: públicas, con filtro de periodo */}
       <CallStats handle={user.handle} />
 
+      {/* Qué opina la comunidad de la persona: 👍 / 👎 y reseñas */}
+      <ReputationPanel handle={user.handle} name={user.name} />
+
       <div className="grid grid-cols-2 gap-2.5">
         <Stat icon={Rocket} label="Launches" value={String(counts.launches)} />
         <Stat
@@ -159,6 +163,11 @@ function ProfileHeader({
                 )}
                 {profile.premium && <PremiumPill />}
               </h1>
+              {/* Confianza de la comunidad, arriba del todo: es lo primero que
+                  se mira antes de entrar a un launch de esta persona. */}
+              <a href="#reputacion" className="mt-1 inline-flex">
+                <TrustBadge rep={user.reputation} />
+              </a>
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 @{user.handle}
                 {online && (

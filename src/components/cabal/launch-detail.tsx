@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { displayImageUrl } from '@/lib/remote-image'
+import { TrustBadge } from '@/components/cabal/reputation'
 import { CopyCA, CountdownPill, EstimatedDateBadge, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
@@ -164,6 +165,13 @@ export function LaunchDetailDialog() {
                     >
                       {launch.createdBy.name}
                     </Link>
+                    {/* Reputación de la persona, no del proyecto: el fueguito
+                        ya mide las ganas que hay por el launch. */}
+                    <TrustBadge
+                      rep={launch.createdBy.reputation}
+                      handle={launch.createdBy.handle}
+                      className="ml-1.5 align-middle"
+                    />
                     <button
                       onClick={() => !launch.createdBy.isFollowed && follow.mutate(launch.createdBy.id)}
                       className="block truncate text-[11px] text-muted-foreground hover:text-primary"
