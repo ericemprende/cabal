@@ -68,9 +68,17 @@ export function timeAgo(date: string | Date): string {
   return d.toLocaleDateString('es', { day: 'numeric', month: 'short' })
 }
 
+/** Cuánto dura "EN VIVO" tras la hora de lanzamiento. */
+export const LIVE_WINDOW_MS = 2 * 3600_000
+/** Tras esto el launch sale de Próximos y pasa a Finalizados. */
+export const LAUNCHED_WINDOW_MS = 24 * 3600_000
+
 export function countdownParts(target: string | Date): {
   ended: boolean
+  /** Primeras 2 h tras la hora de lanzamiento. */
   live: boolean
+  /** Entre 2 h y 24 h tras lanzar: "Lanzado", ya sin rojo. */
+  recent: boolean
   /** Texto completo: SIEMPRE incluye minutos y segundos (tiqueta en vivo). */
   text: string
   /** Versión corta para píldoras de tarjetas (mantiene min+seg cuando queda <24h). */
@@ -81,11 +89,15 @@ export function countdownParts(target: string | Date): {
   const diff = t - Date.now()
   if (diff <= 0) {
     const since = -diff
+    const live = since <= LIVE_WINDOW_MS
+    const ended = since > LAUNCHED_WINDOW_MS
+    const text = live ? 'EN VIVO' : 'LANZADO'
     return {
-      ended: since > 48 * 3600_000,
-      live: since <= 48 * 3600_000,
-      text: 'EN VIVO',
-      compactText: 'EN VIVO',
+      ended,
+      live,
+      recent: !live && !ended,
+      text,
+      compactText: text,
       totalMs: 0,
     }
   }
@@ -106,7 +118,7 @@ export function countdownParts(target: string | Date): {
     text = `${min}m ${ss}s`
     compactText = text
   }
-  return { ended: false, live: false, text, compactText, totalMs: diff }
+  return { ended: false, live: false, recent: false, text, compactText, totalMs: diff }
 }
 
 export function safetyCheck(l: { lpLocked: boolean; mintRevoked: boolean; top10Pct: number }): {

@@ -3,6 +3,7 @@ import { ensureSeeded } from '@/lib/seed'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { invalidate } from '@/lib/cache'
+import { LAUNCHED_WINDOW_MS } from '@/lib/cabal'
 
 // ---------- POINTS ENGINE ----------
 export const POINT_RULE_KEYS = [
@@ -207,7 +208,7 @@ export async function getFollowedIds(userId: string) {
 export function computeLaunchStatus(launchAt: Date): string {
   const diff = launchAt.getTime() - Date.now()
   if (diff > 0) return 'upcoming'
-  if (-diff <= 48 * 3600_000) return 'live'
+  if (-diff <= LAUNCHED_WINDOW_MS) return 'live'
   return 'ended'
 }
 

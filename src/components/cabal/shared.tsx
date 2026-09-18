@@ -647,6 +647,12 @@ export function CountdownPill({
         En vivo
       </span>
     )
+  if (c.recent)
+    return (
+      <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-[#8FA83F]/30 bg-[#8FA83F]/8 font-bold uppercase text-primary', cls, className)}>
+        Lanzado
+      </span>
+    )
   if (c.ended)
     return (
       <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-zinc-500/30 bg-zinc-500/10 font-semibold text-zinc-400', cls, className)}>

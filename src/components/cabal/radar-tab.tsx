@@ -240,13 +240,13 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
         <div className="flex flex-row items-center gap-3 sm:flex-col sm:items-end">
           <div className="text-right">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {c.live ? 'Lanzando ahora' : 'Lanza en'}
+              {c.live ? 'Lanzando ahora' : c.recent ? 'Ya salió' : 'Lanza en'}
             </p>
             <p
               className={cn(
                 'font-mono text-2xl font-bold tabular-nums text-glow sm:text-3xl',
                 c.live || urgent ? 'text-[#ff6b7a]' : soon ? 'text-amber-300' : 'text-primary',
-                (c.live || urgent) && 'text-base'
+                (c.live || c.recent || urgent) && 'text-base'
               )}
             >
               {c.text}
