@@ -133,6 +133,33 @@ function pickPair(pairs: DexPair[], ca: string): DexPair | null {
   return matches.sort((a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0))[0]
 }
 
+/**
+ * Máximo "creíble" de cada vela ([ts, open, high, low, close, vol]), o null si
+ * la vela se descarta. GeckoTerminal a veces devuelve velas corruptas (una
+ * mecha o una vela entera miles de veces por encima del resto) que luego
+ * corrige; como el pico guardado nunca baja, una sola dejaba una call en
+ * "7252x" para siempre. Así:
+ *  - la mecha se limita a 3x el cuerpo (max de apertura/cierre);
+ *  - una vela cuyo cuerpo es 20x mayor que el de sus dos vecinas se ignora.
+ */
+const MAX_WICK = 3
+const MAX_JUMP = 20
+function candleTops(list: unknown[][]): (number | null)[] {
+  const body = (c: unknown[] | undefined) => {
+    if (!c) return null
+    const b = Math.max(Number(c[1]), Number(c[4]))
+    return Number.isFinite(b) && b > 0 ? b : null
+  }
+  return list.map((c, i) => {
+    const high = Number(c[2])
+    const b = body(c)
+    if (!Number.isFinite(high) || high <= 0 || b === null) return null
+    const around = [body(list[i - 1]), body(list[i + 1])].filter((x): x is number => x !== null)
+    if (around.length && b > MAX_JUMP * Math.max(...around)) return null
+    return Math.min(high, b * MAX_WICK)
+  })
+}
+
 /** ATH histórico vía velas diarias del par (GeckoTerminal). */
 async function fetchAth(
   network: string,
@@ -145,10 +172,11 @@ async function fetchAth(
   const candles = json?.data?.attributes?.ohlcv_list ?? []
   let athPrice: number | null = null
   let athAt: number | null = null
-  for (const c of candles) {
+  const tops = candleTops(candles)
+  for (const [i, c] of candles.entries()) {
     const ts = Number(c[0])
-    const high = Number(c[2])
-    if (!Number.isFinite(high) || high <= 0) continue
+    const high = tops[i]
+    if (high === null) continue
     if (athPrice === null || high > athPrice) {
       athPrice = high
       // GeckoTerminal devuelve el timestamp en segundos
@@ -180,12 +208,13 @@ async function fetchPeakSince(
   const scan = (list: number[][], durationMs: number): { peakPrice: number | null; peakAt: number | null } => {
     let peakPrice: number | null = null
     let peakAt: number | null = null
-    for (const c of list) {
+    const tops = candleTops(list)
+    for (const [i, c] of list.entries()) {
       const tsRaw = Number(c[0])
       const ts = tsRaw > 1e12 ? tsRaw : tsRaw * 1000
       if (ts + durationMs < sinceMs) continue
-      const high = Number(c[2])
-      if (!Number.isFinite(high) || high <= 0) continue
+      const high = tops[i]
+      if (high === null) continue
       if (peakPrice === null || high > peakPrice) {
         peakPrice = high
         peakAt = Math.max(ts, sinceMs)
