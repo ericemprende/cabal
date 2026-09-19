@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { computeLaunchStatus, getCurrentUser, getReaderId } from '@/lib/api-helpers'
 import { isAdminRequest } from '@/lib/admin-auth'
-import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
+import { preloadPostRefs, toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import { pending } from '@/lib/counters'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { invalidate } from '@/lib/cache'
@@ -66,6 +66,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // no, el formulario lo cargaría vacío y al guardar lo borraría.
     const canEdit = await canEditLaunch(req, launch.createdById)
     const likedIds = new Set(votes.filter((v) => v.target === 'post').map((v) => v.targetId))
+    // Launch y token de cada post en dos consultas, no dos por post
+    const postRefs = await preloadPostRefs(posts)
     const followedIds = new Set(follows.map((f) => f.targetId))
 
     // Equipo: los aceptados son públicos; las invitaciones pendientes solo las
@@ -119,7 +121,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       myInvite: myInvite ? toMemberDTO(myInvite) : null,
       isTeamMember,
       posts: (await Promise.all(
-        posts.map((p) => toPostDTO(p, likedIds.has(p.id)))
+        posts.map((p) => toPostDTO(p, likedIds.has(p.id), undefined, postRefs))
       )) as PostDTO[],
     }
     return NextResponse.json(dto)

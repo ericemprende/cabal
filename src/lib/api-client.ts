@@ -732,8 +732,10 @@ export function useCallResult(postId: string, enabled: boolean) {
     queryKey: ['call-result', postId],
     queryFn: () => jsonFetch(`/api/posts/${postId}/result`),
     enabled,
-    staleTime: 20_000,
-    refetchInterval: 30_000,
+    // El precio no necesita ser exacto al segundo y cada tarjeta del feed pide
+    // el suyo: con 30s se pedía el doble de veces que la caché del servidor
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   })
 }
 

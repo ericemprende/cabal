@@ -15,7 +15,7 @@ import { fetchHolders, fetchMarketBatch, fetchTokenMeta } from '@/lib/chain-stat
  */
 
 /** Cada cuánto se sincroniza como mucho. */
-const EVERY_MS = 60_000
+const EVERY_MS = 120_000
 /** Lo que se deja esperar a la petición que dispara la sincronización. */
 const MAX_WAIT_MS = 5_000
 /** Launches convertidos por pasada, para no alargar la primera de todas. */
@@ -93,7 +93,7 @@ async function syncLaunchedTokens(): Promise<void> {
 async function refreshMarket(): Promise<void> {
   const tokens = await db.token.findMany({
     where: { contract: { not: '' } },
-    select: { id: true, contract: true, athMc: true },
+    select: { id: true, contract: true, athMc: true, price: true, mc: true, volume24h: true, change24h: true },
   })
   if (tokens.length === 0) return
 
@@ -103,6 +103,11 @@ async function refreshMarket(): Promise<void> {
       const m = market.get(t.contract)
       // Sin par todavía (en la curva de pump.fun): se deja lo que hubiera
       if (!m) return null
+      // Sin cambios no se escribe: en un token parado, un UPDATE por pasada
+      // es pura carga para Postgres
+      if (m.priceUsd === t.price && m.marketCap === t.mc && m.volume24h === t.volume24h && m.change24h === t.change24h) {
+        return null
+      }
       return db.token
         .update({
           where: { id: t.id },

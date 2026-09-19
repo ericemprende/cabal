@@ -146,7 +146,7 @@ type CallPost = {
  *    enseña el % y se lanza una revisión en segundo plano.
  */
 export async function liveCallResult(post: CallPost): Promise<CallResult> {
-  const result = await cached(`call-result:${post.id}`, 20, () =>
+  const result = await cached(`call-result:${post.id}`, 60, () =>
     fetchCallResult(
       post.network,
       post.contract,

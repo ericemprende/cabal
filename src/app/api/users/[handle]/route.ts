@@ -4,7 +4,7 @@ import { computeLaunchStatus } from '@/lib/api-helpers'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { publicDevClaim } from '@/lib/claims'
 import { pendingMany } from '@/lib/counters'
-import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
+import { preloadPostRefs, toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import { hasPremium } from '@/lib/premium'
 import { computeBadges, isFounder } from '@/lib/badges'
 import type { PostDTO, PublicProfileDTO } from '@/lib/types'
@@ -99,6 +99,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
         })
       : []
     const likedIds = new Set(likes.map((v) => v.targetId))
+    // Launch y token de cada post en dos consultas, no dos por post
+    const postRefs = await preloadPostRefs(posts)
     const hypes = await pendingMany(
       'launch:hype',
       launches.map((l) => l.id)
@@ -145,7 +147,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
         launchedAt: t.launchedAt.toISOString(),
       })),
       devClaims: devClaims.map(publicDevClaim),
-      posts: (await Promise.all(posts.map((p) => toPostDTO(p, likedIds.has(p.id))))) as PostDTO[],
+      posts: (await Promise.all(
+        posts.map((p) => toPostDTO(p, likedIds.has(p.id), undefined, postRefs))
+      )) as PostDTO[],
     }
     return NextResponse.json(dto)
   } catch (e) {

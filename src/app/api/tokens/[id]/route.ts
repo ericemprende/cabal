@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { generateChart, getReaderId } from '@/lib/api-helpers'
-import { toPostDTO, toPublicUserDTO } from '@/lib/serializers'
+import { preloadPostRefs, toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import type { TokenDetailDTO } from '@/lib/types'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +29,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         : Promise.resolve([]),
     ])
     const likedIds = new Set(votes.filter((v) => v.target === 'post').map((v) => v.targetId))
+    // Launch y token de cada post en dos consultas, no dos por post
+    const postRefs = await preloadPostRefs(posts)
     const followedIds = new Set(follows.map((f) => f.targetId))
 
     // dev track record: retention vs ATH (%)
@@ -65,7 +67,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         : null,
       postsCount: posts.length,
       chart: generateChart(token.id, token.mc, token.change24h, token.isRug),
-      posts: (await Promise.all(posts.map((p) => toPostDTO(p, likedIds.has(p.id))))) ?? [],
+      posts: (await Promise.all(posts.map((p) => toPostDTO(p, likedIds.has(p.id), undefined, postRefs)))) ?? [],
       devHistory: devTokens.map((t) => ({
         id: t.id,
         name: t.name,

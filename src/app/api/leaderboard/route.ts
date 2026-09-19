@@ -53,6 +53,7 @@ export async function GET(req: Request) {
     const devs: LeaderboardEntryDTO[] = users
       .filter((u) => u.isDev)
       .sort((a, b) => b.points - a.points)
+      .slice(0, 100)
       .map((u, i) => ({
         rank: i + 1,
         user: toPublicUserDTO(u, followedIds.has(u.id)),
@@ -60,8 +61,10 @@ export async function GET(req: Request) {
         winRate: u.callsTotal > 0 ? Math.round((u.callsWon / u.callsTotal) * 100) : 0,
       }))
 
+    // Top 100: antes iban todos los usuarios de Cabal en cada respuesta
     const points: LeaderboardEntryDTO[] = [...users]
       .sort((a, b) => b.points - a.points)
+      .slice(0, 100)
       .map((u, i) => ({
         rank: i + 1,
         user: toPublicUserDTO(u, followedIds.has(u.id)),

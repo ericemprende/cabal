@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getReaderId } from '@/lib/api-helpers'
-import { toPostDTO } from '@/lib/serializers'
+import { preloadPostRefs, toPostDTO } from '@/lib/serializers'
 import { cached, CACHE_TTL } from '@/lib/cache'
 import { pendingMany } from '@/lib/counters'
 import type { PostDTO } from '@/lib/types'
@@ -25,12 +25,13 @@ export async function GET() {
     // de una por post.
     const deltas = await pendingMany('post:likes', posts.map((p) => p.id))
 
+    const refs = await preloadPostRefs(posts)
     const dtos: PostDTO[] = []
     for (const p of posts) {
       // `cached` devuelve JSON: las fechas vuelven como string y toPostDTO
       // espera Date.
       const row = { ...p, createdAt: new Date(p.createdAt) }
-      const dto = await toPostDTO(row, likedIds.has(p.id))
+      const dto = await toPostDTO(row, likedIds.has(p.id), undefined, refs)
       dtos.push({ ...dto, likes: dto.likes + (deltas[p.id] ?? 0) })
     }
     return NextResponse.json(dtos)

@@ -86,6 +86,30 @@ export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
   }
 }
 
+/**
+ * Launches y tokens de una tanda de posts, en dos consultas en vez de dos por
+ * post. El feed trae 60 posts: sin esto eran hasta 120 consultas seguidas.
+ */
+export async function preloadPostRefs(
+  posts: { launchId: string | null; tokenId: string | null }[]
+): Promise<PostRefs> {
+  const launchIds = [...new Set(posts.map((p) => p.launchId).filter((x): x is string => !!x))]
+  const tokenIds = [...new Set(posts.map((p) => p.tokenId).filter((x): x is string => !!x))]
+  const [launches, tokens] = await Promise.all([
+    launchIds.length ? db.launch.findMany({ where: { id: { in: launchIds } } }) : Promise.resolve([]),
+    tokenIds.length ? db.token.findMany({ where: { id: { in: tokenIds } } }) : Promise.resolve([]),
+  ])
+  return {
+    launches: new Map(launches.map((l) => [l.id, l] as const)),
+    tokens: new Map(tokens.map((t) => [t.id, t] as const)),
+  }
+}
+
+export type PostRefs = {
+  launches: Map<string, Awaited<ReturnType<typeof db.launch.findUniqueOrThrow>>>
+  tokens: Map<string, Awaited<ReturnType<typeof db.token.findUniqueOrThrow>>>
+}
+
 export async function toPostDTO(
   p: {
     id: string
@@ -101,12 +125,14 @@ export async function toPostDTO(
     network?: string | null
   },
   liked: boolean,
-  pointsEarned?: number
+  pointsEarned?: number,
+  /** Si se pasa (ver preloadPostRefs), no se consulta la base por cada post. */
+  refs?: PostRefs
 ): Promise<PostDTO> {
   let launch = null as PostDTO['launch']
   let token = null as PostDTO['token']
   if (p.launchId) {
-    const l = await db.launch.findUnique({ where: { id: p.launchId } })
+    const l = refs ? refs.launches.get(p.launchId) ?? null : await db.launch.findUnique({ where: { id: p.launchId } })
     if (l)
       launch = {
         id: l.id,
@@ -121,7 +147,7 @@ export async function toPostDTO(
       }
   }
   if (p.tokenId) {
-    const t = await db.token.findUnique({ where: { id: p.tokenId } })
+    const t = refs ? refs.tokens.get(p.tokenId) ?? null : await db.token.findUnique({ where: { id: p.tokenId } })
     if (t)
       token = {
         id: t.id,
