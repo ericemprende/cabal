@@ -32,6 +32,8 @@ export async function GET(req: Request) {
       launchesCount: launchMap.get(u.id) ?? 0,
       likesReceived: likeMap.get(u.id) ?? 0,
       lastActivity: lastMap.get(u.id)?.toISOString() ?? null,
+      lastSeenAt: u.lastSeenAt?.toISOString() ?? null,
+      createdAt: u.createdAt.toISOString(),
       // Correo visible: el de la cuenta, el de Google o el que dejó en la whitelist
       contactEmail: u.email || u.googleEmail || waitMap.get(u.id)?.email || null,
       shared: sharedSet.has(u.id) || Boolean(waitMap.get(u.id)?.shared),

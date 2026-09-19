@@ -165,13 +165,30 @@ export class ForbiddenError extends Error {
   }
 }
 
+/** Cada cuánto se refresca lastSeenAt como mucho: una escritura por usuario y rato. */
+const LAST_SEEN_EVERY_MS = 5 * 60 * 1000
+
+/**
+ * Marca que el usuario está conectado ahora mismo. Solo escribe si su última
+ * marca tiene ya un rato, para no meter un UPDATE en cada petición de la app.
+ * No interrumpe la respuesta si falla (p. ej. antes de aplicar la migración).
+ */
+async function touchLastSeen(user: { id: string; lastSeenAt: Date | null }) {
+  const now = Date.now()
+  if (user.lastSeenAt && now - user.lastSeenAt.getTime() < LAST_SEEN_EVERY_MS) return
+  await db.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(now) } }).catch(() => {})
+}
+
 export async function getCurrentUser() {
   await ensureSeeded()
   // 1) Si hay sesión de usuario (cookie), esa es la cuenta activa
   const sessionUserId = await sessionUserIdFromCookies()
   if (sessionUserId) {
     const sessionUser = await db.user.findUnique({ where: { id: sessionUserId } })
-    if (sessionUser) return sessionUser
+    if (sessionUser) {
+      await touchLastSeen(sessionUser)
+      return sessionUser
+    }
   }
   // 2) Modo invitado: el usuario demo de la app
   const user = await db.user.findFirst({ where: { isCurrentUser: true } })

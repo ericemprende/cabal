@@ -72,6 +72,9 @@ model User {
   verified          Boolean          @default(false)
   verifiedVia       String? // admin | premium
   createdAt         DateTime         @default(now())
+  // Última vez que se le vio con la sesión abierta (se refresca como mucho cada
+  // 5 min, ver touchLastSeen). null = nunca entró desde que existe el campo.
+  lastSeenAt        DateTime?
   posts             Post[]
   launches          Launch[]
   tokens            Token[]
@@ -101,6 +104,7 @@ model User {
   @@index([referredById])
   @@index([createdAt])
   @@index([email])
+  @@index([lastSeenAt])
 }
 
 // Valoración de un usuario por otro: 👍 confío / 👎 no confío, con una reseña

@@ -28,6 +28,15 @@ const FILTERS = [
 
 type FilterKey = (typeof FILTERS)[number]['key']
 
+const SORTS = [
+  { key: 'points', label: 'Por puntos' },
+  { key: 'lastSeen', label: 'Por última conexión' },
+] as const
+
+type SortKey = (typeof SORTS)[number]['key']
+
+const ACTIVE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+
 export function AdminUsers({
   enabled,
   users,
@@ -40,6 +49,7 @@ export function AdminUsers({
   renderRow: (user: AdminUserRowDTO, index: number) => ReactNode
 }) {
   const [filter, setFilter] = useState<FilterKey>('all')
+  const [sort, setSort] = useState<SortKey>('points')
   const [q, setQ] = useState('')
   const waitlist = useAdminWaitlist(enabled, { all: true })
 
@@ -52,6 +62,8 @@ export function AdminUsers({
     google: all.filter((u) => u.googleVerified).length,
     shared: all.filter((u) => u.shared).length,
     incomplete: incomplete.length,
+    active7d: all.filter((u) => u.lastSeenAt && Date.now() - new Date(u.lastSeenAt).getTime() < ACTIVE_WINDOW_MS)
+      .length,
   }
 
   const needle = q.trim().toLowerCase()
@@ -69,6 +81,12 @@ export function AdminUsers({
               (filter === 'shared' && u.shared)) &&
             match(u.handle, u.name, u.xHandle, u.contactEmail)
         )
+  // La API ya los manda por puntos; ordenar por conexión pone delante a quien
+  // acaba de entrar y deja al final a quien nunca lo ha hecho.
+  const sortedUsers =
+    sort === 'lastSeen'
+      ? [...shownUsers].sort((a, b) => seenTime(b.lastSeenAt) - seenTime(a.lastSeenAt))
+      : shownUsers
   const shownIncomplete =
     filter === 'all' || filter === 'incomplete'
       ? incomplete.filter((e) => match(e.xHandle, e.xName, e.email))
@@ -83,12 +101,13 @@ export function AdminUsers({
         (X, Telegram, Google) y gestiona insignias y roles. Cada cambio queda registrado.
       </p>
 
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Registrados" value={stats.total} highlight />
         <Stat label="Verificados X" value={stats.x} />
         <Stat label="Verificados Google" value={stats.google} />
         <Stat label="Compartieron" value={stats.shared} />
         <Stat label="Sin terminar" value={stats.incomplete} />
+        <Stat label="Activos 7 días" value={stats.active7d} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -120,6 +139,23 @@ export function AdminUsers({
           />
         </div>
 
+        <div className="flex gap-1.5">
+          {SORTS.map((o) => (
+            <button
+              key={o.key}
+              onClick={() => setSort(o.key)}
+              className={cn(
+                'shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all',
+                sort === o.key
+                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary'
+                  : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/30'
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
         <Button
           asChild
           size="sm"
@@ -134,7 +170,7 @@ export function AdminUsers({
 
       {isLoading && [...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
 
-      {shownUsers.map((u, i) => renderRow(u, i + 1))}
+      {sortedUsers.map((u, i) => renderRow(u, i + 1))}
 
       {shownIncomplete.map((e) => (
         <div
@@ -169,13 +205,18 @@ export function AdminUsers({
         </div>
       ))}
 
-      {!isLoading && shownUsers.length + shownIncomplete.length === 0 && (
+      {!isLoading && sortedUsers.length + shownIncomplete.length === 0 && (
         <p className="rounded-xl border border-dashed border-white/10 py-8 text-center text-sm text-muted-foreground">
           No hay usuarios con ese filtro
         </p>
       )}
     </div>
   )
+}
+
+/** Para ordenar: sin conexión registrada va al final. */
+function seenTime(at?: string | null) {
+  return at ? new Date(at).getTime() : 0
 }
 
 function Stat({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {

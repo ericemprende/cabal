@@ -509,6 +509,10 @@ export interface AdminUserRowDTO extends UserDTO {
   launchesCount: number
   likesReceived: number
   lastActivity?: string | null
+  /** Última visita con la sesión abierta; null si no ha entrado desde que se registra. */
+  lastSeenAt?: string | null
+  /** Fecha de registro de la cuenta. */
+  createdAt?: string | null
   contactEmail: string | null
   shared: boolean
   xFollowers: number | null

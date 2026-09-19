@@ -625,6 +625,10 @@ function AdminUserRow({
             @{user.handle} · {user.contactEmail ?? 'sin correo'}{user.shared ? ' · compartió' : ''} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
             <Heart className="h-3 w-3" aria-hidden />
           </p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            <LastSeen at={user.lastSeenAt} />
+            {user.createdAt && <> · alta {new Date(user.createdAt).toLocaleDateString('es')}</>}
+          </p>
         </div>
         <PointsPill points={user.points} />
         <Button
@@ -704,6 +708,32 @@ function AdminUserRow({
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Última conexión del usuario. Se considera "en línea" hasta 10 min después de
+ * su última marca, porque lastSeenAt solo se refresca cada 5 min (touchLastSeen).
+ * El texto exacto (día y hora) va en el title, al pasar el ratón.
+ */
+function LastSeen({ at }: { at?: string | null }) {
+  if (!at) return <span className="text-muted-foreground/70">sin conexiones registradas</span>
+  const d = new Date(at)
+  const online = Date.now() - d.getTime() < 10 * 60 * 1000
+  return (
+    <span
+      title={d.toLocaleString('es', { dateStyle: 'medium', timeStyle: 'short' })}
+      className={online ? 'font-semibold text-primary' : undefined}
+    >
+      {online ? (
+        <>
+          <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-primary align-middle" aria-hidden />
+          en línea
+        </>
+      ) : (
+        <>última conexión hace {timeAgo(d)}</>
+      )}
+    </span>
   )
 }
 
