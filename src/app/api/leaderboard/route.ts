@@ -78,6 +78,7 @@ export async function GET(req: Request) {
       chats: c.chats,
       members: c.members,
       online: c.online,
+      image: c.image,
       link: c.link,
       callers: c.callers,
       score: c.summary.score,

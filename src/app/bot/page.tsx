@@ -259,7 +259,7 @@ export default function BotManualPage() {
       <LegalSection title="7. Tu comunidad como clan">
         <p>
           Cada grupo, canal o servidor con el bot aparece como un <strong>clan</strong> en Cabal (Líderes → Clanes), con
-          su logo de Telegram o Discord, sus miembros, sus calls, su porcentaje de aciertos, su mejor call y sus mejores
+          su foto (la del propio grupo o servidor) y el sello de Telegram o Discord, sus miembros, sus calls, su porcentaje de aciertos, su mejor call y sus mejores
           callers. No hay que crear nada dentro de Cabal: el clan es la comunidad que ya tienes.
         </p>
         <ul>

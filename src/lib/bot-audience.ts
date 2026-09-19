@@ -17,7 +17,14 @@ import type { AdminChatDTO, AdminChatsDTO } from '@/lib/notify-types'
  * no hace falta preguntar a Telegram/Discord cada vez.
  */
 
-type Audience = { members: number | null; online: number | null; link: string | null; error: string | null }
+type Audience = {
+  members: number | null
+  online: number | null
+  link: string | null
+  /** Foto del grupo/servidor: URL del CDN de Discord, o /api/bot-avatar/<chat> en Telegram. */
+  image: string | null
+  error: string | null
+}
 
 const TTL_MS = 60 * 60_000
 const cache = new Map<string, { at: number; value: Audience }>()
@@ -25,14 +32,14 @@ const cache = new Map<string, { at: number; value: Audience }>()
 async function cached(key: string, fresh: boolean, load: () => Promise<Audience>): Promise<Audience> {
   const hit = cache.get(key)
   if (!fresh && hit && Date.now() - hit.at < TTL_MS) return hit.value
-  const value = await load().catch((e: Error) => ({ members: null, online: null, link: null, error: e.message }))
+  const value = await load().catch((e: Error) => ({ members: null, online: null, link: null, image: null, error: e.message }))
   cache.set(key, { at: Date.now(), value })
   return value
 }
 
 async function telegramAudience(token: string, chatId: string): Promise<Audience> {
   const [chat, members] = await Promise.all([
-    tgCall<{ username?: string; invite_link?: string }>(token, 'getChat', { chat_id: chatId }),
+    tgCall<{ username?: string; invite_link?: string; photo?: { small_file_id?: string } }>(token, 'getChat', { chat_id: chatId }),
     tgCall<number>(token, 'getChatMemberCount', { chat_id: chatId }),
   ])
   return {
@@ -40,6 +47,8 @@ async function telegramAudience(token: string, chatId: string): Promise<Audience
     members: Math.max(0, members - 1),
     online: null,
     link: chat.username ? `https://t.me/${chat.username}` : chat.invite_link ?? null,
+    // La foto se sirve desde Cabal: en Telegram solo se descarga con el token del bot
+    image: chat.photo ? `/api/bot-avatar/${encodeURIComponent(chatId)}` : null,
     error: null,
   }
 }
@@ -49,11 +58,16 @@ async function discordAudience(token: string, serverId: string): Promise<Audienc
     approximate_member_count?: number
     approximate_presence_count?: number
     vanity_url_code?: string | null
+    icon?: string | null
   }>(token, 'GET', `/guilds/${serverId}?with_counts=true`)
   return {
     members: guild.approximate_member_count ?? null,
     online: guild.approximate_presence_count ?? null,
     link: guild.vanity_url_code ? `https://discord.gg/${guild.vanity_url_code}` : null,
+    // El icono del servidor ya es público (los .a_ son animados: se piden en gif)
+    image: guild.icon
+      ? `https://cdn.discordapp.com/icons/${serverId}/${guild.icon}.${guild.icon.startsWith('a_') ? 'gif' : 'png'}?size=160`
+      : null,
     error: null,
   }
 }
@@ -88,7 +102,7 @@ export async function listBotChats(provider: BotProvider, fresh = false): Promis
   const dc = provider === 'discord' ? await discordConfig() : null
 
   const chats = await mapLimited(links, 4, async (l): Promise<AdminChatDTO> => {
-    let audience: Audience = { members: null, online: null, link: null, error: null }
+    let audience: Audience = { members: null, online: null, link: null, image: null, error: null }
     // Los privados son una persona: no hay nada que contar
     if (l.active && l.chatType !== 'private') {
       if (tg) audience = await cached(`tg:${l.chatId}`, fresh, () => telegramAudience(tg.token, l.chatId))
@@ -143,12 +157,14 @@ export async function listBotChats(provider: BotProvider, fresh = false): Promis
  * el panel admin, así que abrir el ranking no dispara consultas nuevas a
  * Telegram/Discord salvo una vez por hora y comunidad.
  */
-export async function audienceByCommunity(): Promise<Map<string, { members: number | null; online: number | null; link: string | null }>> {
+export async function audienceByCommunity(): Promise<
+  Map<string, { members: number | null; online: number | null; link: string | null; image: string | null }>
+> {
   const links = await db.chatLink.findMany({
     where: { chatType: { not: 'private' }, active: true },
     select: { provider: true, chatId: true, serverId: true, chatType: true },
   })
-  const out = new Map<string, { members: number | null; online: number | null; link: string | null }>()
+  const out = new Map<string, { members: number | null; online: number | null; link: string | null; image: string | null }>()
   if (links.length === 0) return out
 
   const tg = links.some((l) => l.provider === 'telegram') ? await telegramConfig() : null
@@ -157,13 +173,13 @@ export async function audienceByCommunity(): Promise<Map<string, { members: numb
   await mapLimited(links, 4, async (l) => {
     const key = communityKeyOf(l)
     if (!key || out.has(key)) return
-    let audience: Audience = { members: null, online: null, link: null, error: null }
+    let audience: Audience = { members: null, online: null, link: null, image: null, error: null }
     if (l.provider === 'telegram' && tg) {
       audience = await cached(`tg:${l.chatId}`, false, () => telegramAudience(tg.token, l.chatId))
     } else if (l.provider === 'discord' && dc && l.serverId) {
       audience = await cached(`dc:${l.serverId}`, false, () => discordAudience(dc.token, l.serverId!))
     }
-    out.set(key, { members: audience.members, online: audience.online, link: audience.link })
+    out.set(key, { members: audience.members, online: audience.online, link: audience.link, image: audience.image })
   })
   return out
 }

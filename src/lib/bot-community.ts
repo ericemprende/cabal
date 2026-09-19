@@ -145,6 +145,8 @@ export type CommunityBoardRow = {
   chats: number
   members: number | null
   online: number | null
+  /** Foto del grupo, canal o servidor. */
+  image: string | null
   /** Enlace público para unirse, si la comunidad tiene uno. */
   link: string | null
   callers: number
@@ -194,7 +196,7 @@ export async function communityBoard(period: CallPeriod): Promise<CommunityBoard
     if (found) found.row.chats++
     else {
       byKey.set(key, {
-        row: { key, label, provider, chats: 1, members: null, online: null, link: null },
+        row: { key, label, provider, chats: 1, members: null, online: null, image: null, link: null },
         calls: [],
         byUser: new Map(),
         lastCallAt: null,
@@ -229,6 +231,7 @@ export async function communityBoard(period: CallPeriod): Promise<CommunityBoard
       ...acc.row,
       members: a?.members ?? null,
       online: a?.online ?? null,
+      image: a?.image ?? null,
       link: a?.link ?? null,
       callers: acc.byUser.size,
       summary: summarizeCalls(acc.calls),

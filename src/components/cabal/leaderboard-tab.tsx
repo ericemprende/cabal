@@ -171,15 +171,7 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
       {clans.map((c, i) => (
         <div key={c.key} className="card-surface flex flex-col gap-3 rounded-xl border border-white/10 p-4">
           <div className="flex items-start gap-3">
-            <span
-              className={cn(
-                'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border',
-                c.provider === 'telegram' ? 'border-[#229ED9]/30 bg-[#229ED9]/10 text-[#5cc0f0]' : 'border-[#5865F2]/30 bg-[#5865F2]/10 text-[#98a2fa]'
-              )}
-              aria-hidden
-            >
-              {c.provider === 'telegram' ? <Send className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
-            </span>
+<ClanAvatar clan={c} />
             <div className="min-w-0 flex-1">
               <p className="truncate font-display text-sm font-bold">
                 #{i + 1} {c.name}
@@ -242,6 +234,47 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
         </div>
       ))}
     </div>
+  )
+}
+
+/** Foto de la comunidad con el sello de Telegram o Discord; sin foto, el icono del proveedor. */
+function ClanAvatar({ clan }: { clan: ClanDTO }) {
+  const [broken, setBroken] = useState(false)
+  const telegram = clan.provider === 'telegram'
+  const Icon = telegram ? Send : MessageSquare
+  return (
+    <span className="relative h-11 w-11 shrink-0">
+      {clan.image && !broken ? (
+        <img
+          src={clan.image}
+          alt={`Logo de ${clan.name}`}
+          width={44}
+          height={44}
+          loading="lazy"
+          onError={() => setBroken(true)}
+          className="h-11 w-11 rounded-lg border border-white/10 object-cover"
+        />
+      ) : (
+        <span
+          className={cn(
+            'flex h-11 w-11 items-center justify-center rounded-lg border',
+            telegram ? 'border-[#229ED9]/30 bg-[#229ED9]/10 text-[#5cc0f0]' : 'border-[#5865F2]/30 bg-[#5865F2]/10 text-[#98a2fa]'
+          )}
+          aria-hidden
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+      )}
+      <span
+        className={cn(
+          'absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-[#0a0b08]',
+          telegram ? 'bg-[#229ED9] text-white' : 'bg-[#5865F2] text-white'
+        )}
+        title={telegram ? 'Telegram' : 'Discord'}
+      >
+        <Icon className="h-2.5 w-2.5" aria-label={telegram ? 'Telegram' : 'Discord'} />
+      </span>
+    </span>
   )
 }
 

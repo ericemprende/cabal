@@ -390,6 +390,8 @@ export interface ClanDTO {
   chats: number
   members: number | null
   online: number | null
+  /** Foto del grupo, canal o servidor. null = enseña el icono del proveedor. */
+  image: string | null
   /** Enlace público para unirse, si la comunidad tiene uno. */
   link: string | null
   /** Cuánta gente distinta ha dado calls ahí. */
