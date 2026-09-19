@@ -621,6 +621,8 @@ model ChatLink {
   notifyTheses    Boolean  @default(false) // tesis nuevas del feed
   // Solo avisos de estos tokens (contratos o "$TICKER"). Vacío = todos.
   tokenFilter     String[] @default([])
+  // Solo calls, tesis y lanzamientos de gente a la que sigue quien vinculó el chat
+  onlyFollowing   Boolean  @default(false)
   active          Boolean  @default(true) // false = el bot fue expulsado o bloqueado
   lastError       String?
   createdAt       DateTime @default(now())

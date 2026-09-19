@@ -58,6 +58,8 @@ export type ChatLinkDTO = {
   notifyCalls: boolean
   /** Solo avisos de estos tokens (contratos o "$TICKER"). Vacío = todos. */
   tokenFilter: string[]
+  /** Solo calls, tesis y lanzamientos de cuentas que sigue el dueño del chat. */
+  onlyFollowing: boolean
   active: boolean
   lastError: string | null
   createdAt: string

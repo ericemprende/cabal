@@ -124,7 +124,7 @@ async function announceNewLaunches(senders: Senders, r: TickResult) {
     const chats = await db.chatLink.findMany({
       where: { provider: { in: providersOf(senders) }, active: true, notifyLaunches: true },
     })
-    const sent = await broadcast(senders, onlyMatching(chats, launchSubject(l)), (lang) => launchMessage(l, 'new', lang), l.createdAt)
+    const sent = await broadcast(senders, await onlyMatching(chats, launchSubject(l)), (lang) => launchMessage(l, 'new', lang), l.createdAt)
     await markSent(key, sent)
     r.launches++
     r.messages += sent
@@ -164,8 +164,8 @@ async function announceNewCalls(senders: Senders, r: TickResult) {
         ...(c.chatLinkId ? { id: { not: c.chatLinkId } } : {}),
       },
     })
-    const subject = { contracts: [c.contract, c.token?.contract], tickers: [c.token?.ticker] }
-    const sent = await broadcast(senders, onlyMatching(chats, subject), (lang) => callMessage(c, lang), c.createdAt)
+    const subject = { contracts: [c.contract, c.token?.contract], tickers: [c.token?.ticker], authorId: c.userId }
+    const sent = await broadcast(senders, await onlyMatching(chats, subject), (lang) => callMessage(c, lang), c.createdAt)
     await markSent(key, sent)
     r.calls++
     r.messages += sent
@@ -201,8 +201,9 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
     const subject = {
       contracts: [p.contract, p.token?.contract, p.launch?.contract],
       tickers: [p.token?.ticker, p.launch?.ticker],
+      authorId: p.userId,
     }
-    const sent = await broadcast(senders, onlyMatching(chats, subject), (lang) => thesisMessage(p, lang), p.createdAt)
+    const sent = await broadcast(senders, await onlyMatching(chats, subject), (lang) => thesisMessage(p, lang), p.createdAt)
     await markSent(key, sent)
     r.theses++
     r.messages += sent
@@ -323,7 +324,7 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
       })
       sent += await broadcast(
         senders,
-        onlyMatching(chats, launchSubject(l)).filter((c) => !alreadySent.has(c.id)),
+        (await onlyMatching(chats, launchSubject(l))).filter((c) => !alreadySent.has(c.id)),
         (lang) => launchMessage(l, 'soon', lang, minutes)
       )
     }
@@ -352,16 +353,31 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
 
 // ---------- Envío ----------
 
+type Subject = FilterSubject & { authorId: string }
+
 /**
- * Deja fuera los chats con filtro por token que no incluye el de este aviso.
- * Los privados no se filtran: el filtro es cosa de comunidades.
+ * Deja fuera los chats cuyo filtro no deja pasar este aviso: el de token
+ * (su lista no incluye este token) y el de "solo gente que sigo" (quien
+ * vinculó el chat no sigue al autor; lo suyo propio sí pasa).
  */
-function onlyMatching(chats: ChatLink[], subject: FilterSubject): ChatLink[] {
-  return chats.filter((c) => c.chatType === 'private' || matchesTokenFilter(c.tokenFilter, subject))
+async function onlyMatching(chats: ChatLink[], subject: Subject): Promise<ChatLink[]> {
+  const byToken = chats.filter((c) => matchesTokenFilter(c.tokenFilter, subject))
+  const owners = [...new Set(byToken.filter((c) => c.onlyFollowing && c.userId !== subject.authorId).map((c) => c.userId))]
+  const following = owners.length
+    ? new Set(
+        (
+          await db.follow.findMany({
+            where: { userId: { in: owners }, targetId: subject.authorId },
+            select: { userId: true },
+          })
+        ).map((f) => f.userId)
+      )
+    : new Set<string>()
+  return byToken.filter((c) => !c.onlyFollowing || c.userId === subject.authorId || following.has(c.userId))
 }
 
-function launchSubject(l: { contract: string | null; ticker: string | null }): FilterSubject {
-  return { contracts: [l.contract], tickers: [l.ticker] }
+function launchSubject(l: { contract: string | null; ticker: string | null; createdById: string }): Subject {
+  return { contracts: [l.contract], tickers: [l.ticker], authorId: l.createdById }
 }
 
 /**

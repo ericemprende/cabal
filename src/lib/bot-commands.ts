@@ -94,12 +94,11 @@ export async function upcomingMessage(lang: Lang): Promise<BotMessage> {
  * comprobado que el chat existe y, si hay argumento, que puede cambiarlo.
  */
 export async function filterCommand(
-  chat: { id: string; chatType: string; tokenFilter: string[] },
+  chat: { id: string; tokenFilter: string[] },
   arg: string | null,
   lang: Lang
 ): Promise<string> {
   const tx = t(lang)
-  if (chat.chatType === 'private') return tx.filterPrivate
   let filter = chat.tokenFilter
   if (arg) {
     if (['off', 'clear', 'none', 'todos', 'all'].includes(arg.toLowerCase())) {

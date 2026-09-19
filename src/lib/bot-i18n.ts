@@ -69,6 +69,7 @@ const es = {
     notifyReminders: 'Aviso 1 h antes de cada launch',
     notifyTheses: 'Tesis nuevas',
     notifyCalls: 'Calls nuevas de Cabal',
+    onlyFollowing: 'Solo de gente que sigo',
   },
   on: 'activado',
   off: 'desactivado',
@@ -171,7 +172,6 @@ ${list}
 
 <code>/filter X</code> añade o quita un token · <code>/filter off</code> lo quita todo.`,
   filterBad: 'Eso no parece un contrato ni un ticker. Prueba con <code>/filter CONTRATO</code> o <code>/filter $TICKER</code>.',
-  filterPrivate: 'El filtro por token es para grupos y canales. En tu privado llegan los avisos que tú eliges.',
   filterFull: (max: number) => `Máximo ${max} tokens en el filtro. Quita alguno antes con <code>/filter X</code>.`,
 }
 
@@ -184,6 +184,7 @@ const en: Dict = {
     notifyReminders: '1 h before every launch',
     notifyTheses: 'New theses',
     notifyCalls: 'New Cabal calls',
+    onlyFollowing: 'Only from people I follow',
   },
   on: 'on',
   off: 'off',
@@ -284,7 +285,6 @@ ${list}
 
 <code>/filter X</code> adds or removes a token · <code>/filter off</code> clears it.`,
   filterBad: "That doesn't look like a contract or a ticker. Try <code>/filter CONTRACT</code> or <code>/filter $TICKER</code>.",
-  filterPrivate: 'The token filter is for groups and channels. Your private chat gets the alerts you choose.',
   filterFull: (max: number) => `Up to ${max} tokens in the filter. Remove one first with <code>/filter X</code>.`,
 }
 

@@ -16,7 +16,7 @@ async function ownChat(id: string) {
   return { chat }
 }
 
-/** PATCH /api/me/chats/:id — { notifyLaunches?, notifyReminders?, notifyTheses?, notifyCalls?, lang?, reminderLeads?, tokenFilter? } */
+/** PATCH /api/me/chats/:id — { notifyLaunches?, notifyReminders?, notifyTheses?, notifyCalls?, lang?, reminderLeads?, tokenFilter?, onlyFollowing? } */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -28,9 +28,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (isLang(body.lang)) data.lang = body.lang
     const leads = sanitizeLeads(body.reminderLeads)
     if (leads) data.reminderLeads = leads
-    // El filtro es de comunidades: en un privado no se guarda
     const filter = sanitizeTokenFilter(body.tokenFilter)
-    if (filter && chat.chatType !== 'private') data.tokenFilter = filter
+    if (filter) data.tokenFilter = filter
     if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nada que cambiar' }, { status: 400 })
     const updated = await db.chatLink.update({ where: { id: chat.id }, data })
     return NextResponse.json(toChatLinkDTO(updated))

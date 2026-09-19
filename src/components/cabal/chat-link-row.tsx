@@ -15,11 +15,12 @@ import { MAX_TOKEN_FILTER, normalizeFilterEntry, toggleFilterEntry } from '@/lib
  * tipo de chat (un "grupo" de Telegram es un "canal" de servidor en Discord).
  */
 
-const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls'; label: string }[] = [
+const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'onlyFollowing'; label: string }[] = [
   { key: 'notifyLaunches', label: 'Lanzamientos nuevos' },
   { key: 'notifyReminders', label: 'Aviso antes de cada launch' },
   { key: 'notifyCalls', label: 'Calls nuevas de Cabal' },
   { key: 'notifyTheses', label: 'Tesis nuevas' },
+  { key: 'onlyFollowing', label: 'Solo de gente que sigo' },
 ]
 
 export const BRAND = { telegram: '#229ED9', discord: '#5865F2' } as const
@@ -104,7 +105,7 @@ function LeadPicker({ chat, brand, text }: { chat: ChatLinkDTO; brand: string; t
 }
 
 /**
- * Filtro por token (solo grupos y canales): con tokens en la lista, al chat
+ * Filtro por token: con tokens en la lista, al chat
  * solo le llegan las calls, tesis, lanzamientos y avisos de esos tokens.
  */
 function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
@@ -258,7 +259,7 @@ export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
         </div>
       </div>
       <LeadPicker chat={chat} brand={brand} text={text} />
-      {!isPrivate && <TokenFilterPicker chat={chat} text={text} />}
+      <TokenFilterPicker chat={chat} text={text} />
       <div className="mt-2 space-y-1.5">
         {PREFS.map((p) => (
           <label key={p.key} className="flex items-center justify-between gap-2 text-[12px]">
