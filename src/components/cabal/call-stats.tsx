@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Award, Clock, Crosshair, LineChart, Medal, Target, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { fmtMc, timeAgo } from '@/lib/cabal'
+import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { CALL_PERIODS, WIN_MULTIPLE, fmtMultiple, type CallPeriod } from '@/lib/call-score'
 import { NetworkBadge, TokenGlyph } from '@/components/cabal/shared'
 import { CallShareDialog } from '@/components/cabal/post-card'
@@ -94,10 +94,24 @@ export function CallStats({ handle }: { handle: string }) {
                     <p className="text-[10px] text-muted-foreground">#{i + 1} · {timeAgo(c.createdAt)}</p>
                   </div>
                 </div>
-                <p className="mt-2 font-mono text-xl font-bold text-primary">{fmtMultiple(c.peakMultiple)}</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {c.entryMc ? `desde ${fmtMc(c.entryMc)} MC` : 'pico desde la call'}
-                </p>
+                {(() => {
+                  const h = callHeadline(c)
+                  return (
+                    <>
+                      <p className={cn('mt-2 font-mono text-xl font-bold', h.tone)}>{h.text}</p>
+                      <p className="truncate text-[10px] text-muted-foreground">
+                        {!h.showsPeak && `pico ${fmtMultiple(c.peakMultiple)} · `}
+                        {c.entryMc ? `desde ${fmtMc(c.entryMc)} MC` : 'desde la call'}
+                      </p>
+                      {/* Llegó a acierto pero ahora pierde: que se vea, sin quitarle el pico */}
+                      {h.showsPeak && c.currentMultiple !== null && c.currentMultiple < 1 && (
+                        <p className="truncate text-[10px] font-bold text-[#ff8080]">
+                          ahora {fmtPct((c.currentMultiple - 1) * 100)}
+                        </p>
+                      )}
+                    </>
+                  )
+                })()}
               </button>
             ))}
           </div>
@@ -185,8 +199,32 @@ function Tile({
   )
 }
 
+/**
+ * Cifra principal de una call. Si llegó a acierto (pico ≥ 1.5X) se enseña el
+ * pico en verde; si no, cómo va ahora en % (rojo si pierde). Así una call que
+ * nunca subió no sale como "1.00X" en verde cuando va en -47%: la misma idea
+ * que la tarjeta de compartir.
+ */
+function callHeadline(c: { peakMultiple: number | null; currentMultiple: number | null }): {
+  text: string
+  tone: string
+  showsPeak: boolean
+} {
+  if (c.peakMultiple !== null && c.peakMultiple >= WIN_MULTIPLE) {
+    return { text: fmtMultiple(c.peakMultiple), tone: 'text-primary', showsPeak: true }
+  }
+  if (c.currentMultiple === null) return { text: fmtMultiple(c.peakMultiple), tone: 'text-foreground/80', showsPeak: true }
+  const pct = (c.currentMultiple - 1) * 100
+  return {
+    text: fmtPct(pct),
+    tone: pct < 0 ? 'text-[#ff8080]' : pct > 0 ? 'text-primary' : 'text-foreground/80',
+    showsPeak: false,
+  }
+}
+
 function CallRow({ call }: { call: CallRowDTO }) {
   const evaluated = call.peakMultiple !== null
+  const h = callHeadline(call)
   return (
     <div className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-[#0a0b08] p-2.5">
       <TokenGlyph src={call.image} ticker={call.symbol ?? '?'} size="md" />
@@ -204,11 +242,11 @@ function CallRow({ call }: { call: CallRowDTO }) {
       </div>
       {evaluated ? (
         <div className="shrink-0 text-right">
-          <p className={cn('font-mono text-sm font-bold', call.peakMultiple! >= WIN_MULTIPLE ? 'text-primary' : 'text-foreground/80')}>
-            {fmtMultiple(call.peakMultiple)} <span className="text-[10px] font-normal text-muted-foreground">pico</span>
+          <p className={cn('font-mono text-sm font-bold', h.tone)}>
+            {h.text} <span className="text-[10px] font-normal text-muted-foreground">{h.showsPeak ? 'pico' : 'ahora'}</span>
           </p>
           <p className="text-[10px] text-muted-foreground">
-            ahora {fmtMultiple(call.currentMultiple)} ·{' '}
+            {h.showsPeak ? `ahora ${fmtMultiple(call.currentMultiple)}` : `pico ${fmtMultiple(call.peakMultiple)}`} ·{' '}
             <span className={cn('font-bold', call.points > 0 ? 'text-primary' : call.points < 0 ? 'text-[#ff8080]' : '')}>
               {call.points > 0 ? `+${call.points}` : call.points} pts
             </span>

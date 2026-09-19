@@ -163,6 +163,27 @@ function candleTops(list: unknown[][]): (number | null)[] {
 type OhlcvJson = { data?: { attributes?: { ohlcv_list?: number[][] } } }
 
 /**
+ * Limitador de GeckoTerminal para todo el proceso. Su API gratuita admite ~30
+ * peticiones por minuto POR IP, y el servidor es una sola IP: cuando varias
+ * partes pedían velas a la vez (tarjetas del feed, bot, sincronizaciones),
+ * llegaban 429 y los picos se quedaban en el valor provisional. Aquí todas las
+ * peticiones pasan en fila, una cada GECKO_GAP_MS. Si la fila es tan larga que
+ * habría que esperar más de `maxWaitMs`, no se pide (null), en vez de colgar
+ * una petición web.
+ */
+const GECKO_GAP_MS = 2500
+let geckoNextAt = 0
+
+async function geckoJson<T>(url: string, maxWaitMs = 60_000): Promise<T | null> {
+  const now = Date.now()
+  const at = Math.max(now, geckoNextAt)
+  if (at - now > maxWaitMs) return null
+  geckoNextAt = at + GECKO_GAP_MS
+  if (at > now) await new Promise((r) => setTimeout(r, at - now))
+  return fetchJson<T>(url, 7000)
+}
+
+/**
  * Velas OHLCV de un pool en GeckoTerminal, SIEMPRE con el precio en USD de
  * nuestro token (`token=<contrato>`). Sin ese parámetro GeckoTerminal usa su
  * propia "base" del pool, que en pools contra otra memecoin (OOF/RBLX,
@@ -180,7 +201,7 @@ async function fetchCandles(
   const qs = new URLSearchParams({ aggregate: '1', limit: String(opts.limit ?? 1000), token: tokenAddress })
   if (opts.beforeSec) qs.set('before_timestamp', String(opts.beforeSec))
   const url = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/${timeframe}?${qs}`
-  const json = await fetchJson<OhlcvJson>(url, 7000)
+  const json = await geckoJson<OhlcvJson>(url)
   return (json?.data?.attributes?.ohlcv_list ?? [])
     .map((c) => {
       const ts = Number(c[0])
@@ -249,8 +270,8 @@ async function fetchPeakSince(
   tokenAddress: string,
   sinceMs: number,
   anchors: { entryPriceUsd: number; currentPriceUsd: number | null }
-): Promise<{ peakPrice: number | null; peakAt: number | null }> {
-  const none = { peakPrice: null, peakAt: null }
+): Promise<{ peakPrice: number | null; peakAt: number | null; correctedEntry: number | null }> {
+  const none = { peakPrice: null, peakAt: null, correctedEntry: null }
   const geckoNet = GECKO_NETWORK[network]
   if (!geckoNet || !pairAddress) return none
   const now = Date.now()
@@ -285,10 +306,19 @@ async function fetchPeakSince(
     console.warn(`[peak] velas descartadas ${tokenAddress}: último cierre ${newest[4]} vs actual ${anchors.currentPriceUsd}`)
     return none
   }
+  let correctedEntry: number | null = null
   const atCall = minutes.find((c) => c[0] === callMinute) ?? minutes[minutes.length - 1]
   if (atCall && atCall[0] - callMinute < 10 * MINUTE_MS && !samePriceScale(atCall[4], anchors.entryPriceUsd)) {
-    console.warn(`[peak] velas descartadas ${tokenAddress}: cierre en la call ${atCall[4]} vs entrada ${anchors.entryPriceUsd}`)
-    return none
+    // Las velas ya cuadran con el precio actual. Si la entrada guardada está a
+    // más de 20x del precio real de ese minuto, la corrupta es la entrada (se
+    // reconstruyó con velas de otro token): se corrige. Entre 5x y 20x puede ser
+    // volatilidad real del primer minuto, así que se descarta el pico.
+    if (samePriceScale(atCall[4], anchors.entryPriceUsd, ENTRY_CORRUPT_RATIO)) {
+      console.warn(`[peak] velas descartadas ${tokenAddress}: cierre en la call ${atCall[4]} vs entrada ${anchors.entryPriceUsd}`)
+      return none
+    }
+    console.warn(`[peak] entrada corregida ${tokenAddress}: ${anchors.entryPriceUsd} → ${atCall[4]}`)
+    correctedEntry = atCall[4]
   }
 
   let peakPrice: number | null = null
@@ -307,8 +337,11 @@ async function fetchPeakSince(
       else consider(tops[i], c[0])
     })
   }
-  return { peakPrice, peakAt }
+  return { peakPrice, peakAt, correctedEntry }
 }
+
+/** Una entrada guardada a más de esto del precio real del minuto de la call es un dato corrupto. */
+const ENTRY_CORRUPT_RATIO = 20
 
 /** Top-10 % del supply vía RPC público de Solana (mejor esfuerzo). */
 async function fetchTop10Solana(ca: string): Promise<number | null> {
@@ -583,6 +616,8 @@ export type CallResult = {
   /** veces que multiplicó desde la call hasta su PICO, aunque después haya bajado */
   peakMultiple: number | null
   pairUrl: string
+  /** La entrada guardada era corrupta y se corrigió con la vela del minuto de la call. */
+  entryCorrected: boolean
 }
 
 const EMPTY_CALL_RESULT: CallResult = {
@@ -600,6 +635,7 @@ const EMPTY_CALL_RESULT: CallResult = {
   multiple: null,
   peakMultiple: null,
   pairUrl: '',
+  entryCorrected: false,
 }
 
 /**
@@ -638,8 +674,14 @@ export async function fetchCallResult(
   network: string,
   ca: string,
   calledAt: Date,
-  storedEntry?: { priceUsd: number | null; mc: number | null }
+  storedEntry?: { priceUsd: number | null; mc: number | null },
+  /**
+   * false = solo DexScreener, sin velas (tarjetas, feed, bot): el pico lo
+   * calcula y guarda syncCallResults, que es lo único que pide velas.
+   */
+  opts: { candles?: boolean } = {}
 ): Promise<CallResult> {
+  const withCandles = opts.candles !== false
   const dexChain = DEX_CHAIN[network]
   if (!dexChain) return { ...EMPTY_CALL_RESULT }
 
@@ -663,7 +705,7 @@ export async function fetchCallResult(
   // si no existe (posts de antes de esta columna, o falló al publicar) se
   // reconstruye con una vela de GeckoTerminal.
   let entryPriceUsd: number | null = storedEntry?.priceUsd ?? null
-  if (entryPriceUsd === null && geckoNet && pair.pairAddress) {
+  if (entryPriceUsd === null && withCandles && geckoNet && pair.pairAddress) {
     // antes de calledAt + un pequeño margen, para asegurarnos de que la vela
     // de ese minuto ya exista cuando se pide justo después de publicar
     const beforeTs = Math.floor(calledAt.getTime() / 1000) + 90
@@ -681,31 +723,18 @@ export async function fetchCallResult(
   const tooRecentForCandle = Date.now() - calledAt.getTime() < 3 * 60_000
   if (entryPriceUsd === null && geckoNet && tooRecentForCandle) entryPriceUsd = currentPriceUsd
 
-  const pctChange =
-    entryPriceUsd && currentPriceUsd && entryPriceUsd > 0
-      ? ((currentPriceUsd - entryPriceUsd) / entryPriceUsd) * 100
-      : null
-
-  // MC al momento de la call: el guardado al publicar si existe; si no, se
-  // estima a partir del MC actual escalado por el cambio de precio (supply
-  // constante).
-  const entryMc =
-    storedEntry?.mc ??
-    (currentMc && entryPriceUsd && currentPriceUsd && currentPriceUsd > 0
-      ? Math.round(currentMc * (entryPriceUsd / currentPriceUsd))
-      : null)
-
-  const multiple =
-    pctChange !== null && pctChange > 0 && entryPriceUsd && currentPriceUsd
-      ? currentPriceUsd / entryPriceUsd
-      : null
-
+  // El pico se calcula antes que el % porque puede corregir una entrada corrupta
   let peakPriceUsd: number | null = null
   let peakMc: number | null = null
   let peakAt: number | null = null
   let peakMultiple: number | null = null
-  if (geckoNet && pair.pairAddress && entryPriceUsd) {
+  let entryCorrected = false
+  if (withCandles && geckoNet && pair.pairAddress && entryPriceUsd) {
     const peak = await fetchPeakSince(network, pair.pairAddress, ca, calledAt.getTime(), { entryPriceUsd, currentPriceUsd })
+    if (peak.correctedEntry !== null) {
+      entryPriceUsd = peak.correctedEntry
+      entryCorrected = true
+    }
     // El pico nunca puede ser menor que el precio actual (última vela puede no
     // haber cerrado aún); si algo salió raro, usamos el actual como piso.
     if (peak.peakPrice !== null && currentPriceUsd !== null) {
@@ -717,6 +746,25 @@ export async function fetchCallResult(
       peakMultiple = peakPriceUsd / entryPriceUsd
     }
   }
+
+  const pctChange =
+    entryPriceUsd && currentPriceUsd && entryPriceUsd > 0
+      ? ((currentPriceUsd - entryPriceUsd) / entryPriceUsd) * 100
+      : null
+
+  // MC al momento de la call: el guardado al publicar si existe; si no, se
+  // estima a partir del MC actual escalado por el cambio de precio (supply
+  // constante).
+  const entryMc =
+    (entryCorrected ? null : storedEntry?.mc) ??
+    (currentMc && entryPriceUsd && currentPriceUsd && currentPriceUsd > 0
+      ? Math.round(currentMc * (entryPriceUsd / currentPriceUsd))
+      : null)
+
+  const multiple =
+    pctChange !== null && pctChange > 0 && entryPriceUsd && currentPriceUsd
+      ? currentPriceUsd / entryPriceUsd
+      : null
 
   return {
     found: true,
@@ -733,6 +781,7 @@ export async function fetchCallResult(
     multiple,
     peakMultiple,
     pairUrl: pair.url ?? '',
+    entryCorrected,
   }
 }
 
@@ -784,9 +833,9 @@ export async function fetchHolders(
 ): Promise<{ count: number | null; top10Pct: number | null } | null> {
   const geckoNet = GECKO_NETWORK[network]
   if (!geckoNet || !ca) return null
-  const json = await fetchJson<{
+  const json = await geckoJson<{
     data?: { attributes?: { holders?: { count?: number | null; distribution_percentage?: { top_10?: string | null } } } }
-  }>(`https://api.geckoterminal.com/api/v2/networks/${geckoNet}/tokens/${encodeURIComponent(ca)}/info`, 7000)
+  }>(`https://api.geckoterminal.com/api/v2/networks/${geckoNet}/tokens/${encodeURIComponent(ca)}/info`)
   if (!json?.data) return null
   const h = json.data.attributes?.holders
   const count = typeof h?.count === 'number' && h.count > 0 ? h.count : null

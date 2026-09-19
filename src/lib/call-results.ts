@@ -28,6 +28,8 @@ const BATCH = 6
 const MIN_GAP_SECONDS = 90
 /** Pausa entre calls de una misma pasada. */
 const CALL_GAP_MS = 3000
+/** Si una revisión se quedó sin velas, se reintenta tras esto. */
+const RETRY_MS = 5 * 60_000
 
 /** Cada cuánto se vuelve a revisar una call según su edad. */
 function recheckEvery(ageMs: number): number {
@@ -79,16 +81,22 @@ export async function syncCallResults(limit = BATCH): Promise<number> {
       })
       const entry = r.entryPriceUsd
       const current = entry && r.currentPriceUsd ? r.currentPriceUsd / entry : null
-      // El pico nunca baja: una revisión con menos velas no puede borrar un máximo ya visto
+      // El pico nunca baja: una revisión con menos velas no puede borrar un
+      // máximo ya visto. Salvo si la entrada se corrigió: el pico guardado se
+      // midió contra una entrada falsa y no vale.
+      const stored = r.entryCorrected ? null : call.peakMultiple
       const freshPeak = r.peakMultiple ?? (current !== null ? Math.max(current, 1) : null)
-      const peak =
-        freshPeak !== null || call.peakMultiple !== null
-          ? Math.max(freshPeak ?? 0, call.peakMultiple ?? 0)
-          : null
+      const peak = freshPeak !== null || stored !== null ? Math.max(freshPeak ?? 0, stored ?? 0) : null
+      // Sin velas (GeckoTerminal limitó o falló) el pico es provisional: se
+      // reintenta en unos minutos en vez de esperar a la revisión normal
+      const retrySoon = r.found && r.peakMultiple === null && !final
+      const checkedAt = retrySoon
+        ? new Date(Date.now() - recheckEvery(now - call.createdAt.getTime()) + RETRY_MS)
+        : new Date()
       await db.post.update({
         where: { id: call.id },
         data: {
-          resultCheckedAt: new Date(),
+          resultCheckedAt: checkedAt,
           resultFinal: final,
           ...(r.found
             ? {
@@ -96,9 +104,9 @@ export async function syncCallResults(limit = BATCH): Promise<number> {
                 currentMultiple: current,
                 resultSymbol: r.symbol || undefined,
                 resultImage: r.image || undefined,
-                // Guarda la entrada reconstruida para no volver a pedir la vela
-                ...(call.entryPriceUsd === null && entry ? { entryPriceUsd: entry } : {}),
-                ...(call.entryMc === null && r.entryMc ? { entryMc: r.entryMc } : {}),
+                // Guarda la entrada reconstruida (o corregida) para no volver a pedir la vela
+                ...((call.entryPriceUsd === null || r.entryCorrected) && entry ? { entryPriceUsd: entry } : {}),
+                ...((call.entryMc === null || r.entryCorrected) && r.entryMc ? { entryMc: r.entryMc } : {}),
               }
             : {}),
         },
@@ -128,37 +136,45 @@ type CallPost = {
 }
 
 /**
- * Resultado en vivo de una call (tarjeta, feed, /pnl) sin que el pico pueda
- * "desaparecer". El pico se calcula con velas de GeckoTerminal, que a menudo
- * falla o limita peticiones: sin esto, la misma call salía unas veces con
- * "llegó a 5.1x" y otras solo con el %. Ahora:
- *  - si el pico en vivo falta o es menor, se usa el guardado (nunca baja);
- *  - si es mayor, se guarda enseguida, para que el perfil no espere a la
- *    siguiente pasada de syncCallResults.
+ * Resultado en vivo de una call (tarjeta, feed, /pnl del bot). Solo pide el
+ * precio actual a DexScreener: el pico es el que guardó syncCallResults, que
+ * es lo ÚNICO que pide velas a GeckoTerminal. Antes cada tarjeta vista pedía
+ * 3-4 series de velas; con varias personas en el feed se pasaba el límite de
+ * GeckoTerminal (429) y los picos se quedaban en el valor provisional.
+ *  - Pico = el guardado, o el precio actual si es más alto (y se guarda).
+ *  - Sin pico guardado todavía (call aún no revisada): pico null, la tarjeta
+ *    enseña el % y se lanza una revisión en segundo plano.
  */
 export async function liveCallResult(post: CallPost): Promise<CallResult> {
   const result = await cached(`call-result:${post.id}`, 20, () =>
-    fetchCallResult(post.network, post.contract, post.createdAt, { priceUsd: post.entryPriceUsd, mc: post.entryMc })
+    fetchCallResult(
+      post.network,
+      post.contract,
+      post.createdAt,
+      { priceUsd: post.entryPriceUsd, mc: post.entryMc },
+      { candles: false }
+    )
   )
+  kickCallResultsSync()
   if (!result.found) return result
+  const entry = result.entryPriceUsd
+  const current = entry && result.currentPriceUsd ? result.currentPriceUsd / entry : null
   const stored = post.peakMultiple
-  const live = result.peakMultiple
-  if (stored !== null && (live === null || stored > live)) {
-    const entryMc = result.entryMc
-    return {
-      ...result,
-      peakMultiple: stored,
-      peakMc: entryMc !== null ? Math.round(entryMc * stored) : result.peakMc,
-      peakPriceUsd: result.entryPriceUsd !== null ? result.entryPriceUsd * stored : result.peakPriceUsd,
-      peakAt: null,
-    }
-  }
-  if (live !== null && (stored === null || live > stored + 0.005)) {
-    await db.post.update({ where: { id: post.id }, data: { peakMultiple: live } }).catch(() => {})
+  if (stored === null) return { ...result, peakMultiple: null, peakMc: null, peakPriceUsd: null, peakAt: null }
+
+  const peak = Math.max(stored, current ?? 0)
+  if (current !== null && current > stored + 0.005) {
+    await db.post.update({ where: { id: post.id }, data: { peakMultiple: current } }).catch(() => {})
     await refreshUserCallTotals(post.userId).catch(() => {})
     await invalidate('leaderboard:*').catch(() => {})
   }
-  return result
+  return {
+    ...result,
+    peakMultiple: peak,
+    peakMc: result.entryMc !== null ? Math.round(result.entryMc * peak) : null,
+    peakPriceUsd: entry !== null ? entry * peak : null,
+    peakAt: null,
+  }
 }
 
 /** Totales de siempre del usuario (perfil, badges, pestaña Devs). */

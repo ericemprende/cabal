@@ -39,7 +39,8 @@ export async function GET(req: Request) {
       const chunkResults = await Promise.all(
         chunk.map(async (c) => {
           const r = await cached(`call-result:${c.id}`, 60, () =>
-            fetchCallResult(c.network!, c.contract!, c.createdAt, { priceUsd: c.entryPriceUsd, mc: c.entryMc })
+            // Solo el % actual: sin velas, que agotarían el límite de GeckoTerminal
+            fetchCallResult(c.network!, c.contract!, c.createdAt, { priceUsd: c.entryPriceUsd, mc: c.entryMc }, { candles: false })
           )
           return {
             id: c.id,
