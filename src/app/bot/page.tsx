@@ -264,6 +264,11 @@ export default function BotManualPage() {
         </p>
         <ul>
           <li>Desde el clan, cualquiera puede entrar a tu comunidad si tiene enlace público (@usuario en Telegram o una URL personalizada en Discord).</li>
+          <li>
+            La tarjeta también dice cuántos miembros de tu comunidad ya tienen cuenta en Cabal. Se cuenta preguntando,
+            por cada persona con su Telegram o Discord conectado a Cabal, si está en tu grupo: el bot nunca pide la lista
+            de miembros.
+          </li>
           <li>«Ver sus callers» filtra el ranking de Top Callers por esa comunidad.</li>
           <li>
             Si echas al bot del grupo o lo desvinculas con <code>/unlink</code>, el clan desaparece del ranking. Un clan

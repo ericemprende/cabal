@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { isBotProvider, PROVIDER_NAMES, type BotProvider } from '@/lib/bot-message'
 import { periodStart, summarizeCalls, type CallPeriod, type CallSummary } from '@/lib/call-score'
 import { audienceByCommunity } from '@/lib/bot-audience'
+import { cabalMembersOf, kickCabalMembersSync } from '@/lib/community-members'
 
 /**
  * Una "comunidad" es el grupo o servidor del que salen las calls, y es la
@@ -144,6 +145,8 @@ export type CommunityBoardRow = {
   /** Chats de esa comunidad con el bot (Discord puede tener varios canales). */
   chats: number
   members: number | null
+  /** Cuántos miembros de esa comunidad tienen cuenta en Cabal. null = aún sin calcular. */
+  cabalMembers: number | null
   online: number | null
   /** Foto del grupo, canal o servidor. */
   image: string | null
@@ -196,7 +199,7 @@ export async function communityBoard(period: CallPeriod): Promise<CommunityBoard
     if (found) found.row.chats++
     else {
       byKey.set(key, {
-        row: { key, label, provider, chats: 1, members: null, online: null, image: null, link: null },
+        row: { key, label, provider, chats: 1, members: null, cabalMembers: null, online: null, image: null, link: null },
         calls: [],
         byUser: new Map(),
         lastCallAt: null,
@@ -225,11 +228,15 @@ export async function communityBoard(period: CallPeriod): Promise<CommunityBoard
 
   // Miembros y enlace de cada comunidad (caché de una hora en bot-audience)
   const audience = await audienceByCommunity().catch(() => new Map())
+  // Cuántos de esos miembros están en Cabal: se calcula aparte y en segundo
+  // plano (una consulta por persona y comunidad), aquí solo se lee lo que haya
+  kickCabalMembersSync()
   const rows: CommunityBoardRow[] = [...byKey.values()].map((acc) => {
     const a = audience.get(acc.row.key)
     return {
       ...acc.row,
       members: a?.members ?? null,
+      cabalMembers: cabalMembersOf(acc.row.key),
       online: a?.online ?? null,
       image: a?.image ?? null,
       link: a?.link ?? null,

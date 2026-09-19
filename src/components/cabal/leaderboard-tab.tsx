@@ -189,6 +189,16 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
             </div>
           </div>
 
+          {c.cabalMembers !== null && (
+            <p className="flex items-center gap-1.5 rounded-lg border border-[#8FA83F]/20 bg-[#8FA83F]/8 px-2 py-1 text-[11px]">
+              <Users className="h-3 w-3 shrink-0 text-primary" aria-hidden />
+              <span className="font-bold text-primary">{c.cabalMembers.toLocaleString('es')}</span>
+              <span className="truncate text-muted-foreground">
+                {c.members !== null ? `de ${c.members.toLocaleString('es')} miembros` : 'miembros'} ya están en Cabal
+              </span>
+            </p>
+          )}
+
           <div className="grid grid-cols-3 gap-2 text-center">
             <Stat label="Calls" value={String(c.calls)} />
             <Stat label="Aciertos" value={c.calls > 0 ? `${c.winRate}%` : '—'} hint={c.calls > 0 ? `${c.wins} de ${c.calls}` : undefined} />

@@ -77,6 +77,7 @@ export async function GET(req: Request) {
       provider: c.provider,
       chats: c.chats,
       members: c.members,
+      cabalMembers: c.cabalMembers,
       online: c.online,
       image: c.image,
       link: c.link,

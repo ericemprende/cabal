@@ -389,6 +389,8 @@ export interface ClanDTO {
   /** Chats con el bot (en Discord, canales del mismo servidor). */
   chats: number
   members: number | null
+  /** Cuántos de esos miembros tienen cuenta en Cabal. null = aún sin calcular. */
+  cabalMembers: number | null
   online: number | null
   /** Foto del grupo, canal o servidor. null = enseña el icono del proveedor. */
   image: string | null
