@@ -772,3 +772,24 @@ export async function fetchMarketBatch(contracts: string[]): Promise<Map<string,
   }
   return out
 }
+
+/**
+ * Holders y % del supply en el top 10 de un token (GeckoTerminal, ficha del
+ * token). DexScreener no los da. null si la red no está en GeckoTerminal o
+ * la petición falla; cada campo, null si GeckoTerminal no lo tiene.
+ */
+export async function fetchHolders(
+  network: string,
+  ca: string
+): Promise<{ count: number | null; top10Pct: number | null } | null> {
+  const geckoNet = GECKO_NETWORK[network]
+  if (!geckoNet || !ca) return null
+  const json = await fetchJson<{
+    data?: { attributes?: { holders?: { count?: number | null; distribution_percentage?: { top_10?: string | null } } } }
+  }>(`https://api.geckoterminal.com/api/v2/networks/${geckoNet}/tokens/${encodeURIComponent(ca)}/info`, 7000)
+  if (!json?.data) return null
+  const h = json.data.attributes?.holders
+  const count = typeof h?.count === 'number' && h.count > 0 ? h.count : null
+  const top10 = Number(h?.distribution_percentage?.top_10)
+  return { count, top10Pct: Number.isFinite(top10) && top10 > 0 ? top10 : null }
+}

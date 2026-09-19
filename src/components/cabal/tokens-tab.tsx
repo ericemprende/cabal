@@ -18,6 +18,18 @@ const SORTS = [
   { key: 'risk', label: 'Riesgo', icon: ShieldAlert },
 ] as const
 
+/**
+ * Columnas de la lista. Estrecha: token, MC, 24h y comprar. Desde 42rem: red,
+ * holders, dev y comentarios. Desde 52rem: también precio y volumen. Las
+ * columnas ocultas van con `hidden`, así que cada plantilla lista solo las visibles.
+ */
+const GRID = cn(
+  'grid items-center gap-2',
+  'grid-cols-[minmax(0,1fr)_76px_60px_auto]',
+  '@2xl:grid-cols-[minmax(0,1fr)_60px_92px_64px_64px_100px_132px]',
+  '@[52rem]:grid-cols-[minmax(0,1fr)_60px_76px_92px_64px_64px_72px_100px_132px]'
+)
+
 const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'robinhood', 'arc', 'tron'] as const
 
 export function TokensTab() {
@@ -68,81 +80,98 @@ export function TokensTab() {
         ))}
       </div>
 
-      {/* Table header (desktop) */}
-      <div className="hidden items-center gap-3 px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:flex">
-        <span className="w-56">Token</span>
-        <span className="w-20">Red</span>
-        <span className="w-20 text-right">Precio</span>
-        <span className="w-24 text-right">Market Cap</span>
-        <span className="w-20 text-right">24h</span>
-        <span className="w-16 text-right">Holders</span>
-        <span className="w-20 text-right">Vol 24h</span>
-        <span className="flex-1 text-right">Dev</span>
-      </div>
+      {/* Cabecera y filas comparten la misma rejilla: cada dato cae bajo su título. Las
+          columnas dependen del ancho de la lista (no de la pantalla), porque la columna
+          central cambia según estén abiertas las barras laterales. */}
+      <div className="@container">
+        <div
+          className={cn(
+            GRID,
+            'mb-1.5 hidden px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground @2xl:grid'
+          )}
+        >
+          <span>Token</span>
+          <span>Red</span>
+          <span className="hidden text-right @[52rem]:block">Precio</span>
+          <span className="text-right">Market Cap</span>
+          <span className="text-right">24h</span>
+          <span className="text-right">Holders</span>
+          <span className="hidden text-right @[52rem]:block">Vol 24h</span>
+          <span className="pl-2">Dev</span>
+          <span />
+        </div>
 
-      {isLoading ? (
-        <div className="space-y-2">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-[64px] animate-pulse rounded-xl border border-white/8 bg-[#121410]" />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          {(tokens ?? []).map((t) => (
-            <button
-              key={t.id}
-              onClick={() => openToken(t.id)}
-              className="card-surface group flex w-full items-center gap-3 rounded-xl border border-white/8 p-3 text-left transition-all hover:border-[#8FA83F]/30 hover:bg-white/3 md:gap-3 md:px-4"
-            >
-              <TokenGlyph src={t.image} ticker={t.ticker} size="md" />
-              <div className="min-w-0 flex-1 md:w-56 md:flex-none">
-                <p className="flex items-center gap-1.5 truncate text-sm font-bold">
-                  {t.ticker}
-                  {t.verified && <OfficialBadge title="Token oficial verificado por Cabal" />}
-                  {t.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1 py-px text-[9px] font-black text-[#ff8080]">RUG</span>}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {t.name} · {timeAgo(t.launchedAt)}
-                </p>
-              </div>
-              <div className="hidden md:block md:w-20">
-                <NetworkBadge network={t.network} />
-              </div>
-              <div className="hidden text-right md:block md:w-20">
-                <p className="text-xs text-muted-foreground">{fmtPrice(t.price)}</p>
-              </div>
-              <div className="text-right md:w-24">
-                <p className="text-sm font-bold tabular-nums">{fmtMc(t.mc)}</p>
-                <div className="mt-1 hidden h-1 w-24 overflow-hidden rounded-full bg-[#8FA83F]/8 md:block">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/40 to-[#8FA83F]" style={{ width: `${Math.max((t.mc / maxMc) * 100, 4)}%` }} />
-                </div>
-              </div>
-              <p className={cn('w-14 shrink-0 text-right text-[13px] font-bold tabular-nums md:w-20', t.change24h >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
-                {fmtPct(t.change24h)}
-              </p>
-              <p className="hidden text-right text-xs text-muted-foreground md:block md:w-16">{fmtNum(t.holders)}</p>
-              <p className="hidden text-right text-xs text-muted-foreground md:block md:w-20">{fmtMc(t.volume24h)}</p>
-              <div className="ml-auto flex shrink-0 items-center gap-1.5 md:w-32 md:justify-end">
-                {t.dev ? (
-                  <>
-                    <span className="hidden sm:block">
-                      <UserAvatar name={t.dev.name} src={t.dev.avatar} size="xs" verified={t.dev.walletVerified} official={t.dev.verified} ring={false} />
-                    </span>
-                    <span className="hidden truncate text-[11px] text-muted-foreground lg:block">@{t.dev.handle}</span>
-                  </>
-                ) : (
-                  // Lo publicó un scout y nadie lo ha reclamado todavía
-                  <span className="hidden text-[11px] text-muted-foreground/70 lg:block">Dev sin verificar</span>
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="h-[64px] animate-pulse rounded-xl border border-white/8 bg-[#121410]" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            {(tokens ?? []).map((t) => (
+              <button
+                key={t.id}
+                onClick={() => openToken(t.id)}
+                className={cn(
+                  GRID,
+                  'card-surface group w-full rounded-xl border border-white/8 p-3 text-left transition-all hover:border-[#8FA83F]/30 hover:bg-white/3 @2xl:px-4'
                 )}
-                <span className="hidden items-center gap-0.5 rounded-md bg-[#8FA83F]/8 px-1.5 py-0.5 text-[10px] font-bold text-primary group-hover:bg-[#8FA83F]/15 sm:inline-flex">
-                  <MessageSquare className="h-3 w-3" aria-hidden /> {t.postsCount}
-                </span>
-                <QuickBuyButton contract={t.contract} network={t.network} ticker={t.ticker} />
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <TokenGlyph src={t.image} ticker={t.ticker} size="md" />
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 truncate text-sm font-bold">
+                      {t.ticker}
+                      {t.verified && <OfficialBadge title="Token oficial verificado por Cabal" />}
+                      {t.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1 py-px text-[9px] font-black text-[#ff8080]">RUG</span>}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {t.name} · {timeAgo(t.launchedAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="hidden @2xl:block">
+                  <NetworkBadge network={t.network} />
+                </div>
+                <p className="hidden text-right text-xs tabular-nums text-muted-foreground @[52rem]:block">{fmtPrice(t.price)}</p>
+                <div className="min-w-0 text-right">
+                  <p className="text-sm font-bold tabular-nums">{fmtMc(t.mc)}</p>
+                  <div className="ml-auto mt-1 hidden h-1 w-full overflow-hidden rounded-full bg-[#8FA83F]/8 @2xl:block">
+                    <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/40 to-[#8FA83F]" style={{ width: `${Math.max((t.mc / maxMc) * 100, 4)}%` }} />
+                  </div>
+                </div>
+                <p className={cn('text-right text-[13px] font-bold tabular-nums', t.change24h >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+                  {fmtPct(t.change24h)}
+                </p>
+                <p className="hidden text-right text-xs tabular-nums text-muted-foreground @2xl:block" title={t.holders > 0 ? undefined : 'Sin datos de holders todavía'}>
+                  {t.holders > 0 ? fmtNum(t.holders) : '—'}
+                </p>
+                <p className="hidden text-right text-xs tabular-nums text-muted-foreground @[52rem]:block">{fmtMc(t.volume24h)}</p>
+                <div className="hidden min-w-0 items-center gap-1.5 pl-2 @2xl:flex">
+                  {t.dev ? (
+                    <>
+                      <UserAvatar name={t.dev.name} src={t.dev.avatar} size="xs" verified={t.dev.walletVerified} official={t.dev.verified} ring={false} />
+                      <span className="truncate text-[11px] text-muted-foreground">@{t.dev.handle}</span>
+                    </>
+                  ) : (
+                    // Lo publicó un scout y nadie lo ha reclamado todavía
+                    <span className="truncate text-[11px] text-muted-foreground/70" title="Dev sin verificar">
+                      Sin verificar
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-1.5">
+                  <span className="hidden items-center gap-0.5 rounded-md bg-[#8FA83F]/8 px-1.5 py-0.5 text-[10px] font-bold text-primary group-hover:bg-[#8FA83F]/15 @2xl:inline-flex">
+                    <MessageSquare className="h-3 w-3" aria-hidden /> {t.postsCount}
+                  </span>
+                  <QuickBuyButton contract={t.contract} network={t.network} ticker={t.ticker} />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

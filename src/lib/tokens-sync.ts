@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { fetchMarketBatch, fetchTokenMeta } from '@/lib/chain-stats'
+import { fetchHolders, fetchMarketBatch, fetchTokenMeta } from '@/lib/chain-stats'
 
 /**
  * La pestaña Tokens se alimenta de los launches del Radar que ya salieron.
@@ -120,6 +120,42 @@ async function refreshMarket(): Promise<void> {
   )
 }
 
+/** Cada cuánto se revisan los holders de un token. */
+const HOLDERS_EVERY_MS = 30 * 60_000
+/** Tokens revisados por pasada, y pausa entre ellos (límite de GeckoTerminal). */
+const HOLDERS_BATCH = 4
+const HOLDERS_GAP_MS = 2500
+const holdersCheckedAt = new Map<string, number>()
+
+/**
+ * Holders y % del top 10 (GeckoTerminal). Nadie los rellenaba: todos los
+ * tokens salían con 0 holders y un top 10 inventado del 25%. Una petición por
+ * token, así que cada pasada revisa unos pocos, empezando por los que llevan
+ * más tiempo sin revisar (o nunca revisados).
+ */
+async function refreshHolders(): Promise<void> {
+  const now = Date.now()
+  const tokens = await db.token.findMany({
+    where: { contract: { not: '' } },
+    select: { id: true, network: true, contract: true },
+  })
+  const due = tokens
+    .filter((t) => now - (holdersCheckedAt.get(t.id) ?? 0) >= HOLDERS_EVERY_MS)
+    .sort((a, b) => (holdersCheckedAt.get(a.id) ?? 0) - (holdersCheckedAt.get(b.id) ?? 0))
+    .slice(0, HOLDERS_BATCH)
+  for (const [i, t] of due.entries()) {
+    if (i > 0) await new Promise((r) => setTimeout(r, HOLDERS_GAP_MS))
+    const h = await fetchHolders(t.network, t.contract).catch(() => null)
+    // Si falla (límite, red sin datos) se reintenta en la próxima pasada
+    if (!h) continue
+    holdersCheckedAt.set(t.id, Date.now())
+    const data: { holders?: number; top10Pct?: number } = {}
+    if (h.count !== null) data.holders = h.count
+    if (h.top10Pct !== null) data.top10Pct = Math.round(h.top10Pct * 10) / 10
+    if (Object.keys(data).length) await db.token.update({ where: { id: t.id }, data }).catch(() => null)
+  }
+}
+
 /**
  * Deja la pestaña Tokens al día. Barato si se ha hecho en el último minuto; si
  * no, sincroniza, pero la petición que lo dispara solo espera unos segundos.
@@ -134,6 +170,7 @@ export async function ensureTokensFresh(): Promise<void> {
       try {
         await syncLaunchedTokens()
         await refreshMarket()
+        await refreshHolders()
       } catch {
         // Nunca debe tumbar la pestaña: se reintentará en la siguiente pasada
       } finally {
