@@ -40,6 +40,12 @@ export function DiscordConnect() {
         Los mismos avisos que en Telegram, en tu Discord: la 🔔 campanita por privado y, si quieres, todos los
         lanzamientos y tesis en un canal de tu servidor.
       </p>
+      <p className="text-[11px] text-muted-foreground">
+        ¿Primera vez? <a href="/bot" target="_blank" rel="noreferrer" className="font-semibold text-[#98a2fa] hover:underline">
+          Lee el manual del bot
+        </a>
+        : cómo conectarlo, qué hace cada comando y cómo filtrar los avisos.
+      </p>
 
       <div className="flex flex-wrap gap-2">
         {!hasPrivate && (

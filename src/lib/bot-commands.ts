@@ -65,7 +65,13 @@ export function welcomeMessage(isPrivate: boolean, provider: BotProvider, lang: 
   const tx = t(lang)
   return {
     text: tx.welcome(isPrivate, provider),
-    buttons: [[{ text: tx.openCabal, url: `${siteUrl()}/app` }], languageButtons(lang)],
+    buttons: [
+      [
+        { text: tx.openCabal, url: `${siteUrl()}/app` },
+        { text: tx.botManual, url: `${siteUrl()}/bot` },
+      ],
+      languageButtons(lang),
+    ],
   }
 }
 

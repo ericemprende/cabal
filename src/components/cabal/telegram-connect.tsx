@@ -40,6 +40,12 @@ export function TelegramConnect() {
         Recibe en Telegram los avisos de la 🔔 campanita y, si quieres, todos los lanzamientos y tesis. También puedes
         añadir el bot a tus grupos o canales.
       </p>
+      <p className="text-[11px] text-muted-foreground">
+        ¿Primera vez? <a href="/bot" target="_blank" rel="noreferrer" className="font-semibold text-[#5cc0f0] hover:underline">
+          Lee el manual del bot
+        </a>
+        : cómo conectarlo, qué hace cada comando y cómo filtrar los avisos.
+      </p>
 
       <div className="flex flex-wrap gap-2">
         {!hasPrivate && (
