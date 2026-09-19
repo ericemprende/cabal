@@ -14,7 +14,7 @@ import { periodStart, summarizeCalls, type CallPeriod, type CallSummary } from '
  * y se recalculan los totales del usuario.
  *
  * GeckoTerminal gratuito admite ~30 peticiones por minuto y cada call gasta
- * dos o tres, así que cada pasada revisa pocas y con más frecuencia las
+ * entre dos y cuatro, así que cada pasada revisa pocas y con más frecuencia las
  * recientes, que es cuando más se mueven.
  */
 
@@ -26,6 +26,8 @@ const FINAL_AFTER = 30 * DAY
 const BATCH = 6
 /** Mínimo entre pasadas lanzadas desde las visitas a la web. */
 const MIN_GAP_SECONDS = 90
+/** Pausa entre calls de una misma pasada. */
+const CALL_GAP_MS = 3000
 
 /** Cada cuánto se vuelve a revisar una call según su edad. */
 function recheckEvery(ageMs: number): number {
@@ -65,7 +67,10 @@ export async function syncCallResults(limit = BATCH): Promise<number> {
   if (due.length === 0) return 0
 
   const touchedUsers = new Set<string>()
-  for (const call of due) {
+  for (const [i, call] of due.entries()) {
+    // Espaciadas: cada call gasta hasta 3-4 peticiones de velas y una pasada
+    // seguida chocaba con el límite de GeckoTerminal (429 = pico sin datos)
+    if (i > 0) await new Promise((r) => setTimeout(r, CALL_GAP_MS))
     const final = now - call.createdAt.getTime() >= FINAL_AFTER
     try {
       const r = await fetchCallResult(call.network!, call.contract!, call.createdAt, {

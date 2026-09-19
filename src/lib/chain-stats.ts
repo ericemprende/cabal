@@ -160,93 +160,154 @@ function candleTops(list: unknown[][]): (number | null)[] {
   })
 }
 
+type OhlcvJson = { data?: { attributes?: { ohlcv_list?: number[][] } } }
+
+/**
+ * Velas OHLCV de un pool en GeckoTerminal, SIEMPRE con el precio en USD de
+ * nuestro token (`token=<contrato>`). Sin ese parámetro GeckoTerminal usa su
+ * propia "base" del pool, que en pools contra otra memecoin (OOF/RBLX,
+ * JUPCAT/JUP…) puede ser el OTRO token: las velas salían con el precio de
+ * RBLX (~$55) contra una entrada de $0.0001 y la call "hacía 546958x".
+ * Devuelve [ms, open, high, low, close] de la más nueva a la más vieja.
+ */
+async function fetchCandles(
+  geckoNet: string,
+  pairAddress: string,
+  tokenAddress: string,
+  timeframe: 'minute' | 'hour' | 'day',
+  opts: { beforeSec?: number; limit?: number } = {}
+): Promise<number[][]> {
+  const qs = new URLSearchParams({ aggregate: '1', limit: String(opts.limit ?? 1000), token: tokenAddress })
+  if (opts.beforeSec) qs.set('before_timestamp', String(opts.beforeSec))
+  const url = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/${timeframe}?${qs}`
+  const json = await fetchJson<OhlcvJson>(url, 7000)
+  return (json?.data?.attributes?.ohlcv_list ?? [])
+    .map((c) => {
+      const ts = Number(c[0])
+      return [ts > 1e12 ? ts : ts * 1000, Number(c[1]), Number(c[2]), Number(c[3]), Number(c[4])]
+    })
+    .filter((c) => c.every(Number.isFinite) && c[4] > 0)
+}
+
+/** ¿Dos precios del mismo token están en la misma escala? (sin unidades cruzadas) */
+function samePriceScale(a: number, b: number, tolerance = 5): boolean {
+  if (!(a > 0) || !(b > 0)) return false
+  const r = a / b
+  return r <= tolerance && r >= 1 / tolerance
+}
+
 /** ATH histórico vía velas diarias del par (GeckoTerminal). */
 async function fetchAth(
   network: string,
-  pairAddress: string
+  pairAddress: string,
+  tokenAddress: string
 ): Promise<{ athPrice: number | null; athAt: number | null }> {
   const geckoNet = GECKO_NETWORK[network]
   if (!geckoNet || !pairAddress) return { athPrice: null, athAt: null }
-  const url = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/day?aggregate=1&limit=1000`
-  const json = await fetchJson<{ data?: { attributes?: { ohlcv_list?: unknown[][] } } }>(url, 7000)
-  const candles = json?.data?.attributes?.ohlcv_list ?? []
+  const candles = await fetchCandles(geckoNet, pairAddress, tokenAddress, 'day')
   let athPrice: number | null = null
   let athAt: number | null = null
   const tops = candleTops(candles)
   for (const [i, c] of candles.entries()) {
-    const ts = Number(c[0])
     const high = tops[i]
     if (high === null) continue
     if (athPrice === null || high > athPrice) {
       athPrice = high
-      // GeckoTerminal devuelve el timestamp en segundos
-      athAt = ts > 1e12 ? ts : ts * 1000
+      athAt = c[0]
     }
   }
   return { athPrice, athAt }
 }
 
+const MINUTE_MS = 60_000
+const HOUR_MS = 60 * MINUTE_MS
+const DAY_MS = 24 * HOUR_MS
 /**
- * Precio más alto alcanzado DESDE `sinceMs` (no el ATH histórico): con velas
- * de hora alcanza ~41 días hacia atrás; si la call es más vieja que eso, cae
- * a velas diarias para no perder el pico solo por quedar fuera de rango.
+ * Ventana de velas de minuto tras la call. GeckoTerminal da 1000 por petición;
+ * con 990 queda margen para que la del minuto de la call entre en la respuesta.
+ */
+const MINUTE_SPAN_MS = 990 * MINUTE_MS
+
+/**
+ * Precio más alto alcanzado DESDE el momento exacto de la call (`sinceMs`),
+ * no el ATH del token ni lo que hizo antes de compartirla:
+ *  - Velas de MINUTO desde el minuto de la call hasta ~16 h después. De la
+ *    vela del propio minuto de la call solo cuenta el cierre: su máximo pudo
+ *    ocurrir segundos ANTES de compartirla.
+ *  - Si la call es más vieja, velas de HORA que empiezan después de la call
+ *    (nunca la hora en curso al publicarla, que incluye lo de antes).
+ *  - Pasados ~41 días (fuera del alcance de las de hora), velas de DÍA, igual.
+ *
+ * Las velas se validan contra DexScreener antes de usarlas: la más reciente
+ * tiene que estar en la escala del precio actual y la del minuto de la call en
+ * la de la entrada. Si no, se descartan (pico = null): mejor sin pico que un
+ * pico inventado que luego ya no baja.
  */
 async function fetchPeakSince(
   network: string,
   pairAddress: string,
-  sinceMs: number
+  tokenAddress: string,
+  sinceMs: number,
+  anchors: { entryPriceUsd: number; currentPriceUsd: number | null }
 ): Promise<{ peakPrice: number | null; peakAt: number | null }> {
+  const none = { peakPrice: null, peakAt: null }
   const geckoNet = GECKO_NETWORK[network]
-  if (!geckoNet || !pairAddress) return { peakPrice: null, peakAt: null }
+  if (!geckoNet || !pairAddress) return none
+  const now = Date.now()
+  const callMinute = Math.floor(sinceMs / MINUTE_MS) * MINUTE_MS
 
-  // `durationMs` es el largo de cada vela: una vela de hora que ABRIÓ antes
-  // de `sinceMs` puede seguir corriendo (y marcar su máximo) DESPUÉS de la
-  // call, así que solo se descarta cuando ya CERRÓ antes de `sinceMs` —
-  // descartar por su apertura tiraba fuera, entera, la vela en curso en el
-  // momento de publicar la call, justo la que suele contener el pico real
-  // en calls muy recientes.
-  const scan = (list: number[][], durationMs: number): { peakPrice: number | null; peakAt: number | null } => {
-    let peakPrice: number | null = null
-    let peakAt: number | null = null
+  const minuteEnd = Math.min(now, sinceMs + MINUTE_SPAN_MS)
+  const minutes = (
+    await fetchCandles(geckoNet, pairAddress, tokenAddress, 'minute', {
+      beforeSec: Math.floor(minuteEnd / 1000) + 60,
+    })
+  ).filter((c) => c[0] >= callMinute)
+
+  let later: number[][] = []
+  if (now - sinceMs > MINUTE_SPAN_MS) {
+    const firstHour = Math.floor(sinceMs / HOUR_MS) * HOUR_MS + HOUR_MS
+    later = (await fetchCandles(geckoNet, pairAddress, tokenAddress, 'hour')).filter((c) => c[0] >= firstHour)
+    const oldestHour = later.length ? later[later.length - 1][0] : null
+    // Las de hora no llegan hasta la call (más de ~41 días): se completa con las de día
+    if (oldestHour === null || oldestHour > firstHour + HOUR_MS) {
+      const firstDay = Math.floor(sinceMs / DAY_MS) * DAY_MS + DAY_MS
+      const days = (await fetchCandles(geckoNet, pairAddress, tokenAddress, 'day')).filter((c) => c[0] >= firstDay)
+      later = [...later, ...days]
+    }
+  }
+
+  const all = [...minutes, ...later]
+  if (all.length === 0) return none
+
+  // Validación de escala contra DexScreener
+  const newest = all.reduce((a, b) => (b[0] > a[0] ? b : a))
+  if (anchors.currentPriceUsd && now - newest[0] < 2 * HOUR_MS && !samePriceScale(newest[4], anchors.currentPriceUsd)) {
+    console.warn(`[peak] velas descartadas ${tokenAddress}: último cierre ${newest[4]} vs actual ${anchors.currentPriceUsd}`)
+    return none
+  }
+  const atCall = minutes.find((c) => c[0] === callMinute) ?? minutes[minutes.length - 1]
+  if (atCall && atCall[0] - callMinute < 10 * MINUTE_MS && !samePriceScale(atCall[4], anchors.entryPriceUsd)) {
+    console.warn(`[peak] velas descartadas ${tokenAddress}: cierre en la call ${atCall[4]} vs entrada ${anchors.entryPriceUsd}`)
+    return none
+  }
+
+  let peakPrice: number | null = null
+  let peakAt: number | null = null
+  const consider = (price: number | null, at: number) => {
+    if (price !== null && price > 0 && (peakPrice === null || price > peakPrice)) {
+      peakPrice = price
+      peakAt = at
+    }
+  }
+  for (const list of [minutes, later]) {
     const tops = candleTops(list)
-    for (const [i, c] of list.entries()) {
-      const tsRaw = Number(c[0])
-      const ts = tsRaw > 1e12 ? tsRaw : tsRaw * 1000
-      if (ts + durationMs < sinceMs) continue
-      const high = tops[i]
-      if (high === null) continue
-      if (peakPrice === null || high > peakPrice) {
-        peakPrice = high
-        peakAt = Math.max(ts, sinceMs)
-      }
-    }
-    return { peakPrice, peakAt }
+    list.forEach((c, i) => {
+      // Vela del minuto de la call: solo su cierre, que ya es posterior a compartirla
+      if (c[0] === callMinute) consider(c[4], sinceMs)
+      else consider(tops[i], c[0])
+    })
   }
-
-  const HOUR_MS = 60 * 60 * 1000
-  const DAY_MS = 24 * HOUR_MS
-
-  const hourUrl = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/hour?aggregate=1&limit=1000`
-  const hourJson = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(hourUrl, 7000)
-  const hourCandles = hourJson?.data?.attributes?.ohlcv_list ?? []
-  // Si la vela más vieja que trajimos ya es posterior a `sinceMs`, la resolución
-  // de hora no cubre toda la ventana desde la call: completamos con velas diarias.
-  const oldestHourTs = hourCandles.length
-    ? (() => {
-        const raw = Number(hourCandles[hourCandles.length - 1][0])
-        return raw > 1e12 ? raw : raw * 1000
-      })()
-    : null
-  let result = scan(hourCandles, HOUR_MS)
-  if (oldestHourTs === null || oldestHourTs > sinceMs) {
-    const dayUrl = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pairAddress}/ohlcv/day?aggregate=1&limit=1000`
-    const dayJson = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(dayUrl, 7000)
-    const dayResult = scan(dayJson?.data?.attributes?.ohlcv_list ?? [], DAY_MS)
-    if (dayResult.peakPrice !== null && (result.peakPrice === null || dayResult.peakPrice > result.peakPrice)) {
-      result = dayResult
-    }
-  }
-  return result
+  return { peakPrice, peakAt }
 }
 
 /** Top-10 % del supply vía RPC público de Solana (mejor esfuerzo). */
@@ -486,7 +547,7 @@ export async function fetchTokenStats(network: string, ca: string): Promise<Chai
   }
 
   // ATH histórico (mejor esfuerzo, no bloquea el resultado si falla)
-  const ath = await fetchAth(network, pair.pairAddress)
+  const ath = await fetchAth(network, pair.pairAddress, ca)
   stats.athPrice = ath.athPrice
   stats.athAt = ath.athAt
   if (ath.athPrice && priceUsd && fdv && priceUsd > 0) {
@@ -606,10 +667,8 @@ export async function fetchCallResult(
     // antes de calledAt + un pequeño margen, para asegurarnos de que la vela
     // de ese minuto ya exista cuando se pide justo después de publicar
     const beforeTs = Math.floor(calledAt.getTime() / 1000) + 90
-    const url = `https://api.geckoterminal.com/api/v2/networks/${geckoNet}/pools/${pair.pairAddress}/ohlcv/minute?aggregate=1&before_timestamp=${beforeTs}&limit=1`
-    const candles = await fetchJson<{ data?: { attributes?: { ohlcv_list?: number[][] } } }>(url, 7000)
-    const c = candles?.data?.attributes?.ohlcv_list?.[0]
-    if (c && Number(c[4]) > 0) entryPriceUsd = Number(c[4])
+    const [c] = await fetchCandles(geckoNet, pair.pairAddress, ca, 'minute', { beforeSec: beforeTs, limit: 1 })
+    if (c) entryPriceUsd = c[4]
   }
   // Call recién publicada: aún no hay vela de ese minuto. Entrada = precio
   // actual (0%) — pero solo si de verdad hay una fuente de velas para esta
@@ -646,7 +705,7 @@ export async function fetchCallResult(
   let peakAt: number | null = null
   let peakMultiple: number | null = null
   if (geckoNet && pair.pairAddress && entryPriceUsd) {
-    const peak = await fetchPeakSince(network, pair.pairAddress, calledAt.getTime())
+    const peak = await fetchPeakSince(network, pair.pairAddress, ca, calledAt.getTime(), { entryPriceUsd, currentPriceUsd })
     // El pico nunca puede ser menor que el precio actual (última vela puede no
     // haber cerrado aún); si algo salió raro, usamos el actual como piso.
     if (peak.peakPrice !== null && currentPriceUsd !== null) {
