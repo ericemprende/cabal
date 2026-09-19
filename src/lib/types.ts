@@ -377,14 +377,32 @@ export interface UserCallStatsDTO {
   pending: number
 }
 
+/**
+ * Un "clan" es una comunidad real de Telegram o Discord que ya usa el bot de
+ * Cabal: no hay que crear nada dentro de Cabal, la comunidad se trae como está.
+ */
 export interface ClanDTO {
-  id: string
+  /** Clave de la comunidad ("telegram:-100123"), también filtra Top Callers. */
+  key: string
   name: string
-  emoji: string
-  members: number
+  provider: 'telegram' | 'discord'
+  /** Chats con el bot (en Discord, canales del mismo servidor). */
+  chats: number
+  members: number | null
+  online: number | null
+  /** Enlace público para unirse, si la comunidad tiene uno. */
+  link: string | null
+  /** Cuánta gente distinta ha dado calls ahí. */
+  callers: number
   score: number
-  trend: number
-  tag: string
+  calls: number
+  wins: number
+  winRate: number
+  bestMultiple: number | null
+  avgPeak: number | null
+  /** Quiénes sostienen el clan: sus mejores callers. */
+  topCallers: { handle: string; name: string; avatar: string; score: number; bestMultiple: number | null }[]
+  lastCallAt: string | null
 }
 
 /** Grupo o servidor con el bot, para filtrar Top Callers por comunidad. */

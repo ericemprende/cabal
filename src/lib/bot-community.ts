@@ -1,5 +1,7 @@
 import { db } from '@/lib/db'
 import { isBotProvider, PROVIDER_NAMES, type BotProvider } from '@/lib/bot-message'
+import { periodStart, summarizeCalls, type CallPeriod, type CallSummary } from '@/lib/call-score'
+import { audienceByCommunity } from '@/lib/bot-audience'
 
 /**
  * Una "comunidad" es el grupo o servidor del que salen las calls, y es la
@@ -122,4 +124,134 @@ export async function listCommunities(): Promise<Community[]> {
     }
   }
   return [...byKey.values()].filter((c) => c.calls > 0).sort((a, b) => b.calls - a.calls || a.label.localeCompare(b.label))
+}
+
+/**
+ * Ranking público de comunidades ("Clanes"): los grupos de Telegram, canales y
+ * servidores de Discord que ya usan el bot, con sus calls y sus miembros.
+ *
+ * La idea es que nadie tenga que crear un clan dentro de Cabal: la comunidad
+ * que ya existe en Telegram o Discord es el clan, y desde aquí cualquiera
+ * puede entrar con su enlace público.
+ *
+ * Se ordena por Cabal Score de sus calls; con `period` se mide solo lo del
+ * periodo elegido, igual que Top Callers.
+ */
+export type CommunityBoardRow = {
+  key: CommunityKey
+  label: string
+  provider: BotProvider
+  /** Chats de esa comunidad con el bot (Discord puede tener varios canales). */
+  chats: number
+  members: number | null
+  online: number | null
+  /** Enlace público para unirse, si la comunidad tiene uno. */
+  link: string | null
+  callers: number
+  summary: CallSummary
+  /** Los que mejor lo hacen en esa comunidad (para la tarjeta del clan). */
+  topCallers: { handle: string; name: string; avatar: string; score: number; bestMultiple: number | null }[]
+  lastCallAt: string | null
+}
+
+export async function communityBoard(period: CallPeriod): Promise<CommunityBoardRow[]> {
+  // `active: false` = al bot lo echaron del grupo o lo bloquearon; si además
+  // lo desvincularon, el ChatLink ya no existe. En los dos casos el clan
+  // desaparece del ranking: un clan es una comunidad que USA el bot ahora.
+  const links = await db.chatLink.findMany({
+    where: { chatType: { not: 'private' }, active: true },
+    select: { id: true, provider: true, chatId: true, serverId: true, chatType: true, title: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  if (links.length === 0) return []
+
+  const since = periodStart(period)
+  const calls = await db.post.findMany({
+    where: {
+      kind: 'call',
+      chatLinkId: { in: links.map((l) => l.id) },
+      ...(since ? { createdAt: { gte: since } } : {}),
+    },
+    select: { chatLinkId: true, userId: true, peakMultiple: true, currentMultiple: true, createdAt: true },
+  })
+
+  type Acc = {
+    row: Omit<CommunityBoardRow, 'summary' | 'callers' | 'topCallers' | 'lastCallAt'>
+    calls: { peakMultiple: number | null; currentMultiple: number | null }[]
+    byUser: Map<string, { peakMultiple: number | null; currentMultiple: number | null }[]>
+    lastCallAt: Date | null
+  }
+  const byKey = new Map<CommunityKey, Acc>()
+  const keyByLink = new Map<string, CommunityKey>()
+  for (const link of links) {
+    const key = communityKeyOf(link)
+    if (!key) continue
+    keyByLink.set(link.id, key)
+    const provider = link.provider as BotProvider
+    const title = link.title ?? ''
+    const label = (provider === 'discord' ? title.split(' · ')[0] : title) || PROVIDER_NAMES[provider]
+    const found = byKey.get(key)
+    if (found) found.row.chats++
+    else {
+      byKey.set(key, {
+        row: { key, label, provider, chats: 1, members: null, online: null, link: null },
+        calls: [],
+        byUser: new Map(),
+        lastCallAt: null,
+      })
+    }
+  }
+
+  for (const c of calls) {
+    const key = c.chatLinkId ? keyByLink.get(c.chatLinkId) : null
+    const acc = key ? byKey.get(key) : null
+    if (!acc) continue
+    const row = { peakMultiple: c.peakMultiple, currentMultiple: c.currentMultiple }
+    acc.calls.push(row)
+    const mine = acc.byUser.get(c.userId)
+    if (mine) mine.push(row)
+    else acc.byUser.set(c.userId, [row])
+    if (!acc.lastCallAt || c.createdAt > acc.lastCallAt) acc.lastCallAt = c.createdAt
+  }
+
+  // Autores de las calls, para enseñar quién sostiene cada clan
+  const userIds = [...new Set([...byKey.values()].flatMap((a) => [...a.byUser.keys()]))]
+  const users = userIds.length
+    ? await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, handle: true, name: true, avatar: true } })
+    : []
+  const userById = new Map(users.map((u) => [u.id, u]))
+
+  // Miembros y enlace de cada comunidad (caché de una hora en bot-audience)
+  const audience = await audienceByCommunity().catch(() => new Map())
+  const rows: CommunityBoardRow[] = [...byKey.values()].map((acc) => {
+    const a = audience.get(acc.row.key)
+    return {
+      ...acc.row,
+      members: a?.members ?? null,
+      online: a?.online ?? null,
+      link: a?.link ?? null,
+      callers: acc.byUser.size,
+      summary: summarizeCalls(acc.calls),
+      topCallers: [...acc.byUser.entries()]
+        .map(([userId, rows]) => ({ user: userById.get(userId), summary: summarizeCalls(rows) }))
+        .filter((x) => x.user && x.summary.calls > 0)
+        .sort((a, b) => b.summary.score - a.summary.score || (b.summary.bestMultiple ?? 0) - (a.summary.bestMultiple ?? 0))
+        .slice(0, 3)
+        .map((x) => ({
+          handle: x.user!.handle,
+          name: x.user!.name,
+          avatar: x.user!.avatar,
+          score: x.summary.score,
+          bestMultiple: x.summary.bestMultiple,
+        })),
+      lastCallAt: acc.lastCallAt?.toISOString() ?? null,
+    }
+  })
+  return rows.sort(
+    (a, b) =>
+      b.summary.score - a.summary.score ||
+      b.summary.calls - a.summary.calls ||
+      (b.members ?? 0) - (a.members ?? 0) ||
+      a.label.localeCompare(b.label)
+  )
 }

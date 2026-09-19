@@ -5,16 +5,8 @@ import { cached, CACHE_TTL } from '@/lib/cache'
 import { toPublicUserDTO } from '@/lib/serializers'
 import { parsePeriod } from '@/lib/call-score'
 import { kickCallResultsSync, rankCallers } from '@/lib/call-results'
-import { chatLinkIdsOf, listCommunities, parseCommunityKey } from '@/lib/bot-community'
+import { chatLinkIdsOf, communityBoard, listCommunities, parseCommunityKey } from '@/lib/bot-community'
 import type { ClanDTO, LeaderboardDTO, LeaderboardEntryDTO } from '@/lib/types'
-
-const CLANS: ClanDTO[] = [
-  { id: 'c1', name: 'Neón Cartel', emoji: '🟢', members: 128, score: 4820000, trend: 12.4, tag: 'CABA' },
-  { id: 'c2', name: 'Noble Ventures', emoji: '🏰', members: 96, score: 3150000, trend: 8.1, tag: 'NOBL' },
-  { id: 'c3', name: 'Conviction Gang', emoji: '💎', members: 214, score: 2140000, trend: -3.2, tag: 'CNVG' },
-  { id: 'c4', name: 'Frog Nation', emoji: '🐸', members: 342, score: 1780000, trend: 21.7, tag: 'FROG' },
-  { id: 'c5', name: 'Solana Sharks', emoji: '🦈', members: 87, score: 990000, trend: 5.5, tag: 'SHRK' },
-]
 
 /**
  * GET /api/leaderboard?period=24h|7d|30d|all&community=<clave>
@@ -77,6 +69,26 @@ export async function GET(req: Request) {
       }))
 
     const communities = await cached('leaderboard:communities', 300, listCommunities)
+    // Clanes = las comunidades de Telegram/Discord que ya usan el bot, con las
+    // estadísticas de sus calls. Se cachea porque consulta a los dos bots.
+    const clans: ClanDTO[] = (await cached(`leaderboard:clans:${period}`, 300, () => communityBoard(period))).map((c) => ({
+      key: c.key,
+      name: c.label,
+      provider: c.provider,
+      chats: c.chats,
+      members: c.members,
+      online: c.online,
+      link: c.link,
+      callers: c.callers,
+      score: c.summary.score,
+      calls: c.summary.calls,
+      wins: c.summary.wins,
+      winRate: c.summary.winRate,
+      bestMultiple: c.summary.bestMultiple,
+      avgPeak: c.summary.avgPeak,
+      topCallers: c.topCallers,
+      lastCallAt: c.lastCallAt,
+    }))
     const dto: LeaderboardDTO = {
       period,
       community,
@@ -84,7 +96,7 @@ export async function GET(req: Request) {
       callers,
       devs,
       points,
-      clans: CLANS,
+      clans,
     }
     return NextResponse.json(dto)
   } catch (e) {

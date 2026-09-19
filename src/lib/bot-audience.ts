@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { telegramConfig, tgCall } from '@/lib/telegram'
 import { dcCall, discordConfig } from '@/lib/discord'
 import type { BotProvider } from '@/lib/bot-message'
+import { communityKeyOf } from '@/lib/bot-community'
 import type { AdminChatDTO, AdminChatsDTO } from '@/lib/notify-types'
 
 /**
@@ -134,4 +135,35 @@ export async function listBotChats(provider: BotProvider, fresh = false): Promis
   }
 
   return { provider, reach, unknown: active.filter((c) => c.chatType !== 'private' && c.members == null).length, chats }
+}
+
+/**
+ * Miembros y enlace de cada comunidad (grupo, canal o servidor con el bot),
+ * para el ranking público de comunidades. Usa la misma caché de una hora que
+ * el panel admin, así que abrir el ranking no dispara consultas nuevas a
+ * Telegram/Discord salvo una vez por hora y comunidad.
+ */
+export async function audienceByCommunity(): Promise<Map<string, { members: number | null; online: number | null; link: string | null }>> {
+  const links = await db.chatLink.findMany({
+    where: { chatType: { not: 'private' }, active: true },
+    select: { provider: true, chatId: true, serverId: true, chatType: true },
+  })
+  const out = new Map<string, { members: number | null; online: number | null; link: string | null }>()
+  if (links.length === 0) return out
+
+  const tg = links.some((l) => l.provider === 'telegram') ? await telegramConfig() : null
+  const dc = links.some((l) => l.provider === 'discord') ? await discordConfig() : null
+
+  await mapLimited(links, 4, async (l) => {
+    const key = communityKeyOf(l)
+    if (!key || out.has(key)) return
+    let audience: Audience = { members: null, online: null, link: null, error: null }
+    if (l.provider === 'telegram' && tg) {
+      audience = await cached(`tg:${l.chatId}`, false, () => telegramAudience(tg.token, l.chatId))
+    } else if (l.provider === 'discord' && dc && l.serverId) {
+      audience = await cached(`dc:${l.serverId}`, false, () => discordAudience(dc.token, l.serverId!))
+    }
+    out.set(key, { members: audience.members, online: audience.online, link: audience.link })
+  })
+  return out
 }

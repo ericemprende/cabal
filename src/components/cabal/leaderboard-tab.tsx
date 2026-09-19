@@ -2,15 +2,14 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Crown, Info, Shield, ShieldCheck, Target, TrendingUp, Users, Wrench, Zap } from 'lucide-react'
+import { Crown, ExternalLink, Info, MessageSquare, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
-import { fmtMc, fmtPct } from '@/lib/cabal'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
 import { useIsOnline } from '@/lib/presence'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CALL_PERIODS, LOSS_MULTIPLE, LOSS_POINTS, SCORE_TIERS, WIN_MULTIPLE, fmtMultiple, type CallPeriod } from '@/lib/call-score'
-import type { CommunityDTO, LeaderboardEntryDTO } from '@/lib/types'
+import type { ClanDTO, CommunityDTO, LeaderboardEntryDTO } from '@/lib/types'
 
 type Board = 'callers' | 'devs' | 'points' | 'clans'
 
@@ -119,28 +118,13 @@ export function LeaderboardTab() {
           ))}
         </div>
       ) : board === 'clans' ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {data?.clans.map((c, i) => (
-            <div key={c.id} className="card-surface flex items-center gap-3 rounded-xl border border-white/10 p-4">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400" aria-hidden>
-                <Shield className="h-5 w-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 truncate font-display text-sm font-bold">
-                  #{i + 1} {c.name}
-                  <span className="rounded bg-[#8FA83F]/10 px-1.5 py-px font-mono text-[10px] text-primary">{c.tag}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">{c.members} miembros</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-primary">{fmtMc(c.score)}</p>
-                <p className={cn('flex items-center justify-end gap-0.5 text-[11px] font-semibold', c.trend >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
-                  <TrendingUp className={cn('h-3 w-3', c.trend < 0 && 'rotate-180')} /> {fmtPct(c.trend)}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ClanBoard
+          clans={data?.clans ?? []}
+          onOpenCommunity={(key) => {
+            setCommunity(key)
+            setBoard('callers')
+          }}
+        />
       ) : (
         <div className="space-y-1.5">
           {board === 'callers' && data?.callers.length === 0 && (
@@ -157,6 +141,115 @@ export function LeaderboardTab() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Clanes = las comunidades de Telegram y Discord que ya usan el bot. Nadie
+ * crea un clan dentro de Cabal: se trae el grupo o servidor que ya existe, y
+ * desde aquí cualquiera puede entrar con su enlace.
+ */
+function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommunity: (key: string) => void }) {
+  if (clans.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-white/10 px-4 py-10 text-center">
+        <Shield className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden />
+        <p className="mt-2 text-sm font-semibold">Todavía no hay comunidades con el bot</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Un clan es tu grupo de Telegram o tu servidor de Discord, tal cual: añade el bot de Cabal y las calls que deis
+          allí puntúan aquí.{' '}
+          <a href="/bot" target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">
+            Cómo añadirlo
+          </a>
+        </p>
+      </div>
+    )
+  }
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {clans.map((c, i) => (
+        <div key={c.key} className="card-surface flex flex-col gap-3 rounded-xl border border-white/10 p-4">
+          <div className="flex items-start gap-3">
+            <span
+              className={cn(
+                'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border',
+                c.provider === 'telegram' ? 'border-[#229ED9]/30 bg-[#229ED9]/10 text-[#5cc0f0]' : 'border-[#5865F2]/30 bg-[#5865F2]/10 text-[#98a2fa]'
+              )}
+              aria-hidden
+            >
+              {c.provider === 'telegram' ? <Send className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-sm font-bold">
+                #{i + 1} {c.name}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                {c.provider === 'telegram' ? 'Telegram' : 'Discord'}
+                {c.members !== null && ` · ${c.members.toLocaleString('es')} miembros`}
+                {c.online !== null && ` · ${c.online.toLocaleString('es')} en línea`}
+                {c.callers > 0 && ` · ${c.callers} caller${c.callers === 1 ? '' : 's'}`}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-sm font-bold text-primary">{c.score} pts</p>
+              <p className="text-[11px] text-muted-foreground">Cabal Score</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <Stat label="Calls" value={String(c.calls)} />
+            <Stat label="Aciertos" value={c.calls > 0 ? `${c.winRate}%` : '—'} hint={c.calls > 0 ? `${c.wins} de ${c.calls}` : undefined} />
+            <Stat label="Mejor call" value={fmtMultiple(c.bestMultiple)} accent={(c.bestMultiple ?? 0) >= WIN_MULTIPLE} />
+          </div>
+
+          {c.topCallers.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sus mejores callers</p>
+              {c.topCallers.map((u) => (
+                <Link
+                  key={u.handle}
+                  href={`/u/${u.handle}`}
+                  className="flex items-center gap-2 rounded-lg px-1 py-0.5 hover:bg-white/5"
+                >
+                  <UserAvatar name={u.name} handle={u.handle} src={u.avatar} size="xs" />
+                  <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">{u.name}</span>
+                  <span className="shrink-0 font-mono text-[11px] font-bold text-primary">{fmtMultiple(u.bestMultiple)}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onOpenCommunity(c.key)}
+              className="flex-1 rounded-lg border border-white/10 px-2 py-1.5 text-[11px] font-bold text-foreground/90 transition-colors hover:border-[#8FA83F]/40 hover:text-primary"
+            >
+              Ver sus callers
+            </button>
+            {c.link && (
+              <a
+                href={c.link}
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-primary/90 px-2 py-1.5 text-[11px] font-bold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Unirme <ExternalLink className="h-3 w-3" aria-hidden />
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function Stat({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
+  return (
+    <div className="rounded-lg border border-white/8 bg-[#0a0b08] px-2 py-1.5">
+      <p className={cn('font-mono text-[13px] font-bold', accent ? 'text-primary' : 'text-foreground/90')}>{value}</p>
+      <p className="text-[10px] text-muted-foreground">{hint ?? label}</p>
     </div>
   )
 }

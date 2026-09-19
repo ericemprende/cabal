@@ -9,7 +9,7 @@ import { MAX_TOKEN_FILTER } from '@/lib/token-filter'
  * del bot enlazan aquí. Cada cambio en los bots (comandos, avisos, ajustes)
  * debe reflejarse en esta página y en UPDATED_AT.
  */
-const UPDATED_AT = '19 de septiembre de 2026'
+const UPDATED_AT = '20 de septiembre de 2026'
 
 export const metadata: Metadata = {
   title: 'Bot de Cabal — Manual de Telegram y Discord',
@@ -256,7 +256,23 @@ export default function BotManualPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Problemas frecuentes">
+      <LegalSection title="7. Tu comunidad como clan">
+        <p>
+          Cada grupo, canal o servidor con el bot aparece como un <strong>clan</strong> en Cabal (Líderes → Clanes), con
+          su logo de Telegram o Discord, sus miembros, sus calls, su porcentaje de aciertos, su mejor call y sus mejores
+          callers. No hay que crear nada dentro de Cabal: el clan es la comunidad que ya tienes.
+        </p>
+        <ul>
+          <li>Desde el clan, cualquiera puede entrar a tu comunidad si tiene enlace público (@usuario en Telegram o una URL personalizada en Discord).</li>
+          <li>«Ver sus callers» filtra el ranking de Top Callers por esa comunidad.</li>
+          <li>
+            Si echas al bot del grupo o lo desvinculas con <code>/unlink</code>, el clan desaparece del ranking. Un clan
+            es una comunidad que usa el bot ahora mismo.
+          </li>
+        </ul>
+      </LegalSection>
+
+      <LegalSection title="8. Problemas frecuentes">
         <ul>
           <li>
             <strong>«Este chat no está conectado con Cabal»:</strong> genera un código en tu perfil y envíalo con{' '}
