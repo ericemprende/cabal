@@ -142,3 +142,35 @@ export type AdminNotifyDTO = {
   reminders: number
   recent: { key: string; sentCount: number; createdAt: string }[]
 }
+
+/** Un chat conectado a un bot, visto desde el panel admin. */
+export type AdminChatDTO = {
+  id: string
+  chatType: string // private | group | supergroup | channel
+  title: string | null
+  /** Discord: servidor del canal. */
+  serverId: string | null
+  active: boolean
+  lastError: string | null
+  createdAt: string
+  /** Cuenta de Cabal que lo vinculó. */
+  owner: { handle: string; name: string }
+  /** Calls que nacieron en este chat. */
+  calls: number
+  /** Miembros del grupo/canal (en Discord, del servidor). null = privado o no se pudo consultar. */
+  members: number | null
+  /** Discord: miembros conectados ahora mismo (aproximado). */
+  online: number | null
+  /** Enlace público o de invitación, si lo hay. */
+  link: string | null
+  audienceError: string | null
+}
+
+export type AdminChatsDTO = {
+  provider: BotProviderName
+  /** Personas a las que llegan los avisos: miembros de grupos/canales/servidores + privados. */
+  reach: number
+  /** Grupos o canales activos cuyos miembros no se pudieron consultar. */
+  unknown: number
+  chats: AdminChatDTO[]
+}

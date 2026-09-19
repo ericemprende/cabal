@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { jsonFetch } from '@/lib/api-client'
 import type {
+  AdminChatsDTO,
   AdminNotifyDTO,
   BotProviderName,
   ChatLinkCodeDTO,
@@ -19,6 +20,7 @@ export const notifyKeys = {
   reminders: ['me', 'reminders'] as const,
   chats: ['me', 'chats'] as const,
   admin: ['admin', 'notifications'] as const,
+  adminChats: (provider: BotProviderName) => ['admin', 'notifications', 'chats', provider] as const,
 }
 
 export function useMyReminders() {
@@ -149,4 +151,24 @@ export function useAdminNotifyAction() {
     onSuccess: () => qc.invalidateQueries({ queryKey: notifyKeys.admin }),
     onError: (e: Error) => toast.error(e.message),
   })
+}
+
+/**
+ * Chats de un bot con sus miembros. `fresh` salta la caché del servidor (1 h)
+ * y vuelve a preguntar a Telegram/Discord.
+ */
+export function useAdminBotChats(provider: BotProviderName, enabled = true) {
+  const qc = useQueryClient()
+  const query = useQuery<AdminChatsDTO>({
+    queryKey: notifyKeys.adminChats(provider),
+    queryFn: () => jsonFetch(`/api/admin/notifications/chats?provider=${provider}`),
+    enabled,
+    staleTime: 5 * 60_000,
+  })
+  const refresh = useMutation({
+    mutationFn: () => jsonFetch<AdminChatsDTO>(`/api/admin/notifications/chats?provider=${provider}&fresh=1`),
+    onSuccess: (data) => qc.setQueryData(notifyKeys.adminChats(provider), data),
+    onError: (e: Error) => toast.error(e.message),
+  })
+  return { ...query, refresh }
 }

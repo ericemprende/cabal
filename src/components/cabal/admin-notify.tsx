@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Copy,
   ExternalLink,
   Loader2,
@@ -12,6 +13,7 @@ import {
   RefreshCw,
   Send,
   Unplug,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -19,8 +21,9 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { timeAgo } from '@/lib/cabal'
-import { useAdminNotify, useAdminNotifyAction, useAdminNotifyUpdate } from '@/lib/notify-client'
-import type { AdminBotDTO, BotProviderName } from '@/lib/notify-types'
+import { cn } from '@/lib/utils'
+import { useAdminBotChats, useAdminNotify, useAdminNotifyAction, useAdminNotifyUpdate } from '@/lib/notify-client'
+import type { AdminBotDTO, AdminChatDTO, BotProviderName } from '@/lib/notify-types'
 
 const DISPATCH_LABEL: Record<string, string> = {
   'launch:new': 'Launch nuevo',
@@ -326,6 +329,8 @@ function BotSection({
             {extraStat && <Stat label={extraStat.label} value={extraStat.value} />}
           </div>
 
+          <BotAudience provider={provider} />
+
           {status}
 
           <div className="flex flex-wrap gap-2">
@@ -392,6 +397,174 @@ function BotSection({
         </div>
       )}
     </section>
+  )
+}
+
+const CHAT_KINDS = {
+  telegram: { private: 'Usuario', group: 'Grupo', supergroup: 'Grupo', channel: 'Canal' },
+  discord: { private: 'Usuario', group: 'Canal', channel: 'Anuncios' },
+} as Record<BotProviderName, Record<string, string>>
+
+const CHAT_FILTERS = [
+  { key: 'communities', label: 'Grupos y canales' },
+  { key: 'private', label: 'Usuarios' },
+  { key: 'inactive', label: 'Inactivos' },
+] as const
+type ChatFilter = (typeof CHAT_FILTERS)[number]['key']
+
+const fmt = (n: number) => n.toLocaleString('es-ES')
+
+/**
+ * Alcance del bot y lista de los chats conectados: miembros de cada grupo,
+ * canal o servidor (solo el número, nunca quiénes son) y quién lo vinculó.
+ */
+function BotAudience({ provider }: { provider: BotProviderName }) {
+  const q = useAdminBotChats(provider)
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState<ChatFilter>('communities')
+
+  const chats = q.data?.chats ?? []
+  const shown = chats
+    .filter((c) => matches(c, filter))
+    .sort((a, b) => (b.members ?? -1) - (a.members ?? -1) || b.calls - a.calls)
+
+  return (
+    <div className="rounded-lg border border-white/8">
+      <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+        <Users className="h-4 w-4 text-primary" aria-hidden />
+        <div className="min-w-0">
+          {q.isLoading ? (
+            <Skeleton className="h-5 w-24" />
+          ) : (
+            <p className="font-mono text-lg font-bold leading-tight text-primary">{fmt(q.data?.reach ?? 0)}</p>
+          )}
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Alcance estimado (personas)
+            {!!q.data?.unknown && (
+              <span className="normal-case tracking-normal text-amber-300"> · {q.data.unknown} sin consultar</span>
+            )}
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => q.refresh.mutate()}
+          disabled={q.refresh.isPending || q.isLoading}
+          className="ml-auto h-8 gap-1.5 text-xs text-muted-foreground"
+          title="Vuelve a pedir los miembros a la plataforma (normalmente se guardan 1 h)"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', q.refresh.isPending && 'animate-spin')} /> Actualizar
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setOpen((v) => !v)}
+          className="h-8 gap-1.5 rounded-lg border-white/10 text-xs"
+          aria-expanded={open}
+        >
+          {open ? 'Ocultar' : 'Ver'} comunidades
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
+        </Button>
+      </div>
+
+      {open && (
+        <div className="space-y-2 border-t border-white/8 px-3 py-2.5">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Miembros según {provider === 'discord' ? 'Discord (del servidor entero, aproximado)' : 'Telegram'}. El
+            alcance suma cada privado como una persona y cada {provider === 'discord' ? 'servidor' : 'grupo o canal'}{' '}
+            una sola vez; quien esté en varios cuenta varias veces.
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {CHAT_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilter(f.key)}
+                className={cn(
+                  'rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
+                  filter === f.key
+                    ? 'border-primary/40 bg-[#8FA83F]/12 text-primary'
+                    : 'border-white/10 text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {f.label} <span className="font-mono">{chats.filter((c) => matches(c, f.key)).length}</span>
+              </button>
+            ))}
+          </div>
+
+          {q.isError && <p className="text-[12px] text-[#ff8080]">No se pudo cargar la lista.</p>}
+          {!q.isLoading && shown.length === 0 && <p className="py-2 text-[12px] text-muted-foreground">Nada por aquí.</p>}
+          <div className="space-y-1.5">
+            {shown.map((c) => (
+              <ChatRow key={c.id} chat={c} provider={provider} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function matches(c: AdminChatDTO, key: ChatFilter) {
+  if (key === 'inactive') return !c.active
+  if (!c.active) return false
+  return key === 'private' ? c.chatType === 'private' : c.chatType !== 'private'
+}
+
+function ChatRow({ chat: c, provider }: { chat: AdminChatDTO; provider: BotProviderName }) {
+  const kind = CHAT_KINDS[provider][c.chatType] ?? c.chatType
+  const title = c.chatType === 'private' ? `@${c.owner.handle}` : c.title || 'Sin nombre'
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-white/8 px-3 py-2 text-[12px]">
+      <span className="rounded bg-white/8 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {kind}
+      </span>
+      <div className="min-w-0 flex-1">
+        {c.link ? (
+          <a
+            href={c.link}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-w-0 items-center gap-1 font-semibold hover:underline"
+          >
+            <span className="truncate">{title}</span> <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+          </a>
+        ) : c.chatType === 'private' ? (
+          <a href={`/u/${c.owner.handle}`} target="_blank" rel="noreferrer" className="block truncate font-semibold hover:underline">
+            {title}
+          </a>
+        ) : (
+          <p className="truncate font-semibold">{title}</p>
+        )}
+        <p className="truncate text-[11px] text-muted-foreground">
+          {c.chatType === 'private' ? (
+            c.owner.name
+          ) : (
+            <>
+              vinculado por{' '}
+              <a href={`/u/${c.owner.handle}`} target="_blank" rel="noreferrer" className="hover:underline">
+                @{c.owner.handle}
+              </a>
+            </>
+          )}{' '}
+          · {timeAgo(c.createdAt)}
+          {c.calls > 0 && ` · ${c.calls} call${c.calls === 1 ? '' : 's'}`}
+        </p>
+        {(c.lastError || c.audienceError) && (
+          <p className="truncate text-[11px] text-amber-300" title={c.lastError ?? c.audienceError ?? ''}>
+            {c.lastError ?? `No se pudieron leer los miembros: ${c.audienceError}`}
+          </p>
+        )}
+      </div>
+      {c.members != null && (
+        <div className="text-right">
+          <p className="font-mono text-sm font-bold text-primary">{fmt(c.members)}</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            {c.online != null ? `${fmt(c.online)} en línea` : 'miembros'}
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 
