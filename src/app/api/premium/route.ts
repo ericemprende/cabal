@@ -19,8 +19,9 @@ export async function GET(req: Request) {
       if (price === null) return []
       const { label, months } = PLANS[key]
       // Ahorro frente a pagar el mensual todos esos meses (anual a $228 = 24% con el mensual a $25)
-      const savingsPct =
-        monthly && key !== 'monthly' ? Math.max(0, Math.round((1 - price / (monthly * months)) * 100)) : 0
+      const fullPrice = monthly && key !== 'monthly' ? monthly * months : null
+      const savingsPct = fullPrice ? Math.max(0, Math.round((1 - price / fullPrice) * 100)) : 0
+      const savingsUsd = fullPrice ? Math.max(0, Math.round((fullPrice - price) * 100) / 100) : 0
       return [
         {
           key,
@@ -29,6 +30,8 @@ export async function GET(req: Request) {
           months,
           perMonthUsd: Math.round((price / months) * 100) / 100,
           savingsPct,
+          savingsUsd,
+          fullPriceUsd: savingsUsd > 0 ? fullPrice : null,
           card: stripePlanAvailable(key),
           crypto,
         },

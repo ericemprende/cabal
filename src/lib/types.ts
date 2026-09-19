@@ -308,6 +308,10 @@ export interface PremiumPlanDTO {
   perMonthUsd: number
   /** Ahorro frente a pagar el plan mensual todos esos meses (0 si no aplica). */
   savingsPct: number
+  /** Lo mismo en USD: mensual × meses − precio del plan (0 si no aplica). */
+  savingsUsd: number
+  /** Lo que costarían esos meses pagando el mensual; null si no hay ahorro. */
+  fullPriceUsd: number | null
   card: boolean
   crypto: boolean
 }

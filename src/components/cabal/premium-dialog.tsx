@@ -111,6 +111,11 @@ export function PremiumDialog() {
   )
 }
 
+/** $72 o $72.50: sin céntimos cuando el importe es redondo. */
+function formatUsd(n: number) {
+  return `$${Number.isInteger(n) ? n : n.toFixed(2)}`
+}
+
 function PlanCard({
   plan,
   paying,
@@ -141,8 +146,18 @@ function PlanCard({
           <p className="text-[11px] text-muted-foreground">
             ${plan.perMonthUsd.toFixed(2)}/mes · {plan.months} {plan.months === 1 ? 'mes' : 'meses'}
           </p>
+          {highlighted && plan.savingsUsd > 0 && (
+            <p className="text-[11px] font-semibold text-amber-300/90">
+              Ahorras {formatUsd(plan.savingsUsd)} frente al plan mensual
+            </p>
+          )}
         </div>
-        <p className="font-machina text-xl font-bold">${plan.priceUsd}</p>
+        <div className="text-right">
+          {plan.fullPriceUsd !== null && (
+            <p className="text-[11px] text-muted-foreground line-through">{formatUsd(plan.fullPriceUsd)}</p>
+          )}
+          <p className="font-machina text-xl font-bold">{formatUsd(plan.priceUsd)}</p>
+        </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <Button
