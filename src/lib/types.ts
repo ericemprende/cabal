@@ -768,6 +768,8 @@ export interface ChatMessageDTO {
   }
   /** Mensaje al que responde (cita corta), o null si no es respuesta. */
   replyTo: { id: string; body: string; user: { id: string; name: string; handle: string } } | null
+  /** Ids de quienes le dieron "me gusta" (corazón). */
+  likedBy: string[]
 }
 
 /** Solicitud de verificación oficial (perk Premium). */

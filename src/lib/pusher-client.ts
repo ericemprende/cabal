@@ -26,3 +26,5 @@ export function getPusherClient(): PusherClient | null {
 
 export const CHAT_CHANNEL = 'presence-cabal-global'
 export const CHAT_EVENT = 'chat-message'
+/** Cambió la lista de "me gusta" de un mensaje: { id, likedBy }. */
+export const CHAT_LIKE_EVENT = 'chat-like'

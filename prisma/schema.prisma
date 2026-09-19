@@ -88,6 +88,7 @@ model User {
   launchMemberships LaunchMember[]   @relation("launchMember")
   launchInvitesSent LaunchMember[]   @relation("launchInviter")
   chatMessages      ChatMessage[]
+  chatMessageLikes  ChatMessageLike[]
   launchReminders   LaunchReminder[]
   chatLinks         ChatLink[]
   chatLinkCodes     ChatLinkCode[]
@@ -326,9 +327,22 @@ model ChatMessage {
   replyToId String?
   replyTo   ChatMessage?  @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   ChatMessage[] @relation("ChatReplies")
+  likes     ChatMessageLike[]
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// "Me gusta" (corazón) a un mensaje del chat en vivo: uno por usuario y mensaje.
+model ChatMessageLike {
+  id        String      @id @default(cuid())
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId])
 }
 
 model Post {

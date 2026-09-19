@@ -57,7 +57,7 @@ export function Header() {
           onClick={() => goToTab('radar')}
           aria-label="Ir al Radar"
         >
-          <CabalWordmark />
+          <CabalWordmark className="h-9 sm:h-10" />
         </button>
 
         {/* Search (desktop) */}

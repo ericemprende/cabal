@@ -155,7 +155,7 @@ export function UserAvatar({
   verified?: boolean
   /** Verificado oficialmente por Cabal: aro verde con destello y sello. */
   official?: boolean
-  /** Plan Premium activo: la coronita, arriba a la derecha. */
+  /** Plan Premium activo: la coronita, encima del avatar (fuera de la foto). */
   premium?: boolean
   /** Puntico verde: el usuario tiene el chat en vivo abierto ahora mismo (ver useIsOnline). */
   online?: boolean
@@ -220,11 +220,15 @@ export function UserAvatar({
         </span>
       )}
       {premium && (
-        <span
-          className="absolute -top-1.5 left-1/2 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full bg-[#0a0b08]"
-          title="Premium"
-        >
-          <Crown className="h-3.5 w-3.5 fill-amber-400 text-amber-400" aria-label="Premium" />
+        // Encima del avatar, sin tapar la foto: la base de la corona toca el borde del círculo
+        <span className="pointer-events-none absolute bottom-full left-1/2 -mb-px -translate-x-1/2" title="Premium">
+          <Crown
+            className={cn(
+              'fill-amber-400 text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
+              size === 'xs' || size === 'sm' ? 'h-3 w-3' : size === 'xl' ? 'h-5 w-5' : 'h-4 w-4'
+            )}
+            aria-label="Premium"
+          />
         </span>
       )}
       {online && (

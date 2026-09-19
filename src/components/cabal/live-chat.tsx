@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CornerUpLeft, Send, Users, X } from 'lucide-react'
+import { CornerUpLeft, Heart, Send, Users, X } from 'lucide-react'
 import { UserAvatar } from '@/components/cabal/shared'
-import { useChatMessages, useSendChatMessage, useSession } from '@/lib/api-client'
+import { jsonFetch, useChatMessages, useSendChatMessage, useSession } from '@/lib/api-client'
 import { useOnlineIds, useIsOnline } from '@/lib/presence'
-import { getPusherClient, CHAT_CHANNEL, CHAT_EVENT } from '@/lib/pusher-client'
+import { getPusherClient, CHAT_CHANNEL, CHAT_EVENT, CHAT_LIKE_EVENT } from '@/lib/pusher-client'
+import { markChatRead } from '@/lib/chat-unread'
 import { useUI } from '@/lib/store'
 import type { ChatMessageDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -27,15 +28,20 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
   const [replyTo, setReplyTo] = useState<ChatMessageDTO | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  // "Me gusta" más recientes que el historial (por Pusher o por mi propio clic)
+  const [likes, setLikes] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
     const pusher = getPusherClient()
     if (!pusher) return
     const channel = pusher.channel(CHAT_CHANNEL) ?? pusher.subscribe(CHAT_CHANNEL)
     const onMessage = (msg: ChatMessageDTO) => setLive((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+    const onLike = (p: { id: string; likedBy: string[] }) => setLikes((prev) => ({ ...prev, [p.id]: p.likedBy }))
     channel.bind(CHAT_EVENT, onMessage)
+    channel.bind(CHAT_LIKE_EVENT, onLike)
     return () => {
       channel.unbind(CHAT_EVENT, onMessage)
+      channel.unbind(CHAT_LIKE_EVENT, onLike)
     }
   }, [])
 
@@ -43,7 +49,24 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
+    // Mientras el chat está a la vista, lo que llega queda leído
+    markChatRead()
   }, [messages.length])
+
+  const me = session?.loggedIn ? session.user?.id ?? null : null
+
+  const toggleLike = (msg: ChatMessageDTO) => {
+    if (!me) return openAuth('login')
+    const current = likes[msg.id] ?? msg.likedBy
+    // Optimista: el corazón cambia al instante; el servidor manda la lista buena
+    setLikes((prev) => ({
+      ...prev,
+      [msg.id]: current.includes(me) ? current.filter((id) => id !== me) : [...current, me],
+    }))
+    jsonFetch<{ id: string; likedBy: string[] }>(`/api/chat/messages/${msg.id}/like`, { method: 'POST' })
+      .then((r) => setLikes((prev) => ({ ...prev, [r.id]: r.likedBy })))
+      .catch(() => setLikes((prev) => ({ ...prev, [msg.id]: current })))
+  }
 
   const canChat = getPusherClient() !== null
 
@@ -101,7 +124,15 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
           <p className="pt-6 text-center text-xs text-muted-foreground">Sé el primero en escribir</p>
         )}
         {messages.map((m) => (
-          <ChatLine key={m.id} msg={m} onReply={startReply} onJump={jumpTo} />
+          <ChatLine
+            key={m.id}
+            msg={m}
+            likedBy={likes[m.id] ?? m.likedBy}
+            me={me}
+            onLike={toggleLike}
+            onReply={startReply}
+            onJump={jumpTo}
+          />
         ))}
       </div>
 
@@ -148,14 +179,21 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
 
 function ChatLine({
   msg,
+  likedBy,
+  me,
+  onLike,
   onReply,
   onJump,
 }: {
   msg: ChatMessageDTO
+  likedBy: string[]
+  me: string | null
+  onLike: (msg: ChatMessageDTO) => void
   onReply: (msg: ChatMessageDTO) => void
   onJump: (id: string) => void
 }) {
   const online = useIsOnline(msg.user.id)
+  const liked = !!me && likedBy.includes(me)
   return (
     <div data-msg-id={msg.id} className="group relative -mx-1 flex items-start gap-2 rounded-md px-1 transition-colors">
       <UserAvatar name={msg.user.name} handle={msg.user.handle} src={msg.user.avatar} size="xs" online={online} />
@@ -175,6 +213,21 @@ function ChatLine({
         )}
         <p className={cn('break-words text-[13px] leading-snug text-foreground/90')}>{msg.body}</p>
       </div>
+      {/* Corazón: con "me gusta" se queda visible; si no, aparece al pasar el mouse (siempre en táctil). */}
+      <button
+        onClick={() => onLike(msg)}
+        className={cn(
+          'flex shrink-0 items-center gap-0.5 rounded p-1 text-[11px] font-bold transition-colors',
+          liked ? 'text-rose-400' : 'text-muted-foreground hover:text-rose-400',
+          likedBy.length === 0 && 'sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100'
+        )}
+        aria-label={liked ? 'Quitar me gusta' : `Me gusta el mensaje de ${msg.user.name}`}
+        aria-pressed={liked}
+        title="Me gusta"
+      >
+        <Heart className={cn('h-3.5 w-3.5', liked && 'fill-rose-400')} aria-hidden />
+        {likedBy.length > 0 && <span className="tabular-nums">{likedBy.length}</span>}
+      </button>
       {/* Visible siempre en táctil; en escritorio aparece al pasar el mouse. */}
       <button
         onClick={() => onReply(msg)}

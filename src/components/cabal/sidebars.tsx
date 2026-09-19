@@ -12,6 +12,7 @@ import { useFollowToggle, useLaunches, useLeaderboard, usePointRules } from '@/l
 import { useUI } from '@/lib/store'
 import { useIsOnline, useOnlineCount, useOnlineMembers } from '@/lib/presence'
 import { LiveChat } from '@/components/cabal/live-chat'
+import { useChatUnread } from '@/lib/chat-unread'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { fmtNum } from '@/lib/cabal'
 import { fmtMultiple } from '@/lib/call-score'
@@ -55,6 +56,8 @@ export function LeftFeed() {
   const { openLaunch } = useUI()
   const [filter, setFilter] = useState<ActivityFilter>('all')
   const onlineCount = useOnlineCount()
+  const unread = useChatUnread()
+  const unreadLabel = unread > 99 ? '99+' : String(unread)
   // Colapsable hacia la izquierda: en vez de solo ocultar el contenido, el
   // panel se encoge a una tira angosta y el feed del medio gana ese ancho
   // (es flex-1 en el layout, así que crece solo).
@@ -99,10 +102,14 @@ export function LeftFeed() {
               <button
                 onClick={() => setCollapsed(false)}
                 className="relative flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white/5"
-                aria-label={`Chat en vivo, ${onlineCount} conectados`}
+                aria-label={`Chat en vivo, ${onlineCount} conectados${unread ? `, ${unread} sin leer` : ''}`}
               >
                 <MessageCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
-                {onlineCount > 0 && (
+                {unread > 0 ? (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-400 px-1 text-[9px] font-bold leading-none text-[#0a0b08]">
+                    {unreadLabel}
+                  </span>
+                ) : onlineCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-[#0a0b08] bg-emerald-400" />
                 )}
               </button>
@@ -134,8 +141,15 @@ export function LeftFeed() {
                       >
                         <Icon className="h-3 w-3" aria-hidden />
                         {label}
-                        {onlineCount > 0 && (
-                          <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
+                        {unread > 0 && filter !== 'chat' ? (
+                          <span
+                            className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-400 px-1 text-[9px] font-bold leading-none text-[#0a0b08]"
+                            aria-label={`${unread} sin leer`}
+                          >
+                            {unreadLabel}
+                          </span>
+                        ) : (
+                          onlineCount > 0 && <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden />
                         )}
                       </button>
                     </TooltipTrigger>

@@ -6,6 +6,7 @@ const userSelect = { id: true, name: true, handle: true, avatar: true, walletVer
 export const chatMessageInclude = {
   user: { select: userSelect },
   replyTo: { select: { id: true, body: true, user: { select: { id: true, name: true, handle: true } } } },
+  likes: { select: { userId: true } },
 } as const
 
 type Row = {
@@ -14,6 +15,7 @@ type Row = {
   createdAt: Date
   user: { id: string; name: string; handle: string; avatar: string; walletVerified: boolean }
   replyTo: { id: string; body: string; user: { id: string; name: string; handle: string } } | null
+  likes: { userId: string }[]
 }
 
 export function toChatMessageDTO(m: Row): ChatMessageDTO {
@@ -30,5 +32,6 @@ export function toChatMessageDTO(m: Row): ChatMessageDTO {
     },
     // La cita se recorta: basta para reconocer el mensaje original.
     replyTo: m.replyTo ? { id: m.replyTo.id, body: m.replyTo.body.slice(0, 140), user: m.replyTo.user } : null,
+    likedBy: m.likes.map((l) => l.userId),
   }
 }
