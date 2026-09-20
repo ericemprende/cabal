@@ -2,9 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Crown, ExternalLink, Info, MessageSquare, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
+import { Crown, ExternalLink, Info, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
+import { DiscordLogo } from '@/components/cabal/discord-logo'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
 import { useIsOnline } from '@/lib/presence'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -251,7 +252,7 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
 function ClanAvatar({ clan }: { clan: ClanDTO }) {
   const [broken, setBroken] = useState(false)
   const telegram = clan.provider === 'telegram'
-  const Icon = telegram ? Send : MessageSquare
+  const Icon = telegram ? Send : DiscordLogo
   return (
     <span className="relative h-11 w-11 shrink-0">
       {clan.image && !broken ? (

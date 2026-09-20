@@ -8,7 +8,6 @@ import {
   Copy,
   ExternalLink,
   Loader2,
-  MessageSquare,
   Play,
   RefreshCw,
   Send,
@@ -22,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { timeAgo } from '@/lib/cabal'
 import { cn } from '@/lib/utils'
+import { DiscordLogo } from '@/components/cabal/discord-logo'
 import { useAdminBotChats, useAdminNotify, useAdminNotifyAction, useAdminNotifyUpdate } from '@/lib/notify-client'
 import type { AdminBotDTO, AdminChatDTO, BotProviderName } from '@/lib/notify-types'
 
@@ -135,7 +135,7 @@ export function AdminNotify({ enabled }: { enabled: boolean }) {
       <BotSection
         provider="discord"
         title="Discord"
-        icon={<MessageSquare className="h-4 w-4" style={{ color: BRAND_TEXT.discord }} aria-hidden />}
+        icon={<DiscordLogo className="h-4 w-4" style={{ color: BRAND_TEXT.discord }} aria-hidden />}
         bot={dc}
         tokenPlaceholder="MTIz…"
         envVar="DISCORD_BOT_TOKEN"

@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, Loader2, MessageSquare, Users } from 'lucide-react'
+import { Copy, Loader2, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ChatLinkRow } from '@/components/cabal/chat-link-row'
+import { DiscordLogo } from '@/components/cabal/discord-logo'
 import { useCreateChatLinkCode, useMyChats } from '@/lib/notify-client'
 import type { DiscordLinkCodeDTO } from '@/lib/notify-types'
 
@@ -34,7 +35,7 @@ export function DiscordConnect() {
   return (
     <div className="space-y-2 border-b border-white/10 p-4">
       <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        <MessageSquare className="h-3.5 w-3.5" aria-hidden /> Discord
+        <DiscordLogo className="h-3.5 w-3.5" aria-hidden /> Discord
       </p>
       <p className="text-[11px] leading-relaxed text-muted-foreground">
         Los mismos avisos que en Telegram, en tu Discord: la 🔔 campanita por privado y, si quieres, todos los
@@ -58,7 +59,7 @@ export function DiscordConnect() {
             {createCode.isPending && mode === 'private' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <MessageSquare className="h-3.5 w-3.5" />
+              <DiscordLogo className="h-3.5 w-3.5" />
             )}
             Conectar mi Discord
           </Button>
