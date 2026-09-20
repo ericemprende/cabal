@@ -190,13 +190,19 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
             </div>
           </div>
 
-          {c.cabalMembers !== null && (
-            <p className="flex items-center gap-1.5 rounded-lg border border-[#8FA83F]/20 bg-[#8FA83F]/8 px-2 py-1 text-[11px]">
-              <Users className="h-3 w-3 shrink-0 text-primary" aria-hidden />
+          {/*
+            Cuántos de esta comunidad tienen cuenta en Cabal: el radar y el
+            número, sin el total del grupo al lado. Si ninguno la tiene todavía
+            no se enseña nada, que un cero no dice nada bueno de nadie.
+          */}
+          {c.cabalMembers !== null && c.cabalMembers > 0 && (
+            <p
+              className="flex w-fit items-center gap-1.5 rounded-lg border border-[#8FA83F]/20 bg-[#8FA83F]/8 px-2 py-1 text-[11px]"
+              title={`${c.cabalMembers.toLocaleString('es')} ${c.cabalMembers === 1 ? 'miembro tiene' : 'miembros tienen'} cuenta en Cabal`}
+            >
+              <img src="/cabal-logo.webp" alt="" className="h-3.5 w-3.5 shrink-0 object-contain" aria-hidden />
               <span className="font-bold text-primary">{c.cabalMembers.toLocaleString('es')}</span>
-              <span className="truncate text-muted-foreground">
-                {c.members !== null ? `de ${c.members.toLocaleString('es')} miembros` : 'miembros'} ya están en Cabal
-              </span>
+              <span className="sr-only">en Cabal</span>
             </p>
           )}
 

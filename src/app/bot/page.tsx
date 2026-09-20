@@ -178,8 +178,8 @@ export default function BotManualPage() {
           un canal.
         </p>
         <p>
-          Verificar tu Discord además te cuenta en el «N de M miembros ya están en Cabal» de tu servidor, sin tener
-          que escribirle nada al bot.
+          Verificar tu Discord además te suma en el contador de gente de tu servidor que ya está en Cabal, el del
+          radar en la tarjeta del clan, sin tener que escribirle nada al bot.
         </p>
       </LegalSection>
 
@@ -275,9 +275,9 @@ export default function BotManualPage() {
         <ul>
           <li>Desde el clan, cualquiera puede entrar a tu comunidad si tiene enlace público (@usuario en Telegram o una URL personalizada en Discord).</li>
           <li>
-            La tarjeta también dice cuántos miembros de tu comunidad ya tienen cuenta en Cabal. Se cuenta preguntando,
-            por cada persona con su Telegram o Discord conectado a Cabal, si está en tu grupo: el bot nunca pide la lista
-            de miembros.
+            La tarjeta también lleva el radar de Cabal con cuántos miembros de tu comunidad ya tienen cuenta. Se cuenta
+            preguntando, por cada persona con su Telegram o Discord conectado a Cabal, si está en tu grupo: el bot nunca
+            pide la lista de miembros.
           </li>
           <li>«Ver sus callers» filtra el ranking de Top Callers por esa comunidad.</li>
           <li>
