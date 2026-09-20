@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
+  Activity,
   BarChart3,
   BadgeCheck,
   CheckCircle2,
@@ -31,6 +32,7 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react'
+import { AdminHealth } from '@/components/cabal/admin-health'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -164,6 +166,7 @@ type AdminView =
   | 'calls'
   | 'moderacion'
   | 'stats'
+  | 'salud'
 
 function toInputDateTime(iso: string): string {
   const d = new Date(iso)
@@ -266,6 +269,7 @@ export function AdminPanel({
     { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
     { key: 'notificaciones', label: 'Telegram y Discord', icon: Send },
     { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
+    { key: 'salud', label: 'Salud del servidor', icon: Activity },
   ] as { key: AdminView; label: string; icon: typeof Zap }[]
 
   return (
@@ -409,6 +413,8 @@ export function AdminPanel({
             </Button>
           </div>
         )}
+
+        {view === 'salud' && <AdminHealth />}
 
         {view === 'stats' && (
           <div className="space-y-4">

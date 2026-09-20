@@ -5,6 +5,7 @@ import bs58 from 'bs58'
 import { toast } from 'sonner'
 import type {
   VerifyRequestDTO,
+  AdminMetricsDTO,
   AdminOverviewDTO,
   AdminPremiumDTO,
   AdminUserRowDTO,
@@ -354,6 +355,15 @@ export function useUserCallStats(handle: string, period: CallPeriod) {
     queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/calls?period=${period}`),
     enabled: Boolean(handle),
     placeholderData: (prev) => prev,
+  })
+}
+
+/** Salud del servidor (panel admin). Se refresca solo mientras la pestaña está abierta. */
+export function useAdminMetrics(minutes: number) {
+  return useQuery<AdminMetricsDTO>({
+    queryKey: ['admin', 'metrics', minutes] as const,
+    queryFn: () => jsonFetch(`/api/admin/metrics?minutes=${minutes}`),
+    refetchInterval: 60_000,
   })
 }
 

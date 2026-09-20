@@ -814,3 +814,32 @@ export interface VerifyRequestDTO {
   /** Solo en el panel de admin: quien la pide. */
   user: { id: string; handle: string; name: string; avatar: string } | null
 }
+
+/** Salud del servidor (panel de admin → GET /api/admin/metrics). */
+export interface AdminMetricsDTO {
+  minutes: number
+  points: {
+    at: string
+    /** Consultas a Postgres por minuto en ese tramo. */
+    dbPerMin: number
+    dbAvgMs: number
+    /** Peticiones a APIs de fuera por minuto. */
+    extPerMin: number
+    extAvgMs: number
+    extErr: number
+    rssMb: number | null
+    online: number | null
+    lagMs: number | null
+  }[]
+  /** Peticiones por servicio de fuera en toda la ventana. */
+  services: { name: string; calls: number }[]
+  now: {
+    rssMb: number | null
+    heapMb: number | null
+    online: number | null
+    lagMs: number | null
+    dbPerMin: number
+    extPerMin: number
+    extErrLastHour: number
+  }
+}

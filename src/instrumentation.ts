@@ -6,6 +6,9 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
   if (process.env.NEXT_PHASE === 'phase-production-build') return
+  // Métricas del servidor (panel de admin → Salud del servidor)
+  const { startMetricsCollector } = await import('@/lib/metrics-collector')
+  startMetricsCollector()
   if (process.env.NOTIFY_WORKER === 'off') return
   const { startNotifyWorker } = await import('@/lib/notify-worker')
   startNotifyWorker()
