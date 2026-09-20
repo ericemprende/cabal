@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
-import { ensureAffiliatePresets, isValidAffiliateUrl, parseAffiliateLinks, sanitizeAffiliateLinks } from '@/lib/affiliate'
+import { isValidAffiliateUrl, parseAffiliateLinks, sanitizeAffiliateLinks } from '@/lib/affiliate'
+import { ensureAffiliatePresets } from '@/lib/affiliate-server'
 import type { AffiliatePlatformDTO } from '@/lib/types'
 
 const toDTO = (r: {

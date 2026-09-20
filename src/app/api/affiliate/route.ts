@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { ensureAffiliatePresets, parseAffiliateLinks } from '@/lib/affiliate'
+import { parseAffiliateLinks } from '@/lib/affiliate'
+import { ensureAffiliatePresets } from '@/lib/affiliate-server'
 import type { AffiliatePlatformDTO } from '@/lib/types'
 
 // GET público: plataformas activas con enlace configurado (para los botones "Comprar")

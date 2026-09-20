@@ -1,4 +1,3 @@
-import { db } from '@/lib/db'
 import { NETWORKS, type NetworkKey } from '@/lib/cabal'
 
 /** Presets de plataformas afiliadas que se auto-crean la primera vez. */
@@ -35,15 +34,6 @@ export const CHAIN_SLUGS: Record<NetworkKey, string> = {
   tron: 'tron',
   robinhood: 'robinhood',
   arc: 'arc',
-}
-
-/** Garantiza que los presets existan (idempotente, corre una sola vez por BD vacía). */
-export async function ensureAffiliatePresets() {
-  const count = await db.affiliatePlatform.count()
-  if (count > 0) return
-  await db.affiliatePlatform.createMany({
-    data: AFFILIATE_PRESETS.map((p) => ({ ...p, url: '', links: '{}', active: false })),
-  })
 }
 
 /** Valida el enlace madre de referido (https obligatorio). */
