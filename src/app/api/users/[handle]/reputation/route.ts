@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { REP_BODY_MAX, repWeight } from '@/lib/reputation'
 import { recomputeReputation, repEligibility } from '@/lib/reputation-server'
+import { hasPremium } from '@/lib/premium'
 import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { invalidate } from '@/lib/cache'
 import type { ReputationDTO, ReputationReviewDTO } from '@/lib/types'
@@ -18,11 +19,17 @@ async function findTarget(params: Promise<{ handle: string }>) {
   return db.user.findFirst({ where: { handle: { equals: handle, mode: 'insensitive' } } })
 }
 
-/** Quien mira, solo si tiene sesión real (el invitado demo no vota). */
+/**
+ * Quien mira, solo si tiene sesión real (el invitado demo no vota), con su
+ * acceso Premium ya resuelto: valorar es un perk del plan. El admin entra
+ * siempre, igual que en el resto de perks.
+ */
 async function viewer() {
   const id = await sessionUserIdFromCookies().catch(() => null)
-  if (!id) return null
-  return db.user.findUnique({ where: { id } })
+  if (!id) return { me: null, premium: false }
+  const me = await db.user.findUnique({ where: { id } })
+  if (!me) return { me: null, premium: false }
+  return { me, premium: me.isAdmin || (await hasPremium(me.id)) }
 }
 
 const reviewDTO = (r: {
@@ -56,7 +63,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ handle: 
     if (!target) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
 
     const take = Math.min(Number(new URL(req.url).searchParams.get('take')) || PAGE, 100)
-    const me = await viewer()
+    const { me, premium } = await viewer()
 
     const [reviews, withBody, mine] = await Promise.all([
       db.reputation.findMany({
@@ -75,7 +82,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ handle: 
         : Promise.resolve(null),
     ])
 
-    const reason = repEligibility(me, target.id)
+    const reason = repEligibility(me, target.id, premium)
     const dto: ReputationDTO = {
       summary: { score: target.repScore, up: target.repUp, down: target.repDown, votes: target.repUp + target.repDown },
       reviews: reviews.map(reviewDTO),
@@ -101,16 +108,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ handle:
     const target = await findTarget(params)
     if (!target) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
 
-    const me = await viewer()
-    const reason = repEligibility(me, target.id)
+    const { me, premium } = await viewer()
+    const reason = repEligibility(me, target.id, premium)
     if (reason === 'anon') return NextResponse.json({ error: 'Entra para valorar' }, { status: 401 })
     if (reason === 'self') return NextResponse.json({ error: 'No puedes valorarte a ti mismo' }, { status: 400 })
-    if (reason === 'unverified') {
-      return NextResponse.json(
-        { error: 'Verifica tu correo, tu X o tu wallet para poder valorar' },
-        { status: 403 }
-      )
-    }
     const author = me! // repEligibility ya descartó el caso sin sesión
 
     // Tope generoso para el uso normal (votar y corregir la reseña), pero que
@@ -124,6 +125,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ handle:
       return NextResponse.json({ error: 'Valor de voto no válido' }, { status: 400 })
     }
     const body = typeof payload.body === 'string' ? payload.body.trim().slice(0, REP_BODY_MAX) : ''
+
+    // Retirar la valoración (value 0) no pide nada: a quien se le acaba el
+    // Premium no se le deja atrapada una valoración que ya no sostiene.
+    if (value !== 0) {
+      if (reason === 'premium') {
+        return NextResponse.json(
+          { error: 'Valorar a otras personas es parte del plan Premium' },
+          { status: 403 }
+        )
+      }
+      if (reason === 'unverified') {
+        return NextResponse.json(
+          { error: 'Verifica tu correo, tu X o tu wallet para poder valorar' },
+          { status: 403 }
+        )
+      }
+    }
 
     if (value === 0) {
       await db.reputation.deleteMany({ where: { authorId: author.id, targetId: target.id } })

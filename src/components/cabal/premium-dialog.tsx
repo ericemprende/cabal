@@ -14,6 +14,7 @@ const BENEFITS = [
   'El launchpad donde sale el token',
   'El contrato, si ya existe antes del lanzamiento',
   'Insignia de verificado para tu perfil y tus launches, frente a clones',
+  'Valorar a otras personas (confío / no confío) y dejar reseñas públicas',
 ]
 
 /**

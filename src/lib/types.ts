@@ -71,10 +71,10 @@ export interface ReputationDTO {
   more: number
   /** Voto de quien mira, si ya votó. */
   mine: { value: 1 | -1; body: string } | null
-  /** Puede votar a este usuario: con sesión, verificado y no siendo él mismo. */
+  /** Puede votar a este usuario: con sesión, Premium, verificado y no siendo él mismo. */
   canVote: boolean
   /** Por qué no puede votar, para explicarlo en vez de esconder los botones. */
-  reason: 'ok' | 'anon' | 'self' | 'unverified'
+  reason: 'ok' | 'anon' | 'self' | 'unverified' | 'premium'
 }
 
 /** El usuario visto por sí mismo o por el panel de admin: incluye lo privado. */

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BadgeCheck, MessageSquareText, ShieldQuestion, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { BadgeCheck, Crown, MessageSquareText, ShieldQuestion, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -102,13 +102,20 @@ export function ReputationActions({
 }) {
   const { data } = useUserReputation(handle)
   const rate = useRateUser(handle)
-  const { openAuth } = useUI()
+  const { openAuth, setPremiumOpen } = useUI()
   const { data: session } = useSession()
   const [draft, setDraft] = useState('')
 
   const summary = data?.summary ?? { score: 50, up: 0, down: 0, votes: 0 }
   const mine = data?.mine ?? null
   const self = data?.reason === 'self'
+  // Valorar es un perk Premium: sin plan se enseña la puerta, no un error
+  const needsPremium = data?.reason === 'premium'
+
+  const goPremium = () => {
+    onOpenChange(false)
+    setPremiumOpen(true)
+  }
 
   // El borrador se rellena al abrir, no en un efecto: así editar una reseña ya
   // escrita arranca con su texto y nada pisa lo que se teclea mientras la
@@ -121,12 +128,15 @@ export function ReputationActions({
   const vote = (value: 1 | -1) => {
     // Sin sesión no se vota: se pide entrar en vez de fallar contra la API
     if (!session?.loggedIn) return openAuth('login')
-    if (!data?.canVote) {
+    // Pulsar el voto que ya tenías lo retira: el mismo botón es el interruptor.
+    const next = mine?.value === value ? 0 : value
+    // Retirar lo que ya votaste no pide nada: quien deja de ser Premium no se
+    // queda atrapado con una valoración que ya no sostiene.
+    if (next !== 0 && !data?.canVote) {
+      if (needsPremium) return goPremium()
       toast.error(self ? 'No puedes valorarte a ti mismo' : 'Verifica tu correo, tu X o tu wallet para poder valorar')
       return
     }
-    // Pulsar el voto que ya tenías lo retira: el mismo botón es el interruptor.
-    const next = mine?.value === value ? 0 : value
     rate.mutate(
       { value: next, body: next === 0 ? '' : mine?.body ?? '' },
       {
@@ -192,11 +202,13 @@ export function ReputationActions({
                 <VoteButton kind="down" wide active={mine?.value === -1} disabled={rate.isPending} onClick={() => vote(-1)} />
               </div>
 
+              {needsPremium && <PremiumGate hasVote={Boolean(mine)} onOpen={goPremium} />}
+
               {data?.reason === 'unverified' && (
                 <p className="text-[11px] text-amber-300/90">Verifica tu correo, tu X o tu wallet en tu perfil para poder valorar.</p>
               )}
 
-              {mine ? (
+              {mine && data?.canVote ? (
                 <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
                   <Textarea
                     value={draft}
@@ -246,12 +258,36 @@ export function ReputationActions({
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
-              Todavía no hay reseñas escritas.{!self && ' Sé el primero en contar tu experiencia.'}
+              Todavía no hay reseñas escritas.{!self && data.canVote && ' Sé el primero en contar tu experiencia.'}
             </p>
           )}
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+/**
+ * Puerta del perk: valorar a una persona (👍/👎 y reseña) es de Premium. Se
+ * enseña en vez de esconder los botones, que es lo que explica por qué el voto
+ * no entra y dónde se consigue.
+ */
+function PremiumGate({ hasVote, onOpen }: { hasVote: boolean; onOpen: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3">
+      <Crown className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" aria-hidden />
+      <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-foreground/85">
+        Valorar a otras personas y dejar reseñas es parte de <strong className="font-bold text-amber-300">Cabal Premium</strong>.
+        {hasVote && ' Tu valoración sigue publicada: pulsa tu voto para retirarla.'}
+      </p>
+      <Button
+        size="sm"
+        onClick={onOpen}
+        className="h-8 rounded-lg bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
+      >
+        Hazte Premium
+      </Button>
+    </div>
   )
 }
 

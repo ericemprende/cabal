@@ -8,18 +8,25 @@ import { repScore, type RepValue } from '@/lib/reputation'
  */
 
 /**
- * Quién puede valorar a alguien. Se pide alguna verificación (wallet firmada,
- * X, Google o correo) para que montar una granja de votos cueste algo más que
- * abrir cuentas. Nadie se vota a sí mismo.
+ * Quién puede valorar a alguien. Valorar es un perk del plan Premium: la
+ * reputación de una persona pesa mucho aquí, así que solo opina quien tiene la
+ * piel en el juego (y una cuenta que cuesta dinero reponer si la queman).
+ * Encima se pide alguna verificación (wallet firmada, X, Google o correo).
+ * Nadie se vota a sí mismo.
  */
-export type RepEligibility = 'ok' | 'anon' | 'self' | 'unverified'
+export type RepEligibility = 'ok' | 'anon' | 'self' | 'unverified' | 'premium'
 
 export function repEligibility(
-  viewer: { id: string; walletVerified: boolean; xVerified: boolean; googleVerified: boolean; emailVerified: boolean } | null,
-  targetId: string
+  viewer:
+    | { id: string; walletVerified: boolean; xVerified: boolean; googleVerified: boolean; emailVerified: boolean }
+    | null,
+  targetId: string,
+  /** Suscripción activa (o admin). Ver hasPremium en lib/premium.ts. */
+  premium: boolean
 ): RepEligibility {
   if (!viewer) return 'anon'
   if (viewer.id === targetId) return 'self'
+  if (!premium) return 'premium'
   const verified = viewer.walletVerified || viewer.xVerified || viewer.googleVerified || viewer.emailVerified
   return verified ? 'ok' : 'unverified'
 }
