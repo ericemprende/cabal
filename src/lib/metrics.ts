@@ -1,22 +1,17 @@
-import { safeRedis } from '@/lib/redis'
-
 /**
- * Métricas del propio servidor, para el panel de admin: cuántas consultas van
- * a Postgres, cuántas a las APIs de fuera (DexScreener, GeckoTerminal,
- * Telegram, Discord…), cuánto tardan, cuánta memoria gasta el proceso y
- * cuánta gente hay conectada.
+ * Contadores del servidor (consultas a Postgres, peticiones a APIs de fuera,
+ * memoria, conectados) agrupados por minuto. Alimentan "Salud del servidor" en
+ * el panel de admin.
  *
- * Todo se guarda por minuto y se borra solo a las 26 h: la idea es ver picos y
- * saber cuándo hace falta ampliar el servidor, no guardar un histórico largo.
- * Con Redis los datos sobreviven a los despliegues; sin Redis se guardan en
- * memoria y se pierden al reiniciar, que para mirar el día vale igual.
+ * Este módulo NO importa nada: lo usa lib/db, que a su vez acaba en el paquete
+ * del navegador por alguna cadena de imports, y meter aquí Redis rompía el
+ * build ("Module not found: dns/net/tls"). El volcado a Redis y la lectura
+ * viven en lib/metrics-store, que solo se usa desde el servidor.
  *
  * Es contabilidad, no negocio: si falla, nunca debe romper una petición.
  */
 
 export const METRICS_WINDOW_MIN = 24 * 60
-const TTL_SEC = 26 * 60 * 60
-const KEY = (minute: number) => `cabal:metrics:m:${minute}`
 
 /** Campos contadores de cada minuto. Los de tiempo son sumas de milisegundos. */
 export type MetricBucket = {
@@ -28,48 +23,39 @@ export type MetricBucket = {
   extErr: number
   /** Peticiones externas por servicio: { geckoterminal: 12, dexscreener: 30 } */
   byHost: Record<string, number>
-  /** Último valor visto en ese minuto (medias móviles no: interesa el pico). */
+  /** Último valor visto en ese minuto (medias no: interesa el pico). */
   rssMb: number | null
   heapMb: number | null
   online: number | null
   lagMs: number | null
 }
 
-const memory = new Map<number, Record<string, number>>()
+/** Minutos vivos en memoria. Se vuelcan a Redis y se limpian solos. */
+const buckets = new Map<number, Record<string, number>>()
 
-function nowMinute(): number {
+export function nowMinute(): number {
   return Math.floor(Date.now() / 60_000)
 }
 
-/** Suma a un contador del minuto en curso. Nunca lanza ni hace esperar. */
-function add(field: string, by = 1) {
-  const minute = nowMinute()
-  const bucket = memory.get(minute) ?? {}
-  bucket[field] = (bucket[field] ?? 0) + by
-  memory.set(minute, bucket)
-  if (memory.size > METRICS_WINDOW_MIN + 10) {
-    for (const k of memory.keys()) {
-      if (k < minute - METRICS_WINDOW_MIN) memory.delete(k)
+function bucketOf(minute: number): Record<string, number> {
+  let b = buckets.get(minute)
+  if (!b) {
+    b = {}
+    buckets.set(minute, b)
+    if (buckets.size > 90) {
+      for (const k of buckets.keys()) if (k < minute - 60) buckets.delete(k)
     }
   }
-  void safeRedis(async (c) => {
-    await c.hincrby(KEY(minute), field, Math.round(by))
-    await c.expire(KEY(minute), TTL_SEC)
-    return null
-  }, null)
+  return b
 }
 
-/** Guarda un valor puntual del minuto (memoria, conectados…). */
+function add(field: string, by = 1) {
+  const b = bucketOf(nowMinute())
+  b[field] = (b[field] ?? 0) + by
+}
+
 function set(field: string, value: number) {
-  const minute = nowMinute()
-  const bucket = memory.get(minute) ?? {}
-  bucket[field] = value
-  memory.set(minute, bucket)
-  void safeRedis(async (c) => {
-    await c.hset(KEY(minute), field, String(Math.round(value)))
-    await c.expire(KEY(minute), TTL_SEC)
-    return null
-  }, null)
+  bucketOf(nowMinute())[field] = value
 }
 
 /** Una consulta a Postgres. */
@@ -93,7 +79,17 @@ export function trackProcess(sample: { rssMb: number; heapMb: number; lagMs: num
   if (sample.online !== null) set('online', sample.online)
 }
 
-function toBucket(minute: number, raw: Record<string, number>): MetricBucket {
+/** Lo contado en memoria, para volcarlo o leerlo (ver lib/metrics-store). */
+export function snapshot(): { minute: number; fields: Record<string, number> }[] {
+  return [...buckets.entries()].map(([minute, fields]) => ({ minute, fields: { ...fields } }))
+}
+
+/** Olvida los minutos ya cerrados y volcados. */
+export function forgetBefore(minute: number) {
+  for (const k of buckets.keys()) if (k < minute) buckets.delete(k)
+}
+
+export function toBucket(minute: number, raw: Record<string, number>): MetricBucket {
   const byHost: Record<string, number> = {}
   for (const [k, v] of Object.entries(raw)) if (k.startsWith('h:')) byHost[k.slice(2)] = v
   return {
@@ -109,29 +105,4 @@ function toBucket(minute: number, raw: Record<string, number>): MetricBucket {
     online: raw.online ?? null,
     lagMs: raw.lagMs ?? null,
   }
-}
-
-/** Los últimos `minutes` minutos, del más viejo al más nuevo. */
-export async function readMetrics(minutes = METRICS_WINDOW_MIN): Promise<MetricBucket[]> {
-  const end = nowMinute()
-  const start = end - minutes + 1
-  const wanted: number[] = []
-  for (let m = start; m <= end; m++) wanted.push(m)
-
-  const fromRedis = await safeRedis(async (c) => {
-    const pipe = c.pipeline()
-    for (const m of wanted) pipe.hgetall(KEY(m))
-    const res = await pipe.exec()
-    return (res ?? []).map(([, v]) => (v ?? {}) as Record<string, string>)
-  }, null)
-
-  return wanted.map((m, i) => {
-    const raw: Record<string, number> = {}
-    const redisRow = fromRedis?.[i]
-    if (redisRow) for (const [k, v] of Object.entries(redisRow)) raw[k] = Number(v) || 0
-    // Sin Redis (o para el minuto en curso, que aún no se ha volcado entero)
-    const mem = memory.get(m)
-    if (mem && Object.keys(raw).length === 0) Object.assign(raw, mem)
-    return toBucket(m, raw)
-  })
 }

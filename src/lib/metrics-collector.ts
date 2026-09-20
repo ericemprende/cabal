@@ -1,4 +1,5 @@
 import { trackExternal, trackProcess } from '@/lib/metrics'
+import { flushMetrics } from '@/lib/metrics-store'
 import { pusherServer, CHAT_CHANNEL } from '@/lib/pusher-server'
 
 /**
@@ -53,6 +54,11 @@ export function startMetricsCollector() {
     lagMs = Math.max(0, now - last - 500)
     last = now
   }, 500).unref?.()
+
+  // Vuelca a Redis lo contado en memoria, para que sobreviva a los despliegues
+  setInterval(() => {
+    void flushMetrics().catch(() => {})
+  }, 60_000).unref?.()
 
   setInterval(() => {
     void (async () => {

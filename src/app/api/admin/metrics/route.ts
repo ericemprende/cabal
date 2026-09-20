@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { ForbiddenError, requireAdmin } from '@/lib/api-helpers'
-import { readMetrics, METRICS_WINDOW_MIN } from '@/lib/metrics'
+import { METRICS_WINDOW_MIN } from '@/lib/metrics'
+import { readMetrics } from '@/lib/metrics-store'
 import type { AdminMetricsDTO } from '@/lib/types'
 
 /**
