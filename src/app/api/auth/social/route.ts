@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { ensureSeeded } from '@/lib/seed'
 import { toUserDTO } from '@/lib/serializers'
 import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
-import { loginOrCreateSocial, SocialError, SocialProvider } from '@/lib/social'
+import { loginOrCreateSocial, SocialError } from '@/lib/social'
 import { socialDemoAllowed } from '@/lib/oauth'
 
 /**
@@ -20,8 +20,10 @@ export async function POST(req: NextRequest) {
   try {
     await ensureSeeded()
     const body = await req.json()
-    const provider =
-      body.provider === 'x' || body.provider === 'google' ? (body.provider as SocialProvider) : null
+    // Solo X y Google: Discord nunca inicia sesión, solo verifica (con
+    // `identify` no da correo, así que no alcanza para crear una cuenta).
+    const provider: 'x' | 'google' | null =
+      body.provider === 'x' || body.provider === 'google' ? body.provider : null
     if (!provider) return NextResponse.json({ error: 'Proveedor inválido' }, { status: 400 })
     if (!socialDemoAllowed(provider)) {
       return NextResponse.json({ error: 'Entra con tu cuenta real del proveedor' }, { status: 403 })

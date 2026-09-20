@@ -54,6 +54,7 @@ import {
   useRemoveWallet,
   useUpdateMe,
   useVerifyDevToken,
+  usePointRules,
   useVerifyProvider,
   useVerifyWalletSignature,
   type AuthStatusDTO,
@@ -63,6 +64,7 @@ import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 import { TelegramConnect } from '@/components/cabal/telegram-connect'
 import { DiscordConnect } from '@/components/cabal/discord-connect'
+import { DiscordLogo } from '@/components/cabal/discord-logo'
 import { FollowXCampaign } from '@/components/cabal/follow-x-campaign'
 
 const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
@@ -77,6 +79,8 @@ const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   verify_x: { label: 'Cuenta de X verificada', icon: AtSign },
   verify_google: { label: 'Cuenta de Google verificada', icon: Mail },
   verify_wallet: { label: 'Wallet verificada con firma', icon: ShieldCheck },
+  verify_discord: { label: 'Cuenta de Discord verificada', icon: MessageSquare },
+  verify_telegram: { label: 'Telegram conectado al bot', icon: Send },
   referral: { label: 'Puntos por referidos', icon: Users },
   share_x: { label: 'Tarjeta compartida en X', icon: Send },
   follow_x: { label: 'Sigues a @Cabal_app en X', icon: AtSign },
@@ -100,16 +104,19 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
   const { setProfileOpen, setPremiumOpen } = useUI()
   const updateMe = useUpdateMe()
   const { data: authStatus } = useAuthStatus()
+  // Los puntos por verificar Discord son editables desde el panel, así que el
+  // "+N" sale de la regla vigente y no de un número escrito aquí.
+  const rules = usePointRules()
   const [consent, setConsent] = useState<'x' | 'google' | null>(null)
   const [name, setName] = useState(me.name)
   const [bio, setBio] = useState(me.bio ?? '')
   const [avatar, setAvatar] = useState(me.avatar)
 
   /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo (solo en desarrollo) si no. */
-  const connect = (provider: 'x' | 'google') => {
+  const connect = (provider: 'x' | 'google' | 'discord') => {
     if (authStatus?.[provider]?.configured) {
       window.location.assign(`/api/auth/${provider}/start`)
-    } else if (authStatus?.[provider]?.demo) {
+    } else if (provider !== 'discord' && authStatus?.[provider]?.demo) {
       setConsent(provider)
     }
   }
@@ -303,6 +310,18 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             configured={authStatus?.google.configured ?? false}
             demo={authStatus?.google.demo ?? false}
             onConnect={() => connect('google')}
+          />
+          <ConnectionRow
+            icon={<DiscordLogo className="h-4 w-4" />}
+            title="Cuenta de Discord"
+            subtitle={`Verifica tu Discord · +${rules.points_verify_discord} puntos`}
+            verified={me?.discordVerified ?? false}
+            verifiedLabel={me?.discordName ?? 'Verificada'}
+            provider="discord"
+            cta="Conectar con Discord"
+            configured={authStatus?.discord.configured ?? false}
+            demo={false}
+            onConnect={() => connect('discord')}
           />
           <ApiSetupHelp status={authStatus} />
         </div>
@@ -623,7 +642,7 @@ function ConnectionRow({
   subtitle: string
   verified: boolean
   verifiedLabel: string
-  provider: 'x' | 'google'
+  provider: 'x' | 'google' | 'discord'
   cta: string
   configured: boolean
   demo: boolean
@@ -763,9 +782,30 @@ function ApiSetupHelp({ status }: { status: AuthStatusDTO | undefined }) {
             </p>
           </div>
 
+          {/* Discord */}
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-bold text-zinc-200">Discord</p>
+            <ol className="list-decimal space-y-0.5 pl-4">
+              <li>
+                En <span className="font-mono text-zinc-300">discord.com/developers</span>, la MISMA aplicación
+                del bot → <span className="text-zinc-300">OAuth2</span>. El Client ID ya lo sabe Cabal: es el
+                application id que se guardó al conectar el bot.
+              </li>
+              <li>Añade esta Redirect URI:</li>
+            </ol>
+            <CallbackUrl
+              url={status?.discord.callbackUrl}
+              onCopy={() => copy(status?.discord.callbackUrl, 'Redirect URI de Discord')}
+            />
+            <p>
+              Copia el <span className="text-zinc-300">Client Secret</span> y guárdalo como{' '}
+              <span className="font-mono text-zinc-300">DISCORD_CLIENT_SECRET</span>.
+            </p>
+          </div>
+
           <p className="rounded-lg bg-white/4 px-2.5 py-1.5 text-[10px]">
             Tras guardar las variables, reinicia el servidor: los botones pasarán
-            automáticamente al flujo real con la pantalla oficial de X / Google.
+            automáticamente al flujo real con la pantalla oficial de X, Google o Discord.
           </p>
         </div>
       )}

@@ -14,6 +14,8 @@ type DbUser = {
   xVerified: boolean
   googleEmail: string | null
   googleVerified: boolean
+  discordName: string | null
+  discordVerified: boolean
   tgHandle: string | null
   isDev: boolean
   isAdmin: boolean
@@ -50,6 +52,7 @@ export function toPublicUserDTO(u: DbUser, isFollowed?: boolean): PublicUserDTO 
     xHandle: u.xHandle,
     xVerified: u.xVerified,
     googleVerified: u.googleVerified,
+    discordVerified: u.discordVerified,
     tgHandle: u.tgHandle,
     isDev: u.isDev,
     cabalScore: u.cabalScore,
@@ -78,6 +81,7 @@ export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
     ...toPublicUserDTO(u, isFollowed),
     wallet: u.wallet,
     googleEmail: u.googleEmail,
+    discordName: u.discordName,
     isAdmin: u.isAdmin,
     email: u.email ?? null,
     emailVerified: u.emailVerified ?? false,

@@ -35,6 +35,8 @@ async function seed(): Promise<void> {
       { key: 'points_share_x', value: '10' },
       { key: 'points_follow_x', value: '15' },
       { key: 'points_share_follow_x', value: '10' },
+      { key: 'points_verify_discord', value: '10' },
+      { key: 'points_verify_telegram', value: '10' },
     ],
   })
 

@@ -171,6 +171,16 @@ export default function BotManualPage() {
           Conectar tu <strong>privado</strong> es lo que te identifica ante el bot: sin él no puedes dar calls con{' '}
           <code>/call</code> ni ver tu <code>/pnl</code>, tampoco desde un grupo.
         </p>
+        <p>
+          Conectar tu privado de <strong>Telegram</strong> suma puntos Cabal una sola vez. En{' '}
+          <strong>Discord</strong> los puntos no salen de aquí sino de verificar tu cuenta desde el perfil (Perfil →
+          Cuenta de Discord), que es de un clic; conectar el bot sigue haciendo falta aparte si quieres los avisos en
+          un canal.
+        </p>
+        <p>
+          Verificar tu Discord además te cuenta en el «N de M miembros ya están en Cabal» de tu servidor, sin tener
+          que escribirle nada al bot.
+        </p>
       </LegalSection>
 
       <LegalSection title="2. Comandos">

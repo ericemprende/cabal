@@ -17,6 +17,7 @@ export interface PublicUserDTO {
   xHandle?: string | null
   xVerified: boolean
   googleVerified: boolean
+  discordVerified: boolean
   tgHandle?: string | null
   isDev: boolean
   cabalScore: number
@@ -80,6 +81,8 @@ export interface ReputationDTO {
 export interface UserDTO extends PublicUserDTO {
   wallet?: string | null
   googleEmail?: string | null
+  /** Nombre visible de Discord. El id nunca sale del servidor. */
+  discordName?: string | null
   isAdmin?: boolean
   /** Correo de la cuenta (seguridad y contacto). Siempre presentes: toUserDTO los rellena con sus defaults. */
   email: string | null

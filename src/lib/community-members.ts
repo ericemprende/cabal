@@ -78,17 +78,34 @@ export function kickCabalMembersSync() {
 }
 
 async function refresh(): Promise<void> {
-  const [links, accounts] = await Promise.all([
+  const [links, linked, verified] = await Promise.all([
     db.chatLink.findMany({
       where: { chatType: { not: 'private' }, active: true },
       select: { id: true, provider: true, chatId: true, serverId: true, chatType: true },
     }),
-    // Cuentas de Cabal con su Telegram/Discord conectado
+    // Cuentas de Cabal con su Telegram/Discord conectado al bot
     db.chatLink.findMany({
       where: { chatType: 'private', active: true, externalUserId: { not: null } },
       select: { provider: true, externalUserId: true, userId: true },
     }),
+    // Cuentas que verificaron Discord por OAuth desde el perfil. Cuentan igual:
+    // lo único que hace falta para preguntarle al bot si están en un servidor
+    // es el id de Discord, y da igual cómo se haya obtenido.
+    db.user.findMany({
+      where: { discordId: { not: null } },
+      select: { id: true, discordId: true },
+    }),
   ])
+
+  // Una misma persona puede tener las dos cosas (bot y OAuth); se queda una.
+  const accounts = [
+    ...linked,
+    ...verified.map((u) => ({
+      provider: 'discord',
+      externalUserId: u.discordId,
+      userId: u.id,
+    })),
+  ]
   if (links.length === 0 || accounts.length === 0) return
 
   const tg = await telegramConfig()

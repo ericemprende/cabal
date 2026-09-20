@@ -15,12 +15,21 @@ export async function POST(req: NextRequest) {
   try {
     const me = await getCurrentUser()
     const body = await req.json()
-    const provider = body.provider === 'x' || body.provider === 'google' ? (body.provider as SocialProvider) : null
+    const provider: SocialProvider | null =
+      body.provider === 'x' || body.provider === 'google' || body.provider === 'discord'
+        ? body.provider
+        : null
     if (!provider) return NextResponse.json({ error: 'Proveedor inválido' }, { status: 400 })
 
     if (body.disconnect) {
       await unlinkProvider(me.id, provider)
       return NextResponse.json({ ok: true })
+    }
+
+    // Discord solo se vincula por OAuth: no tiene modo demo, así que aquí solo
+    // puede llegar a desconectarse.
+    if (provider === 'discord') {
+      return NextResponse.json({ error: 'Verifica Discord con el botón de conectar' }, { status: 403 })
     }
 
     if (!socialDemoAllowed(provider)) {

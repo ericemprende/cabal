@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { appOrigin, getGoogleConfig, getXConfig, socialDemoAllowed } from '@/lib/oauth'
+import { appOrigin, getDiscordConfig, getGoogleConfig, getXConfig, socialDemoAllowed } from '@/lib/oauth'
 
 /**
  * GET /api/auth/status
@@ -19,6 +19,12 @@ export async function GET(req: NextRequest) {
       configured: !!getGoogleConfig(),
       demo: socialDemoAllowed('google'),
       callbackUrl: `${origin}/api/auth/google/callback`,
+    },
+    // Discord no tiene modo demo: o hay credenciales, o no se ofrece el botón.
+    discord: {
+      configured: !!(await getDiscordConfig()),
+      demo: false,
+      callbackUrl: `${origin}/api/auth/discord/callback`,
     },
   })
 }

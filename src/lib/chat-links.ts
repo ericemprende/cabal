@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { db } from '@/lib/db'
+import { awardPoints, getPointRules } from '@/lib/api-helpers'
 import type { ChatLink } from '@prisma/client'
 import type { ChatLinkDTO } from '@/lib/notify-types'
 import type { Lang } from '@/lib/bot-i18n'
@@ -69,7 +70,7 @@ export async function upsertChatLink(input: {
     active: true,
     lastError: null,
   }
-  return db.chatLink.upsert({
+  const link = await db.chatLink.upsert({
     where: { provider_chatId: { provider: input.provider, chatId: input.chatId } },
     update: base,
     create: {
@@ -81,6 +82,36 @@ export async function upsertChatLink(input: {
       notifyTheses: false,
     },
   })
+
+  // Conectar el Telegram propio cuenta como verificar una identidad, igual que
+  // X o Google: es lo que enciende la campanita y lo que permite contarte entre
+  // los miembros de tu comunidad que ya están en Cabal.
+  //
+  // Solo el privado, y solo Telegram: en Discord la verificación se hace por
+  // OAuth desde el perfil (ver lib/social.ts), así que pagar también aquí sería
+  // cobrar dos veces por la misma cuenta.
+  if (isPrivate && input.provider === 'telegram' && input.externalUserId) {
+    await awardVerifyTelegram(input.userId)
+  }
+
+  return link
+}
+
+/** Bonus por conectar Telegram, una sola vez por cuenta. */
+async function awardVerifyTelegram(userId: string): Promise<void> {
+  try {
+    const prior = await db.pointEvent.findFirst({
+      where: { userId, reason: 'verify_telegram' },
+      select: { id: true },
+    })
+    if (prior) return
+    const amount = (await getPointRules()).points_verify_telegram ?? 0
+    if (amount > 0) {
+      await awardPoints(userId, 'verify_telegram', 'Telegram conectado al bot', amount)
+    }
+  } catch {
+    // Vincular el chat nunca debe fallar por no poder abonar el bonus.
+  }
 }
 
 /**

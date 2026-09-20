@@ -63,6 +63,7 @@ export type AuthStatusDTO = {
   /** demo: sin credenciales se puede usar el flujo simulado (solo en desarrollo). */
   x: { configured: boolean; demo: boolean; callbackUrl: string }
   google: { configured: boolean; demo: boolean; callbackUrl: string }
+  discord: { configured: boolean; demo: boolean; callbackUrl: string }
 }
 
 export type SessionDTO = {
@@ -478,6 +479,8 @@ const POINT_RULES_FALLBACK: Record<string, number> = {
   points_share_x: 10,
   points_follow_x: 15,
   points_share_follow_x: 10,
+  points_verify_discord: 10,
+  points_verify_telegram: 10,
 }
 
 /** Reglas de puntos vigentes (editables en admin) para los "+N" de la interfaz. */
@@ -837,7 +840,7 @@ export function useUpdateMe() {
 export function useVerifyProvider() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({
-    mutationFn: (data: { provider: 'x' | 'google'; value?: string; disconnect?: boolean }) =>
+    mutationFn: (data: { provider: 'x' | 'google' | 'discord'; value?: string; disconnect?: boolean }) =>
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/me/verify', {
         method: 'POST',
         body: JSON.stringify(data),

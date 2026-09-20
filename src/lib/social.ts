@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { awardPoints } from '@/lib/api-helpers'
+import { awardPoints, getPointRules } from '@/lib/api-helpers'
 import { queueGhlSync } from '@/lib/ghl'
 
 /**
@@ -10,7 +10,7 @@ import { queueGhlSync } from '@/lib/ghl'
 
 export const VERIFY_BONUS = 5
 
-export type SocialProvider = 'x' | 'google'
+export type SocialProvider = 'x' | 'google' | 'discord'
 
 export class SocialError extends Error {}
 
@@ -19,7 +19,9 @@ export async function linkProvider(
   userId: string,
   provider: SocialProvider,
   rawValue: string,
-  photoUrl?: string
+  photoUrl?: string,
+  /** Solo en Discord: el nombre visible, que no se puede deducir del id. */
+  displayName?: string
 ): Promise<{ pointsEarned: number }> {
   const value = rawValue.trim()
 
@@ -35,6 +37,26 @@ export async function linkProvider(
       data: { xHandle: handle, xVerified: true, ...(avatar && { avatar }) },
     })
     const pointsEarned = await awardOnce(userId, 'verify_x', 'Cuenta de X verificada')
+    return { pointsEarned }
+  }
+
+  if (provider === 'discord') {
+    // El id de Discord es un snowflake: solo dígitos, 17-20 hoy.
+    if (!/^\d{15,25}$/.test(value)) {
+      throw new SocialError('Cuenta de Discord inválida')
+    }
+    // Una cuenta de Discord no puede verificar dos cuentas de Cabal: si no,
+    // los puntos por verificar se cobrarían una vez por cada cuenta creada.
+    const taken = await db.user.findFirst({
+      where: { discordId: value, NOT: { id: userId } },
+      select: { id: true },
+    })
+    if (taken) throw new SocialError('Esa cuenta de Discord ya está vinculada a otro perfil')
+    await db.user.update({
+      where: { id: userId },
+      data: { discordId: value, discordName: displayName?.trim().slice(0, 64) || null, discordVerified: true },
+    })
+    const pointsEarned = await awardOnce(userId, 'verify_discord', 'Cuenta de Discord verificada')
     return { pointsEarned }
   }
 
@@ -61,7 +83,9 @@ export async function unlinkProvider(userId: string, provider: SocialProvider) {
   const data =
     provider === 'x'
       ? { xHandle: null, xVerified: false }
-      : { googleEmail: null, googleVerified: false }
+      : provider === 'discord'
+        ? { discordId: null, discordName: null, discordVerified: false }
+        : { googleEmail: null, googleVerified: false }
   await db.user.update({ where: { id: userId }, data })
 }
 
@@ -72,7 +96,8 @@ export async function unlinkProvider(userId: string, provider: SocialProvider) {
  * (/api/auth/social).
  */
 export async function loginOrCreateSocial(
-  provider: SocialProvider,
+  /** Discord no entra aquí: con `identify` no hay correo con el que crear cuenta. */
+  provider: 'x' | 'google',
   rawValue: string,
   profileName?: string,
   photoUrl?: string
@@ -154,10 +179,15 @@ async function uniqueHandle(baseRaw: string): Promise<string> {
 /** Bonus de verificación: una sola vez por proveedor. */
 async function awardOnce(
   userId: string,
-  reason: 'verify_x' | 'verify_google',
+  reason: 'verify_x' | 'verify_google' | 'verify_discord',
   note: string
 ): Promise<number> {
   const prior = await db.pointEvent.findFirst({ where: { userId, reason } })
   if (prior) return 0
-  return awardPoints(userId, reason, note, VERIFY_BONUS)
+  // Discord y Telegram valen más que X o Google y son editables desde el panel
+  // (points_verify_discord / points_verify_telegram); X y Google siguen con la
+  // constante de siempre.
+  const amount =
+    reason === 'verify_discord' ? (await getPointRules()).points_verify_discord ?? 10 : VERIFY_BONUS
+  return awardPoints(userId, reason, note, amount)
 }

@@ -67,7 +67,8 @@ export default function Home() {
     if (me?.isAdmin) setAdminOpen(true)
   }, [wantsAdmin, me?.isAdmin, setAdminOpen])
 
-  // Retorno del OAuth de X / Google: /?connected=x|google (&connect_error=, &login=1, &created=1)
+  // Retorno del OAuth de X / Google / Discord: /?connected=x|google|discord
+  // (&connect_error=, &login=1, &created=1). Discord solo verifica, nunca entra.
   const qc = useQueryClient()
   const [oauthReturn] = useState(() => {
     if (typeof window === 'undefined') return null
@@ -95,6 +96,7 @@ export default function Home() {
         token: 'El proveedor rechazó el intercambio del código',
         profile: 'No se pudo leer tu perfil del proveedor',
         no_config: 'Las API keys del proveedor no están configuradas',
+        taken: 'Esa cuenta ya está vinculada a otro perfil de Cabal',
         server: 'Error inesperado durante la verificación',
       }
       toast.error(msgs[oauthReturn.error] ?? 'No se pudo completar la operación')
@@ -108,10 +110,13 @@ export default function Home() {
       )
       if (oauthReturn.created) setWelcomeShareOpen(true)
     } else if (oauthReturn.provider) {
-      toast.success(
-        oauthReturn.provider === 'x' ? 'Cuenta de X verificada' : 'Cuenta de Google verificada',
-        { description: '+5 puntos Cabal por verificar tu identidad' }
-      )
+      const names: Record<string, string> = { x: 'X', google: 'Google', discord: 'Discord' }
+      const name = names[oauthReturn.provider] ?? oauthReturn.provider
+      toast.success(`Cuenta de ${name} verificada`, {
+        // Sin cifra: los puntos de Discord son editables desde el panel, y el
+        // total exacto ya se ve al instante en el balance del perfil.
+        description: 'Puntos Cabal abonados por verificar tu identidad',
+      })
     }
   }, [oauthReturn, qc])
 

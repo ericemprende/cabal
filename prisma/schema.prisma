@@ -11,52 +11,58 @@ datasource db {
 }
 
 model User {
-  id                String           @id @default(cuid())
-  handle            String           @unique
+  id                String                @id @default(cuid())
+  handle            String                @unique
   name              String
-  avatar            String           @default("🐺")
+  avatar            String                @default("🐺")
   bio               String?
   wallet            String?
   passwordHash      String? // hash scrypt (login/registro por credenciales; null = cuenta demo/sin password)
-  walletVerified    Boolean          @default(false)
+  walletVerified    Boolean               @default(false)
   xHandle           String?
-  xVerified         Boolean          @default(false)
+  xVerified         Boolean               @default(false)
   googleEmail       String?
-  googleVerified    Boolean          @default(false)
+  googleVerified    Boolean               @default(false)
+  // Discord verificado por OAuth. El id es el snowflake del usuario (texto: no
+  // cabe en un Int) y es lo que el bot usa para comprobar si esta en un
+  // servidor, de donde sale "N de M miembros ya estan en Cabal".
+  discordId         String?               @unique
+  discordName       String?
+  discordVerified   Boolean               @default(false)
   tgHandle          String?
-  isDev             Boolean          @default(false)
-  cabalScore        Int              @default(0)
+  isDev             Boolean               @default(false)
+  cabalScore        Int                   @default(0)
   // Reputación de la comunidad (👍/👎, ver lib/reputation.ts). Se guardan aquí
   // ya calculados para poder enseñar la insignia en cualquier lista sin pedir
   // las valoraciones una por una; la fuente de verdad son las filas Reputation.
-  repUp             Int              @default(0) // votos positivos (sin ponderar)
-  repDown           Int              @default(0) // votos negativos (sin ponderar)
-  repScore          Int              @default(50) // % de confianza ponderado y suavizado
-  callsWon          Int              @default(0)
-  callsTotal        Int              @default(0)
-  followers         Int              @default(0)
-  isCurrentUser     Boolean          @default(false)
-  isAdmin           Boolean          @default(false)
-  points            Int              @default(0)
+  repUp             Int                   @default(0) // votos positivos (sin ponderar)
+  repDown           Int                   @default(0) // votos negativos (sin ponderar)
+  repScore          Int                   @default(50) // % de confianza ponderado y suavizado
+  callsWon          Int                   @default(0)
+  callsTotal        Int                   @default(0)
+  followers         Int                   @default(0)
+  isCurrentUser     Boolean               @default(false)
+  isAdmin           Boolean               @default(false)
+  points            Int                   @default(0)
   // Con cuánta antelación avisa la campanita de un launch, en minutos. Son
   // varias a la vez: quien quiera aviso a 1 h y otro a 5 min los tiene los dos.
   // Es del usuario porque su aviso va a su chat privado y a su correo; el de un
   // grupo lo decide el grupo (ChatLink.reminderLeads).
-  reminderLeads     Int[]            @default([60])
-  lifetimePoints    Int              @default(0)
-  referralCode      String?          @unique
+  reminderLeads     Int[]                 @default([60])
+  lifetimePoints    Int                   @default(0)
+  referralCode      String?               @unique
   referredById      String?
-  referredBy        User?            @relation("ReferralTree", fields: [referredById], references: [id])
-  referrals         User[]           @relation("ReferralTree")
+  referredBy        User?                 @relation("ReferralTree", fields: [referredById], references: [id])
+  referrals         User[]                @relation("ReferralTree")
   // Correo de la cuenta: seguridad (códigos por correo) y contacto (GHL). No es
   // único en la base: dos cuentas pueden escribir el mismo sin verificarlo, y
   // gana la primera que lo verifica (la unicidad se comprueba al verificar).
   email             String?
-  emailVerified     Boolean          @default(false)
+  emailVerified     Boolean               @default(false)
   // Pide un código por correo al iniciar sesión con usuario y contraseña
-  twoFactorEnabled  Boolean          @default(false)
+  twoFactorEnabled  Boolean               @default(false)
   // Cliente de Stripe, para abrir su portal de facturación
-  stripeCustomerId  String?          @unique
+  stripeCustomerId  String?               @unique
   // Sincronización con Go High Level (contacto etiquetado "Cabal")
   ghlContactId      String?
   ghlSyncedAt       DateTime?
@@ -64,14 +70,14 @@ model User {
   // Avisos de lanzamientos por correo (perk Premium): activado por defecto,
   // el usuario lo puede apagar. Sin correo verificado o sin Premium no llega
   // nada de todos modos (ver lib/launch-alerts.ts).
-  notifyEmail       Boolean          @default(true)
+  notifyEmail       Boolean               @default(true)
   // Verificación oficial de Cabal (insignia + destello en el avatar). "admin" =
   // la dio el admin y es permanente; "premium" = aprobada a partir de una
   // solicitud Premium: el worker la apaga si deja de pagar y la vuelve a
   // encender si renueva (ver lib/verification.ts).
-  verified          Boolean          @default(false)
+  verified          Boolean               @default(false)
   verifiedVia       String? // admin | premium
-  createdAt         DateTime         @default(now())
+  createdAt         DateTime              @default(now())
   // Última vez que se le vio con la sesión abierta (se refresca como mucho cada
   // 5 min, ver touchLastSeen). null = nunca entró desde que existe el campo.
   lastSeenAt        DateTime?
@@ -79,8 +85,8 @@ model User {
   launches          Launch[]
   tokens            Token[]
   votes             Vote[]
-  followersRel      Follow[]         @relation("followTarget")
-  followingRel      Follow[]         @relation("followUser")
+  followersRel      Follow[]              @relation("followTarget")
+  followingRel      Follow[]              @relation("followUser")
   pointEvents       PointEvent[]
   wallets           WalletLink[]
   devClaims         DevClaim[]
@@ -88,15 +94,15 @@ model User {
   subscriptions     Subscription[]
   payments          Payment[]
   emailCodes        EmailCode[]
-  launchMemberships LaunchMember[]   @relation("launchMember")
-  launchInvitesSent LaunchMember[]   @relation("launchInviter")
+  launchMemberships LaunchMember[]        @relation("launchMember")
+  launchInvitesSent LaunchMember[]        @relation("launchInviter")
   chatMessages      ChatMessage[]
   chatMessageLikes  ChatMessageLike[]
   launchReminders   LaunchReminder[]
   chatLinks         ChatLink[]
   chatLinkCodes     ChatLinkCode[]
-  repReceived       Reputation[]     @relation("repTarget")
-  repGiven          Reputation[]     @relation("repAuthor")
+  repReceived       Reputation[]          @relation("repTarget")
+  repGiven          Reputation[]          @relation("repAuthor")
   verifyRequests    VerificationRequest[]
 
   @@index([points])
@@ -134,43 +140,43 @@ model Reputation {
 }
 
 model Launch {
-  id             String           @id @default(cuid())
+  id             String                @id @default(cuid())
   name           String
   ticker         String?
-  emoji          String           @default("🚀")
+  emoji          String                @default("🚀")
   image          String?
   banner         String?
-  isPrivate      Boolean          @default(false)
-  hidden         Boolean          @default(false)
-  submitterRole  String           @default("community") // dev = lo sube su propio dev | community = scout que comparte info
+  isPrivate      Boolean               @default(false)
+  hidden         Boolean               @default(false)
+  submitterRole  String                @default("community") // dev = lo sube su propio dev | community = scout que comparte info
   contract       String? // CA del token si ya fue desplegado (para gráfico en vivo)
   // Datos premium: su visibilidad la decide el admin (ver lib/premium.ts)
   devWallet      String? // wallet del dev, si se conoce
   launchpad      String? // plataforma donde sale el token (pump.fun, Zora…)
-  network        String           @default("solana")
+  network        String                @default("solana")
   launchAt       DateTime
-  dateConfirmed  Boolean          @default(true) // false = fecha estimada por quien sube el proyecto, no confirmada por el equipo
+  dateConfirmed  Boolean               @default(true) // false = fecha estimada por quien sube el proyecto, no confirmada por el equipo
   description    String
   website        String?
   twitter        String?
   telegram       String?
-  isLive         Boolean          @default(false) // el launch se emite/emitirá en vivo (streaming): activa el video incrustado en la ficha
+  isLive         Boolean               @default(false) // el launch se emite/emitirá en vivo (streaming): activa el video incrustado en la ficha
   liveUrl        String? // link del stream (YouTube, Twitch, Vimeo…) para incrustar en el detalle
-  status         String           @default("upcoming")
-  hype           Int              @default(0)
-  lpLocked       Boolean          @default(false)
-  mintRevoked    Boolean          @default(false)
-  top10Pct       Float            @default(25)
+  status         String                @default("upcoming")
+  hype           Int                   @default(0)
+  lpLocked       Boolean               @default(false)
+  mintRevoked    Boolean               @default(false)
+  top10Pct       Float                 @default(25)
   createdById    String
-  createdAt      DateTime         @default(now())
+  createdAt      DateTime              @default(now())
   // Última edición con cambios de verdad (no se toca si se guarda sin cambiar nada),
   // para mostrarla como actividad reciente ("actualizó la fecha", "cambió la descripción"…)
   lastEditedAt   DateTime?
   lastChangeNote String?
   // Launch oficial (ver User.verified): marca frente a clones
-  verified       Boolean          @default(false)
+  verified       Boolean               @default(false)
   verifiedVia    String? // admin | premium
-  createdBy      User             @relation(fields: [createdById], references: [id])
+  createdBy      User                  @relation(fields: [createdById], references: [id])
   posts          Post[]
   token          Token?
   members        LaunchMember[]
@@ -322,17 +328,17 @@ model Token {
 // Chat en vivo global del Cabal (una sola sala). Presencia (quién está
 // conectado) va por Pusher, no por aquí; esta tabla es solo el historial.
 model ChatMessage {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
   body      String
   // Respuesta puntual a otro mensaje del chat. Si el original se borra, la
   // respuesta queda sin cita en vez de desaparecer.
   replyToId String?
-  replyTo   ChatMessage?  @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies   ChatMessage[] @relation("ChatReplies")
+  replyTo   ChatMessage?      @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[]     @relation("ChatReplies")
   likes     ChatMessageLike[]
-  createdAt DateTime @default(now())
+  createdAt DateTime          @default(now())
 
   @@index([createdAt])
 }

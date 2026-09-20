@@ -123,6 +123,8 @@ const RULE_LABELS: Record<string, string> = {
   points_share_x: 'Compartir tarjeta en X',
   points_follow_x: 'Seguir a @Cabal_app en X',
   points_share_follow_x: 'Compartir la tarjeta de "sigo a Cabal"',
+  points_verify_discord: 'Verificar cuenta de Discord',
+  points_verify_telegram: 'Conectar Telegram al bot',
 }
 
 type AdminAnalyticsDTO =
@@ -150,6 +152,8 @@ const REASON_COLORS: Record<string, string> = {
   share_x: '#1d9bf0',
   follow_x: '#1d9bf0',
   share_follow_x: '#5ec2f7',
+  verify_discord: '#5865F2',
+  verify_telegram: '#229ED9',
 }
 
 type AdminView =
