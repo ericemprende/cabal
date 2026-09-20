@@ -114,7 +114,7 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
       return args[0] && args[0] !== 'true' ? link(tg, msg, args[0], reply) : reply(welcomeMessage(msg.chat.type === 'private', 'telegram', lang))
     case 'settings':
       if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
-      return reply({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang) })
+      return reply({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang, 'telegram') })
     case 'language':
       if (chat && !(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyAdminChanges)
       return reply({ text: tx.languagePrompt, buttons: [languageButtons()] })
@@ -188,7 +188,7 @@ async function link(tg: TelegramConfig, msg: TgMsg, code: string, reply: Reply) 
   })
   return reply({
     text: isPrivate ? tx.linkedPrivate(userLink(user.handle)) : tx.linkedGroup(esc(title ?? tx.thisChat), userLink(user.handle)),
-    buttons: settingsButtons(chat, lang),
+    buttons: settingsButtons(chat, lang, 'telegram'),
   })
 }
 
@@ -213,7 +213,7 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
       text: chat ? tx.settingsTitle : tx.welcome(q.message.chat.type === 'private', 'telegram'),
       parse_mode: 'HTML',
       link_preview_options: { is_disabled: true },
-      reply_markup: { inline_keyboard: chat ? settingsButtons(chat, value) : welcomeMessage(q.message.chat.type === 'private', 'telegram', value).buttons },
+      reply_markup: { inline_keyboard: chat ? settingsButtons(chat, value, 'telegram') : welcomeMessage(q.message.chat.type === 'private', 'telegram', value).buttons },
     }).catch(() => {})
     return answer(tx.languageSet)
   }
@@ -223,7 +223,7 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
     const tx = t(lang)
     if (!chat) return answer(tx.noLongerLinked)
     const toLead = value === 'lead'
-    await editSettings(tg, q.message, toLead ? tx.leadTitle : tx.settingsTitle, toLead ? leadMenuButtons(chat, lang) : settingsButtons(chat, lang))
+    await editSettings(tg, q.message, toLead ? tx.leadTitle : tx.settingsTitle, toLead ? leadMenuButtons(chat, lang) : settingsButtons(chat, lang, 'telegram'))
     return answer()
   }
 
@@ -249,7 +249,7 @@ async function onCallback(tg: TelegramConfig, q: NonNullable<TgUpdate['callback_
   await tgCall(tg.token, 'editMessageReplyMarkup', {
     chat_id: q.message.chat.id,
     message_id: q.message.message_id,
-    reply_markup: { inline_keyboard: settingsButtons(updated, lang) },
+    reply_markup: { inline_keyboard: settingsButtons(updated, lang, 'telegram') },
   }).catch(() => {})
   return answer(`${tx.prefs[pref]}: ${updated[pref] ? tx.on : tx.off}`)
 }

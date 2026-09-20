@@ -108,7 +108,7 @@ async function onCommand(cfg: DiscordConfig, i: DcInteraction): Promise<DcRespon
     }
     case 'settings':
       if (!chat || !chat.active) return say(tx.notLinked(`${siteUrl()}/app`, 'discord'))
-      return reply({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang) })
+      return reply({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang, 'discord') })
     case 'language':
       if (chat && !canManage(chat, i)) return say(tx.onlyAdminChanges)
       return reply({ text: tx.languagePrompt, buttons: [languageButtons(chat ? lang : undefined)] })
@@ -188,7 +188,7 @@ async function link(cfg: DiscordConfig, i: DcInteraction, code: string, lang: La
       chatType === 'private'
         ? tx.linkedPrivate(userLink(user.handle))
         : tx.linkedGroup(esc(title ?? tx.thisChat), userLink(user.handle)),
-    buttons: settingsButtons(chat, lang),
+    buttons: settingsButtons(chat, lang, 'discord'),
   })
 }
 
@@ -228,7 +228,7 @@ async function onComponent(cfg: DiscordConfig, i: DcInteraction): Promise<DcResp
     }
     const tx = t(value)
     return chat
-      ? update({ text: tx.settingsTitle, buttons: settingsButtons(chat, value) })
+      ? update({ text: tx.settingsTitle, buttons: settingsButtons(chat, value, 'discord') })
       : update(welcomeMessage(chatTypeOf(i) === 'private', 'discord', value))
   }
 
@@ -238,7 +238,7 @@ async function onComponent(cfg: DiscordConfig, i: DcInteraction): Promise<DcResp
     if (!chat) return say(tx.noLongerLinked)
     return value === 'lead'
       ? update({ text: tx.leadTitle, buttons: leadMenuButtons(chat, lang) })
-      : update({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang) })
+      : update({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang, 'discord') })
   }
 
   if (kind === 'lead') {
@@ -261,7 +261,7 @@ ${tx.leadSet(leadSummary(leads))}`, buttons: leadMenuButtons({ ...chat, reminder
   if (!canManage(chat, i)) return say(tx.onlyAdminChanges)
 
   const updated = await db.chatLink.update({ where: { id: chat.id }, data: { [pref]: !chat[pref] } })
-  return update({ text: tx.settingsTitle, buttons: settingsButtons(updated, lang) })
+  return update({ text: tx.settingsTitle, buttons: settingsButtons(updated, lang, 'discord') })
 }
 
 // ---------- Respuestas ----------

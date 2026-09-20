@@ -20,11 +20,20 @@ export type SettingsChat = Record<ChatPref, boolean> & { reminderLeads: number[]
  * La pantalla principal de /settings. La antelación no se despliega aquí: sería
  * una fila de cinco botones más entre los interruptores. Se resume en uno que
  * lleva a su propia pantalla (leadMenu).
+ *
+ * Discord solo pinta cinco filas por mensaje, y aquí hay siete cosas que
+ * enseñar: los interruptores van de dos en dos para dejar sitio a la antelación
+ * y al idioma, que si no se quedaban fuera. En Telegram no hay ese límite y uno
+ * por fila se lee mejor.
  */
-export function settingsButtons(chat: SettingsChat, lang: Lang): BotButton[][] {
+export function settingsButtons(chat: SettingsChat, lang: Lang, provider: BotProvider): BotButton[][] {
   const tx = t(lang)
+  const toggles = CHAT_PREFS.map((p) => ({
+    text: `${chat[p] ? '✅' : '⬜️'} ${tx.prefs[p]}`,
+    callback_data: `pref:${p}`,
+  }))
   return [
-    ...CHAT_PREFS.map((p) => [{ text: `${chat[p] ? '✅' : '⬜️'} ${tx.prefs[p]}`, callback_data: `pref:${p}` }]),
+    ...(provider === 'discord' ? chunk(toggles, 2) : toggles.map((b) => [b])),
     [{ text: `⏰ ${tx.leadMenu}: ${leadSummary(chat.reminderLeads)}`, callback_data: 'menu:lead' }],
     languageButtons(lang),
   ]
