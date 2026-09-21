@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Crosshair, Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { displayImageUrl } from '@/lib/remote-image'
 import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown, useNow, OfficialBadge } from '@/components/cabal/shared'
 import { fmtPct, launchPhase, networkMeta, timeAgo, type LaunchPhase } from '@/lib/cabal'
 import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
@@ -230,6 +232,33 @@ export function RadarTab() {
   )
 }
 
+/**
+ * El banner del proyecto, de fondo dentro de la tarjeta: entra por la derecha y
+ * se apaga hacia la izquierda y hacia abajo, que es donde va el texto. Da
+ * carácter a la ficha sin comerse la legibilidad. Si la imagen no carga
+ * desaparece entera y la tarjeta queda como siempre, igual que en el detalle.
+ */
+function CardBanner({ src }: { src?: string | null }) {
+  const url = displayImageUrl(src)
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  if (!url || failedUrl === url) return null
+  return (
+    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden>
+      <Image
+        src={url}
+        alt=""
+        fill
+        sizes="(max-width: 640px) 100vw, 480px"
+        className="object-cover opacity-50 transition-opacity duration-300 group-hover:opacity-70"
+        unoptimized
+        onError={() => setFailedUrl(url)}
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#121410] via-[#121410]/85 to-[#121410]/35" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#121410] via-[#121410]/55 to-transparent" />
+    </div>
+  )
+}
+
 function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => void }) {
   const c = useCountdown(launch.launchAt, launch.dateConfirmed)
   // Solo lo que todavía no ha llegado a su hora puede ser "inminente": antes un
@@ -240,10 +269,11 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
     <button
       onClick={onOpen}
       className={cn(
-        'card-surface group relative block w-full overflow-hidden rounded-2xl border p-5 text-left transition-all sm:p-6',
+        'card-surface group relative isolate block w-full overflow-hidden rounded-2xl border p-5 text-left transition-all sm:p-6',
         c.live || urgent ? 'border-[#ff4d5e]/40 hover:border-[#ff4d5e]/60' : 'border-white/12 hover:border-[#8FA83F]/50'
       )}
     >
+      <CardBanner src={launch.banner} />
       <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#8FA83F]/10 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-white/5 blur-3xl" />
       <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -299,7 +329,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
     <article
       onClick={() => openLaunch(launch.id)}
       className={cn(
-        'card-surface group flex min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-xl border p-4 transition-all hover:-translate-y-0.5',
+        'card-surface group relative isolate flex min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-xl border p-4 transition-all hover:-translate-y-0.5',
         launch.boost?.golden
           ? 'border-amber-300/55 shadow-[0_0_18px_rgba(255,176,32,0.1)] hover:border-amber-300/80'
           : launch.boost
@@ -309,6 +339,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
               : 'border-white/10 hover:border-[#8FA83F]/30'
       )}
     >
+      <CardBanner src={launch.banner} />
       <div className="flex items-start gap-2.5">
         <TokenGlyph src={launch.image} ticker={launch.ticker ?? launch.name} size="lg" />
         <div className="min-w-0 flex-1">
