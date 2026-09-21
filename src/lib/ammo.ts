@@ -52,6 +52,12 @@ const DEFAULT_GOLDEN_AT = 1_000
  */
 const DEFAULT_NOTIFY_AT = 1_000
 
+/**
+ * Promoción de lanzamiento: descuento sobre el precio de lista de TODOS los
+ * cargadores. Empieza apagada — se enciende desde /admin con su fecha de fin.
+ */
+const DEFAULT_PROMO_PCT = 0
+
 /** Tope por disparo: evita que un dedo torpe vacíe un arsenal de golpe. */
 export const MAX_BULLETS_PER_SHOT = 50_000
 
@@ -60,12 +66,16 @@ const DEFAULTS: AmmoSettings = {
   planGifts: { ...DEFAULT_PLAN_GIFTS },
   goldenAt: DEFAULT_GOLDEN_AT,
   notifyAt: DEFAULT_NOTIFY_AT,
+  promoPct: DEFAULT_PROMO_PCT,
+  promoUntil: null,
 }
 
 const priceKey = (p: PackKey) => `ammo_price_${p}`
 const giftKey = (p: PlanKey) => `ammo_gift_${p}`
 const GOLDEN_KEY = 'ammo_golden_at'
 const NOTIFY_KEY = 'ammo_notify_at'
+const PROMO_PCT_KEY = 'ammo_promo_pct'
+const PROMO_UNTIL_KEY = 'ammo_promo_until'
 const SETTINGS_CACHE = 'settings:ammo'
 
 /** Precio válido en USD, o null si el cargador no está a la venta. */
@@ -73,6 +83,19 @@ export function parseAmmoPrice(v: unknown): number | null {
   if (v === null || v === undefined || v === '') return null
   const n = Number(v)
   return Number.isFinite(n) && n >= 1 && n <= 100_000 ? Math.round(n * 100) / 100 : null
+}
+
+/** Descuento de la promo, 0-90 %. Por encima de 90 sería regalarlo. */
+function parsePromoPct(v: unknown): number {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? Math.min(90, Math.round(n)) : 0
+}
+
+/** Fin de la promo en ISO, o null si no caduca / no vale. */
+function parsePromoUntil(v: unknown): string | null {
+  if (v === null || v === undefined || v === '') return null
+  const d = new Date(String(v))
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
 function parseBullets(v: unknown, fallback: number): number {
@@ -99,6 +122,8 @@ export async function getAmmoSettings(): Promise<AmmoSettings> {
       planGifts,
       goldenAt: parseBullets(map.get(GOLDEN_KEY), DEFAULT_GOLDEN_AT) || DEFAULT_GOLDEN_AT,
       notifyAt: parseBullets(map.get(NOTIFY_KEY), DEFAULT_NOTIFY_AT) || DEFAULT_NOTIFY_AT,
+      promoPct: parsePromoPct(map.get(PROMO_PCT_KEY)),
+      promoUntil: parsePromoUntil(map.get(PROMO_UNTIL_KEY)),
     }
   })
 }
@@ -108,6 +133,8 @@ export async function saveAmmoSettings(input: {
   planGifts?: Partial<Record<string, unknown>>
   goldenAt?: unknown
   notifyAt?: unknown
+  promoPct?: unknown
+  promoUntil?: unknown
 }): Promise<AmmoSettings> {
   const writes: { key: string; value: string }[] = []
   for (const p of PACK_KEYS) {
@@ -125,6 +152,12 @@ export async function saveAmmoSettings(input: {
       value: String(parseBullets(input.goldenAt, DEFAULT_GOLDEN_AT) || DEFAULT_GOLDEN_AT),
     })
   }
+  if (input.promoPct !== undefined) {
+    writes.push({ key: PROMO_PCT_KEY, value: String(parsePromoPct(input.promoPct)) })
+  }
+  if (input.promoUntil !== undefined) {
+    writes.push({ key: PROMO_UNTIL_KEY, value: parsePromoUntil(input.promoUntil) ?? '' })
+  }
   if (input.notifyAt !== undefined) {
     writes.push({
       key: NOTIFY_KEY,
@@ -140,18 +173,53 @@ export async function saveAmmoSettings(input: {
   return getAmmoSettings()
 }
 
+/**
+ * ¿Hay promoción de lanzamiento viva? Lleva fecha de fin a propósito: un
+ * "antes 99 $" permanente que nadie ha pagado nunca no es un precio de
+ * referencia, es un adorno — y en la UE y en EE.UU. eso se regula.
+ */
+export function promoActive(settings: AmmoSettings, now = Date.now()): boolean {
+  if (settings.promoPct <= 0) return false
+  if (!settings.promoUntil) return true
+  const until = new Date(settings.promoUntil).getTime()
+  return Number.isFinite(until) && until > now
+}
+
+/**
+ * Lo que de verdad se cobra por un cargador. La usan tanto la pantalla de
+ * compra como el checkout: si solo la aplicase la pantalla, el cliente vería
+ * el descuento y luego pagaría el precio entero.
+ */
+export function priceToCharge(listPriceUsd: number, settings: AmmoSettings, now = Date.now()): number {
+  if (!promoActive(settings, now)) return listPriceUsd
+  return Math.round(listPriceUsd * (1 - settings.promoPct / 100) * 100) / 100
+}
+
 /** Los cargadores tal y como se le enseñan a quien va a comprar. */
 export function packsFor(settings: AmmoSettings, methods: { card: boolean; crypto: boolean }): AmmoPackDTO[] {
+  const onPromo = promoActive(settings)
   return PACK_KEYS.flatMap((key) => {
-    const priceUsd = settings.prices[key]
-    if (priceUsd === null) return []
+    const listPrice = settings.prices[key]
+    if (listPrice === null) return []
     const { label, bullets } = PACKS[key]
-    // El cargador pequeño marca el precio de referencia de la bala; los
-    // grandes enseñan cuánto se ahorra frente a comprar ese tantas veces.
-    const base = settings.prices.clip
-    const unitBase = base === null ? null : base / PACKS.clip.bullets
-    const fullPriceUsd = unitBase === null ? null : Math.round(unitBase * bullets * 100) / 100
-    const savingsPct = fullPriceUsd && fullPriceUsd > priceUsd ? Math.round((1 - priceUsd / fullPriceUsd) * 100) : 0
+    const priceUsd = priceToCharge(listPrice, settings)
+
+    // Con promoción, lo tachado es el precio de lista y el descuento es el de
+    // la promo. Sin ella se enseña el ahorro por volumen: lo que costarían
+    // esas balas comprando cargadores pequeños.
+    let fullPriceUsd: number | null = null
+    let savingsPct = 0
+    if (onPromo) {
+      fullPriceUsd = listPrice
+      savingsPct = Math.round((1 - priceUsd / listPrice) * 100)
+    } else {
+      const base = settings.prices.clip
+      const unitBase = base === null ? null : base / PACKS.clip.bullets
+      const byVolume = unitBase === null ? null : Math.round(unitBase * bullets * 100) / 100
+      savingsPct = byVolume && byVolume > priceUsd ? Math.round((1 - priceUsd / byVolume) * 100) : 0
+      fullPriceUsd = savingsPct > 0 ? byVolume : null
+    }
+
     return [
       {
         key,
@@ -159,7 +227,7 @@ export function packsFor(settings: AmmoSettings, methods: { card: boolean; crypt
         bullets,
         priceUsd,
         hours: Math.round((bullets / 60) * 10) / 10,
-        fullPriceUsd: savingsPct > 0 ? fullPriceUsd : null,
+        fullPriceUsd,
         savingsPct,
         card: methods.card,
         crypto: methods.crypto,

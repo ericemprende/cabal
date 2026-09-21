@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { appOrigin } from '@/lib/oauth'
 import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { getViewer } from '@/lib/premium'
-import { PACKS, getAmmoSettings, isPackKey } from '@/lib/ammo'
+import { PACKS, getAmmoSettings, isPackKey, priceToCharge } from '@/lib/ammo'
 import { createAmmoCheckout, stripeAmmoAvailable } from '@/lib/stripe'
 import { createNowInvoice, nowpaymentsConfigured } from '@/lib/nowpayments'
 
@@ -27,10 +27,14 @@ export async function POST(req: Request) {
     if (!isPackKey(pack) || !method) {
       return NextResponse.json({ error: 'Cargador o método de pago no válido' }, { status: 400 })
     }
-    const price = (await getAmmoSettings()).prices[pack]
-    if (price === null || price === undefined) {
+    const settings = await getAmmoSettings()
+    const listPrice = settings.prices[pack]
+    if (listPrice === null || listPrice === undefined) {
       return NextResponse.json({ error: 'Ese cargador no está a la venta' }, { status: 400 })
     }
+    // El descuento se aplica aquí, no solo en la pantalla: si no, el cliente
+    // vería la promo y luego pagaría el precio entero.
+    const price = priceToCharge(listPrice, settings)
     const { label, bullets } = PACKS[pack]
 
     const origin = appOrigin(req)

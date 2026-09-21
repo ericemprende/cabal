@@ -1486,6 +1486,8 @@ export function useAdminSaveAmmo() {
       planGifts?: Record<string, number>
       goldenAt?: number
       notifyAt?: number
+      promoPct?: number
+      promoUntil?: string | null
     }) => jsonFetch<{ ok: boolean }>('/api/admin/ammo', { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: () => {
       invalidate()

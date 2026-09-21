@@ -84,6 +84,8 @@ export function AmmoDialog() {
           </div>
         ) : (
           <div className="space-y-5 p-5">
+            {info.promo && <PromoBanner promo={info.promo} />}
+
             {ammoTarget && <FireSection balance={info.balance} goldenAt={info.goldenAt} />}
 
             <PackGrid packs={info.packs} hasTarget={Boolean(ammoTarget)} />
@@ -115,6 +117,24 @@ export function AmmoDialog() {
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** Promoción de lanzamiento: el descuento y hasta cuándo dura. */
+function PromoBanner({ promo }: { promo: { pct: number; until: string | null } }) {
+  const until = promo.until
+    ? new Date(promo.until).toLocaleDateString('es', { day: 'numeric', month: 'long' })
+    : null
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2.5">
+      <span className="rounded-md bg-primary px-2 py-0.5 text-[11px] font-black uppercase tracking-widest text-primary-foreground">
+        −{promo.pct}%
+      </span>
+      <p className="text-[13px] font-semibold text-foreground/90">
+        Promoción de lanzamiento en todos los cargadores
+      </p>
+      {until && <span className="ml-auto text-[11px] text-muted-foreground">hasta el {until}</span>}
+    </div>
   )
 }
 

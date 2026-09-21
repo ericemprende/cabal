@@ -341,6 +341,8 @@ export interface PremiumPlanDTO {
   fullPriceUsd: number | null
   card: boolean
   crypto: boolean
+  /** Munición de regalo al activar el plan (ver lib/ammo.ts). 0 = no regala. */
+  ammoBullets: number
 }
 
 export interface PremiumInfoDTO {
@@ -940,6 +942,10 @@ export interface AmmoSettings {
   goldenAt: number
   /** Balas de un disparo a partir de las cuales avisan los bots. */
   notifyAt: number
+  /** Descuento de lanzamiento sobre el precio de lista, 0-90 %. 0 = sin promo. */
+  promoPct: number
+  /** Cuándo acaba la promo (ISO). null = no caduca. */
+  promoUntil: string | null
 }
 
 /** Un cargador a la venta, tal y como se le enseña a quien va a comprar. */
@@ -987,6 +993,8 @@ export interface AmmoInfoDTO {
   goldenAt: number
   /** Balas que regala cada plan, para invitar a Premium desde el propio diálogo. */
   planGifts: Record<string, number>
+  /** Promoción de lanzamiento viva: descuento y hasta cuándo (null = sin promo). */
+  promo: { pct: number; until: string | null } | null
 }
 
 /** Panel de admin: todo lo de la munición en una pantalla. */

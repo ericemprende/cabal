@@ -83,7 +83,7 @@ export async function GET(req: Request) {
   }
 }
 
-/** PUT /api/admin/ammo — { prices?, planGifts?, goldenAt?, notifyAt? } */
+/** PUT /api/admin/ammo — { prices?, planGifts?, goldenAt?, notifyAt?, promoPct?, promoUntil? } */
 export async function PUT(req: Request) {
   try {
     await requireAdmin(req)
@@ -93,6 +93,8 @@ export async function PUT(req: Request) {
       planGifts: typeof body.planGifts === 'object' && body.planGifts ? body.planGifts : undefined,
       goldenAt: body.goldenAt,
       notifyAt: body.notifyAt,
+      promoPct: body.promoPct,
+      promoUntil: body.promoUntil,
     })
     return NextResponse.json({ ok: true, settings })
   } catch (e) {

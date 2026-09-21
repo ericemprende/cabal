@@ -2453,6 +2453,11 @@ function AdminVerification({ enabled }: { enabled: boolean }) {
  * plan, a partir de cuántas balas un proyecto se vuelve dorado, y qué está
  * destacado ahora mismo.
  */
+/** $99 o $39.60: sin céntimos cuando el importe es redondo. */
+function formatUsdAdmin(n: number) {
+  return `${Number.isInteger(n) ? n : n.toFixed(2)}`
+}
+
 function AdminAmmo({ enabled }: { enabled: boolean }) {
   const data = useAdminAmmo(enabled)
   const save = useAdminSaveAmmo()
@@ -2482,7 +2487,11 @@ function AdminAmmo({ enabled }: { enabled: boolean }) {
     }
     const goldenAt = Math.max(1, Math.round(Number(field('goldenAt', settings.goldenAt)) || settings.goldenAt))
     const notifyAt = Math.max(1, Math.round(Number(field('notifyAt', settings.notifyAt)) || settings.notifyAt))
-    save.mutate({ prices, planGifts, goldenAt, notifyAt }, { onSuccess: () => setDraft({}) })
+    const promoPct = Math.max(0, Math.min(90, Math.round(Number(field('promoPct', settings.promoPct)) || 0)))
+    // La fecha se guarda al final de ese día: si pone el 30, la promo vale todo el 30.
+    const rawUntil = (draft.promoUntil ?? (settings.promoUntil ? settings.promoUntil.slice(0, 10) : '')).trim()
+    const promoUntil = rawUntil ? new Date(`${rawUntil}T23:59:59`).toISOString() : null
+    save.mutate({ prices, planGifts, goldenAt, notifyAt, promoPct, promoUntil }, { onSuccess: () => setDraft({}) })
   }
 
   const doGive = () => {
@@ -2572,6 +2581,55 @@ function AdminAmmo({ enabled }: { enabled: boolean }) {
             </div>
             <p className="text-[11px] text-muted-foreground">
               Deja el precio vacío para retirar ese cargador de la venta.
+            </p>
+          </div>
+
+          {/* Promoción de lanzamiento */}
+          <div className="rounded-xl border border-primary/30 bg-primary/[0.06] p-3">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Promoción de lanzamiento
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-muted-foreground">Descuento</span>
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={90}
+                    value={field('promoPct', settings.promoPct)}
+                    onChange={(e) => set('promoPct', e.target.value)}
+                    aria-label="Descuento de la promoción, en porcentaje"
+                    className="h-9 w-24 bg-[#121410] text-right text-[13px]"
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-muted-foreground">Hasta el (incluido)</span>
+                <Input
+                  type="date"
+                  value={draft.promoUntil ?? (settings.promoUntil ? settings.promoUntil.slice(0, 10) : '')}
+                  onChange={(e) => set('promoUntil', e.target.value)}
+                  aria-label="Último día de la promoción"
+                  className="h-9 w-44 bg-[#121410] text-[13px]"
+                />
+              </label>
+              {settings.promoPct > 0 && (
+                <p className="text-[12px] text-foreground/85">
+                  El Cajón de {formatUsdAdmin(settings.prices.crate ?? 0)} se cobra a{' '}
+                  <span className="font-bold text-primary">
+                    {formatUsdAdmin(
+                      Math.round((settings.prices.crate ?? 0) * (1 - settings.promoPct / 100) * 100) / 100
+                    )}
+                  </span>
+                </p>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Se aplica a todos los cargadores: el precio de lista sale tachado y se cobra el rebajado. Con 0 % no hay
+              promoción. Ponle fecha de fin: un precio tachado que nadie ha pagado nunca no es un precio de referencia
+              y en la UE y EE.UU. eso se regula.
             </p>
           </div>
 

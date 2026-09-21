@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { PLAN_KEYS, PLANS, getPremiumSettings, getViewer, premiumStatus } from '@/lib/premium'
 import { stripePlanAvailable } from '@/lib/stripe'
 import { nowpaymentsConfigured } from '@/lib/nowpayments'
+import { getAmmoSettings } from '@/lib/ammo'
 import type { PremiumInfoDTO, PremiumPlanDTO } from '@/lib/types'
 
 /**
@@ -10,7 +11,11 @@ import type { PremiumInfoDTO, PremiumPlanDTO } from '@/lib/types'
  */
 export async function GET(req: Request) {
   try {
-    const [viewer, settings] = await Promise.all([getViewer(req), getPremiumSettings()])
+    const [viewer, settings, ammo] = await Promise.all([
+      getViewer(req),
+      getPremiumSettings(),
+      getAmmoSettings(),
+    ])
     const monthly = settings.prices.monthly
     const crypto = nowpaymentsConfigured()
 
@@ -34,6 +39,7 @@ export async function GET(req: Request) {
           fullPriceUsd: savingsUsd > 0 ? fullPrice : null,
           card: stripePlanAvailable(key),
           crypto,
+          ammoBullets: ammo.planGifts[key] ?? 0,
         },
       ]
     })

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { ammoBalance, getAmmoSettings, packsFor } from '@/lib/ammo'
+import { ammoBalance, getAmmoSettings, packsFor, promoActive } from '@/lib/ammo'
 import { getViewer } from '@/lib/premium'
 import { stripeAmmoAvailable } from '@/lib/stripe'
 import { nowpaymentsConfigured } from '@/lib/nowpayments'
@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       packs: packsFor(settings, { card: stripeAmmoAvailable(), crypto: nowpaymentsConfigured() }),
       goldenAt: settings.goldenAt,
       planGifts: settings.planGifts,
+      promo: promoActive(settings) ? { pct: settings.promoPct, until: settings.promoUntil } : null,
     }
     return NextResponse.json(dto)
   } catch (e) {
