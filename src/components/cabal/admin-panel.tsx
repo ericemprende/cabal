@@ -132,6 +132,7 @@ type AdminAnalyticsDTO =
   | {
       configured: true
       dashboardUrl: string
+      timezone: string
       today: { visitors: number; pageviews: number; visits: number }
       last7Days: { visitors: number; pageviews: number; visits: number }
       last30Days: { visitors: number; pageviews: number; visits: number }
@@ -234,7 +235,10 @@ export function AdminPanel({
   const users = useAdminUsers(enabled)
   const analytics = useQuery<AdminAnalyticsDTO>({
     queryKey: ['admin', 'analytics'],
-    queryFn: () => jsonFetch('/api/admin/analytics'),
+    queryFn: () =>
+      jsonFetch(
+        `/api/admin/analytics?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')}`
+      ),
     enabled: enabled && view === 'stats',
     refetchInterval: 60_000,
   })
@@ -451,7 +455,7 @@ export function AdminPanel({
                 </div>
                 <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
                   <p className="pb-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Visitantes por día (últimos 14 días)
+                    Visitantes por día (últimos 14 días) · {analytics.data.timezone}
                   </p>
                   <div className="h-40">
                     <ResponsiveContainer width="100%" height="100%">
