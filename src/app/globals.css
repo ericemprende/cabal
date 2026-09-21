@@ -535,9 +535,55 @@
   .animate-ammo-shine,
   .animate-ammo-reload-flash,
   .animate-ammo-pop-in,
-  .animate-ammo-draining {
+  .animate-ammo-draining,
+  .animate-donate-wiggle {
     animation: none;
   }
+  .animate-donate-glow {
+    animation: none;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4), 0 0 12px rgba(255, 255, 255, 0.18);
+  }
+}
+
+/* Botón de donar: halo blanco que respira y una sacudida cada pocos segundos
+   para que se note en la cabecera sin competir con el verde de la marca. */
+@keyframes donate-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 0 8px rgba(255, 255, 255, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 18px rgba(255, 255, 255, 0.28);
+  }
+}
+.animate-donate-glow {
+  animation: donate-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes donate-wiggle {
+  0%,
+  84%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  86% {
+    transform: rotate(-9deg) scale(1.08);
+  }
+  89% {
+    transform: rotate(8deg) scale(1.08);
+  }
+  92% {
+    transform: rotate(-6deg) scale(1.04);
+  }
+  95% {
+    transform: rotate(4deg) scale(1.02);
+  }
+  98% {
+    transform: rotate(-2deg) scale(1);
+  }
+}
+.animate-donate-wiggle {
+  animation: donate-wiggle 9s ease-in-out infinite;
 }
 
 /* Tipografía de los documentos legales (/terminos, /privacidad). */

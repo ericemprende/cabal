@@ -25,6 +25,7 @@ import { AffiliatesDialog } from '@/components/cabal/affiliates-dialog'
 import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { AmmoBadge } from '@/components/cabal/ammo'
+import { DonateButton } from '@/components/cabal/donate-dialog'
 import { useGoToTab } from '@/lib/use-go-to-tab'
 import { timeAgo } from '@/lib/cabal'
 import { useChatReplies } from '@/lib/chat-replies'
@@ -75,6 +76,9 @@ export function Header() {
         <div className="ml-auto flex items-center gap-2">
           {/* Munición: la granada con el saldo de balas, arriba a la derecha */}
           <AmmoBadge />
+
+          {/* Donaciones */}
+          <DonateButton />
 
           {me && <PointsPill points={me.points} className="hidden sm:inline-flex" />}
 

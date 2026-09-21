@@ -41,6 +41,9 @@ interface UIState {
   setAmmoOpen: (v: boolean) => void
   welcomeShareOpen: boolean
   setWelcomeShareOpen: (v: boolean) => void
+  /** Diálogo de donaciones (widget de NOWPayments). */
+  donateOpen: boolean
+  setDonateOpen: (v: boolean) => void
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -73,4 +76,6 @@ export const useUI = create<UIState>((set) => ({
   setAmmoOpen: (ammoOpen) => set({ ammoOpen }),
   welcomeShareOpen: false,
   setWelcomeShareOpen: (welcomeShareOpen) => set({ welcomeShareOpen }),
+  donateOpen: false,
+  setDonateOpen: (donateOpen) => set({ donateOpen }),
 }))

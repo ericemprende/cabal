@@ -20,6 +20,7 @@ import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { AmmoDialog } from '@/components/cabal/ammo-dialog'
 import { WelcomeShareDialog } from '@/components/cabal/welcome-share-dialog'
+import { DonateDialog } from '@/components/cabal/donate-dialog'
 import { LiveChat } from '@/components/cabal/live-chat'
 import { useUI, type TabKey } from '@/lib/store'
 import { qk, useConfirmPremiumCheckout, useMe, usePointRules } from '@/lib/api-client'
@@ -236,6 +237,7 @@ export default function Home() {
       <PremiumDialog />
       <AmmoDialog />
       <WelcomeShareDialog />
+      <DonateDialog />
     </div>
   )
 }
