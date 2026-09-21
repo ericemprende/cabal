@@ -130,7 +130,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
         isPrivate: l.isPrivate,
         network: l.network,
         launchAt: l.launchAt.toISOString(),
-        status: computeLaunchStatus(l.launchAt),
+        status: computeLaunchStatus(l.launchAt, l.dateConfirmed),
         hype: l.hype + (hypes[l.id] ?? 0),
       })),
       tokens: tokens.map((t) => ({

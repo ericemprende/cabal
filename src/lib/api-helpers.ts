@@ -3,7 +3,7 @@ import { ensureSeeded } from '@/lib/seed'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { invalidate } from '@/lib/cache'
-import { LAUNCHED_WINDOW_MS } from '@/lib/cabal'
+import { launchPhase } from '@/lib/cabal'
 
 // ---------- POINTS ENGINE ----------
 export const POINT_RULE_KEYS = [
@@ -230,10 +230,15 @@ export async function getFollowedIds(userId: string) {
   return new Set(follows.map((f) => f.targetId))
 }
 
-export function computeLaunchStatus(launchAt: Date): string {
-  const diff = launchAt.getTime() - Date.now()
-  if (diff > 0) return 'upcoming'
-  if (-diff <= LAUNCHED_WINDOW_MS) return 'live'
+/**
+ * `status` del DTO a partir de la fase real del launch. Un launch de fecha
+ * estimada cuya hora ya pasó sigue como `upcoming`: nadie ha lanzado nada
+ * todavía, así que se queda en Próximos (pendiente) durante la gracia.
+ */
+export function computeLaunchStatus(launchAt: Date, dateConfirmed = true): string {
+  const phase = launchPhase(launchAt, dateConfirmed)
+  if (phase === 'upcoming' || phase === 'pending') return 'upcoming'
+  if (phase === 'live' || phase === 'recent') return 'live'
   return 'ended'
 }
 

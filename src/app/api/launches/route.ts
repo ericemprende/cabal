@@ -59,7 +59,7 @@ export async function GET(req: Request) {
       telegram: l.telegram,
       isLive: l.isLive,
       liveUrl: l.liveUrl,
-      status: computeLaunchStatus(new Date(l.launchAt)),
+      status: computeLaunchStatus(new Date(l.launchAt), l.dateConfirmed),
       hype: l.hype + (hypeDelta[l.id] ?? 0),
       hyped: hypedIds.has(l.id),
       lpLocked: l.lpLocked,

@@ -69,16 +69,51 @@ export function timeAgo(date: string | Date): string {
 }
 
 /** Cuánto dura "EN VIVO" tras la hora de lanzamiento. */
-export const LIVE_WINDOW_MS = 2 * 3600_000
+export const LIVE_WINDOW_MS = 15 * 60_000
 /** Tras esto el launch sale de Próximos y pasa a Finalizados. */
-export const LAUNCHED_WINDOW_MS = 24 * 3600_000
+export const LAUNCHED_WINDOW_MS = 30 * 60_000
+/**
+ * Fecha estimada que ya pasó: que llegue la hora no significa que el token haya
+ * salido, así que sigue *pendiente* en Próximos hasta que se agote esta gracia
+ * (o hasta que quien lo subió confirme la fecha de verdad).
+ */
+export const ESTIMATED_GRACE_MS = 6 * 3600_000
 
-export function countdownParts(target: string | Date): {
+/**
+ * En qué momento de su vida está un launch. Única fuente de verdad: la usan el
+ * servidor (para el `status` del DTO) y el radar en cliente, que la recalcula
+ * cada segundo para que una tarjeta salte sola de Próximos a Finalizados sin
+ * esperar a un refetch.
+ */
+export type LaunchPhase = 'upcoming' | 'live' | 'recent' | 'pending' | 'ended'
+
+export function launchPhase(
+  launchAt: string | Date | number,
+  dateConfirmed = true,
+  now: number = Date.now(),
+): LaunchPhase {
+  const t =
+    typeof launchAt === 'number'
+      ? launchAt
+      : typeof launchAt === 'string'
+        ? new Date(launchAt).getTime()
+        : launchAt.getTime()
+  const since = now - t
+  if (since < 0) return 'upcoming'
+  if (!dateConfirmed) return since <= ESTIMATED_GRACE_MS ? 'pending' : 'ended'
+  if (since <= LIVE_WINDOW_MS) return 'live'
+  if (since <= LAUNCHED_WINDOW_MS) return 'recent'
+  return 'ended'
+}
+
+export function countdownParts(target: string | Date, dateConfirmed = true): {
   ended: boolean
-  /** Primeras 2 h tras la hora de lanzamiento. */
+  /** Primeros 15 min tras la hora de lanzamiento. */
   live: boolean
-  /** Entre 2 h y 24 h tras lanzar: "Lanzado", ya sin rojo. */
+  /** Entre 15 y 30 min tras lanzar: "Lanzado", ya sin rojo. */
   recent: boolean
+  /** Pasó una fecha estimada: no ha salido nada todavía, sigue pendiente. */
+  pending: boolean
   /** Texto completo: SIEMPRE incluye minutos y segundos (tiqueta en vivo). */
   text: string
   /** Versión corta para píldoras de tarjetas (mantiene min+seg cuando queda <24h). */
@@ -88,14 +123,13 @@ export function countdownParts(target: string | Date): {
   const t = typeof target === 'string' ? new Date(target).getTime() : target.getTime()
   const diff = t - Date.now()
   if (diff <= 0) {
-    const since = -diff
-    const live = since <= LIVE_WINDOW_MS
-    const ended = since > LAUNCHED_WINDOW_MS
-    const text = live ? 'EN VIVO' : 'LANZADO'
+    const phase = launchPhase(t, dateConfirmed)
+    const text = phase === 'live' ? 'EN VIVO' : phase === 'pending' ? 'PENDIENTE' : 'LANZADO'
     return {
-      ended,
-      live,
-      recent: !live && !ended,
+      ended: phase === 'ended',
+      live: phase === 'live',
+      recent: phase === 'recent',
+      pending: phase === 'pending',
       text,
       compactText: text,
       totalMs: 0,
@@ -118,7 +152,7 @@ export function countdownParts(target: string | Date): {
     text = `${min}m ${ss}s`
     compactText = text
   }
-  return { ended: false, live: false, recent: false, text, compactText, totalMs: diff }
+  return { ended: false, live: false, recent: false, pending: false, text, compactText, totalMs: diff }
 }
 
 export function safetyCheck(l: { lpLocked: boolean; mintRevoked: boolean; top10Pct: number }): {

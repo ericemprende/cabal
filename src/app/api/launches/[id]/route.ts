@@ -104,7 +104,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       telegram: launch.telegram,
       isLive: launch.isLive,
       liveUrl: launch.liveUrl,
-      status: computeLaunchStatus(launch.launchAt),
+      status: computeLaunchStatus(launch.launchAt, launch.dateConfirmed),
       hype: launch.hype + (await pending('launch:hype', launch.id)),
       hyped: votes.some((v) => v.target === 'launch' && v.targetId === launch.id),
       lpLocked: launch.lpLocked,

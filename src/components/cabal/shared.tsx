@@ -629,17 +629,33 @@ export function KindBadge({ kind }: { kind: string }) {
 }
 
 // ---------- Countdown ----------
-export function useCountdown(target: string | Date) {
-  const [parts, setParts] = useState(() => countdownParts(target))
-  const targetRef = useRef(target)
+export function useCountdown(target: string | Date, dateConfirmed = true) {
+  const [parts, setParts] = useState(() => countdownParts(target, dateConfirmed))
+  const targetRef = useRef({ target, dateConfirmed })
   useEffect(() => {
-    targetRef.current = target
-  }, [target])
+    targetRef.current = { target, dateConfirmed }
+  }, [target, dateConfirmed])
   useEffect(() => {
-    const t = setInterval(() => setParts(countdownParts(targetRef.current)), 1000)
+    const t = setInterval(
+      () => setParts(countdownParts(targetRef.current.target, targetRef.current.dateConfirmed)),
+      1000
+    )
     return () => clearInterval(t)
   }, [])
   return parts
+}
+
+/**
+ * Reloj compartido para listas que cambian solas al pasar la hora (el radar).
+ * Un único intervalo para toda la lista, en vez de uno por tarjeta.
+ */
+export function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs)
+    return () => clearInterval(t)
+  }, [intervalMs])
+  return now
 }
 
 /** Fecha aún no confirmada: badge chiquito para poner junto a la fecha o el countdown. */
@@ -672,7 +688,7 @@ export function CountdownPill({
   /** La fecha es un estimado sin confirmar: antepone "~" y lo aclara en el title. */
   estimated?: boolean
 }) {
-  const c = useCountdown(target)
+  const c = useCountdown(target, !estimated)
   // Compacto: cuenta atrás corta para tarjetas — incluye min+seg cuando queda <24h
   const text = compact ? c.compactText : c.text
   const cls =
@@ -693,6 +709,16 @@ export function CountdownPill({
       <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>
         <span className={cn('live-dot-red shrink-0 rounded-full bg-[#ff4d5e]', dotCls)} />
         En vivo
+      </span>
+    )
+  // Fecha estimada que ya pasó: no ha salido nada, sigue esperando al dev
+  if (c.pending)
+    return (
+      <span
+        title="La fecha era estimada y ya pasó: quien lo subió todavía no ha confirmado el lanzamiento"
+        className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-amber-300/40 bg-amber-300/10 font-bold uppercase text-amber-300', cls, className)}
+      >
+        Pendiente
       </span>
     )
   if (c.recent)

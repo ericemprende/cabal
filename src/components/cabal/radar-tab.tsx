@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown, OfficialBadge } from '@/components/cabal/shared'
-import { fmtPct, networkMeta, timeAgo } from '@/lib/cabal'
+import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown, useNow, OfficialBadge } from '@/components/cabal/shared'
+import { fmtPct, launchPhase, networkMeta, timeAgo, type LaunchPhase } from '@/lib/cabal'
 import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
@@ -39,7 +39,10 @@ function RoleChip({ role }: { role: 'dev' | 'community' }) {
 
 type StatusFilter = 'active' | 'ended' | 'all'
 
-/** "Próximos" incluye lo que se está lanzando ahora (hasta 48h después): sigue vivo. */
+/**
+ * "Próximos" incluye lo que se está lanzando ahora (30 min tras la hora) y lo
+ * que tenía fecha estimada y todavía no ha salido. Lo demás, a Finalizados.
+ */
 const STATUS_TABS: { key: StatusFilter; label: string }[] = [
   { key: 'active', label: 'Próximos' },
   { key: 'ended', label: 'Finalizados' },
@@ -57,40 +60,52 @@ export function RadarTab() {
   // launches finalizados más antiguos arriba del todo del radar.
   const [status, setStatus] = useState<StatusFilter>('active')
 
+  // El `status` del DTO se calcula en el servidor y viaja cacheado: con la
+  // pestaña abierta un launch se quedaba en Próximos pasada su hora. Aquí la
+  // fase se recalcula cada segundo, así que la tarjeta salta sola de pestaña.
+  const now = useNow()
+  const phaseOf = useMemo(() => {
+    const map = new Map<string, LaunchPhase>()
+    for (const l of launches ?? []) map.set(l.id, launchPhase(l.launchAt, l.dateConfirmed, now))
+    return (l: LaunchDTO) => map.get(l.id) ?? 'upcoming'
+  }, [launches, now])
+
   const byNetwork = useMemo(
     () => (launches ?? []).filter((l) => network === 'all' || l.network === network),
     [launches, network]
   )
 
   const counts = useMemo(() => {
-    const ended = byNetwork.filter((l) => l.status === 'ended').length
+    const ended = byNetwork.filter((l) => phaseOf(l) === 'ended').length
     return { active: byNetwork.length - ended, ended, all: byNetwork.length }
-  }, [byNetwork])
+  }, [byNetwork, phaseOf])
 
   const filtered = useMemo(() => {
     const list =
       status === 'all'
         ? byNetwork
-        : byNetwork.filter((l) => (status === 'ended') === (l.status === 'ended'))
+        : byNetwork.filter((l) => (status === 'ended') === (phaseOf(l) === 'ended'))
     const at = (l: { launchAt: string }) => +new Date(l.launchAt)
     return [...list].sort((a, b) => {
       if (sort === 'hype') return b.hype - a.hype
       // Por fecha, lo activo va primero y del más cercano al más lejano (los que
       // se están lanzando ahora quedan arriba); lo finalizado, del más reciente
       // al más antiguo, que es lo que interesa al repasar lo que ya salió.
-      const aEnded = a.status === 'ended'
-      const bEnded = b.status === 'ended'
+      const aEnded = phaseOf(a) === 'ended'
+      const bEnded = phaseOf(b) === 'ended'
       if (aEnded !== bEnded) return aEnded ? 1 : -1
       return aEnded ? at(b) - at(a) : at(a) - at(b)
     })
-  }, [byNetwork, sort, status])
+  }, [byNetwork, sort, status, phaseOf])
 
   const featured = useMemo(() => {
-    const upcoming = (launches ?? []).filter((l) => l.status === 'upcoming')
+    // Solo lo que aún no ha llegado a su hora: un pendiente o un recién lanzado
+    // no son un buen héroe (no hay cuenta atrás que enseñar).
+    const upcoming = (launches ?? []).filter((l) => phaseOf(l) === 'upcoming')
     if (upcoming.length === 0) return null
     // soonest with high hype gets the hero
     return [...upcoming].sort((a, b) => b.hype - a.hype - (b.hype - a.hype) * 0.0000001 * (+new Date(b.launchAt) - +new Date(a.launchAt)))[0] ?? upcoming[0]
-  }, [launches])
+  }, [launches, phaseOf])
 
   return (
     <div className="space-y-4">
@@ -203,9 +218,11 @@ export function RadarTab() {
 }
 
 function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => void }) {
-  const c = useCountdown(launch.launchAt)
-  const urgent = !c.live && !c.ended && c.totalMs < 45 * 60_000
-  const soon = !c.live && !c.ended && !urgent && c.totalMs < 6 * 3600_000
+  const c = useCountdown(launch.launchAt, launch.dateConfirmed)
+  // Solo lo que todavía no ha llegado a su hora puede ser "inminente": antes un
+  // launch ya lanzado (totalMs 0) se pintaba de rojo como si fuera a salir.
+  const urgent = c.totalMs > 0 && c.totalMs < 45 * 60_000
+  const soon = c.pending || (c.totalMs > 0 && !urgent && c.totalMs < 6 * 3600_000)
   return (
     <button
       onClick={onOpen}
@@ -241,13 +258,13 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
         <div className="flex flex-row items-center gap-3 sm:flex-col sm:items-end">
           <div className="text-right">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {c.live ? 'Lanzando ahora' : c.recent ? 'Ya salió' : 'Lanza en'}
+              {c.live ? 'Lanzando ahora' : c.recent ? 'Ya salió' : c.pending ? 'Fecha estimada' : 'Lanza en'}
             </p>
             <p
               className={cn(
                 'font-mono text-2xl font-bold tabular-nums text-glow sm:text-3xl',
                 c.live || urgent ? 'text-[#ff6b7a]' : soon ? 'text-amber-300' : 'text-primary',
-                (c.live || c.recent || urgent) && 'text-base'
+                (c.live || c.recent || c.pending || urgent) && 'text-base'
               )}
             >
               {c.text}
@@ -262,8 +279,8 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
 export function LaunchCard({ launch }: { launch: LaunchDTO }) {
   const hype = useHypeToggle()
   const { openLaunch } = useUI()
-  const c = useCountdown(launch.launchAt)
-  const urgent = !c.live && !c.ended && c.totalMs < 45 * 60_000
+  const c = useCountdown(launch.launchAt, launch.dateConfirmed)
+  const urgent = c.totalMs > 0 && c.totalMs < 45 * 60_000
 
   return (
     <article
