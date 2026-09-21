@@ -10,10 +10,17 @@ const UMAMI_WEBSITE_ID = process.env.UMAMI_WEBSITE_ID
 const UMAMI_USERNAME = process.env.UMAMI_USERNAME
 const UMAMI_PASSWORD = process.env.UMAMI_PASSWORD
 
+// Las llamadas del servidor van por la red interna de Docker, sin TLS.
+// Por el dominio público solo se puede si Traefik tiene emitido el
+// certificado de Let's Encrypt; cuando no lo tiene, Node rechaza la conexión
+// ("unable to verify the first certificate") y el panel se queda sin datos.
+// UMAMI_URL se sigue usando solo para el enlace al panel de Umami.
+const UMAMI_API_URL = process.env.UMAMI_API_URL || 'http://cabal-umami-app-q9yv3w:3000'
+
 let cachedToken: string | null = null
 
 async function umamiLogin(): Promise<string> {
-  const res = await fetch(`${UMAMI_URL}/api/auth/login`, {
+  const res = await fetch(`${UMAMI_API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username: UMAMI_USERNAME, password: UMAMI_PASSWORD }),
@@ -26,13 +33,13 @@ async function umamiLogin(): Promise<string> {
 
 async function umamiFetch(path: string): Promise<Response> {
   if (!cachedToken) cachedToken = await umamiLogin()
-  let res = await fetch(`${UMAMI_URL}${path}`, {
+  let res = await fetch(`${UMAMI_API_URL}${path}`, {
     headers: { Authorization: `Bearer ${cachedToken}` },
     cache: 'no-store',
   })
   if (res.status === 401) {
     cachedToken = await umamiLogin()
-    res = await fetch(`${UMAMI_URL}${path}`, {
+    res = await fetch(`${UMAMI_API_URL}${path}`, {
       headers: { Authorization: `Bearer ${cachedToken}` },
       cache: 'no-store',
     })
