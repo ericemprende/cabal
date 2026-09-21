@@ -14,7 +14,7 @@
  * También deja listos los avisos push para cuando se activen en el servidor.
  */
 
-const VERSION = 'v1'
+const VERSION = 'v2' // v2: logo nuevo (los iconos van en caché por nombre)
 const SHELL = `cabal-shell-${VERSION}`
 const ASSETS = `cabal-assets-${VERSION}`
 const OFFLINE_URL = '/offline'
