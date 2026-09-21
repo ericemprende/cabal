@@ -278,7 +278,16 @@ export default function BotManualPage() {
           callers. No hay que crear nada dentro de Cabal: el clan es la comunidad que ya tienes.
         </p>
         <ul>
-          <li>Desde el clan, cualquiera puede entrar a tu comunidad si tiene enlace público (@usuario en Telegram o una URL personalizada en Discord).</li>
+          <li>
+            La tarjeta lleva un botón <strong>«Unirme»</strong> con el que cualquiera entra a tu comunidad. En Telegram
+            sale del @usuario del grupo o de su enlace de invitación; en Discord el bot crea una invitación permanente
+            del canal donde está (para eso pide el permiso «Crear invitación» al añadirlo).
+          </li>
+          <li>
+            Si tu clan sale sin ese botón, pega tú el enlace: en tu perfil, en el bloque de Telegram o Discord, abre
+            el chat conectado y despliega «Enlace para unirse al clan». Le pasa a los servidores que añadieron el bot antes de que pidiera ese permiso (se arregla también
+            volviéndolo a añadir) y a los grupos sin enlace público.
+          </li>
           <li>
             La tarjeta también lleva el radar de Cabal con cuántos miembros de tu comunidad ya tienen cuenta. Se cuenta
             preguntando, por cada persona con su Telegram o Discord conectado a Cabal, si está en tu grupo: el bot nunca

@@ -53,6 +53,42 @@ async function telegramAudience(token: string, chatId: string): Promise<Audience
   }
 }
 
+/**
+ * Invitación permanente al servidor, creada por el bot en el canal donde está.
+ *
+ * Es lo que le da botón «Unirme» a los servidores sin URL personalizada, que
+ * son casi todos (la personalizada pide nivel 3 de boosts). Solo se pide
+ * cuando hace falta, no en cada consulta de alcance, y tiene su propia caché:
+ * así no se toca un servidor que ya tiene enlace.
+ *
+ * `unique: false` es lo importante: Discord devuelve la invitación que ya
+ * exista con estas mismas condiciones en vez de crear una nueva cada vez.
+ * Necesita el permiso CREATE_INSTANT_INVITE; si el servidor añadió el bot
+ * antes de que se pidiera, responde 403 y aquí null.
+ */
+const inviteCache = new Map<string, { at: number; value: string | null }>()
+
+async function discordInvite(token: string, channelId: string): Promise<string | null> {
+  const hit = inviteCache.get(channelId)
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.value
+  let value: string | null = null
+  try {
+    const invite = await dcCall<{ code?: string }>(token, 'POST', `/channels/${channelId}/invites`, {
+      max_age: 0,
+      max_uses: 0,
+      temporary: false,
+      unique: false,
+    })
+    value = invite.code ? `https://discord.gg/${invite.code}` : null
+  } catch {
+    // Sin permiso para invitar: el clan se queda sin botón salvo que su dueño
+    // pegue el enlace a mano. No es motivo para perder miembros y foto.
+    value = null
+  }
+  inviteCache.set(channelId, { at: Date.now(), value })
+  return value
+}
+
 async function discordAudience(token: string, serverId: string): Promise<Audience> {
   const guild = await dcCall<{
     approximate_member_count?: number
@@ -63,6 +99,8 @@ async function discordAudience(token: string, serverId: string): Promise<Audienc
   return {
     members: guild.approximate_member_count ?? null,
     online: guild.approximate_presence_count ?? null,
+    // La URL personalizada es la buena: no caduca ni depende de un canal. Si el
+    // servidor no la tiene, quien llame se crea una invitación (discordInvite)
     link: guild.vanity_url_code ? `https://discord.gg/${guild.vanity_url_code}` : null,
     // El icono del servidor ya es público (los .a_ son animados: se piden en gif)
     image: guild.icon
@@ -106,7 +144,8 @@ export async function listBotChats(provider: BotProvider, fresh = false): Promis
     // Los privados son una persona: no hay nada que contar
     if (l.active && l.chatType !== 'private') {
       if (tg) audience = await cached(`tg:${l.chatId}`, fresh, () => telegramAudience(tg.token, l.chatId))
-      else if (dc && l.serverId) audience = await cached(`dc:${l.serverId}`, fresh, () => discordAudience(dc.token, l.serverId!))
+      else if (dc && l.serverId)
+        audience = await cached(`dc:${l.serverId}`, fresh, () => discordAudience(dc.token, l.serverId!))
     }
     return {
       id: l.id,
@@ -121,6 +160,8 @@ export async function listBotChats(provider: BotProvider, fresh = false): Promis
       members: audience.members,
       online: audience.online,
       link:
+        // El que pegó el dueño manda: lo eligió él
+        l.inviteUrl ??
         audience.link ??
         // En Discord el enlace al canal solo abre si ya estás en el servidor, pero sirve para revisarlo
         (provider === 'discord' && l.serverId && l.chatType !== 'private'
@@ -162,7 +203,8 @@ export async function audienceByCommunity(): Promise<
 > {
   const links = await db.chatLink.findMany({
     where: { chatType: { not: 'private' }, active: true },
-    select: { provider: true, chatId: true, serverId: true, chatType: true },
+    select: { provider: true, chatId: true, serverId: true, chatType: true, inviteUrl: true },
+    orderBy: { createdAt: 'asc' },
   })
   const out = new Map<string, { members: number | null; online: number | null; link: string | null; image: string | null }>()
   if (links.length === 0) return out
@@ -170,16 +212,35 @@ export async function audienceByCommunity(): Promise<
   const tg = links.some((l) => l.provider === 'telegram') ? await telegramConfig() : null
   const dc = links.some((l) => l.provider === 'discord') ? await discordConfig() : null
 
-  await mapLimited(links, 4, async (l) => {
-    const key = communityKeyOf(l)
-    if (!key || out.has(key)) return
+  // Una consulta por comunidad, no por chat: un servidor de Discord con tres
+  // canales conectados es un solo clan. El chat más antiguo es el que
+  // representa a la comunidad, y el enlace pegado a mano en cualquiera de sus
+  // chats vale para todos.
+  const byKey = new Map<string, { link: (typeof links)[number]; inviteUrl: string | null }>()
+  for (const link of links) {
+    const key = communityKeyOf(link)
+    if (!key) continue
+    const found = byKey.get(key)
+    if (found) found.inviteUrl ??= link.inviteUrl
+    else byKey.set(key, { link, inviteUrl: link.inviteUrl })
+  }
+
+  await mapLimited([...byKey.entries()], 4, async ([key, { link: l, inviteUrl }]) => {
     let audience: Audience = { members: null, online: null, link: null, image: null, error: null }
     if (l.provider === 'telegram' && tg) {
       audience = await cached(`tg:${l.chatId}`, false, () => telegramAudience(tg.token, l.chatId))
     } else if (l.provider === 'discord' && dc && l.serverId) {
       audience = await cached(`dc:${l.serverId}`, false, () => discordAudience(dc.token, l.serverId!))
+      // Sin URL personalizada y sin enlace del dueño: que el bot se cree una
+      if (!inviteUrl && !audience.link) audience = { ...audience, link: await discordInvite(dc.token, l.chatId) }
     }
-    out.set(key, { members: audience.members, online: audience.online, link: audience.link, image: audience.image })
+    out.set(key, {
+      members: audience.members,
+      online: audience.online,
+      // El que pegó el dueño manda sobre el que saca el bot
+      link: inviteUrl ?? audience.link,
+      image: audience.image,
+    })
   })
   return out
 }

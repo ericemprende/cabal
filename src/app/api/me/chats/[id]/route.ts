@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
-import { CHAT_PREFS, toChatLinkDTO } from '@/lib/chat-links'
+import { CHAT_PREFS, sanitizeInviteUrl, toChatLinkDTO } from '@/lib/chat-links'
 import { isLang } from '@/lib/bot-i18n'
 import { sanitizeLeads } from '@/lib/notify-types'
 import { sanitizeTokenFilter } from '@/lib/token-filter'
@@ -16,20 +16,32 @@ async function ownChat(id: string) {
   return { chat }
 }
 
-/** PATCH /api/me/chats/:id — { notifyLaunches?, notifyReminders?, notifyTheses?, notifyCalls?, lang?, reminderLeads?, tokenFilter?, onlyFollowing? } */
+/** PATCH /api/me/chats/:id — { notifyLaunches?, notifyReminders?, notifyTheses?, notifyCalls?, lang?, reminderLeads?, tokenFilter?, onlyFollowing?, inviteUrl? } */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const { chat, error } = await ownChat(id)
     if (!chat) return error
     const body = await req.json().catch(() => ({}))
-    const data: Record<string, boolean | string | number[] | string[]> = {}
+    const data: Record<string, boolean | string | null | number[] | string[]> = {}
     for (const k of CHAT_PREFS) if (typeof body[k] === 'boolean') data[k] = body[k]
     if (isLang(body.lang)) data.lang = body.lang
     const leads = sanitizeLeads(body.reminderLeads)
     if (leads) data.reminderLeads = leads
     const filter = sanitizeTokenFilter(body.tokenFilter)
     if (filter) data.tokenFilter = filter
+    // Enlace para unirse al clan: vacío lo borra y vuelve a valer el del bot
+    if (typeof body.inviteUrl === 'string') {
+      if (!body.inviteUrl.trim()) data.inviteUrl = null
+      else {
+        const invite = sanitizeInviteUrl(chat.provider, body.inviteUrl)
+        if (!invite) {
+          const example = chat.provider === 'discord' ? 'https://discord.gg/tuservidor' : 'https://t.me/tugrupo'
+          return NextResponse.json({ error: `Pega un enlace de invitación tipo ${example}` }, { status: 400 })
+        }
+        data.inviteUrl = invite
+      }
+    }
     if (Object.keys(data).length === 0) return NextResponse.json({ error: 'Nada que cambiar' }, { status: 400 })
     const updated = await db.chatLink.update({ where: { id: chat.id }, data })
     return NextResponse.json(toChatLinkDTO(updated))

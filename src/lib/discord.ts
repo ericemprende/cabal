@@ -65,9 +65,19 @@ export function discordInteractionsUrl(): string {
   return `${siteUrl()}/api/discord/interactions`
 }
 
-/** Enlace para añadir el bot a un servidor: leer canales, escribir y poner enlaces. */
+/**
+ * Enlace para añadir el bot a un servidor: leer canales, escribir, poner
+ * enlaces y crear invitaciones.
+ *
+ * Lo último es lo que permite que el servidor aparezca con botón "Unirme" en
+ * el ranking de clanes: la API de Discord solo da un enlace propio si el
+ * servidor tiene URL personalizada (nivel 3 de boosts), así que para el resto
+ * el bot se crea una invitación permanente él mismo. Si el servidor añadió el
+ * bot antes de que se pidiera este permiso, no lo tendrá: entonces el dueño
+ * pega el enlace a mano desde sus chats.
+ */
 export function discordInviteUrl(appId: string): string {
-  const permissions = 1024 + 2048 + 16384 // VIEW_CHANNEL + SEND_MESSAGES + EMBED_LINKS
+  const permissions = 1 + 1024 + 2048 + 16384 // CREATE_INSTANT_INVITE + VIEW_CHANNEL + SEND_MESSAGES + EMBED_LINKS
   const params = new URLSearchParams({
     client_id: appId,
     scope: 'bot applications.commands',

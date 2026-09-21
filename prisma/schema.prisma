@@ -694,6 +694,9 @@ model ChatLink {
   tokenFilter     String[] @default([])
   // Solo calls, tesis y lanzamientos de gente a la que sigue quien vinculó el chat
   onlyFollowing   Boolean  @default(false)
+  // Enlace público para unirse al clan ("Unirme" en el ranking de clanes),
+  // pegado por el dueño cuando el bot no puede sacarlo solo.
+  inviteUrl       String?
   active          Boolean  @default(true) // false = el bot fue expulsado o bloqueado
   lastError       String?
   createdAt       DateTime @default(now())

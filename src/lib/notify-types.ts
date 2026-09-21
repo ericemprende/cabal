@@ -62,6 +62,8 @@ export type ChatLinkDTO = {
   tokenFilter: string[]
   /** Solo calls, tesis y lanzamientos de cuentas que sigue el dueño del chat. */
   onlyFollowing: boolean
+  /** Enlace para unirse al clan, pegado por el dueño. null = el que saque el bot. */
+  inviteUrl: string | null
   active: boolean
   lastError: string | null
   createdAt: string

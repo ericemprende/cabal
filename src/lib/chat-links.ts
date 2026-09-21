@@ -130,6 +130,35 @@ export async function setChatLeads(
   return leads
 }
 
+/**
+ * Enlace público para unirse al clan, pegado por su dueño.
+ *
+ * Esto se le enseña a cualquiera en el ranking de clanes, así que solo se
+ * aceptan enlaces del propio proveedor: si no, el campo sería un hueco para
+ * colar cualquier URL en una tarjeta que parece de Cabal. Devuelve el enlace
+ * limpio, o null si no vale.
+ */
+export function sanitizeInviteUrl(provider: string, raw: string): string | null {
+  const value = raw.trim()
+  if (!value || value.length > 200) return null
+  let url: URL
+  try {
+    url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`)
+  } catch {
+    return null
+  }
+  const host = url.hostname.toLowerCase().replace(/^www\./, '')
+  const path = url.pathname
+  if (path.length < 2) return null
+  const ok =
+    provider === 'discord'
+      ? host === 'discord.gg' || ((host === 'discord.com' || host === 'discordapp.com') && path.startsWith('/invite/'))
+      : host === 't.me' || host === 'telegram.me' || host === 'telegram.dog'
+  // Se reconstruye desde cero en https: da igual cómo lo pegue el dueño, y sin
+  // query, que un enlace de invitación no la necesita
+  return ok ? `https://${host}${path}` : null
+}
+
 export const CHAT_PREFS = ['notifyLaunches', 'notifyReminders', 'notifyTheses', 'notifyCalls', 'notifyBoosts', 'onlyFollowing'] as const
 export type ChatPref = (typeof CHAT_PREFS)[number]
 
@@ -148,6 +177,7 @@ export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
     notifyBoosts: c.notifyBoosts,
     tokenFilter: c.tokenFilter,
     onlyFollowing: c.onlyFollowing,
+    inviteUrl: c.inviteUrl,
     active: c.active,
     lastError: c.lastError,
     createdAt: c.createdAt.toISOString(),

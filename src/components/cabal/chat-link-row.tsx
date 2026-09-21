@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Megaphone, Search, Trash2, User, Users, X } from 'lucide-react'
+import { ChevronDown, Link as LinkIcon, Megaphone, Search, Trash2, User, Users, X } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useDeleteChat, useMyReminders, useUpdateChat, useUpdateReminderLeads } from '@/lib/notify-client'
@@ -203,6 +203,79 @@ function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) 
   )
 }
 
+/**
+ * Enlace con el que cualquiera puede unirse a este clan desde el ranking de
+ * Clanes.
+ *
+ * Normalmente no hay que tocar nada: en Telegram el bot saca el enlace del
+ * grupo, y en Discord se crea una invitación permanente él mismo. Este campo
+ * es para cuando no puede: un servidor que añadió el bot antes de que pidiera
+ * permiso para invitar, o un grupo privado sin enlace público.
+ */
+function InvitePicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
+  const update = useUpdateChat()
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(chat.inviteUrl ?? '')
+  const busy = update.isPending || !chat.active
+  const example = chat.provider === 'discord' ? 'https://discord.gg/tuservidor' : 'https://t.me/tugrupo'
+  const changed = draft.trim() !== (chat.inviteUrl ?? '')
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 text-[12px]"
+      >
+        <span className="text-foreground/85">Enlace para unirse al clan</span>
+        <span className="flex items-center gap-1 font-bold" style={{ color: text }}>
+          {chat.inviteUrl ? 'El tuyo' : 'Automático'}
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
+        </span>
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1.5 rounded-lg border border-white/10 p-2">
+          <form
+            className="flex gap-1"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (changed) update.mutate({ id: chat.id, inviteUrl: draft.trim() })
+            }}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-1 rounded-md border border-white/10 px-1.5">
+              <LinkIcon className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                disabled={busy}
+                placeholder={example}
+                aria-label="Enlace de invitación al clan"
+                className="h-7 min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={busy || !changed}
+              className="rounded-md border border-white/10 px-2 text-[11px] font-bold disabled:opacity-50"
+              style={{ color: text }}
+            >
+              {draft.trim() ? 'Guardar' : 'Quitar'}
+            </button>
+          </form>
+          <p className="text-[10px] text-muted-foreground">
+            {chat.inviteUrl
+              ? 'Es el que aparece en el botón "Unirme" de tu clan. Déjalo vacío y guarda para volver al automático.'
+              : chat.provider === 'discord'
+                ? 'El bot intenta crear la invitación él mismo. Si tu clan sale sin botón "Unirme", pega aquí una invitación permanente de tu servidor.'
+                : 'El bot usa el enlace público del grupo. Pega uno aquí solo si quieres otro.'}
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
   const update = useUpdateChat()
   const remove = useDeleteChat()
@@ -261,6 +334,8 @@ export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
       </div>
       <LeadPicker chat={chat} brand={brand} text={text} />
       <TokenFilterPicker chat={chat} text={text} />
+      {/* Un privado no es un clan: no hay a dónde unirse */}
+      {!isPrivate && <InvitePicker chat={chat} text={text} />}
       <div className="mt-2 space-y-1.5">
         {PREFS.map((p) => (
           <label key={p.key} className="flex items-center justify-between gap-2 text-[12px]">

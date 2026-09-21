@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Crown, ExternalLink, Info, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
+import { Crown, Info, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PointsPill, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { DiscordLogo } from '@/components/cabal/discord-logo'
@@ -242,9 +242,16 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
                 href={c.link}
                 target="_blank"
                 rel="noreferrer"
-                className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-primary/90 px-2 py-1.5 text-[11px] font-bold text-primary-foreground transition-opacity hover:opacity-90"
+                aria-label={`Unirme a ${c.name} en ${c.provider === 'telegram' ? 'Telegram' : 'Discord'}`}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary/90 px-2 py-1.5 text-[11px] font-bold text-primary-foreground transition-opacity hover:opacity-90"
               >
-                Unirme <ExternalLink className="h-3 w-3" aria-hidden />
+                {/* El icono dice a dónde te llevas: al grupo o al servidor */}
+                {c.provider === 'telegram' ? (
+                  <Send className="h-3 w-3" aria-hidden />
+                ) : (
+                  <DiscordLogo className="h-3 w-3" />
+                )}
+                Unirme
               </a>
             )}
           </div>
