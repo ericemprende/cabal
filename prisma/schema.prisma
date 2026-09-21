@@ -98,6 +98,7 @@ model User {
   launchInvitesSent LaunchMember[]        @relation("launchInviter")
   chatMessages      ChatMessage[]
   chatMessageLikes  ChatMessageLike[]
+  pushSubscriptions PushSubscription[]
   launchReminders   LaunchReminder[]
   chatLinks         ChatLink[]
   chatLinkCodes     ChatLinkCode[]
@@ -623,6 +624,35 @@ model LaunchReminder {
 // Chat externo conectado a una cuenta de Cabal: el privado del usuario con el
 // bot, o un grupo/canal donde el usuario metió el bot. provider deja la puerta
 // abierta a Discord (chatId = id del canal) sin otra tabla.
+/**
+ * Un navegador suscrito a los avisos push (la PWA instalada, o una pestaña).
+ * Cada dispositivo es una fila con sus propias preferencias: se puede querer
+ * los launches en el móvil y nada en el escritorio.
+ */
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /** URL que da el navegador; identifica al dispositivo. */
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  /** Para distinguir dispositivos en la lista ("Chrome en Android"). */
+  label     String?
+  notifyLaunches  Boolean @default(true)
+  notifyReminders Boolean @default(true)
+  notifyCalls     Boolean @default(false)
+  notifyTheses    Boolean @default(false)
+  notifyReplies   Boolean @default(true)
+  active    Boolean  @default(true)
+  lastError String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([active])
+}
+
 model ChatLink {
   id              String   @id @default(cuid())
   provider        String // telegram | discord

@@ -35,9 +35,9 @@ export function startNotifyWorker() {
       // Verificaciones Premium: se apagan si el dueño dejó de pagar y vuelven si renueva
       await syncPremiumVerifications().catch((e) => console.error('[verify]', (e as Error).message))
       const r = await runNotificationTick()
-      if (r.messages || r.emails) {
+      if (r.messages || r.emails || r.push) {
         console.log(
-          `[notify] launches ${r.launches} · tesis ${r.theses} · recordatorios ${r.reminders} → ${r.messages} mensaje(s), ${r.emails} correo(s)`
+          `[notify] launches ${r.launches} · tesis ${r.theses} · recordatorios ${r.reminders} → ${r.messages} mensaje(s), ${r.emails} correo(s), ${r.push} push`
         )
       }
     } catch (e) {

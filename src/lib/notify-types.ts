@@ -174,3 +174,34 @@ export type AdminChatsDTO = {
   unknown: number
   chats: AdminChatDTO[]
 }
+
+/** Un navegador o teléfono suscrito a los avisos push. */
+export type PushDeviceDTO = {
+  id: string
+  endpoint: string
+  label: string | null
+  prefs: {
+    launches: boolean
+    reminders: boolean
+    calls: boolean
+    theses: boolean
+    replies: boolean
+  }
+  createdAt: string
+}
+
+export type MyPushDTO = {
+  /** Si el servidor tiene las claves VAPID puestas. */
+  configured: boolean
+  publicKey: string | null
+  devices: PushDeviceDTO[]
+}
+
+/** Qué avisa cada tipo, para la pantalla de ajustes (y para el bot algún día). */
+export const PUSH_KIND_LABELS: { key: keyof PushDeviceDTO['prefs']; title: string; hint: string }[] = [
+  { key: 'reminders', title: 'Lanzamientos a punto de salir', hint: 'De los launches con la campanita activada' },
+  { key: 'launches', title: 'Launches nuevos', hint: 'Cuando alguien publica un lanzamiento en el Radar' },
+  { key: 'calls', title: 'Calls nuevas', hint: 'Cada vez que alguien del Cabal da una call' },
+  { key: 'theses', title: 'Tesis nuevas', hint: 'Análisis largos publicados en el Feed' },
+  { key: 'replies', title: 'Respuestas en el chat', hint: 'Cuando alguien responde a un mensaje tuyo' },
+]

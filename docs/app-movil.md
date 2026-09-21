@@ -25,20 +25,45 @@ Reglas que conviene no romper:
 
 ## 2. Avisos push en el móvil
 
-El service worker ya sabe recibir y abrir notificaciones (`push` y
-`notificationclick`). Falta la parte del servidor:
+Ya funcionan de punta a punta. Piezas:
 
-1. Generar un par de claves VAPID y guardarlas como variables de entorno.
-2. Tabla `PushSubscription` (usuario, endpoint, claves) y un endpoint para
-   guardar y borrar suscripciones.
-3. Enviar desde el worker de avisos que ya existe (`src/lib/notify-worker.ts`),
-   al lado de Telegram y Discord: mismo evento, otro canal.
+| Pieza | Dónde vive |
+|---|---|
+| Envío | `src/lib/push.ts` (librería `web-push`) |
+| Alta, baja y preferencias | `src/app/api/me/push/route.ts` |
+| Lado del navegador | `src/lib/push-client.ts` |
+| Ajustes del usuario | `src/components/cabal/push-settings.tsx`, dentro de "Mi Cabal" |
+| Recepción | `public/sw.js` (eventos `push` y `notificationclick`) |
+| Disparo | `src/lib/notifications.ts`, en la misma pasada que Telegram y Discord |
+
+**Puesta en marcha (una sola vez):**
+
+1. `bun run push:keys` genera el par de claves.
+2. Pegar `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y `VAPID_SUBJECT` en las
+   variables de entorno de Dokploy y redesplegar.
+3. Sin esas claves no pasa nada malo: la sección de avisos ni siquiera aparece.
+
+Si algún día se cambian las claves, **todas las suscripciones guardadas dejan de
+valer** y cada persona tiene que volver a aceptar los avisos.
+
+**Qué se puede encender y apagar** (por dispositivo, no por cuenta: lo normal es
+quererlos en el teléfono y no en el ordenador del trabajo):
+
+- Lanzamientos a punto de salir (los de la campanita)
+- Launches nuevos
+- Calls nuevas
+- Tesis nuevas
+- Respuestas en el chat en vivo
+
+Cada dispositivo es una fila de `PushSubscription`, identificada por el
+`endpoint` que da el navegador. Si el servicio de push responde 404 o 410, la
+suscripción se borra sola: ya no existe.
 
 Dos avisos importantes sobre iPhone:
 
 - Solo llegan push si el usuario **instaló** la app en su pantalla de inicio
   (Safari no las da en una pestaña normal). Por eso existe el banner de
-  instalación.
+  instalación, y por eso los ajustes lo explican cuando detectan un iPhone.
 - Requiere iOS 16.4 o superior.
 
 ## 3. Camino a Google Play

@@ -9,6 +9,7 @@ import type { ChatLink } from '@prisma/client'
 import { t, type Lang } from '@/lib/bot-i18n'
 import { DEFAULT_REMINDER_LEAD } from '@/lib/notify-types'
 import { matchesTokenFilter, type FilterSubject } from '@/lib/token-filter'
+import { pushBroadcast, pushConfigured, pushToUsers } from '@/lib/push'
 
 /**
  * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
@@ -21,6 +22,10 @@ import { matchesTokenFilter, type FilterSubject } from '@/lib/token-filter'
  *                                   chats con notifyReminders
  *  4. Respuesta en el chat en vivo → chat privado con el bot de quien recibe
  *                                   la respuesta
+ *
+ * Cada uno de esos avisos sale además como notificación push a los
+ * dispositivos que lo tengan encendido (ver lib/push.ts): el usuario elige en
+ * su perfil cuáles quiere y en qué dispositivo.
  *
  * No hay cola: cada envío se reserva en NotificationDispatch con una clave
  * única ANTES de mandar, así una pasada solapada o relanzada no repite nada.
@@ -42,6 +47,8 @@ export const REMINDER_LEAD_MIN = DEFAULT_REMINDER_LEAD
 const PUBLISH_GRACE_MS = 60_000
 /** Nunca se difunde nada publicado hace más de esto (worker caído mucho rato). */
 const MAX_BACKLOG_MS = 6 * 3600_000
+/** Ventana que se mira cuando el único canal es push (sin bots conectados). */
+const PUSH_BACKLOG_MS = 10 * 60_000
 /** Telegram admite ~30 mensajes/s y Discord ~50: se va holgado. */
 const SEND_GAP_MS = 50
 
@@ -52,6 +59,8 @@ export type TickResult = {
   reminders: number
   messages: number
   emails: number
+  /** Notificaciones push enviadas a navegadores y a la app instalada. */
+  push: number
 }
 
 /** Un bot listo para enviar. `since` es desde cuándo difunde ese proveedor. */
@@ -90,10 +99,12 @@ async function activeSenders(): Promise<Senders> {
 const providersOf = (s: Senders) => Object.keys(s) as BotProvider[]
 
 export async function runNotificationTick(): Promise<TickResult> {
-  const result: TickResult = { launches: 0, calls: 0, theses: 0, reminders: 0, messages: 0, emails: 0 }
+  const result: TickResult = { launches: 0, calls: 0, theses: 0, reminders: 0, messages: 0, emails: 0, push: 0 }
   const senders = await activeSenders()
 
-  if (providersOf(senders).length > 0) {
+  // Los tres primeros avisos también salen por push, así que la pasada se hace
+  // aunque no haya ningún bot conectado.
+  if (providersOf(senders).length > 0 || pushConfigured()) {
     await announceNewLaunches(senders, result)
     await announceNewCalls(senders, result)
     await announceNewTheses(senders, result)
@@ -125,9 +136,16 @@ async function announceNewLaunches(senders: Senders, r: TickResult) {
       where: { provider: { in: providersOf(senders) }, active: true, notifyLaunches: true },
     })
     const sent = await broadcast(senders, await onlyMatching(chats, launchSubject(l)), (lang) => launchMessage(l, 'new', lang), l.createdAt)
-    await markSent(key, sent)
+    const pushed = await pushBroadcast('launches', {
+      title: `Nuevo launch: ${l.ticker ? `$${l.ticker}` : l.name}`,
+      body: `${l.name} · ${networkMeta(l.network).label} · por @${l.createdBy.handle}`,
+      url: `/app?launch=${l.id}`,
+      tag: `launch-${l.id}`,
+    })
+    await markSent(key, sent + pushed)
     r.launches++
     r.messages += sent
+    r.push += pushed
   }
 }
 
@@ -166,9 +184,17 @@ async function announceNewCalls(senders: Senders, r: TickResult) {
     })
     const subject = { contracts: [c.contract, c.token?.contract], tickers: [c.token?.ticker], authorId: c.userId }
     const sent = await broadcast(senders, await onlyMatching(chats, subject), (lang) => callMessage(c, lang), c.createdAt)
-    await markSent(key, sent)
+    const ticker = c.token?.ticker ? `$${c.token.ticker}` : 'un token'
+    const pushed = await pushBroadcast('calls', {
+      title: `Call de @${c.user.handle}`,
+      body: `${ticker} · ${c.content.slice(0, 120)}`,
+      url: '/app?tab=feed',
+      tag: `call-${c.id}`,
+    })
+    await markSent(key, sent + pushed)
     r.calls++
     r.messages += sent
+    r.push += pushed
   }
 }
 
@@ -204,9 +230,16 @@ async function announceNewTheses(senders: Senders, r: TickResult) {
       authorId: p.userId,
     }
     const sent = await broadcast(senders, await onlyMatching(chats, subject), (lang) => thesisMessage(p, lang), p.createdAt)
-    await markSent(key, sent)
+    const pushed = await pushBroadcast('theses', {
+      title: `Tesis de @${p.user.handle}`,
+      body: p.content.slice(0, 140),
+      url: p.launch ? `/app?launch=${p.launch.id}` : '/app?tab=feed',
+      tag: `thesis-${p.id}`,
+    })
+    await markSent(key, sent + pushed)
     r.theses++
     r.messages += sent
+    r.push += pushed
   }
 }
 
@@ -237,8 +270,15 @@ async function sendChatReplies(senders: Senders, r: TickResult) {
       where: { provider: { in: providersOf(senders) }, active: true, chatType: 'private', userId: m.replyTo!.userId },
     })
     const sent = await broadcast(senders, privates, (lang) => chatReplyMessage(m, lang), m.createdAt)
-    await markSent(key, sent)
+    const pushed = await pushToUsers([m.replyTo!.userId], 'replies', {
+      title: `@${m.user.handle} te respondió`,
+      body: m.body.slice(0, 140),
+      url: '/app?tab=chat',
+      tag: 'chat-reply',
+    })
+    await markSent(key, sent + pushed)
     r.messages += sent
+    r.push += pushed
   }
 }
 
@@ -293,11 +333,14 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
         select: { userId: true },
       })
     ).map((x) => x.userId)
-    // Sin ningún bot ni correo no se reserva: se avisará cuando alguno esté listo (si aún da tiempo)
-    if (providers.length === 0 && !(mail && bellUserIds.length)) continue
+    // Sin ningún bot, correo ni push no se reserva: se avisará cuando alguno
+    // esté listo (si aún da tiempo)
+    const canPush = pushConfigured() && bellUserIds.length > 0
+    if (providers.length === 0 && !canPush && !(mail && bellUserIds.length)) continue
     if (!(await reserve(key))) continue
 
     let sent = 0
+    let pushedNow = 0
     const minutes = Math.max(1, Math.round((l.launchAt.getTime() - now) / 60_000))
     const alreadySent = new Set<string>()
 
@@ -345,7 +388,19 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
       }
     }
 
-    await markSent(key, sent)
+    // Campanita por push: a los dispositivos de quien la activó
+    if (canPush) {
+      const pushed = await pushToUsers(bellUserIds, 'reminders', {
+        title: `${l.ticker ? `$${l.ticker}` : l.name} sale en ${minutes} min`,
+        body: `${l.name} · ${networkMeta(l.network).label}`,
+        url: `/app?launch=${l.id}`,
+        tag: `soon-${l.id}`,
+      })
+      pushedNow = pushed
+      r.push += pushed
+    }
+
+    await markSent(key, sent + pushedNow)
     r.reminders++
     r.messages += sent
   }
@@ -446,7 +501,9 @@ async function notDispatched(keys: string[]): Promise<Set<string>> {
 /** Lo más antiguo que se mira: el `since` más viejo de los bots activos, con tope. */
 function lowerBound(senders: Senders, now: number): Date {
   const sinces = Object.values(senders).map((s) => s.since.getTime())
-  const oldest = sinces.length ? Math.min(...sinces) : now
+  // Sin bots, pero con push encendido, se mira una ventana corta: al activar
+  // las push por primera vez nadie quiere recibir el historial de hoy.
+  const oldest = sinces.length ? Math.min(...sinces) : now - (pushConfigured() ? PUSH_BACKLOG_MS : 0)
   return new Date(Math.max(oldest, now - MAX_BACKLOG_MS))
 }
 

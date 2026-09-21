@@ -62,6 +62,7 @@ import {
 import type { DevClaimDTO, MeDTO, WalletLinkDTO } from '@/lib/types'
 import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
+import { PushSettings } from '@/components/cabal/push-settings'
 import { TelegramConnect } from '@/components/cabal/telegram-connect'
 import { DiscordConnect } from '@/components/cabal/discord-connect'
 import { DiscordLogo } from '@/components/cabal/discord-logo'
@@ -220,6 +221,9 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             />
           </div>
         </div>
+
+        {/* Avisos push del navegador / la app instalada */}
+        <PushSettings />
 
         {/* Telegram: campanita de launches y avisos en grupos/canales */}
         <TelegramConnect />
