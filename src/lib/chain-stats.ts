@@ -263,15 +263,24 @@ const MINUTE_SPAN_MS = 990 * MINUTE_MS
  * tiene que estar en la escala del precio actual y la del minuto de la call en
  * la de la entrada. Si no, se descartan (pico = null): mejor sin pico que un
  * pico inventado que luego ya no baja.
+ *
+ * Y por encima de todo eso está el TECHO (ver `fetchPriceCeiling`): un pico no
+ * puede superar el máximo histórico del token. Devuelve ese techo para que
+ * quien guarda el resultado pueda tirar también un pico corrupto ya guardado.
  */
 async function fetchPeakSince(
   network: string,
   pairAddress: string,
   tokenAddress: string,
   sinceMs: number,
-  anchors: { entryPriceUsd: number; currentPriceUsd: number | null }
-): Promise<{ peakPrice: number | null; peakAt: number | null; correctedEntry: number | null }> {
-  const none = { peakPrice: null, peakAt: null, correctedEntry: null }
+  anchors: { entryPriceUsd: number; currentPriceUsd: number | null; storedPeakPriceUsd: number | null }
+): Promise<{
+  peakPrice: number | null
+  peakAt: number | null
+  correctedEntry: number | null
+  ceilingPrice: number | null
+}> {
+  const none = { peakPrice: null, peakAt: null, correctedEntry: null, ceilingPrice: null }
   const geckoNet = GECKO_NETWORK[network]
   if (!geckoNet || !pairAddress) return none
   const now = Date.now()
@@ -321,27 +330,91 @@ async function fetchPeakSince(
     correctedEntry = atCall[4]
   }
 
-  let peakPrice: number | null = null
-  let peakAt: number | null = null
-  const consider = (price: number | null, at: number) => {
-    if (price !== null && price > 0 && (peakPrice === null || price > peakPrice)) {
-      peakPrice = price
-      peakAt = at
+  // Recorre las velas y se queda con el máximo, ignorando las que pasan del techo
+  const scan = (ceiling: number | null): { price: number | null; at: number | null } => {
+    let price: number | null = null
+    let at: number | null = null
+    const consider = (p: number | null, t: number) => {
+      if (p === null || !(p > 0)) return
+      if (ceiling !== null && p > ceiling) return
+      if (price === null || p > price) {
+        price = p
+        at = t
+      }
+    }
+    for (const list of [minutes, later]) {
+      const tops = candleTops(list)
+      list.forEach((c, i) => {
+        // Vela del minuto de la call: solo su cierre, que ya es posterior a compartirla
+        if (c[0] === callMinute) consider(c[4], sinceMs)
+        else consider(tops[i], c[0])
+      })
+    }
+    return { price, at }
+  }
+
+  const first = scan(null)
+  let peakPrice = first.price
+  let peakAt = first.at
+
+  // Techo. Solo se pide cuando el pico (el nuevo o el ya guardado) es tan alto
+  // que merece una comprobación: así no se gasta cuota de GeckoTerminal en el
+  // 99% de las calls, que son normales.
+  const reference = Math.max(anchors.entryPriceUsd, anchors.currentPriceUsd ?? 0)
+  const highest = Math.max(peakPrice ?? 0, anchors.storedPeakPriceUsd ?? 0)
+  let ceilingPrice: number | null = null
+  if (reference > 0 && highest > SUSPECT_PEAK_RATIO * reference) {
+    ceilingPrice = await fetchPriceCeiling(geckoNet, pairAddress, tokenAddress)
+    if (ceilingPrice !== null && (peakPrice ?? 0) > ceilingPrice) {
+      console.warn(`[peak] pico descartado ${tokenAddress}: ${peakPrice} supera el techo ${ceilingPrice}`)
+      const redone = scan(ceilingPrice)
+      peakPrice = redone.price
+      peakAt = redone.at
     }
   }
-  for (const list of [minutes, later]) {
-    const tops = candleTops(list)
-    list.forEach((c, i) => {
-      // Vela del minuto de la call: solo su cierre, que ya es posterior a compartirla
-      if (c[0] === callMinute) consider(c[4], sinceMs)
-      else consider(tops[i], c[0])
-    })
-  }
-  return { peakPrice, peakAt, correctedEntry }
+  return { peakPrice, peakAt, correctedEntry, ceilingPrice }
 }
 
 /** Una entrada guardada a más de esto del precio real del minuto de la call es un dato corrupto. */
 const ENTRY_CORRUPT_RATIO = 20
+
+/**
+ * Por encima de esto (veces la entrada o el precio actual) un pico se verifica
+ * contra las velas de día antes de darlo por bueno. Una call que de verdad
+ * hace 10x es rara, así que la petición extra casi nunca se gasta.
+ */
+const SUSPECT_PEAK_RATIO = 10
+/** Margen sobre el máximo histórico: por encima de esto, el pico es un dato corrupto. */
+const CEILING_MARGIN = 1.25
+
+/**
+ * Techo absoluto del precio de un token: el máximo histórico de las velas de
+ * DÍA del par, con un margen.
+ *
+ * Es la red de seguridad que faltaba. Los filtros de `candleTops` miran cada
+ * vela contra sus vecinas, así que dos velas corruptas seguidas se validan
+ * entre ellas y el pico se dispara — y como el pico guardado nunca bajaba, un
+ * solo fallo de GeckoTerminal dejaba una call en "3736x" para siempre aunque
+ * el token jamás pasara de $2.4M de market cap. Las de día son otra serie,
+ * mucho más corta y estable, y un pico DESDE la call nunca puede pasar del
+ * máximo histórico del token: si lo pasa, los datos están mal.
+ *
+ * Aquí se usa el `high` tal cual, sin pasarlo por `candleTops`: un token que
+ * sube y se desploma dentro del mismo día tiene una vela de día con un cuerpo
+ * pequeño y una mecha enorme, y recortarla mataría picos de verdad. Como techo
+ * solo hace falta una cota superior honesta, no un precio "creíble".
+ */
+async function fetchPriceCeiling(
+  geckoNet: string,
+  pairAddress: string,
+  tokenAddress: string
+): Promise<number | null> {
+  const highs = (await fetchCandles(geckoNet, pairAddress, tokenAddress, 'day'))
+    .map((c) => c[2])
+    .filter((h) => Number.isFinite(h) && h > 0)
+  if (highs.length === 0) return null
+  return Math.max(...highs) * CEILING_MARGIN
+}
 
 /** Top-10 % del supply vía RPC público de Solana (mejor esfuerzo). */
 async function fetchTop10Solana(ca: string): Promise<number | null> {
@@ -618,6 +691,12 @@ export type CallResult = {
   pairUrl: string
   /** La entrada guardada era corrupta y se corrigió con la vela del minuto de la call. */
   entryCorrected: boolean
+  /**
+   * Máximo creíble para el pico de esta call, en veces la entrada (el máximo
+   * histórico del token). Un `peakMultiple` guardado por encima de esto es un
+   * dato corrupto y hay que tirarlo. null = no hizo falta comprobarlo.
+   */
+  peakCeilingMultiple: number | null
 }
 
 const EMPTY_CALL_RESULT: CallResult = {
@@ -636,6 +715,7 @@ const EMPTY_CALL_RESULT: CallResult = {
   peakMultiple: null,
   pairUrl: '',
   entryCorrected: false,
+  peakCeilingMultiple: null,
 }
 
 /**
@@ -674,7 +754,7 @@ export async function fetchCallResult(
   network: string,
   ca: string,
   calledAt: Date,
-  storedEntry?: { priceUsd: number | null; mc: number | null },
+  storedEntry?: { priceUsd: number | null; mc: number | null; peak?: number | null },
   /**
    * false = solo DexScreener, sin velas (tarjetas, feed, bot): el pico lo
    * calcula y guarda syncCallResults, que es lo único que pide velas.
@@ -728,13 +808,21 @@ export async function fetchCallResult(
   let peakMc: number | null = null
   let peakAt: number | null = null
   let peakMultiple: number | null = null
+  let peakCeilingMultiple: number | null = null
   let entryCorrected = false
   if (withCandles && geckoNet && pair.pairAddress && entryPriceUsd) {
-    const peak = await fetchPeakSince(network, pair.pairAddress, ca, calledAt.getTime(), { entryPriceUsd, currentPriceUsd })
+    const peak = await fetchPeakSince(network, pair.pairAddress, ca, calledAt.getTime(), {
+      entryPriceUsd,
+      currentPriceUsd,
+      // El pico ya guardado también se verifica contra el techo: si es corrupto,
+      // quien lo guardó tiene que poder tirarlo (ver lib/call-results)
+      storedPeakPriceUsd: storedEntry?.peak ? entryPriceUsd * storedEntry.peak : null,
+    })
     if (peak.correctedEntry !== null) {
       entryPriceUsd = peak.correctedEntry
       entryCorrected = true
     }
+    if (peak.ceilingPrice !== null && entryPriceUsd > 0) peakCeilingMultiple = peak.ceilingPrice / entryPriceUsd
     // El pico nunca puede ser menor que el precio actual (última vela puede no
     // haber cerrado aún); si algo salió raro, usamos el actual como piso.
     if (peak.peakPrice !== null && currentPriceUsd !== null) {
@@ -782,6 +870,7 @@ export async function fetchCallResult(
     peakMultiple,
     pairUrl: pair.url ?? '',
     entryCorrected,
+    peakCeilingMultiple,
   }
 }
 

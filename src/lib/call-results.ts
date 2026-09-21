@@ -78,13 +78,24 @@ export async function syncCallResults(limit = BATCH): Promise<number> {
       const r = await fetchCallResult(call.network!, call.contract!, call.createdAt, {
         priceUsd: call.entryPriceUsd,
         mc: call.entryMc,
+        peak: call.peakMultiple,
       })
       const entry = r.entryPriceUsd
       const current = entry && r.currentPriceUsd ? r.currentPriceUsd / entry : null
       // El pico nunca baja: una revisión con menos velas no puede borrar un
-      // máximo ya visto. Salvo si la entrada se corrigió: el pico guardado se
-      // midió contra una entrada falsa y no vale.
-      const stored = r.entryCorrected ? null : call.peakMultiple
+      // máximo ya visto. Con dos excepciones, porque si no un dato corrupto se
+      // queda para siempre:
+      //  - la entrada se corrigió: el pico guardado se midió contra una entrada
+      //    falsa y no vale;
+      //  - el pico guardado pasa del techo (el máximo histórico del token): es
+      //    imposible, viene de velas corruptas de GeckoTerminal, y se sustituye
+      //    por el que acaba de salir.
+      const overCeiling =
+        r.peakCeilingMultiple !== null && call.peakMultiple !== null && call.peakMultiple > r.peakCeilingMultiple
+      if (overCeiling) {
+        console.warn(`[call-results] pico corrupto ${call.id}: ${call.peakMultiple} > techo ${r.peakCeilingMultiple}`)
+      }
+      const stored = r.entryCorrected || overCeiling ? null : call.peakMultiple
       const freshPeak = r.peakMultiple ?? (current !== null ? Math.max(current, 1) : null)
       const peak = freshPeak !== null || stored !== null ? Math.max(freshPeak ?? 0, stored ?? 0) : null
       // Sin velas (GeckoTerminal limitó o falló) el pico es provisional: se
