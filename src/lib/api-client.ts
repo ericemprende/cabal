@@ -771,6 +771,8 @@ export function useCreatePost() {
       tokenId?: string
       contract?: string
       network?: string
+      /** Post al que se responde: lo cita en el feed y en la actividad. */
+      parentId?: string
     }) =>
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/posts', {
         method: 'POST',

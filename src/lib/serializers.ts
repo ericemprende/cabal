@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { computeLaunchStatus } from '@/lib/api-helpers'
-import type { PostDTO, PublicUserDTO, UserDTO } from '@/lib/types'
+import type { PostDTO, PostParentDTO, PublicUserDTO, UserDTO } from '@/lib/types'
 
 type DbUser = {
   id: string
@@ -95,23 +95,70 @@ export function toUserDTO(u: DbUser, isFollowed?: boolean): UserDTO {
  * post. El feed trae 60 posts: sin esto eran hasta 120 consultas seguidas.
  */
 export async function preloadPostRefs(
-  posts: { launchId: string | null; tokenId: string | null }[]
+  posts: { launchId: string | null; tokenId: string | null; parentId?: string | null }[]
 ): Promise<PostRefs> {
   const launchIds = [...new Set(posts.map((p) => p.launchId).filter((x): x is string => !!x))]
   const tokenIds = [...new Set(posts.map((p) => p.tokenId).filter((x): x is string => !!x))]
-  const [launches, tokens] = await Promise.all([
+  // Los posts citados por las respuestas, en una sola consulta para todo el feed.
+  const parentIds = [...new Set(posts.map((p) => p.parentId).filter((x): x is string => !!x))]
+  const [launches, tokens, parents] = await Promise.all([
     launchIds.length ? db.launch.findMany({ where: { id: { in: launchIds } } }) : Promise.resolve([]),
     tokenIds.length ? db.token.findMany({ where: { id: { in: tokenIds } } }) : Promise.resolve([]),
+    parentIds.length ? db.post.findMany({ where: { id: { in: parentIds } }, select: PARENT_SELECT }) : Promise.resolve([]),
   ])
   return {
     launches: new Map(launches.map((l) => [l.id, l] as const)),
     tokens: new Map(tokens.map((t) => [t.id, t] as const)),
+    parents: new Map(parents.map((p) => [p.id, p] as const)),
   }
 }
 
 export type PostRefs = {
   launches: Map<string, Awaited<ReturnType<typeof db.launch.findUniqueOrThrow>>>
   tokens: Map<string, Awaited<ReturnType<typeof db.token.findUniqueOrThrow>>>
+  parents: Map<string, ParentRow>
+}
+
+/** Lo justo para citar el post original: autor, extracto y de qué token iba. */
+const PARENT_SELECT = {
+  id: true,
+  kind: true,
+  content: true,
+  contract: true,
+  network: true,
+  user: { select: { name: true, handle: true, avatar: true, verified: true } },
+  token: { select: { ticker: true, image: true, network: true, contract: true } },
+  launch: { select: { ticker: true, image: true, isPrivate: true, network: true } },
+} as const
+
+type ParentRow = {
+  id: string
+  kind: string
+  content: string
+  contract: string | null
+  network: string | null
+  user: { name: string; handle: string; avatar: string; verified: boolean }
+  token: { ticker: string; image: string | null; network: string; contract: string | null } | null
+  launch: { ticker: string | null; image: string | null; isPrivate: boolean; network: string } | null
+}
+
+/** El extracto que se ve en la cita: lo bastante para saber a qué se contestó. */
+const PARENT_EXCERPT = 160
+
+function toPostParentDTO(p: ParentRow): PostParentDTO {
+  const content = p.content.length > PARENT_EXCERPT ? `${p.content.slice(0, PARENT_EXCERPT).trimEnd()}…` : p.content
+  // Un launch privado no enseña su ticker ni en la cita.
+  const launchTicker = p.launch && !p.launch.isPrivate ? p.launch.ticker : null
+  return {
+    id: p.id,
+    kind: p.kind,
+    content,
+    user: { name: p.user.name, handle: p.user.handle, avatar: p.user.avatar, verified: p.user.verified },
+    ticker: p.token?.ticker ?? launchTicker ?? null,
+    image: p.token?.image ?? p.launch?.image ?? null,
+    contract: p.contract || p.token?.contract || null, // Token.contract puede venir como ""
+    network: p.network ?? p.token?.network ?? p.launch?.network ?? null,
+  }
 }
 
 export async function toPostDTO(
@@ -127,6 +174,7 @@ export async function toPostDTO(
     tokenId: string | null
     contract?: string | null
     network?: string | null
+    parentId?: string | null
   },
   liked: boolean,
   pointsEarned?: number,
@@ -135,6 +183,13 @@ export async function toPostDTO(
 ): Promise<PostDTO> {
   let launch = null as PostDTO['launch']
   let token = null as PostDTO['token']
+  let parent = null as PostDTO['parent']
+  if (p.parentId) {
+    const row = refs
+      ? refs.parents.get(p.parentId) ?? null
+      : await db.post.findUnique({ where: { id: p.parentId }, select: PARENT_SELECT })
+    if (row) parent = toPostParentDTO(row)
+  }
   if (p.launchId) {
     const l = refs ? refs.launches.get(p.launchId) ?? null : await db.launch.findUnique({ where: { id: p.launchId } })
     if (l)
@@ -176,6 +231,7 @@ export async function toPostDTO(
     token,
     contract: p.contract ?? null,
     network: p.network ?? null,
+    parent,
     pointsEarned,
   }
 }

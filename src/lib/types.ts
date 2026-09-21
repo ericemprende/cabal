@@ -115,6 +115,24 @@ export interface TokenRefDTO {
   mc: number
 }
 
+/**
+ * El post al que contesta una respuesta, con lo justo para citarlo: quién lo
+ * escribió, un extracto y el token/CA del que hablaba. Así "le entré, me
+ * gusta" deja de ser un comentario huérfano en el feed.
+ */
+export interface PostParentDTO {
+  id: string
+  kind: string
+  /** Extracto del original (recortado en el servidor). */
+  content: string
+  user: { name: string; handle: string; avatar?: string | null; verified?: boolean }
+  /** Ticker del token del que iba el original, si se sabe. */
+  ticker?: string | null
+  image?: string | null
+  contract?: string | null
+  network?: string | null
+}
+
 export interface PostDTO {
   id: string
   kind: string
@@ -128,6 +146,8 @@ export interface PostDTO {
   token?: TokenRefDTO | null
   contract?: string | null
   network?: string | null
+  /** Si el post es una respuesta, el original citado (null = post suelto). */
+  parent?: PostParentDTO | null
   pointsEarned?: number
 }
 

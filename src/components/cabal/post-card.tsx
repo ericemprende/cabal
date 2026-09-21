@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, Copy, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
+import { Check, Copy, CornerUpLeft, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
-import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
+import { fmtMc, fmtPct, shortWallet, timeAgo } from '@/lib/cabal'
 import { useCallResult, useCreatePost, useFollowToggle, useLikeToggle, useMe } from '@/lib/api-client'
 import {
   canCopyImages,
@@ -20,7 +20,7 @@ import {
   shareNative,
 } from '@/lib/share-image'
 import { useUI } from '@/lib/store'
-import type { PostDTO } from '@/lib/types'
+import type { PostDTO, PostParentDTO } from '@/lib/types'
 
 function fmtX(n: number): string {
   return `${n.toFixed(n >= 10 ? 0 : 1)}x`
@@ -96,6 +96,66 @@ function CallResultBadge({ post }: { post: PostDTO }) {
         {showMc ? ` · MC ${fmtMc(data.currentMc!)}` : ''}
       </span>
     </span>
+  )
+}
+
+/**
+ * "En respuesta a @fulano: …" encima del comentario. Sin esto, una respuesta
+ * suelta en el feed ("le entré, me gusta") no dice a qué token ni a qué call
+ * se refiere. Al pulsarla salta al original si está en la misma lista; si no,
+ * abre el token o el launch del hilo, que es donde vive.
+ */
+function ParentQuote({ post, parent, compact }: { post: PostDTO; parent: PostParentDTO; compact?: boolean }) {
+  const { openLaunch, openToken } = useUI()
+
+  // El mismo post puede estar en el feed y en la barra de actividad a la vez,
+  // así que primero se busca al hermano de esta misma lista y solo después en
+  // toda la página.
+  const jump = (from: HTMLElement) => {
+    const list = from.closest('article[data-post-id]')?.parentElement
+    const sel = `[data-post-id="${parent.id}"]`
+    const el = list?.querySelector<HTMLElement>(sel) ?? document.querySelector<HTMLElement>(sel)
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      el.classList.add('ring-1', 'ring-[#8FA83F]/60')
+      setTimeout(() => el.classList.remove('ring-1', 'ring-[#8FA83F]/60'), 1400)
+      return
+    }
+    if (post.token) openToken(post.token.id)
+    else if (post.launch) openLaunch(post.launch.id)
+  }
+
+  const label = parent.kind === 'call' ? 'la call de' : parent.kind === 'thesis' ? 'la tesis de' : ''
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        jump(e.currentTarget)
+      }}
+      className="mt-1 flex w-full items-start gap-1.5 rounded-r-md border-l-2 border-[#8FA83F]/50 bg-white/[0.03] py-1 pl-2 pr-2 text-left transition-colors hover:bg-white/[0.06]"
+      title="Ver el mensaje original"
+    >
+      <CornerUpLeft className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-x-1 text-[11px] text-muted-foreground">
+          En respuesta a {label} <span className="font-bold text-foreground/80">@{parent.user.handle}</span>
+          {parent.ticker ? (
+            <span className="flex items-center gap-1">
+              <TokenGlyph src={parent.image} ticker={parent.ticker} size="xs" />
+              <span className="font-bold text-primary">{parent.ticker}</span>
+            </span>
+          ) : (
+            /* Call con el CA pegado a mano: no hay token en Cabal, pero al menos se ve de cuál iba. */
+            parent.contract && <span className="font-mono font-bold text-primary">{shortWallet(parent.contract)}</span>
+          )}
+        </span>
+        <span className={cn('mt-0.5 block text-[11px] text-muted-foreground/90', compact ? 'line-clamp-1' : 'line-clamp-2')}>
+          {parent.content}
+        </span>
+      </span>
+    </button>
   )
 }
 
@@ -263,7 +323,9 @@ export function PostCard({
   const sendReply = () => {
     if (!reply.trim()) return
     createPost.mutate(
-      { kind: 'comment', content: reply.trim(), launchId: post.launch?.id, tokenId: post.token?.id },
+      // parentId: sin esto la respuesta salía en el feed como un comentario
+      // suelto, sin rastro de a qué se contestaba.
+      { kind: 'comment', content: reply.trim(), launchId: post.launch?.id, tokenId: post.token?.id, parentId: post.id },
       {
         onSuccess: () => {
           setReply('')
@@ -275,8 +337,9 @@ export function PostCard({
 
   return (
     <article
+      data-post-id={post.id}
       className={cn(
-        'card-surface rounded-xl border border-white/10 transition-colors hover:border-white/12',
+        'card-surface scroll-mt-20 rounded-xl border border-white/10 transition-colors hover:border-white/12',
         compact ? 'p-2.5' : 'p-3.5'
       )}
     >
@@ -301,10 +364,12 @@ export function PostCard({
               {post.user.isFollowed ? '· siguiendo' : '· seguir'}
             </button>
             <span className="ml-auto flex items-center gap-1.5">
-              <KindBadge kind={post.kind} />
+              <KindBadge kind={post.kind} reply={!!post.parent} />
               <span className="text-[11px] text-muted-foreground">{timeAgo(post.createdAt)}</span>
             </span>
           </div>
+
+          {post.parent && <ParentQuote post={post} parent={post.parent} compact={compact} />}
 
           <p className={cn('mt-1.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90', compact ? 'line-clamp-3 text-[13px]' : 'text-sm')}>
             {post.content}

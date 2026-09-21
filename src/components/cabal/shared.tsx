@@ -613,14 +613,16 @@ export function PointsPill({ points, className }: { points: number; className?: 
 }
 
 // ---------- Post kind badge ----------
-export function KindBadge({ kind }: { kind: string }) {
+/** `reply` = el post contesta a otro: se marca como respuesta, no como comentario suelto. */
+export function KindBadge({ kind, reply }: { kind: string; reply?: boolean }) {
   const map: Record<string, { label: string; cls: string }> = {
     thesis: { label: 'Tesis', cls: 'bg-[#8FA83F]/12 text-primary border-[#8FA83F]/30' },
     call: { label: 'Call', cls: 'bg-amber-400/12 text-amber-300 border-amber-400/30' },
     trade: { label: 'Trade', cls: 'bg-fuchsia-400/10 text-fuchsia-300 border-fuchsia-400/25' },
     comment: { label: 'Comentario', cls: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
+    reply: { label: 'Respuesta', cls: 'bg-sky-400/10 text-sky-300 border-sky-400/25' },
   }
-  const meta = map[kind] ?? map.comment
+  const meta = (reply && kind === 'comment' ? map.reply : map[kind]) ?? map.comment
   return (
     <span className={cn('rounded-md border px-1.5 py-px text-[10px] font-semibold', meta.cls)}>
       {meta.label}

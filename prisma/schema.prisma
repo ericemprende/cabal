@@ -368,6 +368,11 @@ model Post {
   token           Token?    @relation(fields: [tokenId], references: [id])
   contract        String? // CA del token: obligatorio para kind == "call"
   network         String? // red del CA: obligatoria para kind == "call"
+  // Respuesta a otro post (el "Responder" del feed). Si el original se borra,
+  // la respuesta se queda sin cita en vez de desaparecer, igual que en el chat.
+  parentId        String?
+  parent          Post?     @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies         Post[]    @relation("PostReplies")
   // Chat del que nació la call (bot de Telegram/Discord); null = desde la web.
   // Con esto salen el leaderboard filtrado por comunidad y el "first call":
   // si ese token ya se llamó en ese chat, no se crea otra call repetida.
@@ -401,6 +406,7 @@ model Post {
   @@index([kind, createdAt])
   @@index([chatLinkId, kind, createdAt])
   @@index([chatLinkId, contract])
+  @@index([parentId, createdAt])
 }
 
 model Vote {

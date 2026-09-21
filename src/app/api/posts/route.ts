@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     if (!limit.ok) return tooManyRequests(limit)
 
     const body = await req.json()
-    const { kind, content, launchId, tokenId, contract, network } = body
+    const { kind, content, launchId, tokenId, contract, network, parentId } = body
     if (!content || !String(content).trim()) {
       return NextResponse.json({ error: 'El contenido está vacío' }, { status: 400 })
     }
@@ -27,6 +27,14 @@ export async function POST(req: Request) {
     const cleanNetwork = typeof network === 'string' && network in NETWORKS ? network : 'solana'
     if (postKind === 'call' && !cleanContract) {
       return NextResponse.json({ error: 'Ingresa el CA/contrato del token para publicar una call' }, { status: 400 })
+    }
+
+    // Respuesta a otro post: se comprueba que exista (si se borró, el
+    // comentario se publica suelto) y se hereda su launch/token, para que la
+    // respuesta viva en el mismo hilo que el original.
+    let parent = null as { id: string; launchId: string | null; tokenId: string | null } | null
+    if (typeof parentId === 'string' && parentId) {
+      parent = await db.post.findUnique({ where: { id: parentId }, select: { id: true, launchId: true, tokenId: true } })
     }
 
     // Snapshot del precio/MC en el instante exacto de la call (createdAt ya
@@ -47,8 +55,9 @@ export async function POST(req: Request) {
         kind: postKind,
         content: String(content).trim().slice(0, 1000),
         userId: me.id,
-        launchId: launchId || null,
-        tokenId: tokenId || null,
+        launchId: launchId || parent?.launchId || null,
+        tokenId: tokenId || parent?.tokenId || null,
+        parentId: parent?.id ?? null,
         contract: postKind === 'call' ? cleanContract : null,
         network: postKind === 'call' ? cleanNetwork : null,
         entryPriceUsd: postKind === 'call' ? entryPriceUsd : null,
