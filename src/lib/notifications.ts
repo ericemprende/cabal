@@ -11,6 +11,7 @@ import { t, type Lang } from '@/lib/bot-i18n'
 import { DEFAULT_REMINDER_LEAD } from '@/lib/notify-types'
 import { matchesTokenFilter, type FilterSubject } from '@/lib/token-filter'
 import { pushBroadcast, pushConfigured, pushToUsers } from '@/lib/push'
+import { postChatAnnouncement } from '@/lib/chat-announce'
 
 /**
  * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
@@ -117,6 +118,8 @@ export async function runNotificationTick(): Promise<TickResult> {
     if (providersOf(senders).length > 0) await announceBigBoosts(senders, result)
   }
   await sendReminders(senders, result)
+  // Aviso recurrente del chat en vivo (donaciones): no depende de los bots.
+  await postChatAnnouncement().catch((e) => console.error('[chat-announce]', (e as Error).message))
   return result
 }
 

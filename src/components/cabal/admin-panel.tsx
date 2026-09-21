@@ -22,6 +22,7 @@ import {
   Pencil,
   Percent,
   Plus,
+  Radio,
   Rocket,
   Save,
   Send,
@@ -59,6 +60,7 @@ import { CopyCA, PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint }
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { AdminUsers } from '@/components/cabal/admin-users'
 import { AdminNotify } from '@/components/cabal/admin-notify'
+import { AdminChatAnnounce } from '@/components/cabal/admin-chat-announce'
 import {
   jsonFetch,
   qk,
@@ -165,6 +167,7 @@ const REASON_COLORS: Record<string, string> = {
 
 type AdminView =
   | 'notificaciones'
+  | 'chat'
   | 'usuarios'
   | 'premium'
   | 'municion'
@@ -284,6 +287,7 @@ export function AdminPanel({
     { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
     { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
     { key: 'notificaciones', label: 'Telegram y Discord', icon: Send },
+    { key: 'chat', label: 'Aviso del chat en vivo', icon: Radio },
     { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
     { key: 'salud', label: 'Salud del servidor', icon: Activity },
   ] as { key: AdminView; label: string; icon: typeof Zap }[]
@@ -379,6 +383,8 @@ export function AdminPanel({
         {view === 'moderacion' && <AdminModeration enabled={enabled} />}
 
         {view === 'notificaciones' && <AdminNotify enabled={enabled} />}
+
+        {view === 'chat' && <AdminChatAnnounce enabled={enabled} />}
 
         {view === 'reglas' && (
           <div className="space-y-3">

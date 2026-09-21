@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CornerUpLeft, Heart, Send, Users, X } from 'lucide-react'
+import { CornerUpLeft, ExternalLink, HandHeart, Heart, Megaphone, Send, Users, X } from 'lucide-react'
 import { UserAvatar } from '@/components/cabal/shared'
 import { jsonFetch, useChatMessages, useSendChatMessage, useSession } from '@/lib/api-client'
 import { useOnlineIds, useIsOnline } from '@/lib/presence'
@@ -123,17 +123,21 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
         {messages.length === 0 && (
           <p className="pt-6 text-center text-xs text-muted-foreground">Sé el primero en escribir</p>
         )}
-        {messages.map((m) => (
-          <ChatLine
-            key={m.id}
-            msg={m}
-            likedBy={likes[m.id] ?? m.likedBy}
-            me={me}
-            onLike={toggleLike}
-            onReply={startReply}
-            onJump={jumpTo}
-          />
-        ))}
+        {messages.map((m) =>
+          m.system ? (
+            <SystemLine key={m.id} msg={m} />
+          ) : (
+            <ChatLine
+              key={m.id}
+              msg={m}
+              likedBy={likes[m.id] ?? m.likedBy}
+              me={me}
+              onLike={toggleLike}
+              onReply={startReply}
+              onJump={jumpTo}
+            />
+          )
+        )}
       </div>
 
       {replyTo && (
@@ -174,6 +178,45 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
         </button>
       </div>
     </section>
+  )
+}
+
+/**
+ * Aviso automático de Cabal (ver lib/chat-announce.ts). Va como tarjeta, no
+ * como mensaje de alguien: no se puede responder ni dar corazón, y es el
+ * único sitio del chat donde hay algo pulsable. Con "donate" abre el diálogo
+ * de donaciones sin sacar a nadie de la app.
+ */
+function SystemLine({ msg }: { msg: ChatMessageDTO }) {
+  const setDonateOpen = useUI((s) => s.setDonateOpen)
+  const href = msg.linkUrl ?? ''
+  const label = msg.linkLabel || 'Abrir'
+  const external = /^https?:/.test(href)
+  const btn =
+    'mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground transition-opacity hover:opacity-90'
+
+  return (
+    <div className="rounded-xl border border-primary/25 bg-primary/[0.06] p-2.5">
+      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
+        <Megaphone className="h-3.5 w-3.5 shrink-0" aria-hidden /> Cabal
+      </p>
+      <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-snug text-foreground/90">{msg.body}</p>
+      {href === 'donate' && (
+        <button onClick={() => setDonateOpen(true)} className={btn}>
+          <HandHeart className="h-3.5 w-3.5" aria-hidden /> {label}
+        </button>
+      )}
+      {href.startsWith('/') && (
+        <Link href={href} className={btn}>
+          {label}
+        </Link>
+      )}
+      {external && (
+        <a href={href} target="_blank" rel="noreferrer" className={btn}>
+          {label} <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+        </a>
+      )}
+    </div>
   )
 }
 

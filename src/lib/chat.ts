@@ -13,6 +13,9 @@ type Row = {
   id: string
   body: string
   createdAt: Date
+  system: boolean
+  linkUrl: string | null
+  linkLabel: string | null
   user: { id: string; name: string; handle: string; avatar: string; walletVerified: boolean }
   replyTo: { id: string; body: string; user: { id: string; name: string; handle: string } } | null
   likes: { userId: string }[]
@@ -23,6 +26,9 @@ export function toChatMessageDTO(m: Row): ChatMessageDTO {
     id: m.id,
     body: m.body,
     createdAt: m.createdAt.toISOString(),
+    system: m.system,
+    linkUrl: m.linkUrl,
+    linkLabel: m.linkLabel,
     user: {
       id: m.user.id,
       name: m.user.name,

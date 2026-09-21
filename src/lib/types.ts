@@ -878,6 +878,11 @@ export interface ChatMessageDTO {
   id: string
   body: string
   createdAt: string
+  /** Aviso automático de Cabal (ver lib/chat-announce.ts), no lo escribió nadie. */
+  system: boolean
+  /** Botón del aviso: "donate" abre el diálogo de donaciones, o una ruta/URL. */
+  linkUrl: string | null
+  linkLabel: string | null
   user: {
     id: string
     name: string
@@ -889,6 +894,22 @@ export interface ChatMessageDTO {
   replyTo: { id: string; body: string; user: { id: string; name: string; handle: string } } | null
   /** Ids de quienes le dieron "me gusta" (corazón). */
   likedBy: string[]
+}
+
+/** Panel admin → Chat en vivo: el aviso automático que se repite cada X horas. */
+export interface AdminChatAnnounceDTO {
+  enabled: boolean
+  /** Cada cuántas horas se repite (1–720). */
+  hours: number
+  body: string
+  /** "donate" (diálogo de donaciones), una ruta interna, una URL https, o "" sin botón. */
+  linkUrl: string
+  linkLabel: string
+  /** No repetirlo si nadie ha escrito en el chat desde el último aviso. */
+  onlyIfActive: boolean
+  lastAt: string | null
+  /** Cuándo tocaría el siguiente (null si nunca se ha enviado). */
+  nextAt: string | null
 }
 
 /** Solicitud de verificación oficial (perk Premium). */

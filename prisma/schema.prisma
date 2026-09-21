@@ -347,6 +347,13 @@ model ChatMessage {
   replyTo   ChatMessage?      @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies   ChatMessage[]     @relation("ChatReplies")
   likes     ChatMessageLike[]
+  // Aviso automático del propio Cabal (recordatorio de donaciones y demás, ver
+  // lib/chat-announce.ts): se pinta como tarjeta y no como mensaje de alguien.
+  system    Boolean           @default(false)
+  // Botón del aviso. "donate" abre el diálogo de donaciones sin salir de la
+  // app; también vale una ruta interna (/app…) o una URL https.
+  linkUrl   String?
+  linkLabel String?
   createdAt DateTime          @default(now())
 
   @@index([createdAt])
