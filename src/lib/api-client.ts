@@ -760,6 +760,42 @@ export function useHypeToggle() {
   })
 }
 
+/**
+ * Votar en contra de un proyecto. Siempre con motivo: el servidor lo rechaza
+ * sin él y lo publica como comentario en el hilo del proyecto.
+ */
+export function useFudVote() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: ({ launchId, reason }: { launchId: string; reason: string }) =>
+      jsonFetch<{ ok: boolean; fudded: boolean; fud: number; postId: string }>(`/api/launches/${launchId}/fud`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Voto en contra publicado con tu motivo')
+    },
+    onError: (e: Error) => toast.error(e.message || 'No se pudo publicar tu voto en contra'),
+  })
+}
+
+/** Retractarse: quita el voto, el comentario se queda marcado como retractado. */
+export function useFudRetract() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (launchId: string) =>
+      jsonFetch<{ ok: boolean; fudded: boolean; fud: number }>(`/api/launches/${launchId}/fud`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Te retractaste: tu voto en contra ya no cuenta')
+    },
+    onError: (e: Error) => toast.error(e.message || 'No se pudo retirar tu voto'),
+  })
+}
+
 export function useLikeToggle() {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({

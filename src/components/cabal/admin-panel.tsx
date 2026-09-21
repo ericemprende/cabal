@@ -875,6 +875,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
             {NETWORKS[launch.network as keyof typeof NETWORKS]?.label ?? launch.network} ·{' '}
             {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
             {!launch.dateConfirmed && ' (estimada)'} · hype {launch.hype}
+            {launch.fud > 0 && ` · 💩 ${launch.fud}`}
           </p>
         </div>
         <Button

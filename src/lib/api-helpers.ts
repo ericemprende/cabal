@@ -220,7 +220,8 @@ export async function getReaderId(): Promise<string> {
 export async function getUserVotes(userId: string) {
   const votes = await db.vote.findMany({ where: { userId } })
   return {
-    launchHypes: new Set(votes.filter((v) => v.target === 'launch').map((v) => v.targetId)),
+    launchHypes: new Set(votes.filter((v) => v.target === 'launch' && v.kind !== 'fud').map((v) => v.targetId)),
+    launchFuds: new Set(votes.filter((v) => v.target === 'launch' && v.kind === 'fud').map((v) => v.targetId)),
     postLikes: new Set(votes.filter((v) => v.target === 'post').map((v) => v.targetId)),
   }
 }

@@ -148,6 +148,8 @@ export interface PostDTO {
   network?: string | null
   /** Si el post es una respuesta, el original citado (null = post suelto). */
   parent?: PostParentDTO | null
+  /** Crítica (kind = "fud") de la que su autor ya se retractó. */
+  retracted?: boolean
   pointsEarned?: number
 }
 
@@ -183,6 +185,10 @@ export interface LaunchDTO {
   status: string // computed: upcoming | live | ended
   hype: number
   hyped: boolean
+  /** Votos en contra ("popó"), cada uno con su motivo publicado en el hilo. */
+  fud: number
+  /** Quien mira votó en contra (puede retractarse pulsando otra vez). */
+  fudded: boolean
   lpLocked: boolean
   mintRevoked: boolean
   top10Pct: number

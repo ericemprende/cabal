@@ -74,7 +74,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
         : Promise.resolve(null),
       hasPremium(user.id),
       db.post.aggregate({ where: { userId: user.id }, _sum: { likes: true } }),
-      db.vote.count({ where: { userId: user.id, target: 'launch' } }),
+      db.vote.count({ where: { userId: user.id, target: 'launch', kind: 'hype' } }),
       isFounder(user.createdAt),
     ])
     const badges = computeBadges({

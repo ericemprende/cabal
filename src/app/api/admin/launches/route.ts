@@ -57,6 +57,8 @@ export async function GET(req: Request) {
       status: l.status,
       hype: l.hype,
       hyped: false,
+      fud: l.fud,
+      fudded: false,
       lpLocked: l.lpLocked,
       mintRevoked: l.mintRevoked,
       top10Pct: l.top10Pct,

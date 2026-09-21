@@ -32,7 +32,7 @@ export async function GET() {
       db.post.count({ where: { userId: me.id } }),
       db.post.count({ where: { userId: me.id, kind: 'thesis' } }),
       db.launch.count({ where: { createdById: me.id } }),
-      db.vote.count({ where: { userId: me.id, target: 'launch' } }),
+      db.vote.count({ where: { userId: me.id, target: 'launch', kind: 'hype' } }),
       db.post.aggregate({ where: { userId: me.id }, _sum: { likes: true } }),
       db.walletLink.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),
       db.devClaim.findMany({ where: { userId: me.id }, orderBy: { createdAt: 'desc' } }),

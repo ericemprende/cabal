@@ -175,6 +175,7 @@ export async function toPostDTO(
     contract?: string | null
     network?: string | null
     parentId?: string | null
+    retracted?: boolean
   },
   liked: boolean,
   pointsEarned?: number,
@@ -232,6 +233,7 @@ export async function toPostDTO(
     contract: p.contract ?? null,
     network: p.network ?? null,
     parent,
+    retracted: p.retracted ?? false,
     pointsEarned,
   }
 }

@@ -20,12 +20,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // El Vote es la fuente de verdad de "¿ya di hype?" y sigue en Postgres.
     // El contador va por Redis (`bump`) para no serializar mil escrituras
     // sobre la misma fila de Launch. Ver docs/PRD-postgres-redis.md §4.2.
-    const hyped = !existing
-    if (existing) {
+    const hyped = !existing || existing.kind === 'fud'
+    if (existing?.kind === 'fud') {
+      // Cambio de bando: el fueguito retira el voto en contra y su crítica
+      // queda marcada como retractada en el hilo (igual que al retractarse
+      // desde el propio botón del popó).
+      await db.vote.update({ where: { id: existing.id }, data: { kind: 'hype', reasonPostId: null } })
+      await bump('launch:fud', id, -1)
+      await bump('launch:hype', id, 1)
+      if (existing.reasonPostId) {
+        await db.post.updateMany({ where: { id: existing.reasonPostId }, data: { retracted: true } })
+      }
+    } else if (existing) {
       await db.vote.delete({ where: { id: existing.id } })
       await bump('launch:hype', id, -1)
     } else {
-      await db.vote.create({ data: { userId: me.id, target: 'launch', targetId: id } })
+      await db.vote.create({ data: { userId: me.id, target: 'launch', targetId: id, kind: 'hype' } })
       await bump('launch:hype', id, 1)
     }
 

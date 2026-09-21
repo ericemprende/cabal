@@ -19,6 +19,7 @@ import { fmtPct, launchPhase, networkMeta, timeAgo, type LaunchPhase } from '@/l
 import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
+import { FudButton } from '@/components/cabal/fud-button'
 import { BoostCounter } from '@/components/cabal/ammo'
 import { BoostHero } from '@/components/cabal/boost-hero'
 import { useBoostedItems } from '@/lib/use-boosted'
@@ -260,16 +261,29 @@ function CardBanner({ src }: { src?: string | null }) {
 }
 
 function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => void }) {
+  const hype = useHypeToggle()
   const c = useCountdown(launch.launchAt, launch.dateConfirmed)
   // Solo lo que todavía no ha llegado a su hora puede ser "inminente": antes un
   // launch ya lanzado (totalMs 0) se pintaba de rojo como si fuera a salir.
   const urgent = c.totalMs > 0 && c.totalMs < 45 * 60_000
   const soon = c.pending || (c.totalMs > 0 && !urgent && c.totalMs < 6 * 3600_000)
+  // Antes toda la tarjeta era un <button>, y dentro de un botón no pueden vivir
+  // otros botones: por eso el destacado solo enseñaba el número de hypes. Ahora
+  // es un contenedor clicable (con teclado, como antes) y el hype y el popó se
+  // votan aquí mismo, sin tener que abrir la ficha.
   return (
-    <button
+    <article
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
       className={cn(
-        'card-surface group relative isolate block w-full overflow-hidden rounded-2xl border p-5 text-left transition-all sm:p-6',
+        'card-surface group relative isolate block w-full cursor-pointer overflow-hidden rounded-2xl border p-5 text-left transition-all sm:p-6',
         c.live || urgent ? 'border-[#ff4d5e]/40 hover:border-[#ff4d5e]/60' : 'border-white/12 hover:border-[#8FA83F]/50'
       )}
     >
@@ -287,9 +301,22 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
             </span>
             <NetworkBadge network={launch.network} />
             <RoleChip role={launch.submitterRole} />
-            <span className="flex items-center gap-1 text-xs font-semibold text-amber-300">
-              <Flame className="h-3.5 w-3.5" /> {launch.hype} hypes
-            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                hype.mutate(launch.id)
+              }}
+              className={cn(
+                'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold transition-all active:scale-95',
+                launch.hyped
+                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/15 text-primary'
+                  : 'border-white/10 text-amber-300 hover:border-[#8FA83F]/40 hover:text-primary'
+              )}
+              aria-label="Dar hype"
+            >
+              <Flame className={cn('h-3.5 w-3.5', launch.hyped && 'fill-primary')} /> {launch.hype} hypes
+            </button>
+            <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} className="py-0.5" />
           </div>
           <h2 className="font-display mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xl font-bold sm:text-2xl">
             <span className="min-w-0 truncate">{launch.name}</span>
@@ -315,7 +342,7 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
           </div>
         </div>
       </div>
-    </button>
+    </article>
   )
 }
 
@@ -383,6 +410,8 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           <Flame className={cn('h-3.5 w-3.5', launch.hyped && 'fill-primary')} />
           {launch.hype}
         </button>
+        {/* El voto en contra, al lado del fueguito: pide motivo antes de contar */}
+        <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} />
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
           <MessageSquare className="h-3.5 w-3.5" aria-hidden />
           {launch.postsCount}

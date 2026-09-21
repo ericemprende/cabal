@@ -371,9 +371,25 @@ export function PostCard({
 
           {post.parent && <ParentQuote post={post} parent={post.parent} compact={compact} />}
 
-          <p className={cn('mt-1.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90', compact ? 'line-clamp-3 text-[13px]' : 'text-sm')}>
+          <p
+            className={cn(
+              'mt-1.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90',
+              compact ? 'line-clamp-3 text-[13px]' : 'text-sm',
+              // Crítica retirada: se queda en el hilo (las respuestas hablan de
+              // ella) pero apagada, para que no siga pesando como acusación.
+              post.retracted && 'text-muted-foreground line-through decoration-white/25'
+            )}
+          >
             {post.content}
           </p>
+
+          {post.kind === 'fud' && (
+            <p className="mt-1 text-[11px] font-semibold text-amber-200/70">
+              {post.retracted
+                ? 'Se retractó: este voto en contra ya no cuenta'
+                : 'Motivo de su voto en contra · respóndele si crees que se equivoca'}
+            </p>
+          )}
 
           {post.kind === 'call' && post.contract && (
             <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2 py-1">

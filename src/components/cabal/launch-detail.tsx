@@ -21,6 +21,7 @@ import { useUI } from '@/lib/store'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
 import { BoostButton } from '@/components/cabal/ammo'
 import { VerifyRequestRow } from '@/components/cabal/verify-request'
+import { FudButton } from '@/components/cabal/fud-button'
 
 export function LaunchDetailDialog() {
   const { launchDetailId, openLaunch, setPremiumOpen } = useUI()
@@ -208,6 +209,9 @@ export function LaunchDetailDialog() {
                   <Flame className={cn('h-4 w-4', launch.hyped && 'fill-primary')} />
                   {launch.hype}
                 </button>
+                {/* Voto en contra: solo cuenta con un motivo escrito, que se
+                    publica como comentario aquí abajo. */}
+                <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} size="md" />
                 <ReminderBell launchId={launch.id} launchAt={launch.launchAt} size="md" />
                 <BoostButton
                   target={{ type: 'launch', id: launch.id, name: launch.ticker ?? launch.name, image: launch.image }}

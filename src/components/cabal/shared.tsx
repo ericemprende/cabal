@@ -620,6 +620,8 @@ export function KindBadge({ kind, reply }: { kind: string; reply?: boolean }) {
     call: { label: 'Call', cls: 'bg-amber-400/12 text-amber-300 border-amber-400/30' },
     trade: { label: 'Trade', cls: 'bg-fuchsia-400/10 text-fuchsia-300 border-fuchsia-400/25' },
     comment: { label: 'Comentario', cls: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
+    // Motivo de un voto en contra (el popó del Radar): siempre lleva su razón.
+    fud: { label: '💩 Crítica', cls: 'bg-amber-900/25 text-amber-200 border-amber-700/40' },
     reply: { label: 'Respuesta', cls: 'bg-sky-400/10 text-sky-300 border-sky-400/25' },
   }
   const meta = (reply && kind === 'comment' ? map.reply : map[kind]) ?? map.comment

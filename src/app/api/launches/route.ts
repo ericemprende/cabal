@@ -34,11 +34,14 @@ export async function GET(req: Request) {
       // tiene su propia caché corta.
       activeBoostScores(),
     ])
-    const hypedIds = new Set(votes.map((v) => v.targetId))
+    // hype y fud son el mismo voto con distinto signo (Vote.kind): excluyentes.
+    const hypedIds = new Set(votes.filter((v) => v.kind !== 'fud').map((v) => v.targetId))
+    const fuddedIds = new Set(votes.filter((v) => v.kind === 'fud').map((v) => v.targetId))
     const followedIds = new Set(follows.map((f) => f.targetId))
     const countMap = new Map(postCounts.filter((p) => p.launchId).map((p) => [p.launchId!, p._count._all]))
     // Deltas de hype todavía en Redis, en una sola llamada (§4.2).
     const hypeDelta = await pendingMany('launch:hype', launches.map((l) => l.id))
+    const fudDelta = await pendingMany('launch:fud', launches.map((l) => l.id))
     const teamIds = await teamLaunchIdsOf(viewer.userId)
 
     const dto: LaunchDTO[] = launches.map((l) => ({
@@ -66,6 +69,8 @@ export async function GET(req: Request) {
       status: computeLaunchStatus(new Date(l.launchAt), l.dateConfirmed),
       hype: l.hype + (hypeDelta[l.id] ?? 0),
       hyped: hypedIds.has(l.id),
+      fud: l.fud + (fudDelta[l.id] ?? 0),
+      fudded: fuddedIds.has(l.id),
       lpLocked: l.lpLocked,
       mintRevoked: l.mintRevoked,
       top10Pct: l.top10Pct,

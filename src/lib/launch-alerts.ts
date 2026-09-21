@@ -58,7 +58,9 @@ async function notifyLaunch(
   minutes: number
 ): Promise<number> {
   const [hypers, followers] = await Promise.all([
-    db.vote.findMany({ where: { target: 'launch', targetId: launch.id }, select: { userId: true } }),
+    // Solo quien le dio hype: a quien votó en contra no se le avisa de que
+    // el proyecto que critica está a punto de salir.
+    db.vote.findMany({ where: { target: 'launch', targetId: launch.id, kind: 'hype' }, select: { userId: true } }),
     db.follow.findMany({ where: { targetId: launch.createdById }, select: { userId: true } }),
   ])
   const candidateIds = [...new Set([...hypers.map((v) => v.userId), ...followers.map((f) => f.userId)])]

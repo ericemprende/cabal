@@ -10,7 +10,7 @@ import { redis, safeRedis } from '@/lib/redis'
 // lotes con `flushCounters`. La lectura suma el valor persistido más el delta
 // pendiente, así el usuario ve su acción reflejada de inmediato.
 
-type Counter = 'launch:hype' | 'post:likes'
+type Counter = 'launch:hype' | 'launch:fud' | 'post:likes'
 
 const DELTA = 'cabal:ctr:'          // hash por contador: id -> delta pendiente
 const DIRTY = 'cabal:ctr:dirty'     // set de contadores con deltas por volcar
@@ -85,6 +85,8 @@ export async function flushCounters(): Promise<number> {
 async function writeDirect(counter: Counter, id: string, by: number) {
   if (counter === 'launch:hype') {
     await db.launch.update({ where: { id }, data: { hype: { increment: by } } })
+  } else if (counter === 'launch:fud') {
+    await db.launch.update({ where: { id }, data: { fud: { increment: by } } })
   } else {
     await db.post.update({ where: { id }, data: { likes: { increment: by } } })
   }

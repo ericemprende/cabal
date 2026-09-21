@@ -170,6 +170,9 @@ model Launch {
   liveUrl        String? // link del stream (YouTube, Twitch, Vimeo…) para incrustar en el detalle
   status         String                @default("upcoming")
   hype           Int                   @default(0)
+  // Votos en contra (el "popó"). Solo se puede dar con un motivo escrito, que
+  // se publica como comentario en el hilo del proyecto (ver Vote.reasonPostId).
+  fud            Int                   @default(0)
   lpLocked       Boolean               @default(false)
   mintRevoked    Boolean               @default(false)
   top10Pct       Float                 @default(25)
@@ -400,6 +403,9 @@ model Post {
   resultCheckedAt DateTime?
   resultFinal     Boolean   @default(false)
   likes           Int       @default(0)
+  // Crítica (kind = "fud") de la que su autor se retractó: el comentario se
+  // queda en el hilo, pero sin contar como voto en contra.
+  retracted       Boolean   @default(false)
   pnl             Float?
   createdAt       DateTime  @default(now())
 
@@ -420,6 +426,14 @@ model Vote {
   user     User   @relation(fields: [userId], references: [id])
   target   String // "launch" | "post"
   targetId String
+  // "hype" (a favor) | "fud" (en contra). El unique de abajo ya impedía dos
+  // votos del mismo usuario sobre lo mismo, así que hype y fud son
+  // excluyentes: dar uno retira el otro.
+  kind     String @default("hype")
+  // Comentario que justifica el fud: obligatorio para votar en contra, vive en
+  // el hilo del proyecto para que le puedan responder. Al retractarse el voto
+  // desaparece y ese post queda marcado como retractado (Post.retracted).
+  reasonPostId String?
 
   @@unique([userId, target, targetId])
   @@index([target, targetId])
