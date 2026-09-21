@@ -84,7 +84,7 @@ function rpcUrl(network: EvmNetwork): string {
 }
 
 const _providers = new Map<EvmNetwork, ethers.JsonRpcProvider>()
-function evmProvider(network: EvmNetwork): ethers.JsonRpcProvider {
+export function evmProvider(network: EvmNetwork): ethers.JsonRpcProvider {
   let p = _providers.get(network)
   if (!p) {
     p = new ethers.JsonRpcProvider(rpcUrl(network), EVM_CHAIN_ID[network])
@@ -167,6 +167,40 @@ export async function nativePriceUsd(network: EvmNetwork): Promise<number> {
       taker: NATIVE_TOKEN_ADDRESS, // dirección cualquiera válida; no se firma nada aquí, solo se cotiza
     })
     return Number(quote.buyAmount) / 10 ** USDC_DECIMALS[network]
+  })
+}
+
+/**
+ * Cuánto vale en USD un saldo de un token cualquiera de una red EVM: se
+ * cotiza contra el USDC (o USDG) de esa red, que es el mismo camino que ya
+ * usa nativePriceUsd(). Devuelve null si 0x no sabe cotizarlo — pasa con
+ * tokens sin liquidez, que es justo lo que le ocurre a la comisión de un
+ * launch que se murió. En ese caso quien mira el panel ve la cantidad de
+ * tokens pero no un dólar inventado.
+ */
+export async function tokenValueUsd(network: EvmNetwork, token: string, rawAmount: bigint): Promise<number | null> {
+  if (rawAmount <= BigInt(0)) return 0
+  const isNative = token.toLowerCase() === NATIVE_TOKEN_ADDRESS.toLowerCase()
+  if (isNative) {
+    const price = await nativePriceUsd(network).catch(() => null)
+    return price === null ? null : (Number(rawAmount) / 1e18) * price
+  }
+  if (token.toLowerCase() === USDC_ADDRESS[network].toLowerCase()) {
+    return Number(rawAmount) / 10 ** USDC_DECIMALS[network]
+  }
+  return cached(`swap-evm:token-usd:${network}:${token}:${rawAmount}`, 300, async () => {
+    try {
+      const quote = await zeroxQuote({
+        network,
+        sellToken: token,
+        buyToken: USDC_ADDRESS[network],
+        sellAmount: rawAmount.toString(),
+        taker: NATIVE_TOKEN_ADDRESS, // no se firma nada, solo se cotiza
+      })
+      return Number(quote.buyAmount) / 10 ** USDC_DECIMALS[network]
+    } catch {
+      return null
+    }
   })
 }
 

@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { getAmmoSettings } from '@/lib/ammo'
 import { emailConfig, launchReminderEmail, sendEmail } from '@/lib/email'
 import { networkMeta } from '@/lib/cabal'
 import { siteUrl } from '@/lib/waitlist'
@@ -61,6 +62,8 @@ export type TickResult = {
   emails: number
   /** Notificaciones push enviadas a navegadores y a la app instalada. */
   push: number
+  /** Avisos de munición fuerte difundidos a los chats. */
+  boosts: number
 }
 
 /** Un bot listo para enviar. `since` es desde cuándo difunde ese proveedor. */
@@ -99,7 +102,7 @@ async function activeSenders(): Promise<Senders> {
 const providersOf = (s: Senders) => Object.keys(s) as BotProvider[]
 
 export async function runNotificationTick(): Promise<TickResult> {
-  const result: TickResult = { launches: 0, calls: 0, theses: 0, reminders: 0, messages: 0, emails: 0, push: 0 }
+  const result: TickResult = { launches: 0, calls: 0, theses: 0, reminders: 0, messages: 0, emails: 0, push: 0, boosts: 0 }
   const senders = await activeSenders()
 
   // Los tres primeros avisos también salen por push, así que la pasada se hace
@@ -109,6 +112,9 @@ export async function runNotificationTick(): Promise<TickResult> {
     await announceNewCalls(senders, result)
     await announceNewTheses(senders, result)
     await sendChatReplies(senders, result)
+    // Los avisos de munición solo salen por los bots (no por push): son para
+    // mover al grupo, no para interrumpir a alguien en su móvil.
+    if (providersOf(senders).length > 0) await announceBigBoosts(senders, result)
   }
   await sendReminders(senders, result)
   return result
@@ -652,4 +658,90 @@ function thesisMessage(
   lines.push('', esc(snippet(p.content, 600)))
   const url = p.launch ? launchUrl(p.launch.id) : `${siteUrl()}/app`
   return { text: lines.join('\n'), buttons: [[{ text: tx.readOnCabal, url }]] }
+}
+
+// ---------- 5. Munición fuerte ----------
+
+/**
+ * Cuando alguien mete munición de verdad en un proyecto, los chats se enteran.
+ *
+ * Solo pasan los disparos grandes (`ammo_notify_at`, editable en /admin): un
+ * aviso por cada 100 balas convertiría esto en ruido y los grupos lo apagarían
+ * la primera tarde. El mensaje lleva el ticker, quién disparó, cuántas balas y
+ * hasta cuándo se queda arriba.
+ */
+async function announceBigBoosts(senders: Senders, r: TickResult) {
+  const now = Date.now()
+  const { notifyAt } = await getAmmoSettings()
+  const boosts = await db.boost.findMany({
+    where: {
+      bullets: { gte: notifyAt },
+      createdAt: { gte: lowerBound(senders, now), lte: new Date(now - PUBLISH_GRACE_MS) },
+    },
+    orderBy: { createdAt: 'asc' },
+    take: 20,
+    include: { user: { select: { id: true, handle: true } } },
+  })
+  const pending = await notDispatched(boosts.map((b) => `boost:${b.id}`))
+  for (const b of boosts) {
+    const key = `boost:${b.id}`
+    if (!pending.has(key) || !(await reserve(key))) continue
+
+    // El proyecto al que disparó: un launch oculto (o algo ya borrado) no se
+    // anuncia, igual que no se anuncian sus tesis.
+    const target =
+      b.targetType === 'launch'
+        ? await db.launch.findUnique({
+            where: { id: b.targetId },
+            select: { id: true, name: true, ticker: true, isPrivate: true, hidden: true, contract: true, network: true },
+          })
+        : await db.token.findUnique({
+            where: { id: b.targetId },
+            select: { id: true, name: true, ticker: true, contract: true, network: true },
+          })
+    if (!target || ('hidden' in target && target.hidden)) {
+      await markSent(key, 0)
+      continue
+    }
+
+    const chats = await db.chatLink.findMany({
+      where: { provider: { in: providersOf(senders) }, active: true, notifyBoosts: true },
+    })
+    const subject = { contracts: [target.contract], tickers: [target.ticker], authorId: b.user.id }
+    const sent = await broadcast(
+      senders,
+      await onlyMatching(chats, subject),
+      (lang) => boostMessage({ boost: b, target }, lang),
+      b.createdAt
+    )
+    await markSent(key, sent)
+    r.boosts++
+    r.messages += sent
+  }
+}
+
+function boostMessage(
+  p: {
+    boost: { bullets: number; endsAt: Date; targetType: string; targetId: string; user: { handle: string } }
+    target: { id: string; name: string; ticker: string | null }
+  },
+  lang: Lang
+): BotMessage {
+  const tx = t(lang)
+  const { boost, target } = p
+  const symbol = target.ticker ? `$${esc(target.ticker)}` : esc(target.name)
+  const hours = Math.round((boost.bullets / 60) * 10) / 10
+  const url =
+    boost.targetType === 'launch'
+      ? `${siteUrl()}/app?launch=${encodeURIComponent(target.id)}`
+      : `${siteUrl()}/app?token=${encodeURIComponent(target.id)}`
+  return {
+    text: [
+      tx.boostHead(userLink(boost.user.handle)),
+      '',
+      `<b>${symbol}</b> · ${boost.bullets.toLocaleString(tx.locale)} ${tx.bullets}`,
+      tx.boostUntil(hours),
+    ].join('\n'),
+    buttons: [[{ text: tx.viewOnCabal, url }]],
+  }
 }

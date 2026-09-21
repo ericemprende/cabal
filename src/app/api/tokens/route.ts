@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { toPublicUserDTO } from '@/lib/serializers'
 import { ensureTokensFresh } from '@/lib/tokens-sync'
 import { cached } from '@/lib/cache'
+import { activeBoostScores, boostOf } from '@/lib/ammo'
 import type { TokenDTO } from '@/lib/types'
 
 export async function GET(req: Request) {
@@ -17,7 +18,18 @@ export async function GET(req: Request) {
     // La lista es igual para todo el mundo: se calcula una vez por minuto en
     // vez de leer todos los tokens (con sus joins) y contar todos los posts en
     // cada visita.
-    const dto = await cached(`tokens:${sort}:${network}`, 60, () => buildTokenList(sort, network))
+    const [list, boosts] = await Promise.all([
+      cached(`tokens:${sort}:${network}`, 60, () => buildTokenList(sort, network)),
+      // La munición va por fuera de la caché de la lista: en cuanto alguien
+      // dispara, su token sale destacado sin esperar al siguiente minuto.
+      activeBoostScores(),
+    ])
+    const dto = list.map((t) => ({ ...t, boost: boostOf(boosts, 'token', t.id) }))
+    // Con munición viva el token sube, pero solo en el orden por tendencia:
+    // en 'ganadores' o 'nuevos' lo que manda es el criterio que se pidió.
+    if (sort === 'trending') {
+      dto.sort((a, b) => (b.boost?.bullets ?? 0) - (a.boost?.bullets ?? 0))
+    }
 
     return NextResponse.json(dto)
   } catch (e) {

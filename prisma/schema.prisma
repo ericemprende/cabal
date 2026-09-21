@@ -44,6 +44,9 @@ model User {
   isCurrentUser     Boolean               @default(false)
   isAdmin           Boolean               @default(false)
   points            Int                   @default(0)
+  // Saldo de balas (munición para boostear proyectos, ver lib/ammo.ts). El
+  // historial de cómo llegó y en qué se gastó vive en AmmoEntry.
+  ammo              Int                   @default(0)
   // Con cuánta antelación avisa la campanita de un launch, en minutos. Son
   // varias a la vez: quien quiera aviso a 1 h y otro a 5 min los tiene los dos.
   // Es del usuario porque su aviso va a su chat privado y a su correo; el de un
@@ -105,6 +108,8 @@ model User {
   repReceived       Reputation[]          @relation("repTarget")
   repGiven          Reputation[]          @relation("repAuthor")
   verifyRequests    VerificationRequest[]
+  ammoEntries       AmmoEntry[]
+  boosts            Boost[]
 
   @@index([points])
   @@index([repScore])
@@ -636,24 +641,28 @@ model LaunchReminder {
  * los launches en el móvil y nada en el escritorio.
  */
 model PushSubscription {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /** URL que da el navegador; identifica al dispositivo. */
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  /** Para distinguir dispositivos en la lista ("Chrome en Android"). */
-  label     String?
-  notifyLaunches  Boolean @default(true)
-  notifyReminders Boolean @default(true)
-  notifyCalls     Boolean @default(false)
-  notifyTheses    Boolean @default(false)
-  notifyReplies   Boolean @default(true)
-  active    Boolean  @default(true)
-  lastError String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /**
+   * URL que da el navegador; identifica al dispositivo.
+   */
+  endpoint        String   @unique
+  p256dh          String
+  auth            String
+  /**
+   * Para distinguir dispositivos en la lista ("Chrome en Android").
+   */
+  label           String?
+  notifyLaunches  Boolean  @default(true)
+  notifyReminders Boolean  @default(true)
+  notifyCalls     Boolean  @default(false)
+  notifyTheses    Boolean  @default(false)
+  notifyReplies   Boolean  @default(true)
+  active          Boolean  @default(true)
+  lastError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([userId])
   @@index([active])
@@ -679,6 +688,8 @@ model ChatLink {
   notifyCalls     Boolean  @default(false) // calls nuevas publicadas en Cabal
   reminderLeads   Int[]    @default([60]) // minutos de antelación de ese aviso
   notifyTheses    Boolean  @default(false) // tesis nuevas del feed
+  // Munición: solo los disparos gordos (ver ammo_notify_at), no cada bala
+  notifyBoosts    Boolean  @default(true)
   // Solo avisos de estos tokens (contratos o "$TICKER"). Vacío = todos.
   tokenFilter     String[] @default([])
   // Solo calls, tesis y lanzamientos de gente a la que sigue quien vinculó el chat
@@ -739,4 +750,51 @@ model VerificationRequest {
   @@index([status, createdAt])
   @@index([userId])
   @@index([launchId])
+}
+
+// ---------- Munición y boosts ----------
+
+// Cada movimiento del saldo de balas de un usuario: lo que compró, lo que le
+// regaló su plan, lo que disparó y lo que le dio el admin. El saldo vivo está
+// en User.ammo; esta tabla es el historial y el candado contra duplicados: un
+// pago solo puede acreditar balas una vez (paymentId es único) y lo mismo con
+// el regalo de una suscripción (subscriptionId).
+model AmmoEntry {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Positivo = entran balas (compra, regalo, admin) · negativo = se disparan
+  amount         Int
+  reason         String // purchase | plan_gift | boost | admin
+  packKey        String? // cargador comprado, si vino de una compra
+  paymentId      String?  @unique
+  subscriptionId String?  @unique
+  boostId        String?
+  note           String   @default("")
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Un disparo de munición sobre un proyecto: gasta balas del saldo y mantiene
+// al proyecto arriba del Radar mientras le queden. Una bala = un minuto, así
+// que la vida del disparo es pura aritmética de reloj (endsAt = inicio +
+// balas) y no hace falta ningún proceso que vaya descontando.
+//
+// Los disparos se suman: dos personas gastando 500 balas cada una dan 1.000
+// balas activas de puntuación, y cada disparo dura sus propios 500 minutos.
+model Boost {
+  id         String   @id @default(cuid())
+  targetType String // launch | token
+  targetId   String
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bullets    Int
+  startedAt  DateTime @default(now())
+  endsAt     DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([targetType, targetId, endsAt])
+  @@index([endsAt])
+  @@index([userId, createdAt])
 }

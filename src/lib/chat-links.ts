@@ -130,7 +130,7 @@ export async function setChatLeads(
   return leads
 }
 
-export const CHAT_PREFS = ['notifyLaunches', 'notifyReminders', 'notifyTheses', 'notifyCalls', 'onlyFollowing'] as const
+export const CHAT_PREFS = ['notifyLaunches', 'notifyReminders', 'notifyTheses', 'notifyCalls', 'notifyBoosts', 'onlyFollowing'] as const
 export type ChatPref = (typeof CHAT_PREFS)[number]
 
 export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
@@ -145,6 +145,7 @@ export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
     notifyTheses: c.notifyTheses,
     reminderLeads: c.reminderLeads,
     notifyCalls: c.notifyCalls,
+    notifyBoosts: c.notifyBoosts,
     tokenFilter: c.tokenFilter,
     onlyFollowing: c.onlyFollowing,
     active: c.active,

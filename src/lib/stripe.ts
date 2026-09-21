@@ -1,6 +1,7 @@
 import Stripe from 'stripe'
 import { db } from '@/lib/db'
 import { PLANS, isPlanKey, type PlanKey } from '@/lib/premium'
+import { creditAmmo, giftPlanAmmo } from '@/lib/ammo'
 
 /**
  * Cobro con tarjeta (Stripe Checkout, suscripción que se renueva sola).
@@ -9,6 +10,7 @@ import { PLANS, isPlanKey, type PlanKey } from '@/lib/premium'
  *  - STRIPE_SECRET_KEY        clave secreta (sk_…) o restringida (rk_…)
  *  - STRIPE_WEBHOOK_SECRET    whsec_… del endpoint /api/webhooks/stripe
  *  - STRIPE_PRODUCT_MONTHLY / STRIPE_PRODUCT_BIANNUAL / STRIPE_PRODUCT_ANNUAL
+ *  - STRIPE_PRODUCT_AMMO      producto de los cargadores de munición (pago único)
  *
  * No hacen falta Price IDs: cada Checkout crea el precio en línea sobre el
  * producto con el importe que haya en el panel de admin. Cambiar el precio en el
@@ -46,6 +48,16 @@ export function stripeProductFor(plan: PlanKey): string | null {
 /** ¿Se puede pagar este plan con tarjeta? */
 export function stripePlanAvailable(plan: PlanKey): boolean {
   return stripeConfigured() && Boolean(stripeProductFor(plan))
+}
+
+/** Producto con el que se cobran los cargadores de munición (pago único). */
+export function stripeAmmoProduct(): string | null {
+  return process.env.STRIPE_PRODUCT_AMMO?.trim() || null
+}
+
+/** ¿Se puede comprar munición con tarjeta? */
+export function stripeAmmoAvailable(): boolean {
+  return stripeConfigured() && Boolean(stripeAmmoProduct())
 }
 
 /** Crea la sesión de Checkout y devuelve la URL a la que mandar al usuario. */
@@ -147,11 +159,19 @@ export async function syncStripeSubscription(sub: Stripe.Subscription, at: Date,
     cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end || sub.cancel_at),
     stripeEventAt: at,
   }
-  await db.subscription.upsert({
+  const row = await db.subscription.upsert({
     where: { stripeSubscriptionId: sub.id },
     create: { ...data, stripeSubscriptionId: sub.id },
     update: data,
   })
+  // Munición de regalo del plan, una sola vez por suscripción: va atada a la
+  // fila, así que los eventos repetidos de Stripe no vuelven a regalar. Una
+  // renovación anual crea otra suscripción y esa sí trae su munición.
+  if (['active', 'trialing'].includes(sub.status)) {
+    await giftPlanAmmo(user.id, data.plan, row.id).catch((e) => {
+      console.warn('[stripe] no se pudo regalar la munición del plan:', (e as Error).message)
+    })
+  }
   if (customerId && user.stripeCustomerId !== customerId) {
     await db.user.update({ where: { id: user.id }, data: { stripeCustomerId: customerId } }).catch((e) => {
       console.warn(`[stripe] no se pudo asociar el cliente ${customerId}:`, (e as Error).message)
@@ -197,6 +217,11 @@ export async function handleStripeEvent(event: Stripe.Event) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const s = event.data.object
+      // Los cargadores de munición son pago único, no suscripción
+      if (s.mode === 'payment') {
+        await creditStripeAmmoSession(s)
+        return
+      }
       const subId = s.mode === 'subscription' ? idOf(s.subscription) : null
       if (!subId) return
       // Estado fresco de la API: el evento de la sesión no trae la suscripción
@@ -216,4 +241,96 @@ export async function handleStripeEvent(event: Stripe.Event) {
       await recordStripeInvoice(event.data.object, 'failed')
       return
   }
+}
+
+// ---------- Munición (pago único) ----------
+
+/**
+ * Checkout de un cargador de munición: pago único, sin suscripción. El precio
+ * se crea en línea sobre STRIPE_PRODUCT_AMMO con lo que haya en el panel de
+ * admin, igual que los planes.
+ */
+export async function createAmmoCheckout(p: {
+  user: { id: string; email: string | null; emailVerified: boolean; stripeCustomerId: string | null }
+  packKey: string
+  label: string
+  bullets: number
+  priceUsd: number
+  origin: string
+}): Promise<string> {
+  const product = stripeAmmoProduct()
+  if (!product) throw new Error('La munición no se puede pagar con tarjeta ahora mismo')
+
+  const customer = p.user.stripeCustomerId
+    ? { customer: p.user.stripeCustomerId }
+    : p.user.email && p.user.emailVerified
+      ? { customer_email: p.user.email }
+      : {}
+
+  const session = await stripe().checkout.sessions.create({
+    mode: 'payment',
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: 'usd',
+          product,
+          unit_amount: Math.round(p.priceUsd * 100),
+        },
+      },
+    ],
+    ...customer,
+    client_reference_id: p.user.id,
+    // El webhook acredita las balas a partir de esto, no del importe
+    metadata: { userId: p.user.id, kind: 'ammo', packKey: p.packKey, bullets: String(p.bullets) },
+    payment_intent_data: {
+      metadata: { userId: p.user.id, kind: 'ammo', packKey: p.packKey, bullets: String(p.bullets) },
+      description: `Cabal · ${p.label} (${p.bullets} balas)`,
+    },
+    allow_promotion_codes: true,
+    locale: 'es',
+    success_url: `${p.origin}/app?ammo=ok&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${p.origin}/app?ammo=cancel`,
+  })
+  if (!session.url) throw new Error('Stripe no devolvió la página de pago')
+  return session.url
+}
+
+/**
+ * Acredita las balas de un Checkout de pago único ya cobrado. Idempotente por
+ * partida doble: el Payment se identifica por la sesión (provider+externalId)
+ * y AmmoEntry.paymentId es único, así que un evento repetido no regala nada.
+ */
+async function creditStripeAmmoSession(s: Stripe.Checkout.Session) {
+  if (s.metadata?.kind !== 'ammo') return
+  if (s.payment_status !== 'paid') return
+  const userId = s.metadata.userId || s.client_reference_id
+  const bullets = Number(s.metadata.bullets)
+  if (!userId || !Number.isFinite(bullets) || bullets <= 0) {
+    console.warn(`[stripe] sesión de munición ${s.id} sin usuario o sin balas`)
+    return
+  }
+  if (!(await db.user.findUnique({ where: { id: userId }, select: { id: true } }))) return
+
+  const packKey = s.metadata.packKey ?? 'custom'
+  const payment = await db.payment.upsert({
+    where: { provider_externalId: { provider: 'stripe', externalId: s.id } },
+    create: {
+      userId,
+      provider: 'stripe',
+      plan: `ammo_${packKey}`,
+      amountUsd: (s.amount_total ?? 0) / 100,
+      status: 'paid',
+      externalId: s.id,
+      payCurrency: s.currency,
+    },
+    update: { status: 'paid' },
+  })
+  const customerId = idOf(s.customer)
+  if (customerId) {
+    await db.user
+      .update({ where: { id: userId }, data: { stripeCustomerId: customerId } })
+      .catch(() => {}) // otro usuario ya tiene ese cliente: no es motivo para fallar el webhook
+  }
+  await creditAmmo(userId, bullets, { reason: 'purchase', packKey, paymentId: payment.id })
 }

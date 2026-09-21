@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
+import { ChevronDown, Crosshair, Flame, Globe, LineChart, Lock, MessageSquare, Plus, Rocket, ShieldOff, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -17,6 +17,9 @@ import { fmtPct, launchPhase, networkMeta, timeAgo, type LaunchPhase } from '@/l
 import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
+import { BoostCounter } from '@/components/cabal/ammo'
+import { BoostHero } from '@/components/cabal/boost-hero'
+import { useBoostedItems } from '@/lib/use-boosted'
 import type { LaunchDTO } from '@/lib/types'
 
 const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'tron', 'robinhood', 'arc'] as const
@@ -87,6 +90,9 @@ export function RadarTab() {
         : byNetwork.filter((l) => (status === 'ended') === (phaseOf(l) === 'ended'))
     const at = (l: { launchAt: string }) => +new Date(l.launchAt)
     return [...list].sort((a, b) => {
+      // La munición manda dentro del filtro elegido: quien paga, sube.
+      const ammo = (b.boost?.bullets ?? 0) - (a.boost?.bullets ?? 0)
+      if (ammo !== 0) return ammo
       if (sort === 'hype') return b.hype - a.hype
       // Por fecha, lo activo va primero y del más cercano al más lejano (los que
       // se están lanzando ahora quedan arriba); lo finalizado, del más reciente
@@ -97,6 +103,9 @@ export function RadarTab() {
       return aEnded ? at(b) - at(a) : at(a) - at(b)
     })
   }, [byNetwork, sort, status, phaseOf])
+
+  // El nº1 en munición de todo Cabal (launch o token): se queda el banner.
+  const topBoost = useBoostedItems()[0] ?? null
 
   const featured = useMemo(() => {
     // Solo lo que aún no ha llegado a su hora: un pendiente o un recién lanzado
@@ -109,8 +118,12 @@ export function RadarTab() {
 
   return (
     <div className="space-y-4">
-      {/* Hero: featured launch */}
-      {featured && <FeaturedLaunch launch={featured} onOpen={() => openLaunch(featured.id)} />}
+      {/* El banner es de quien más munición tenga; si no hay ninguno, manda el hype */}
+      {topBoost ? (
+        <BoostHero item={topBoost} />
+      ) : (
+        featured && <FeaturedLaunch launch={featured} onOpen={() => openLaunch(featured.id)} />
+      )}
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2">
@@ -287,9 +300,13 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
       onClick={() => openLaunch(launch.id)}
       className={cn(
         'card-surface group flex min-w-0 cursor-pointer flex-col gap-3 overflow-hidden rounded-xl border p-4 transition-all hover:-translate-y-0.5',
-        c.live || urgent
-          ? 'border-[#ff4d5e]/40 shadow-[0_0_14px_rgba(255,77,94,0.08)] hover:border-[#ff4d5e]/60'
-          : 'border-white/10 hover:border-[#8FA83F]/30'
+        launch.boost?.golden
+          ? 'border-amber-300/55 shadow-[0_0_18px_rgba(255,176,32,0.1)] hover:border-amber-300/80'
+          : launch.boost
+            ? 'border-amber-400/30 hover:border-amber-300/50'
+            : c.live || urgent
+              ? 'border-[#ff4d5e]/40 shadow-[0_0_14px_rgba(255,77,94,0.08)] hover:border-[#ff4d5e]/60'
+              : 'border-white/10 hover:border-[#8FA83F]/30'
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -308,7 +325,10 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
             </span>
           </div>
         </div>
-        <CountdownPill target={launch.launchAt} compact size="xs" estimated={!launch.dateConfirmed} className="mt-0.5 shrink-0" />
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <CountdownPill target={launch.launchAt} compact size="xs" estimated={!launch.dateConfirmed} className="mt-0.5" />
+          {launch.boost && <BoostCounter boost={launch.boost} size="xs" />}
+        </div>
       </div>
 
       <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{launch.description}</p>

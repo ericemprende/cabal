@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { generateChart, getReaderId } from '@/lib/api-helpers'
 import { preloadPostRefs, toPostDTO, toPublicUserDTO } from '@/lib/serializers'
+import { activeBoostScores, boostOf } from '@/lib/ammo'
 import type { TokenDetailDTO } from '@/lib/types'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -66,6 +67,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         ? toPublicUserDTO(token.launch.createdBy, followedIds.has(token.launch.createdById))
         : null,
       postsCount: posts.length,
+      boost: boostOf(await activeBoostScores(), 'token', token.id),
       chart: generateChart(token.id, token.mc, token.change24h, token.isRug),
       posts: (await Promise.all(posts.map((p) => toPostDTO(p, likedIds.has(p.id), undefined, postRefs)))) ?? [],
       devHistory: devTokens.map((t) => ({

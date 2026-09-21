@@ -2,6 +2,10 @@
 
 import { create } from 'zustand'
 import type { AuthMode } from '@/components/cabal/auth-dialog'
+import type { BoostTarget } from '@/lib/types'
+
+/** Proyecto al que se le va a disparar munición. */
+export type AmmoTarget = { type: BoostTarget; id: string; name: string; image?: string | null }
 
 /** 'chat' solo tiene botón en la barra móvil: en escritorio el chat vive en la columna izquierda. */
 export type TabKey = 'radar' | 'tokens' | 'feed' | 'leaderboard' | 'chat'
@@ -30,6 +34,11 @@ interface UIState {
   openAuth: (mode?: AuthMode) => void
   premiumOpen: boolean
   setPremiumOpen: (v: boolean) => void
+  /** Diálogo de munición. Con objetivo abre directamente el disparo sobre ese proyecto. */
+  ammoOpen: boolean
+  ammoTarget: AmmoTarget | null
+  openAmmo: (target?: AmmoTarget | null) => void
+  setAmmoOpen: (v: boolean) => void
   welcomeShareOpen: boolean
   setWelcomeShareOpen: (v: boolean) => void
 }
@@ -58,6 +67,10 @@ export const useUI = create<UIState>((set) => ({
   openAuth: (mode) => set({ authOpen: true, ...(mode ? { authMode: mode } : {}) }),
   premiumOpen: false,
   setPremiumOpen: (premiumOpen) => set({ premiumOpen }),
+  ammoOpen: false,
+  ammoTarget: null,
+  openAmmo: (target) => set({ ammoOpen: true, ammoTarget: target ?? null }),
+  setAmmoOpen: (ammoOpen) => set({ ammoOpen }),
   welcomeShareOpen: false,
   setWelcomeShareOpen: (welcomeShareOpen) => set({ welcomeShareOpen }),
 }))

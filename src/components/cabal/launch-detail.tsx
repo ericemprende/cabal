@@ -19,6 +19,7 @@ import { timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch, useMe, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
+import { BoostButton } from '@/components/cabal/ammo'
 import { VerifyRequestRow } from '@/components/cabal/verify-request'
 
 export function LaunchDetailDialog() {
@@ -208,6 +209,10 @@ export function LaunchDetailDialog() {
                   {launch.hype}
                 </button>
                 <ReminderBell launchId={launch.id} launchAt={launch.launchAt} size="md" />
+                <BoostButton
+                  target={{ type: 'launch', id: launch.id, name: launch.ticker ?? launch.name, image: launch.image }}
+                  boost={launch.boost}
+                />
               </div>
 
               {/* Quien lo publicó puede pedir la insignia de launch oficial (perk Premium) */}

@@ -21,6 +21,7 @@ import { LaunchDetailDialog } from '@/components/cabal/launch-detail'
 import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
+import { AmmoDialog } from '@/components/cabal/ammo-dialog'
 import { useFollowToggle, useSession, useUserFollows, useUserProfile } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { usePresenceConnection, useIsOnline } from '@/lib/presence'
@@ -77,6 +78,7 @@ export function ProfileView({ handle }: { handle: string }) {
       <TokenDetailDialog />
       <ProfileDialog />
       <PremiumDialog />
+      <AmmoDialog />
     </div>
   )
 }

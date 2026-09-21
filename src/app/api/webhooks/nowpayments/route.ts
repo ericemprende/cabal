@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { PLANS, grantDays, isPlanKey } from '@/lib/premium'
+import { PACKS, creditAmmo, giftPlanAmmo, isPackKey } from '@/lib/ammo'
 import { NOW_FINAL, fetchNowPayment, nowpaymentsConfigured, verifyNowSignature } from '@/lib/nowpayments'
 
 /**
@@ -53,7 +54,12 @@ export async function POST(req: Request) {
       await db.payment.update({ where: { id: payment.id }, data: { status, ...commonFields } })
     }
 
-    const alreadyGranted = await db.subscription.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
+    // Un cargador de munición se paga igual que un plan, pero en vez de dar
+    // acceso acredita balas. El prefijo del plan es lo que los distingue.
+    const ammoPack = payment.plan.startsWith('ammo_') ? payment.plan.slice(5) : null
+    const alreadyGranted = ammoPack
+      ? await db.ammoEntry.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
+      : await db.subscription.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
     if (status === 'finished' && paymentId && !alreadyGranted) {
       const confirmed = await fetchNowPayment(paymentId)
       const amountOk = Math.abs(Number(confirmed.price_amount) - payment.amountUsd) < 0.01
@@ -67,14 +73,30 @@ export async function POST(req: Request) {
         await db.payment.update({ where: { id: payment.id }, data: { status: 'amount_mismatch', ...commonFields } })
         return NextResponse.json({ received: true })
       }
-      const plan = isPlanKey(payment.plan) ? payment.plan : 'monthly'
-      await grantDays(payment.userId, PLANS[plan].days, {
-        provider: 'nowpayments',
-        plan,
-        paymentId: payment.id,
-      }).catch((e: { code?: string }) => {
-        if (e?.code !== 'P2002') throw e // P2002 = ya concedido por una IPN anterior
-      })
+      if (ammoPack) {
+        if (!isPackKey(ammoPack)) {
+          console.error(`[nowpayments] cargador desconocido en ${payment.id}: ${payment.plan}`)
+          return NextResponse.json({ received: true })
+        }
+        await creditAmmo(payment.userId, PACKS[ammoPack].bullets, {
+          reason: 'purchase',
+          packKey: ammoPack,
+          paymentId: payment.id,
+        })
+      } else {
+        const plan = isPlanKey(payment.plan) ? payment.plan : 'monthly'
+        const sub = await grantDays(payment.userId, PLANS[plan].days, {
+          provider: 'nowpayments',
+          plan,
+          paymentId: payment.id,
+        }).catch((e: { code?: string }) => {
+          if (e?.code !== 'P2002') throw e // P2002 = ya concedido por una IPN anterior
+          return null
+        })
+        // La munición de regalo del plan va atada a la suscripción: si esta IPN
+        // se repite, giftPlanAmmo la reconoce y no regala dos veces.
+        if (sub) await giftPlanAmmo(payment.userId, plan, sub.id)
+      }
       // Confirmado y concedido: ahora sí queda como terminado.
       await db.payment.update({ where: { id: payment.id }, data: { status: 'finished', ...commonFields } })
     }

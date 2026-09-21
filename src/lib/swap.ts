@@ -91,7 +91,7 @@ export function solanaConnection(): Connection {
 }
 
 let _referral: ReferralProvider | null = null
-function referralProvider(): ReferralProvider {
+export function referralProvider(): ReferralProvider {
   if (!_referral) _referral = new ReferralProvider(solanaConnection())
   return _referral
 }

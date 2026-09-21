@@ -14,6 +14,7 @@ import { TrustBadge } from '@/components/cabal/reputation'
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
+import { BoostButton, BoostCounter } from '@/components/cabal/ammo'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, timeAgo } from '@/lib/cabal'
 import { useCreatePost, useFollowToggle, usePointRules, useToken } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -91,6 +92,7 @@ export function TokenDetailDialog() {
                     <NetworkBadge network={token.network} />
                     {token.verified && <OfficialBadge label title="Token oficial verificado por Cabal" />}
                     {token.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1.5 py-0.5 text-[10px] font-black text-[#ff8080]">RUG</span>}
+                    {token.boost && <BoostCounter boost={token.boost} />}
                   </div>
                   <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
                     <span className="font-mono text-lg font-bold">{fmtPrice(token.price)}</span>
@@ -146,7 +148,13 @@ export function TokenDetailDialog() {
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
                     <div className="min-w-0 flex-1">
                       <LiveChart network={token.network} contract={token.contract} height={expanded ? 760 : 600} />
-                      <ExternalLinksRow network={token.network} contract={token.contract} ticker={token.ticker} className="mt-2" />
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <ExternalLinksRow network={token.network} contract={token.contract} ticker={token.ticker} />
+                        <BoostButton
+                          target={{ type: 'token', id: token.id, name: token.ticker, image: token.image }}
+                          boost={token.boost}
+                        />
+                      </div>
                     </div>
                     <TradePanel
                       contract={token.contract}

@@ -7,6 +7,7 @@ import { Coins, MessageCircle, MessageSquare, Radar as RadarIcon, Radar as Radar
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
 import { Ticker } from '@/components/cabal/ticker'
+import { BoostTicker } from '@/components/cabal/boost-hero'
 import { LeftFeed, RightRail } from '@/components/cabal/sidebars'
 import { RadarTab } from '@/components/cabal/radar-tab'
 import { TokensTab } from '@/components/cabal/tokens-tab'
@@ -17,6 +18,7 @@ import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
+import { AmmoDialog } from '@/components/cabal/ammo-dialog'
 import { WelcomeShareDialog } from '@/components/cabal/welcome-share-dialog'
 import { LiveChat } from '@/components/cabal/live-chat'
 import { useUI, type TabKey } from '@/lib/store'
@@ -169,6 +171,9 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
+      {/* Cinta de boosts: se ve en todas las pestañas, no solo en el Radar */}
+      <BoostTicker />
+
       <main className="mx-auto w-full max-w-[1800px] flex-1 px-3 pb-24 pt-4 sm:px-4 md:pb-12">
         <div className="flex gap-5">
           <LeftFeed />
@@ -229,6 +234,7 @@ export default function Home() {
       <ProfileDialog />
       <AdminDialog />
       <PremiumDialog />
+      <AmmoDialog />
       <WelcomeShareDialog />
     </div>
   )

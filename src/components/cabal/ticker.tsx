@@ -7,6 +7,7 @@ import { useTokens } from '@/lib/api-client'
 import { fmtMc, fmtPct, networkMeta } from '@/lib/cabal'
 import { cn } from '@/lib/utils'
 import { TokenGlyph } from '@/components/cabal/shared'
+import { BoostCounter } from '@/components/cabal/ammo'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { TokenDTO } from '@/lib/types'
 
@@ -50,6 +51,8 @@ export function TickerStrip({
           <span className="text-muted-foreground">{networkMeta(t.network).short}</span>
           <span className="text-foreground/80">{fmtMc(t.mc)}</span>
           <span className={cn(t.change24h >= 0 ? 'text-primary' : 'text-[#ff8080]')}>{fmtPct(t.change24h)}</span>
+          {/* La munición también se ve aquí: es donde más ojos pasan */}
+          {t.boost && <BoostCounter boost={t.boost} size="xs" />}
         </span>
       ))}
     </div>

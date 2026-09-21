@@ -69,6 +69,7 @@ const es = {
     notifyReminders: 'Aviso 1 h antes de cada launch',
     notifyTheses: 'Tesis nuevas',
     notifyCalls: 'Calls nuevas de Cabal',
+    notifyBoosts: 'Munición fuerte en un proyecto',
     onlyFollowing: 'Solo de gente que sigo',
   },
   on: 'activado',
@@ -128,6 +129,10 @@ const es = {
   // ---- /call ----
   liquidity: 'Liq.',
   callHead: (user: string) => `🎯 <b>Nueva call de ${user}</b>`,
+  boostHead: (user: string) => `💣 <b>${user} cargó munición</b>`,
+  bullets: 'balas',
+  boostUntil: (hours: number) =>
+    `⏱ Destacado en el Radar durante ${hours >= 24 ? `${Math.round((hours / 24) * 10) / 10} días` : `${hours} h`}`,
   callUsage: 'Escribe <code>/call CONTRATO</code> y, si quieres, tu tesis detrás.',
   callBadContract: 'Ese contrato no tiene buena pinta. Pega el CA completo del token.',
   callTokenNotFound:
@@ -185,6 +190,7 @@ const en: Dict = {
     notifyReminders: '1 h before every launch',
     notifyTheses: 'New theses',
     notifyCalls: 'New Cabal calls',
+    notifyBoosts: 'Heavy ammo on a project',
     onlyFollowing: 'Only from people I follow',
   },
   on: 'on',
@@ -243,6 +249,10 @@ const en: Dict = {
   testMessage: '✅ <b>Cabal test</b>\nThe bot is connected and can post in this chat.',
   liquidity: 'Liq.',
   callHead: (user: string) => `🎯 <b>New call by ${user}</b>`,
+  boostHead: (user) => `💣 <b>${user} loaded ammo</b>`,
+  bullets: 'bullets',
+  boostUntil: (hours) =>
+    `⏱ Featured on the Radar for ${hours >= 24 ? `${Math.round((hours / 24) * 10) / 10} days` : `${hours} h`}`,
   callUsage: 'Send <code>/call CONTRACT</code>, and your thesis after it if you want.',
   callBadContract: "That contract doesn't look right. Paste the token's full CA.",
   callTokenNotFound:

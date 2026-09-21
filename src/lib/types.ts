@@ -193,6 +193,8 @@ export interface LaunchDTO {
   createdAt: string
   createdBy: PublicUserDTO
   postsCount: number
+  /** Munición viva sobre este launch (null = nadie le ha disparado). */
+  boost?: BoostScoreDTO | null
 }
 
 export interface TokenDTO {
@@ -224,6 +226,8 @@ export interface TokenDTO {
   /** Quien lo publicó en el Radar, si el token salió de ahí. */
   publishedBy: PublicUserDTO | null
   postsCount: number
+  /** Munición viva sobre este token (null = nadie le ha disparado). */
+  boost?: BoostScoreDTO | null
 }
 
 export interface TokenDetailDTO extends TokenDTO {
@@ -631,6 +635,60 @@ export interface SwapFeeConfigDTO {
   note: string
 }
 
+export interface SwapFeeTotalsDTO {
+  feeUsd: number
+  volumeUsd: number
+  trades: number
+}
+
+/** Lo que llevan generado las comisiones de compra/venta (panel de admin). */
+export interface SwapFeeEarningsDTO {
+  all: SwapFeeTotalsDTO
+  last30d: SwapFeeTotalsDTO
+  last7d: SwapFeeTotalsDTO
+  last24h: SwapFeeTotalsDTO
+  /** Swaps firmados que nunca confirmaron: parte se cobró, parte no. */
+  pending: SwapFeeTotalsDTO
+  byNetwork: (SwapFeeTotalsDTO & { network: string })[]
+  byKind: (SwapFeeTotalsDTO & { kind: string })[]
+  series: { date: string; feeUsd: number }[]
+  recent: {
+    id: string
+    network: string
+    kind: string
+    walletAddress: string
+    mint: string
+    amountUsd: number
+    feeUsd: number
+    createdAt: string
+  }[]
+}
+
+export interface FeeBalanceDTO {
+  token: string
+  label: string
+  amount: number
+  /** null = sin liquidez para cotizarlo: hay saldo, pero no precio honesto. */
+  usd: number | null
+}
+
+export interface NetworkTreasuryDTO {
+  network: string
+  payee: string
+  balances: FeeBalanceDTO[]
+  usdTotal: number
+  unpriced: number
+  error: string | null
+}
+
+/** Saldo real sin reclamar en las cuentas de comisiones, leido on-chain. */
+export interface SwapTreasuryDTO {
+  networks: NetworkTreasuryDTO[]
+  usdTotal: number
+  unpriced: number
+  checkedAt: string
+}
+
 export interface SerializedTxDTO {
   kind: 'legacy' | 'versioned'
   base64: string
@@ -865,4 +923,96 @@ export interface AdminMetricsDTO {
     extPerMin: number
     extErrLastHour: number
   }
+}
+
+// ---------- Munición y boosts ----------
+
+/** Sobre qué se puede disparar munición. */
+export type BoostTarget = 'launch' | 'token'
+
+/** Lo que el admin configura del sistema de munición (ver lib/ammo.ts). */
+export interface AmmoSettings {
+  /** USD por cargador; null = ese cargador no está a la venta. */
+  prices: Record<string, number | null>
+  /** Balas que regala cada plan Premium al activarse. */
+  planGifts: Record<string, number>
+  /** Balas vivas a partir de las cuales el proyecto se pinta de oro. */
+  goldenAt: number
+  /** Balas de un disparo a partir de las cuales avisan los bots. */
+  notifyAt: number
+}
+
+/** Un cargador a la venta, tal y como se le enseña a quien va a comprar. */
+export interface AmmoPackDTO {
+  key: string
+  label: string
+  bullets: number
+  priceUsd: number
+  /** Las balas en horas de proyecto destacado (una bala = un minuto). */
+  hours: number
+  /** Lo que costarían esas balas al precio del cargador pequeño; null si no hay ahorro. */
+  fullPriceUsd: number | null
+  savingsPct: number
+  card: boolean
+  crypto: boolean
+}
+
+/** Munición viva sobre un proyecto: lo que lo sube en el Radar. */
+export interface BoostScoreDTO {
+  bullets: number
+  endsAt: string
+  /** Balas disparadas en total: con las que quedan da lo lleno que está el cargador. */
+  lifetime: number
+  shooters: number
+  golden: boolean
+  /** El último que recargó, para enseñar su cara cuando entra munición. */
+  lastShooter: { handle: string; name: string; avatar: string } | null
+  lastShotAt: string
+}
+
+export interface BoostDTO {
+  id: string
+  targetType: BoostTarget
+  targetId: string
+  bullets: number
+  startedAt: string
+  endsAt: string
+}
+
+export interface AmmoInfoDTO {
+  loggedIn: boolean
+  /** Balas que le quedan a quien mira. */
+  balance: number
+  packs: AmmoPackDTO[]
+  goldenAt: number
+  /** Balas que regala cada plan, para invitar a Premium desde el propio diálogo. */
+  planGifts: Record<string, number>
+}
+
+/** Panel de admin: todo lo de la munición en una pantalla. */
+export interface AdminAmmoDTO {
+  settings: AmmoSettings
+  /** Los cargadores que existen, con sus balas (el precio sale de settings). */
+  packs: { key: string; label: string; bullets: number }[]
+  /** Hay producto de Stripe para cobrar munición con tarjeta. */
+  cardAvailable: boolean
+  stats: {
+    bulletsSold30d: number
+    revenue30d: number
+    /** Balas compradas y todavía sin disparar, en todas las cuentas. */
+    bulletsCirculating: number
+    /** Proyectos con munición viva ahora mismo. */
+    activeBoosts: number
+  }
+  boosts: {
+    id: string
+    user: AdminUserRefDTO
+    targetType: string
+    targetId: string
+    targetName: string
+    bullets: number
+    bulletsLeft: number
+    endsAt: string
+    createdAt: string
+  }[]
 }

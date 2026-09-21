@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { Flame, Globe, MessageSquare, ShieldAlert, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NetworkBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
+import { BoostCounter } from '@/components/cabal/ammo'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { ContractBuy } from '@/components/cabal/contract-buy'
 import { fmtMc, fmtNum, fmtPct, fmtPrice, networkMeta, timeAgo } from '@/lib/cabal'
@@ -115,7 +116,12 @@ export function TokensTab() {
                 onClick={() => openToken(t.id)}
                 className={cn(
                   GRID,
-                  'card-surface group w-full rounded-xl border border-white/8 p-3 text-left transition-all hover:border-[#8FA83F]/30 hover:bg-white/3 @2xl:px-4'
+                  'card-surface group w-full rounded-xl border p-3 text-left transition-all hover:bg-white/3 @2xl:px-4',
+                  t.boost?.golden
+                    ? 'border-amber-300/55 hover:border-amber-300/80'
+                    : t.boost
+                      ? 'border-amber-400/30 hover:border-amber-300/50'
+                      : 'border-white/8 hover:border-[#8FA83F]/30'
                 )}
               >
                 <div className="flex min-w-0 items-center gap-3">
@@ -125,6 +131,7 @@ export function TokensTab() {
                       {t.ticker}
                       {t.verified && <OfficialBadge title="Token oficial verificado por Cabal" />}
                       {t.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1 py-px text-[9px] font-black text-[#ff8080]">RUG</span>}
+                      {t.boost && <BoostCounter boost={t.boost} size="xs" />}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {t.name} · {timeAgo(t.launchedAt)}

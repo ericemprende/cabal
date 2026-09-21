@@ -9,11 +9,12 @@ import { parseLaunchInput } from '@/lib/launch-input'
 import { getIpfsImage } from '@/lib/ipfs-cache'
 import { ipfsCid } from '@/lib/remote-image'
 import { getPremiumSettings, getViewer, launchAccess, premiumLaunchFields, teamLaunchIdsOf } from '@/lib/premium'
+import { activeBoostScores, boostOf } from '@/lib/ammo'
 
 export async function GET(req: Request) {
   try {
     const meId = await getReaderId()
-    const [launches, votes, follows, postCounts, viewer, settings] = await Promise.all([
+    const [launches, votes, follows, postCounts, viewer, settings, boosts] = await Promise.all([
       // Compartido entre todos los usuarios -> cacheable. Los votos y follows
       // de más abajo son personales y se leen siempre en fresco. Los datos
       // premium también viajan en la caché: se filtran por usuario más abajo.
@@ -29,6 +30,9 @@ export async function GET(req: Request) {
       db.post.groupBy({ by: ['launchId'], _count: { _all: true } }),
       getViewer(req),
       getPremiumSettings(),
+      // Fuera de la caché de arriba: la munición baja un minuto cada minuto y
+      // tiene su propia caché corta.
+      activeBoostScores(),
     ])
     const hypedIds = new Set(votes.map((v) => v.targetId))
     const followedIds = new Set(follows.map((f) => f.targetId))
@@ -69,6 +73,7 @@ export async function GET(req: Request) {
       createdAt: new Date(l.createdAt).toISOString(),
       createdBy: toPublicUserDTO(l.createdBy, followedIds.has(l.createdById)),
       postsCount: countMap.get(l.id) ?? 0,
+      boost: boostOf(boosts, 'launch', l.id),
     }))
     return NextResponse.json(dto)
   } catch (e) {

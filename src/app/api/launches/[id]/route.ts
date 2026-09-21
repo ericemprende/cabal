@@ -12,6 +12,7 @@ import { buildLaunchChangeNote } from '@/lib/launch-change-note'
 import { ipfsCid } from '@/lib/remote-image'
 import { getPremiumSettings, getViewer, launchAccess, premiumLaunchFields } from '@/lib/premium'
 import { teamManagerIds, toMemberDTO } from '@/lib/launch-team'
+import { activeBoostScores, boostOf } from '@/lib/ammo'
 import type { LaunchDetailDTO, PostDTO } from '@/lib/types'
 
 /**
@@ -114,6 +115,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       createdAt: launch.createdAt.toISOString(),
       createdBy: toPublicUserDTO(launch.createdBy, followedIds.has(launch.createdById)),
       postsCount: posts.length,
+      boost: boostOf(await activeBoostScores(), 'launch', launch.id),
       canEdit,
       team: accepted.map(toMemberDTO),
       pendingInvites: canManageTeam ? invites.map(toMemberDTO) : [],

@@ -120,6 +120,11 @@ const ALERTS: { name: string; what: string; def: string }[] = [
   { name: 'Calls nuevas de Cabal', what: 'Las calls que publica la comunidad (desde la web u otros chats).', def: 'Desactivado' },
   { name: 'Tesis nuevas', what: 'Las tesis nuevas del feed.', def: 'Desactivado' },
   {
+    name: 'Munición fuerte en un proyecto',
+    what: 'Cuando alguien mete mucha munición de golpe en un proyecto y lo sube al Radar. Solo los disparos grandes, nunca bala a bala.',
+    def: 'Activado',
+  },
+  {
     name: 'Solo de gente que sigo',
     what: 'Filtra los avisos anteriores: solo llegan los de cuentas que sigue quien conectó el chat (y los suyos propios).',
     def: 'Desactivado',

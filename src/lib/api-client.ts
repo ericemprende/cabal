@@ -5,6 +5,11 @@ import bs58 from 'bs58'
 import { toast } from 'sonner'
 import type {
   VerifyRequestDTO,
+  AdminAmmoDTO,
+  AmmoInfoDTO,
+  BoostDTO,
+  BoostScoreDTO,
+  BoostTarget,
   AdminMetricsDTO,
   AdminOverviewDTO,
   AdminPremiumDTO,
@@ -30,6 +35,8 @@ import type {
   ReferralDTO,
   SwapConfigDTO,
   SwapFeeConfigDTO,
+  SwapFeeEarningsDTO,
+  SwapTreasuryDTO,
   TokenBalanceDTO,
   TokenDTO,
   TokenDetailDTO,
@@ -148,6 +155,8 @@ export const qk = {
   affiliates: ['affiliates'] as const,
   adminAffiliates: ['admin', 'affiliates'] as const,
   adminSwapFees: ['admin', 'swap-fees'] as const,
+  adminSwapEarnings: ['admin', 'swap-earnings'] as const,
+  adminSwapTreasury: ['admin', 'swap-treasury'] as const,
   adminWaitlist: ['admin', 'waitlist'] as const,
   waitlistMe: ['waitlist', 'me'] as const,
   referral: ['me', 'referral'] as const,
@@ -158,6 +167,9 @@ export const qk = {
   userReputation: (handle: string) => ['user', handle.toLowerCase(), 'reputation'] as const,
   premium: ['premium'] as const,
   adminPremium: ['admin', 'premium'] as const,
+  ammo: ['ammo'] as const,
+  boosts: ['boosts'] as const,
+  adminAmmo: ['admin', 'ammo'] as const,
 }
 
 export function useMe() {
@@ -629,6 +641,31 @@ export function useAdminSwapFees(enabled: boolean) {
     queryKey: qk.adminSwapFees,
     queryFn: () => jsonFetch('/api/admin/swap-fees'),
     enabled,
+  })
+}
+
+/** Cuánto llevan generado esas comisiones (estimado, sobre swaps confirmados). */
+export function useAdminSwapEarnings(enabled: boolean) {
+  return useQuery<SwapFeeEarningsDTO>({
+    queryKey: qk.adminSwapEarnings,
+    queryFn: () => jsonFetch('/api/admin/swap-fees/earnings'),
+    enabled,
+    staleTime: 60_000,
+  })
+}
+
+/**
+ * Saldo real sin reclamar, leido de la cadena. Va bajo demanda (`enabled`
+ * aparte) porque toca los RPC de varias redes y tarda unos segundos: no
+ * conviene dispararlo solo con abrir la seccion.
+ */
+export function useAdminSwapTreasury(enabled: boolean) {
+  return useQuery<SwapTreasuryDTO>({
+    queryKey: qk.adminSwapTreasury,
+    queryFn: () => jsonFetch('/api/admin/swap-fees/treasury'),
+    enabled,
+    staleTime: 120_000,
+    retry: false,
   })
 }
 
@@ -1363,6 +1400,113 @@ export function useAdminReviewVerification() {
     onSuccess: (_r, v) => {
       invalidate()
       toast.success(v.action === 'approve' ? 'Verificación aprobada' : 'Solicitud rechazada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+// ---------- Munición y boosts ----------
+
+/** Saldo de balas y cargadores a la venta. */
+export function useAmmoInfo(enabled = true) {
+  return useQuery<AmmoInfoDTO>({
+    queryKey: qk.ammo,
+    queryFn: () => jsonFetch('/api/ammo'),
+    enabled,
+  })
+}
+
+/**
+ * Munición viva de cada proyecto, indexada por `tipo:id`. Se refresca sola
+ * cada minuto: es justo lo que tarda un proyecto en gastar una bala.
+ */
+export function useBoostScores() {
+  return useQuery<Record<string, BoostScoreDTO>>({
+    queryKey: qk.boosts,
+    queryFn: () => jsonFetch('/api/boosts'),
+    refetchInterval: 60_000,
+  })
+}
+
+/** Compra un cargador: abre la pasarela igual que los planes Premium. */
+export function useBuyAmmoPack() {
+  return useMutation({
+    mutationFn: (data: { pack: string; method: 'card' | 'crypto'; popup?: Window | null }) =>
+      jsonFetch<{ url: string }>('/api/ammo/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ pack: data.pack, method: data.method }),
+      }),
+    onSuccess: (res, variables) => {
+      navigateInNewTab(res.url, variables.popup ?? null)
+    },
+    onError: (e: Error, variables) => {
+      variables.popup?.close()
+      toast.error(e.message)
+    },
+  })
+}
+
+/** Dispara balas sobre un proyecto y refresca lo que cambia de sitio. */
+export function useFireAmmo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { targetType: BoostTarget; targetId: string; bullets: number }) =>
+      jsonFetch<{ boost: BoostDTO; balance: number; scores: Record<string, BoostScoreDTO> }>('/api/boosts', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res, v) => {
+      // El servidor ya devuelve el saldo y las puntuaciones nuevas: se pintan
+      // sin esperar a que vuelvan a pedirse.
+      qc.setQueryData<AmmoInfoDTO>(qk.ammo, (prev) => (prev ? { ...prev, balance: res.balance } : prev))
+      qc.setQueryData(qk.boosts, res.scores)
+      qc.invalidateQueries({ queryKey: qk.launches })
+      qc.invalidateQueries({ queryKey: ['tokens'] })
+      if (v.targetType === 'launch') qc.invalidateQueries({ queryKey: qk.launch(v.targetId) })
+      else qc.invalidateQueries({ queryKey: qk.token(v.targetId) })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+/** Panel de admin: configuración de la munición, ventas y boosts vivos. */
+export function useAdminAmmo(enabled: boolean) {
+  return useQuery<AdminAmmoDTO>({
+    queryKey: qk.adminAmmo,
+    queryFn: () => jsonFetch('/api/admin/ammo'),
+    enabled,
+  })
+}
+
+export function useAdminSaveAmmo() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: {
+      prices?: Record<string, number | null>
+      planGifts?: Record<string, number>
+      goldenAt?: number
+      notifyAt?: number
+    }) => jsonFetch<{ ok: boolean }>('/api/admin/ammo', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Munición guardada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
+/** Regala balas a una cuenta (o se las quita, con un número negativo). */
+export function useAdminGrantAmmo() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: { handle: string; bullets: number; note?: string }) =>
+      jsonFetch<{ ok: boolean; handle: string; balance: number }>('/api/admin/ammo', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res) => {
+      invalidate()
+      toast.success(`@${res.handle} tiene ahora ${res.balance.toLocaleString('es')} balas`)
     },
     onError: (e: Error) => toast.error(e.message),
   })

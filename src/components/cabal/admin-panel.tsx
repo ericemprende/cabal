@@ -6,6 +6,7 @@ import {
   Activity,
   BarChart3,
   BadgeCheck,
+  Bomb,
   CheckCircle2,
   Coins,
   CreditCard,
@@ -75,11 +76,16 @@ import {
   useAdminDeletePost,
   useAdminGrantPremium,
   useAdminPosts,
+  useAdminAmmo,
+  useAdminGrantAmmo,
+  useAdminSaveAmmo,
   useAdminPremium,
   useAdminRevokePremium,
   useAdminRules,
   useAdminSaveAffiliate,
   useAdminSaveSwapFee,
+  useAdminSwapEarnings,
+  useAdminSwapTreasury,
   useAdminSwapFees,
   useAdminTokens,
   useAdminUpdateLaunch,
@@ -161,6 +167,7 @@ type AdminView =
   | 'notificaciones'
   | 'usuarios'
   | 'premium'
+  | 'municion'
   | 'reclamos'
   | 'verificacion'
   | 'reglas'
@@ -266,6 +273,7 @@ export function AdminPanel({
   const NAV_ITEMS = [
     { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
     { key: 'premium', label: 'Plan Premium', icon: Crown },
+    { key: 'municion', label: 'Munición y boosts', icon: Bomb },
     { key: 'verificacion', label: 'Verificación oficial', icon: ShieldCheck },
     { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
     { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
@@ -353,6 +361,7 @@ export function AdminPanel({
         )}
 
         {view === 'premium' && <AdminPremium enabled={enabled} />}
+        {view === 'municion' && <AdminAmmo enabled={enabled} />}
 
         {view === 'verificacion' && <AdminVerification enabled={enabled} />}
         {view === 'reclamos' && <AdminClaims enabled={enabled} />}
@@ -1357,11 +1366,251 @@ function AdminAffiliates({ enabled }: { enabled: boolean }) {
 const bpsToPct = (bps: number) => (bps / 100).toString()
 const pctToBps = (pct: string) => Math.round(Number(pct) * 100)
 
+const fmtUsd = (n: number) =>
+  n >= 1000 ? `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`
+
+/**
+ * Lo recaudado por esas comisiones. Sale de las intenciones de swap que se
+ * confirmaron on-chain, y es un estimado (monto x comision): no cuenta
+ * slippage ni impacto de precio, asi que lo que de verdad hay en la cuenta de
+ * referido de Jupiter o en la feeWallet de EVM puede bailar un poco.
+ */
+/**
+ * El saldo real que hay sin reclamar en las cuentas de comisiones, leido de
+ * la cadena. Es OTRO numero que el de arriba, no el mismo mejor medido:
+ * arriba esta lo cobrado historicamente, aqui lo que queda por retirar. Se
+ * pide a boton porque toca los RPC de varias redes y tarda unos segundos.
+ */
+function SwapFeeTreasury() {
+  const [asked, setAsked] = useState(false)
+  const q = useAdminSwapTreasury(asked)
+
+  return (
+    <div className="space-y-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <Coins className="h-3.5 w-3.5 text-primary" aria-hidden /> Disponible ahora (sin reclamar)
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-[11px]"
+          onClick={() => (asked ? q.refetch() : setAsked(true))}
+          disabled={q.isFetching}
+        >
+          {q.isFetching ? 'Leyendo la cadena…' : asked ? 'Actualizar' : 'Consultar saldo'}
+        </Button>
+      </div>
+
+      {!asked && (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Lee on-chain la cuenta de referido de Jupiter (Solana) y la wallet de comisiones de cada red EVM. Tarda unos
+          segundos, por eso no se carga sola.
+        </p>
+      )}
+
+      {q.isFetching && <Skeleton className="h-28 w-full" />}
+
+      {q.isError && (
+        <div className="rounded-xl border border-[#ff4d5e]/30 bg-[#121410] p-3 text-xs text-[#ff8080]">
+          No se pudo leer el saldo: {q.error.message}
+        </div>
+      )}
+
+      {q.data && !q.isFetching && (
+        <>
+          <div className="rounded-xl border border-white/10 bg-[#121410] px-3.5 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total sin reclamar</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{fmtUsd(q.data.usdTotal)}</p>
+            {q.data.unpriced > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                + {q.data.unpriced} token{q.data.unpriced === 1 ? '' : 's'} sin precio: el total se queda corto
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {q.data.networks.map((n) => (
+              <div key={n.network} className="rounded-xl border border-white/10 bg-[#121410] px-3 py-2.5">
+                <div className="flex items-center gap-2 text-xs">
+                  <NetworkIcon network={n.network} />
+                  <span className="font-semibold text-foreground/90">{networkMeta(n.network).label}</span>
+                  {n.payee && <CopyCA contract={n.payee} />}
+                  <span className="ml-auto font-semibold tabular-nums text-primary">{fmtUsd(n.usdTotal)}</span>
+                </div>
+                {n.error ? (
+                  <p className="mt-1 text-[10px] text-muted-foreground">{n.error}</p>
+                ) : n.balances.length === 0 ? (
+                  <p className="mt-1 text-[10px] text-muted-foreground">Sin saldo pendiente.</p>
+                ) : (
+                  <div className="mt-1.5 space-y-0.5">
+                    {n.balances.slice(0, 8).map((b) => (
+                      <div key={b.token} className="flex items-center gap-2 text-[11px]">
+                        <span className="truncate text-foreground/80">{b.label}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {b.amount.toLocaleString('en-US', { maximumFractionDigits: 4 })}
+                        </span>
+                        <span className="ml-auto shrink-0 tabular-nums text-primary">
+                          {b.usd === null ? <span className="text-muted-foreground">sin precio</span> : fmtUsd(b.usd)}
+                        </span>
+                      </div>
+                    ))}
+                    {n.balances.length > 8 && (
+                      <p className="text-[10px] text-muted-foreground">y {n.balances.length - 8} m&aacute;s</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[10px] leading-relaxed text-muted-foreground">
+            Solo lectura. Para retirar: referral.jup.ag en Solana, o directamente desde la wallet en las redes EVM. Ojo
+            &mdash; la comisi&oacute;n se cobra en el token comprado, as&iacute; que este total sube y baja solo con el
+            precio de esos tokens; no es lo mismo que lo cobrado hist&oacute;ricamente.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
+
+function SwapFeeEarnings({ enabled }: { enabled: boolean }) {
+  const q = useAdminSwapEarnings(enabled)
+  if (q.isLoading) return <Skeleton className="h-64 w-full" />
+  if (q.isError)
+    return (
+      <div className="rounded-xl border border-[#ff4d5e]/30 bg-[#0a0b08] p-4 text-xs text-[#ff8080]">
+        No se pudieron cargar las comisiones generadas: {q.error.message}
+      </div>
+    )
+  const d = q.data
+  if (!d) return null
+  const buys = d.byKind.find((k) => k.kind === 'buy')
+  const sells = d.byKind.find((k) => k.kind === 'sell')
+
+  return (
+    <div className="space-y-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <TrendingUp className="h-3.5 w-3.5 text-primary" aria-hidden /> Comisiones generadas
+        </p>
+        <span className="text-[10px] text-muted-foreground">{d.all.trades} operaciones confirmadas</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {(
+          [
+            ['Hoy (24 h)', d.last24h],
+            ['7 dias', d.last7d],
+            ['30 dias', d.last30d],
+            ['Total', d.all],
+          ] as [string, typeof d.all][]
+        ).map(([label, t]) => (
+          <div key={label} className="rounded-xl border border-white/10 bg-[#121410] px-3.5 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
+            <p className="mt-1 text-xl font-bold tabular-nums text-primary">{fmtUsd(t.feeUsd)}</p>
+            <p className="text-[10px] tabular-nums text-muted-foreground">
+              {fmtUsd(t.volumeUsd)} movidos &middot; {t.trades} ops
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {d.series.some((pt) => pt.feeUsd > 0) && (
+        <div className="h-36 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={d.series} margin={{ top: 4, right: 8, bottom: 0, left: -18 }}>
+              <CartesianGrid stroke="rgba(143,168,63,0.07)" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(v: string) => v.slice(5)}
+                tick={{ fill: '#8b917f', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis tick={{ fill: '#8b917f', fontSize: 10 }} axisLine={false} tickLine={false} width={44} />
+              <Tooltip
+                cursor={{ fill: 'rgba(143,168,63,0.08)' }}
+                contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
+                formatter={(v: number) => [fmtUsd(v), 'Comisiones']}
+              />
+              <Bar dataKey="feeUsd" fill="#8FA83F" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {d.byNetwork.length > 0 && (
+        <div className="space-y-1.5">
+          {d.byNetwork.map((n) => (
+            <div key={n.network} className="flex items-center gap-2 text-xs">
+              <NetworkIcon network={n.network} />
+              <span className="w-24 shrink-0 truncate text-foreground/80">{networkMeta(n.network).label}</span>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/5">
+                <div
+                  className="h-full rounded-full bg-primary"
+                  style={{ width: `${d.all.feeUsd > 0 ? (n.feeUsd / d.all.feeUsd) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="w-20 shrink-0 text-right font-semibold tabular-nums text-primary">{fmtUsd(n.feeUsd)}</span>
+              <span className="w-14 shrink-0 text-right tabular-nums text-muted-foreground">{n.trades} ops</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="rounded-xl border border-white/10 bg-[#121410] px-3.5 py-2.5 text-xs">
+          <span className="text-muted-foreground">Compras</span>{' '}
+          <span className="font-semibold tabular-nums text-primary">{fmtUsd(buys?.feeUsd ?? 0)}</span>
+          <span className="text-muted-foreground"> &middot; Ventas </span>
+          <span className="font-semibold tabular-nums text-primary">{fmtUsd(sells?.feeUsd ?? 0)}</span>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-[#121410] px-3.5 py-2.5 text-[11px] text-muted-foreground">
+          Sin confirmar: <span className="font-semibold tabular-nums text-foreground/80">{fmtUsd(d.pending.feeUsd)}</span>{' '}
+          ({d.pending.trades} ops) &mdash; se firmaron pero nunca lleg&oacute; la confirmaci&oacute;n on-chain.
+        </div>
+      </div>
+
+      {d.recent.length > 0 && (
+        <details>
+          <summary className="cursor-pointer list-none text-[11px] font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground">
+            &Uacute;ltimas operaciones
+          </summary>
+          <div className="mt-2 space-y-1">
+            {d.recent.map((r) => (
+              <div key={r.id} className="flex items-center gap-2 rounded-lg border border-white/5 bg-[#121410] px-2.5 py-1.5 text-[11px]">
+                <NetworkIcon network={r.network} />
+                <span className={cn('font-semibold', r.kind === 'buy' ? 'text-primary' : 'text-[#ff8080]')}>
+                  {r.kind === 'buy' ? 'Compra' : 'Venta'}
+                </span>
+                <span className="tabular-nums text-foreground/80">{fmtUsd(r.amountUsd)}</span>
+                <span className="font-semibold tabular-nums text-primary">+{fmtUsd(r.feeUsd)}</span>
+                <span className="ml-auto shrink-0 text-muted-foreground">{timeAgo(r.createdAt)}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      <p className="text-[10px] leading-relaxed text-muted-foreground">
+        Estimado sobre el monto operado: no descuenta slippage ni impacto de precio. El saldo real est&aacute; en la
+        cuenta de referido de Jupiter (Solana) y en la wallet de comisiones de cada red EVM.
+      </p>
+    </div>
+  )
+}
+
 function AdminSwapFees({ enabled }: { enabled: boolean }) {
   const list = useAdminSwapFees(enabled)
 
   return (
     <div className="space-y-3">
+      <SwapFeeEarnings enabled={enabled} />
+      <SwapFeeTreasury />
+
       <p className="text-xs text-muted-foreground">
         Comisión que cobra Cabal cuando alguien compra o vende un token sin salir de la plataforma, red por red. Solana
         (vía Jupiter) y la compra en Ethereum/Base/BNB Chain/Robinhood Chain/Arc (vía 0x) ya están integradas; Tron queda
@@ -2195,6 +2444,278 @@ function AdminVerification({ enabled }: { enabled: boolean }) {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * Munición y boosts: qué cuesta cada cargador, cuánta munición regala cada
+ * plan, a partir de cuántas balas un proyecto se vuelve dorado, y qué está
+ * destacado ahora mismo.
+ */
+function AdminAmmo({ enabled }: { enabled: boolean }) {
+  const data = useAdminAmmo(enabled)
+  const save = useAdminSaveAmmo()
+  const give = useAdminGrantAmmo()
+  // Borrador sobre lo que hay en el servidor, igual que las reglas de puntos
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  const [handle, setHandle] = useState('')
+  const [bullets, setBullets] = useState('1440')
+  const [note, setNote] = useState('')
+
+  const settings = data.data?.settings
+  const packs = data.data?.packs ?? []
+  const stats = data.data?.stats
+  const field = (key: string, current: number | null) => draft[key] ?? (current === null ? '' : String(current))
+  const set = (key: string, v: string) => setDraft((d) => ({ ...d, [key]: v }))
+
+  const doSave = () => {
+    if (!settings) return
+    const prices: Record<string, number | null> = {}
+    for (const p of packs) {
+      const raw = field(`price_${p.key}`, settings.prices[p.key] ?? null).trim()
+      prices[p.key] = raw === '' ? null : Number(raw)
+    }
+    const planGifts: Record<string, number> = {}
+    for (const [plan, gift] of Object.entries(settings.planGifts)) {
+      planGifts[plan] = Math.max(0, Math.round(Number(field(`gift_${plan}`, gift)) || 0))
+    }
+    const goldenAt = Math.max(1, Math.round(Number(field('goldenAt', settings.goldenAt)) || settings.goldenAt))
+    const notifyAt = Math.max(1, Math.round(Number(field('notifyAt', settings.notifyAt)) || settings.notifyAt))
+    save.mutate({ prices, planGifts, goldenAt, notifyAt }, { onSuccess: () => setDraft({}) })
+  }
+
+  const doGive = () => {
+    const h = handle.trim().replace(/^@+/, '')
+    const n = Math.round(Number(bullets))
+    if (!h) {
+      toast.error('Escribe el @usuario')
+      return
+    }
+    if (!Number.isFinite(n) || n === 0) {
+      toast.error('Escribe cuántas balas (en negativo para quitarlas)')
+      return
+    }
+    give.mutate(
+      { handle: h, bullets: n, note: note.trim() || undefined },
+      {
+        onSuccess: () => {
+          setHandle('')
+          setNote('')
+        },
+      }
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Una bala es un minuto de proyecto destacado arriba del Radar. Aquí se pone el precio de cada cargador, la
+        munición que regala cada plan Premium al activarse y a partir de cuántas balas un proyecto se vuelve dorado.
+      </p>
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <Kpi label="Balas vendidas 30d" value={stats?.bulletsSold30d ?? 0} icon={<Bomb className="h-3.5 w-3.5" />} />
+        <div className="rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5" /> Ingresos 30d
+          </p>
+          <p className="mt-1 text-xl font-bold tabular-nums">${(stats?.revenue30d ?? 0).toLocaleString('es')}</p>
+        </div>
+        <Kpi
+          label="Balas sin disparar"
+          value={stats?.bulletsCirculating ?? 0}
+          icon={<Coins className="h-3.5 w-3.5" />}
+        />
+        <Kpi label="Proyectos destacados" value={stats?.activeBoosts ?? 0} icon={<Zap className="h-3.5 w-3.5" />} />
+      </div>
+
+      {data.data && !data.data.cardAvailable && (
+        <p className="rounded-xl border border-amber-400/25 bg-amber-400/[0.06] px-3.5 py-2.5 text-[12px] text-amber-200">
+          Falta <code className="font-mono">STRIPE_PRODUCT_AMMO</code> en el entorno: la munición solo se puede pagar
+          en cripto hasta que exista ese producto en Stripe.
+        </p>
+      )}
+
+      {data.isLoading || !settings ? (
+        <Skeleton className="h-64 w-full" />
+      ) : (
+        <>
+          {/* Precio de cada cargador */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Cargadores</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {packs.map((p) => (
+                <div
+                  key={p.key}
+                  className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-[#0a0b08] p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">{p.label}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {p.bullets.toLocaleString('es')} balas · {Math.round((p.bullets / 60) * 10) / 10} h destacado
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-muted-foreground">$</span>
+                    <Input
+                      type="number"
+                      value={field(`price_${p.key}`, settings.prices[p.key] ?? null)}
+                      onChange={(e) => set(`price_${p.key}`, e.target.value)}
+                      placeholder="No a la venta"
+                      aria-label={`Precio del cargador ${p.label}`}
+                      className="h-9 w-28 bg-[#121410] text-right text-[13px]"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Deja el precio vacío para retirar ese cargador de la venta.
+            </p>
+          </div>
+
+          {/* Regalo de los planes y umbral dorado */}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Munición que regala cada plan
+              </p>
+              <div className="space-y-2">
+                {Object.entries(settings.planGifts).map(([plan, gift]) => (
+                  <div key={plan} className="flex items-center gap-2">
+                    <span className="min-w-0 flex-1 truncate text-[13px] capitalize">{plan}</span>
+                    <Input
+                      type="number"
+                      value={field(`gift_${plan}`, gift)}
+                      onChange={(e) => set(`gift_${plan}`, e.target.value)}
+                      aria-label={`Balas de regalo del plan ${plan}`}
+                      className="h-9 w-28 bg-[#121410] text-right text-[13px]"
+                    />
+                    <span className="w-16 text-right text-[11px] text-muted-foreground">
+                      {Math.round((Number(field(`gift_${plan}`, gift)) / 60) * 10) / 10} h
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Cargador Dorado
+              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={field('goldenAt', settings.goldenAt)}
+                  onChange={(e) => set('goldenAt', e.target.value)}
+                  aria-label="Balas activas para el Cargador Dorado"
+                  className="h-9 w-32 bg-[#121410] text-right text-[13px]"
+                />
+                <span className="text-[12px] text-muted-foreground">balas activas</span>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                A partir de ahí el proyecto sale dorado y con destello en el Radar, la lista de tokens y la barra de
+                precios.
+              </p>
+
+              <p className="mb-2 mt-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Avisar en Telegram y Discord
+              </p>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={field('notifyAt', settings.notifyAt)}
+                  onChange={(e) => set('notifyAt', e.target.value)}
+                  aria-label="Balas de un disparo a partir de las cuales avisan los bots"
+                  className="h-9 w-32 bg-[#121410] text-right text-[13px]"
+                />
+                <span className="text-[12px] text-muted-foreground">balas de golpe</span>
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Solo se avisa de los disparos grandes. Bajarlo mucho convierte el aviso en ruido y los grupos lo
+                apagan; cada chat puede desactivarlo por su cuenta.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            onClick={doSave}
+            disabled={save.isPending || Object.keys(draft).length === 0}
+            className="h-9 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+          >
+            <Save className="h-3.5 w-3.5" /> Guardar munición
+          </Button>
+
+          {/* Regalar balas a mano */}
+          <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Regalar balas</p>
+            <div className="grid gap-2 sm:grid-cols-[160px_120px_1fr_auto]">
+              <Input
+                value={handle}
+                onChange={(e) => setHandle(e.target.value)}
+                placeholder="@usuario"
+                aria-label="Usuario"
+                className="h-9 bg-[#121410] text-[13px]"
+              />
+              <Input
+                type="number"
+                value={bullets}
+                onChange={(e) => setBullets(e.target.value)}
+                placeholder="Balas"
+                aria-label="Balas (negativo para quitar)"
+                className="h-9 bg-[#121410] text-center text-[13px]"
+              />
+              <Input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Motivo (opcional)"
+                aria-label="Motivo"
+                className="h-9 bg-[#121410] text-[13px]"
+              />
+              <Button
+                onClick={doGive}
+                disabled={give.isPending || !handle.trim()}
+                className="h-9 gap-1.5 rounded-lg bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
+              >
+                <Bomb className="h-3.5 w-3.5" /> Dar
+              </Button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              En negativo se quitan: −500 le retira 500 balas si las tiene.
+            </p>
+          </div>
+
+          {/* Qué está destacado ahora */}
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Boosts activos</p>
+            {(data.data?.boosts ?? []).map((b) => (
+              <div
+                key={b.id}
+                className="flex flex-wrap items-center gap-2.5 rounded-lg border border-white/10 bg-[#0a0b08] p-2.5 text-xs"
+              >
+                <UserAvatar name={b.user.name} handle={b.user.handle} src={b.user.avatar} size="sm" />
+                <span className="min-w-0 truncate font-semibold">@{b.user.handle}</span>
+                <span className="text-muted-foreground">disparó</span>
+                <span className="font-bold tabular-nums text-amber-300">{b.bullets.toLocaleString('es')}</span>
+                <span className="text-muted-foreground">balas a</span>
+                <span className="min-w-0 truncate font-bold">{b.targetName}</span>
+                <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {b.targetType === 'launch' ? 'Radar' : 'Token'}
+                </span>
+                <span className="ml-auto tabular-nums text-muted-foreground">
+                  le quedan {b.bulletsLeft.toLocaleString('es')}
+                </span>
+              </div>
+            ))}
+            {(data.data?.boosts ?? []).length === 0 && (
+              <p className="rounded-xl border border-dashed border-white/12 py-6 text-center text-xs text-muted-foreground">
+                Ahora mismo no hay ningún proyecto con munición activa.
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

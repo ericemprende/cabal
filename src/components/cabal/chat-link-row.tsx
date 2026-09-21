@@ -15,11 +15,12 @@ import { MAX_TOKEN_FILTER, normalizeFilterEntry, toggleFilterEntry } from '@/lib
  * tipo de chat (un "grupo" de Telegram es un "canal" de servidor en Discord).
  */
 
-const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'onlyFollowing'; label: string }[] = [
+const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'notifyBoosts' | 'onlyFollowing'; label: string }[] = [
   { key: 'notifyLaunches', label: 'Lanzamientos nuevos' },
   { key: 'notifyReminders', label: 'Aviso antes de cada launch' },
   { key: 'notifyCalls', label: 'Calls nuevas de Cabal' },
   { key: 'notifyTheses', label: 'Tesis nuevas' },
+  { key: 'notifyBoosts', label: 'Munición fuerte en un proyecto' },
   { key: 'onlyFollowing', label: 'Solo de gente que sigo' },
 ]
 
