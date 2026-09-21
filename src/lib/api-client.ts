@@ -162,6 +162,7 @@ export const qk = {
   referral: ['me', 'referral'] as const,
   projectClaims: ['me', 'project-claims'] as const,
   user: (handle: string) => ['user', handle.toLowerCase()] as const,
+  userSearch: (q: string) => ['user-search', q.toLowerCase()] as const,
   userFollows: (handle: string, type: 'followers' | 'following') =>
     ['user', handle.toLowerCase(), type] as const,
   userReputation: (handle: string) => ['user', handle.toLowerCase(), 'reputation'] as const,
@@ -358,6 +359,18 @@ export function useLeaderboard(period: CallPeriod = 'all', community: string | n
     queryFn: () =>
       jsonFetch(`/api/leaderboard?period=${period}${community ? `&community=${encodeURIComponent(community)}` : ''}`),
     placeholderData: (prev) => prev,
+  })
+}
+
+/** Personas que coinciden con lo escrito en el buscador (nombre o @usuario). */
+export function useUserSearch(q: string) {
+  const term = q.replace(/^@+/, '').trim()
+  return useQuery<PublicUserDTO[]>({
+    queryKey: qk.userSearch(term),
+    queryFn: () => jsonFetch(`/api/users/search?q=${encodeURIComponent(term)}`),
+    enabled: term.length >= 2,
+    placeholderData: (prev) => prev,
+    staleTime: 30_000,
   })
 }
 

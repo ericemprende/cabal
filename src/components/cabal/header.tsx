@@ -22,8 +22,10 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { CabalWordmark, CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { AuthDialog } from '@/components/cabal/auth-dialog'
 import { AffiliatesDialog } from '@/components/cabal/affiliates-dialog'
-import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens } from '@/lib/api-client'
+import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens, useUserSearch } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { cn } from '@/lib/utils'
+import { ContractResult, isContractAddress } from '@/components/cabal/contract-buy'
 import { AmmoBadge } from '@/components/cabal/ammo'
 import { DonateButton } from '@/components/cabal/donate-dialog'
 import { useGoToTab } from '@/lib/use-go-to-tab'
@@ -55,30 +57,32 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0b08]/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1800px] items-center gap-3 px-3 sm:px-4">
         <button
-          className="flex cursor-pointer items-center outline-none transition-opacity hover:opacity-80"
+          className="flex shrink-0 cursor-pointer items-center outline-none transition-opacity hover:opacity-80"
           onClick={() => goToTab('radar')}
           aria-label="Ir al Radar"
         >
           <CabalWordmark className="h-9 sm:h-10" />
         </button>
 
-        {/* Search (desktop) */}
-        <button
-          onClick={() => setSearchOpen(true)}
-          className="ml-4 hidden h-9 w-full max-w-md items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 text-sm text-muted-foreground transition-colors hover:border-[#8FA83F]/30 md:flex"
-          aria-label="Buscar tokens, launches o usuarios"
-        >
-          <Search className="h-4 w-4" />
-          <span>Buscar tokens, launches o traders…</span>
-          <kbd className="ml-auto rounded border border-white/10 px-1.5 text-[10px] text-muted-foreground">/</kbd>
-        </button>
+        {/* Donaciones: pegado al logo, que es donde primero se mira */}
+        <DonateButton className="shrink-0" />
 
-        <div className="ml-auto flex items-center gap-2">
+        {/* Search (desktop) — en el centro de la barra */}
+        <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 text-sm text-muted-foreground transition-colors hover:border-[#8FA83F]/30"
+            aria-label="Buscar tokens, launches, personas o pegar un contrato"
+          >
+            <Search className="h-4 w-4" />
+            <span className="truncate">Busca tokens, personas o pega un contrato…</span>
+            <kbd className="ml-auto shrink-0 rounded border border-white/10 px-1.5 text-[10px] text-muted-foreground">/</kbd>
+          </button>
+        </div>
+
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {/* Munición: la granada con el saldo de balas, arriba a la derecha */}
           <AmmoBadge />
-
-          {/* Donaciones */}
-          <DonateButton />
 
           {me && <PointsPill points={me.points} className="hidden sm:inline-flex" />}
 
@@ -276,43 +280,76 @@ function SearchDialog({
   users,
   onOpenLaunch,
 }: {
-  launches: { id: string; name: string; ticker: string | null; isPrivate: boolean; image?: string | null; network: string; launchAt: string }[]
+  launches: { id: string; name: string; ticker: string | null; isPrivate: boolean; image?: string | null; network: string; launchAt: string; contract?: string | null }[]
   users: { id: string; name: string; handle: string; avatar: string; points: number }[]
   onOpenLaunch: (id: string) => void
 }) {
   const { searchOpen, setSearchOpen, openToken } = useUI()
+  const router = useRouter()
   const [q, setQ] = useState('')
   const { data: tokens } = useTokens('trending', 'all')
 
   const ql = q.trim().toLowerCase()
+  // Un contrato pegado: se muestra su gráfico y su botón de compra aunque el
+  // token no esté publicado en Cabal.
+  const isCa = isContractAddress(q)
+  const { data: foundUsers } = useUserSearch(q)
+
+  const matches = (haystack: string, contract?: string | null) =>
+    haystack.toLowerCase().includes(ql) || (!!contract && contract.toLowerCase() === ql)
+
   const fLaunches = ql
-    ? launches.filter((l) => `${l.name} ${l.ticker ?? ''}`.toLowerCase().includes(ql)).slice(0, 4)
+    ? launches.filter((l) => matches(`${l.name} ${l.ticker ?? ''}`, l.contract)).slice(0, 4)
     : launches.slice(0, 3)
-  const fTokens = ql ? (tokens ?? []).filter((t) => `${t.name} ${t.ticker}`.toLowerCase().includes(ql)).slice(0, 4) : (tokens ?? []).slice(0, 3)
-  const fUsers = ql ? users.filter((u) => `${u.name} ${u.handle}`.toLowerCase().includes(ql)).slice(0, 4) : users.slice(0, 3)
+  const fTokens = ql
+    ? (tokens ?? []).filter((t) => matches(`${t.name} ${t.ticker}`, t.contract)).slice(0, 4)
+    : (tokens ?? []).slice(0, 3)
+  // Con algo escrito manda la búsqueda del servidor (cualquier persona de
+  // Cabal); en blanco, los top callers como sugerencia.
+  const fUsers = ql
+    ? (foundUsers ?? users.filter((u) => `${u.name} ${u.handle}`.toLowerCase().includes(ql))).slice(0, 5)
+    : users.slice(0, 3)
+
+  const openProfile = (handle: string) => {
+    router.push(`/u/${handle}`)
+  }
 
   return (
     <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-      <DialogContent className="max-h-[80dvh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+      <DialogContent
+        className={cn(
+          'max-h-[80dvh] overflow-y-auto border-white/10 bg-[#121410] p-0',
+          isCa ? 'sm:max-w-2xl' : 'sm:max-w-lg'
+        )}
+        aria-describedby={undefined}
+      >
         <DialogTitle className="sr-only">Buscar</DialogTitle>
-        <div className="sticky top-0 border-b border-white/10 bg-[#121410] p-3">
+        <div className="sticky top-0 z-10 border-b border-white/10 bg-[#121410] p-3">
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] px-3">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="SMOL, cryptonita, Base…"
+              placeholder="SMOL, @cryptonita, o pega un contrato…"
               className="h-10 border-0 bg-transparent px-0 text-sm focus-visible:ring-0"
               aria-label="Buscar en Cabal"
             />
           </div>
         </div>
         <div className="space-y-4 p-3">
+          {isCa && (
+            <div>
+              <p className="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Contrato · Gráfico y compra
+              </p>
+              <ContractResult ca={q.trim()} chartHeight={260} />
+            </div>
+          )}
           {[
-            { title: 'Lanzamientos · Radar', kind: 'launch' as const, items: fLaunches.map((l) => ({ id: l.id, src: l.image, ticker: l.ticker ?? l.name, main: `${l.ticker && !l.isPrivate ? `$${l.ticker} · ` : ''}${l.name}${l.isPrivate ? ' · Privado' : ''}`, sub: l.network, onClick: () => onOpenLaunch(l.id), badge: <NetworkBadge network={l.network} /> })) },
-            { title: 'Tokens en vivo', kind: 'launch' as const, items: fTokens.map((t) => ({ id: t.id, src: t.image, ticker: t.ticker, main: `${t.ticker} · ${t.name}`, sub: `$${t.mc >= 1e6 ? `${(t.mc / 1e6).toFixed(1)}M` : `${Math.round(t.mc / 1e3)}K`} MC`, onClick: () => openToken(t.id), badge: <NetworkBadge network={t.network} /> })) },
-            { title: 'Traders', kind: 'user' as const, items: fUsers.map((u) => ({ id: u.id, src: '', ticker: u.name, main: u.name, sub: `@${u.handle}`, onClick: () => {}, badge: <PointsPill points={u.points} /> })) },
+            { title: 'Lanzamientos · Radar', kind: 'launch' as const, items: fLaunches.map((l) => ({ id: l.id, src: l.image, handle: '', ticker: l.ticker ?? l.name, main: `${l.ticker && !l.isPrivate ? `$${l.ticker} · ` : ''}${l.name}${l.isPrivate ? ' · Privado' : ''}`, sub: l.network, onClick: () => onOpenLaunch(l.id), badge: <NetworkBadge network={l.network} /> })) },
+            { title: 'Tokens en vivo', kind: 'launch' as const, items: fTokens.map((t) => ({ id: t.id, src: t.image, handle: '', ticker: t.ticker, main: `${t.ticker} · ${t.name}`, sub: `$${t.mc >= 1e6 ? `${(t.mc / 1e6).toFixed(1)}M` : `${Math.round(t.mc / 1e3)}K`} MC`, onClick: () => openToken(t.id), badge: <NetworkBadge network={t.network} /> })) },
+            { title: ql ? 'Personas' : 'Traders', kind: 'user' as const, items: fUsers.map((u) => ({ id: u.id, src: u.avatar, handle: u.handle, ticker: u.name, main: u.name, sub: `@${u.handle}`, onClick: () => openProfile(u.handle), badge: <PointsPill points={u.points} /> })) },
           ].map(
             (group) =>
               group.items.length > 0 && (
@@ -329,7 +366,7 @@ function SearchDialog({
                         className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-white/5"
                       >
                         {group.kind === 'user' ? (
-                          <UserAvatar name={item.ticker} size="xs" ring={false} />
+                          <UserAvatar name={item.ticker} handle={item.handle} src={item.src || undefined} size="xs" ring={false} />
                         ) : (
                           <TokenGlyph src={item.src} ticker={item.ticker} size="xs" />
                         )}
@@ -344,7 +381,7 @@ function SearchDialog({
                 </div>
               )
           )}
-          {ql && fLaunches.length === 0 && fTokens.length === 0 && fUsers.length === 0 && (
+          {ql && !isCa && fLaunches.length === 0 && fTokens.length === 0 && fUsers.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Sparkles className="h-6 w-6 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Sin resultados para “{q}”</p>
