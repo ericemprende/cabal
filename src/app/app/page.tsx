@@ -19,7 +19,7 @@ import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { WelcomeShareDialog } from '@/components/cabal/welcome-share-dialog'
 import { LiveChat } from '@/components/cabal/live-chat'
-import { useUI } from '@/lib/store'
+import { useUI, type TabKey } from '@/lib/store'
 import { qk, useConfirmPremiumCheckout, useMe, usePointRules } from '@/lib/api-client'
 import { usePresenceConnection } from '@/lib/presence'
 import { cn } from '@/lib/utils'
@@ -35,6 +35,17 @@ export default function Home() {
   const [wantsAdmin] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('admin') === '1'
   )
+
+  // Sección por URL: /app?tab=chat|tokens|feed|leaderboard. Lo usan los
+  // accesos directos del icono de la app instalada y los enlaces de los bots.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get('tab')
+    const valid: TabKey[] = ['radar', 'tokens', 'feed', 'leaderboard', 'chat']
+    if (wanted && (valid as string[]).includes(wanted)) {
+      useUI.getState().setTab(wanted as TabKey)
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [])
 
   // "/" abre la búsqueda como paleta de comandos
   useEffect(() => {

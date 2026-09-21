@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { InstallApp } from "@/components/cabal/install-app";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,10 @@ export const metadata: Metadata = {
   description:
     "La plataforma social donde descubres los memecoins ANTES de que salgan. Lanzamientos posteados por la comunidad, tesis, historial de devs verificados y puntos canjeables por tokens.",
   keywords: ["Cabal", "memecoins", "lanzamientos", "radar", "crypto", "comunidad"],
+  applicationName: "Cabal",
+  // App instalable (PWA): el manifiesto lo genera src/app/manifest.ts y Next
+  // enlaza solo. Esto es lo que iOS necesita para abrirla a pantalla completa.
+  appleWebApp: { capable: true, title: "Cabal", statusBarStyle: "default" },
   openGraph: {
     title: "Cabal — Radar de Memecoins",
     description: "Descubre los memecoins ANTES de que salgan. Únete al Cabal.",
@@ -58,6 +63,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased bg-background text-foreground`}
       >
         <Providers>{children}</Providers>
+        <InstallApp />
         {/* En móvil, por encima de la barra de navegación inferior */}
         <Toaster position="bottom-center" mobileOffset={{ bottom: "calc(80px + env(safe-area-inset-bottom))" }} />
         {process.env.NODE_ENV === "production" && (
