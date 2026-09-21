@@ -93,7 +93,7 @@ export function FeedTab() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Comparte una tesis, un call o tu último movimiento… la comunidad lee antes de comprar."
-              className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+              className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-base focus-visible:ring-0 sm:text-sm"
               aria-label="Escribir post"
             />
             {isCall && (
@@ -106,7 +106,7 @@ export function FeedTab() {
                     placeholder="CA / contrato del token (obligatorio para una call)"
                     autoComplete="off"
                     spellCheck={false}
-                    className="h-8 bg-[#0a0b08] font-mono text-xs"
+                    className="h-8 bg-[#0a0b08] font-mono text-base sm:text-xs"
                     aria-label="Contrato del token"
                   />
                 </div>

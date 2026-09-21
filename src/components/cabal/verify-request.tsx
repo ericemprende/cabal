@@ -87,7 +87,7 @@ export function VerifyRequestRow({
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
             placeholder={kind === 'user' ? 'Pruebas: tu X, web, proyecto…' : 'Pruebas: web oficial, X del proyecto, CA…'}
-            className="h-8 bg-[#0a0b08] text-[12px]"
+            className="h-8 bg-[#0a0b08] text-base sm:text-[12px]"
             aria-label="Pruebas para la verificación"
           />
           <Button type="submit" size="sm" className="h-8 shrink-0 text-[12px]" disabled={request.isPending}>

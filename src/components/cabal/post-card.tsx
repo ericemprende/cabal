@@ -402,7 +402,7 @@ export function PostCard({
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
                 placeholder={`Responder a @${post.user.handle}…`}
-                className="min-h-[42px] flex-1 resize-none rounded-lg border-white/10 bg-white/5 p-2 text-xs"
+                className="min-h-[42px] flex-1 resize-none rounded-lg border-white/10 bg-white/5 p-2 text-base sm:text-xs"
                 aria-label="Escribir respuesta"
                 autoFocus
               />

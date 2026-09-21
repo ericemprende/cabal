@@ -543,7 +543,7 @@ function ClaimProjectSection() {
             placeholder={network === 'solana' ? '6iz4scC…pump' : '0x…'}
             spellCheck={false}
             autoComplete="off"
-            className="h-9 bg-[#121410] font-mono text-xs"
+            className="h-9 bg-[#121410] font-mono text-base sm:text-xs"
           />
         </div>
 
@@ -557,7 +557,7 @@ function ClaimProjectSection() {
               placeholder="Dirección de tu wallet…"
               spellCheck={false}
               autoComplete="off"
-              className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-xs"
+              className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-base sm:text-xs"
             />
             {walletKind && (
               <Button
@@ -952,7 +952,7 @@ function WalletManager({ me }: { me: MeDTO }) {
             spellCheck={false}
             autoComplete="off"
             aria-label={`Dirección de wallet en ${network}`}
-            className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-xs"
+            className="h-9 min-w-0 flex-1 bg-[#121410] font-mono text-base sm:text-xs"
           />
           {walletKind && (
             <Button

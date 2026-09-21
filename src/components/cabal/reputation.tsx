@@ -184,7 +184,7 @@ export function ReputationActions({
       </div>
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto border-white/10 bg-[#0d0e0a] sm:max-w-lg">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto border-white/10 bg-[#0d0e0a] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-1.5 font-display text-base">
               <ThumbsUp className="h-4 w-4 text-primary" aria-hidden /> Reputación de {name}

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useUI, type TabKey } from '@/lib/store'
 import { useGoToTab } from '@/lib/use-go-to-tab'
 import { useOnlineCount } from '@/lib/presence'
+import { useChatUnread } from '@/lib/chat-unread'
 
 type NavTab = { key: TabKey; label: string; icon: typeof Radar }
 
@@ -25,6 +26,9 @@ export function MobileNav() {
   // Desde un perfil también hay que volver a /app para ver la sección
   const setTab = useGoToTab()
   const onlineCount = useOnlineCount()
+  // Mensajes sin leer del chat: en móvil no existe la columna de Actividad del
+  // Cabal, que es donde el escritorio enseña este contador.
+  const unread = useChatUnread()
   const button = (t: NavTab) => (
     <NavButton
       key={t.key}
@@ -32,6 +36,7 @@ export function MobileNav() {
       icon={t.icon}
       active={tab === t.key}
       onClick={() => setTab(t.key)}
+      badge={t.key === 'chat' && tab !== 'chat' && unread > 0 ? (unread > 99 ? '99+' : String(unread)) : undefined}
       dot={t.key === 'chat' && onlineCount > 0}
     />
   )
@@ -62,12 +67,15 @@ function NavButton({
   active,
   onClick,
   dot,
+  badge,
 }: {
   label: string
   icon: typeof Radar
   active: boolean
   onClick: () => void
   dot?: boolean
+  /** Contador sin leer: manda sobre el punto de "hay gente conectada". */
+  badge?: string
 }) {
   return (
     <button
@@ -77,11 +85,18 @@ function NavButton({
         active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
       )}
       aria-current={active ? 'page' : undefined}
+      aria-label={badge ? `${label}, ${badge} sin leer` : undefined}
     >
       <span className="relative">
         <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
-        {dot && (
-          <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full border border-[#0a0b08] bg-emerald-400" aria-hidden />
+        {badge ? (
+          <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-[#0a0b08] bg-primary px-1 text-[9px] font-black leading-none text-primary-foreground">
+            {badge}
+          </span>
+        ) : (
+          dot && (
+            <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full border border-[#0a0b08] bg-emerald-400" aria-hidden />
+          )
         )}
       </span>
       <span>{label}</span>

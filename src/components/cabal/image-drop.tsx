@@ -110,7 +110,7 @@ export function ImageDrop({
               autoComplete="off"
               inputMode="url"
               aria-label={`URL de la ${label.toLowerCase()}`}
-              className="h-9 bg-transparent font-mono text-xs"
+              className="h-9 bg-transparent font-mono text-base sm:text-xs"
             />
             <Button
               onClick={applyUrl}

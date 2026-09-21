@@ -199,7 +199,7 @@ export function AuthDialog() {
                   onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                   placeholder="tunombre"
                   autoComplete="username"
-                  className="h-10 border-0 bg-transparent px-0 font-mono text-sm focus-visible:ring-0"
+                  className="h-10 border-0 bg-transparent px-0 font-mono text-base focus-visible:ring-0 sm:text-sm"
                   required
                 />
               </div>
@@ -214,7 +214,7 @@ export function AuthDialog() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Cómo te ven en el Cabal"
                   autoComplete="name"
-                  className="h-10 border-white/10 bg-[#0a0b08] text-sm"
+                  className="h-10 border-white/10 bg-[#0a0b08] text-base sm:text-sm"
                 />
               </div>
             )}
@@ -231,7 +231,7 @@ export function AuthDialog() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tucorreo@ejemplo.com"
                     autoComplete="email"
-                    className="h-10 border-0 bg-transparent px-0 text-sm focus-visible:ring-0"
+                    className="h-10 border-0 bg-transparent px-0 text-base focus-visible:ring-0 sm:text-sm"
                     required
                   />
                 </div>
@@ -248,7 +248,7 @@ export function AuthDialog() {
                   value={referralCode}
                   onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
                   placeholder="CABAL-XXXXXX"
-                  className="h-10 border-white/10 bg-[#0a0b08] font-mono text-sm uppercase tracking-wider"
+                  className="h-10 border-white/10 bg-[#0a0b08] font-mono text-base uppercase tracking-wider sm:text-sm"
                 />
                 <p className="text-[10px] text-muted-foreground/70">Quien te invitó gana puntos por tu actividad.</p>
               </div>
@@ -266,7 +266,7 @@ export function AuthDialog() {
                   placeholder="••••••••"
                   autoComplete={isLogin ? 'current-password' : 'new-password'}
                   minLength={6}
-                  className="h-10 border-0 bg-transparent px-0 text-sm focus-visible:ring-0"
+                  className="h-10 border-0 bg-transparent px-0 text-base focus-visible:ring-0 sm:text-sm"
                   required
                 />
               </div>

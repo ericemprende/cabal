@@ -283,7 +283,7 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
             onChange={set('wallet')}
             placeholder="Dirección pública"
             maxLength={80}
-            className="h-11 border-white/10 bg-[#0a0b08] font-mono text-xs"
+            className="h-11 border-white/10 bg-[#0a0b08] font-mono text-base sm:text-xs"
           />
         </Field>
 
@@ -294,7 +294,7 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
             maxLength={300}
             rows={3}
             placeholder="Tradeo memecoins en Solana desde 2023, publico análisis en X…"
-            className="resize-none border-white/10 bg-[#0a0b08] text-sm"
+            className="resize-none border-white/10 bg-[#0a0b08] text-base sm:text-sm"
           />
         </Field>
       </div>

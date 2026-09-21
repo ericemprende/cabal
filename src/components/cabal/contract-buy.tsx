@@ -63,7 +63,7 @@ export function ContractBuy() {
           aria-label="Contrato del token"
           spellCheck={false}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent font-mono text-xs outline-none placeholder:font-sans placeholder:text-muted-foreground"
+          className="min-w-0 flex-1 bg-transparent font-mono text-base outline-none sm:text-xs placeholder:font-sans placeholder:text-muted-foreground"
         />
         {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-hidden />}
         {ca && (
