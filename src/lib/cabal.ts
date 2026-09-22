@@ -1,15 +1,20 @@
 export type NetworkKey = 'solana' | 'base' | 'ethereum' | 'bsc' | 'tron' | 'robinhood' | 'arc'
 
+/**
+ * `dot` es EL color de cada red: lo usan el puntito de las listas y el logo de
+ * NetworkIcon. Antes cada uno llevaba el suyo y Tron acabó con dos rojos, uno
+ * de ellos el #ff4d5e que la interfaz reserva para "lanzamiento en vivo".
+ */
 export const NETWORKS: Record<
   NetworkKey,
   { label: string; short: string; dot: string }
 > = {
   solana: { label: 'Solana', short: 'SOL', dot: '#9945FF' },
   base: { label: 'Base', short: 'BASE', dot: '#0052FF' },
-  ethereum: { label: 'Ethereum', short: 'ETH', dot: '#8A92B2' },
-  bsc: { label: 'BNB Chain', short: 'BSC', dot: '#F0B90B' },
-  tron: { label: 'Tron', short: 'TRX', dot: '#FF4D5E' },
-  robinhood: { label: 'Robinhood', short: 'RH', dot: '#DFFF3F' },
+  ethereum: { label: 'Ethereum', short: 'ETH', dot: '#627EEA' },
+  bsc: { label: 'BNB Chain', short: 'BSC', dot: '#F3BA2F' },
+  tron: { label: 'Tron', short: 'TRX', dot: '#EB0029' },
+  robinhood: { label: 'Robinhood', short: 'RH', dot: '#CCFF00' },
   arc: { label: 'Arc', short: 'ARC', dot: '#3D8BFF' },
 }
 

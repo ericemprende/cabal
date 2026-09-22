@@ -470,7 +470,10 @@ export function NetworkBadge({ network, className }: { network: string; classNam
   )
 }
 
-// ---------- Logos vectoriales de las redes (formas simplificadas) ----------
+// ---------- Logos vectoriales de las redes ----------
+// Formas simplificadas dibujadas a mano, en el color de marca de cada red. El
+// que no tenga caso propio cae al puntito de NETWORKS[red].dot, que es la misma
+// fuente de color: así una red nunca sale con dos colores distintos.
 export function NetworkIcon({ network, className }: { network: string; className?: string }) {
   const cls = cn('h-3.5 w-3.5 shrink-0', className)
   switch (network) {
@@ -493,7 +496,7 @@ export function NetworkIcon({ network, className }: { network: string; className
     case 'bsc':
       return (
         <svg viewBox="0 0 16 16" className={cls} aria-hidden>
-          <g fill="#F0B90B">
+          <g fill="#F3BA2F">
             <path d="m8 1.6 2 2-2 2-2-2z" />
             <path d="m3.6 6 2 2-2 2-2-2z" />
             <path d="m12.4 6 2 2-2 2-2-2z" />
@@ -515,12 +518,11 @@ export function NetworkIcon({ network, className }: { network: string; className
       )
     case 'ethereum':
       return (
-        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
-          <path fill="#8A92B2" d="M8 1.6v4.9l4.2 1.9z" />
-          <path fill="#62688F" d="M8 1.6 3.8 8.4 8 6.5z" />
-          <path fill="#8A92B2" d="M8 9.1v5.3l4.2-5.8z" />
-          <path fill="#62688F" d="M8 14.4V9.1L3.8 8.6z" />
-          <path fill="#454A75" d="m8 8.4 4.2-2.4L8 8.1z" opacity=".9" />
+        <svg viewBox="0 0 24 24" className={cls} aria-hidden>
+          <path
+            fill="#627EEA"
+            d="M11.944 17.97L4.58 13.62 11.943 24l7.37-10.38-7.372 4.35h.003zM12.056 0L4.69 12.223l7.365 4.354 7.365-4.35L12.056 0z"
+          />
         </svg>
       )
     case 'tron':
@@ -532,7 +534,7 @@ export function NetworkIcon({ network, className }: { network: string; className
     case 'robinhood':
       return (
         <svg viewBox="0 0 16 16" className={cls} aria-hidden>
-          <circle cx="8" cy="8" r="6.6" fill="#DFFF3F" />
+          <circle cx="8" cy="8" r="6.6" fill="#CCFF00" />
           <path
             fill="#171A06"
             d="M5 11.6c0-3.9 2.5-6.6 6-7.1-.1 4.1-2.4 6.7-5.4 7.2L5 12.9Z"
@@ -540,13 +542,9 @@ export function NetworkIcon({ network, className }: { network: string; className
           <path stroke="#171A06" strokeWidth=".8" strokeLinecap="round" d="M4.6 13.2 5.6 11.7" />
         </svg>
       )
-    case 'arc':
-      return (
-        <svg viewBox="0 0 16 16" className={cls} aria-hidden>
-          <circle cx="8" cy="8" r="6.6" fill="#3D8BFF" />
-          <path stroke="#fff" strokeWidth="1.6" strokeLinecap="round" fill="none" d="M4.6 11.2a3.6 3.6 0 0 1 6.8 0" />
-        </svg>
-      )
+    // Arc (la L1 de Circle) no tiene todavía un logo público: el que había aquí
+    // era inventado, y un logo falso confunde más que no poner ninguno. Cae al
+    // puntito con el color de NETWORKS hasta que Circle publique el suyo.
     default: {
       const meta = networkMeta(network)
       return <span className={cn('inline-block h-1.5 w-1.5 rounded-full', cls.includes('h-3.5') && 'h-2 w-2')} style={{ background: meta.dot }} />

@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Crown, Flame, Globe, Lock, Maximize2, Minimize2, MonitorPlay, Pencil, Rocket, Send, Twitter, Wallet, Zap } from 'lucide-react'
+import { Crown, Flame, Globe, Lock, Maximize2, Minimize2, MonitorPlay, Pencil, Rocket, Wallet, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -22,6 +22,8 @@ import { ReminderBell } from '@/components/cabal/reminder-bell'
 import { BoostButton } from '@/components/cabal/ammo'
 import { VerifyRequestRow } from '@/components/cabal/verify-request'
 import { FudButton } from '@/components/cabal/fud-button'
+import { XLogo } from '@/components/cabal/x-logo'
+import { TelegramLogo } from '@/components/cabal/telegram-logo'
 
 export function LaunchDetailDialog() {
   const { launchDetailId, openLaunch, setPremiumOpen } = useUI()
@@ -101,8 +103,8 @@ export function LaunchDetailDialog() {
               {/* socials */}
               <div className="mt-3 flex flex-wrap gap-2">
                 {launch.website && <SocialChip href={launch.website} icon={<Globe className="h-3.5 w-3.5" />} label="Website" />}
-                {launch.twitter && <SocialChip href={launch.twitter} icon={<Twitter className="h-3.5 w-3.5" />} label="X / Twitter" />}
-                {launch.telegram && <SocialChip href={launch.telegram} icon={<Send className="h-3.5 w-3.5" />} label="Telegram" />}
+                {launch.twitter && <SocialChip href={launch.twitter} icon={<XLogo className="h-3.5 w-3.5" />} label="X" />}
+                {launch.telegram && <SocialChip href={launch.telegram} icon={<TelegramLogo className="h-3.5 w-3.5" />} label="Telegram" />}
               </div>
 
               <div className="mt-4 rounded-xl border border-white/10 bg-[#0a0b08] p-3">

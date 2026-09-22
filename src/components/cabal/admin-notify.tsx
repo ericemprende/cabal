@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch'
 import { timeAgo } from '@/lib/cabal'
 import { cn } from '@/lib/utils'
 import { DiscordLogo } from '@/components/cabal/discord-logo'
+import { TelegramLogo } from '@/components/cabal/telegram-logo'
 import { useAdminBotChats, useAdminNotify, useAdminNotifyAction, useAdminNotifyUpdate } from '@/lib/notify-client'
 import type { AdminBotDTO, AdminChatDTO, BotProviderName } from '@/lib/notify-types'
 
@@ -80,7 +81,7 @@ export function AdminNotify({ enabled }: { enabled: boolean }) {
       <BotSection
         provider="telegram"
         title="Telegram"
-        icon={<Send className="h-4 w-4" style={{ color: BRAND_TEXT.telegram }} aria-hidden />}
+        icon={<TelegramLogo className="h-4 w-4" style={{ color: BRAND_TEXT.telegram }} aria-hidden />}
         bot={tg}
         tokenPlaceholder="123456789:AA…"
         envVar="TELEGRAM_BOT_TOKEN"
