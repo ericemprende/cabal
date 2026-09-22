@@ -47,7 +47,20 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   return json
 }
 
-/** Crea la factura y devuelve su id y la URL donde el usuario elige moneda y paga. */
+/**
+ * Crea la factura y devuelve su id y la URL donde se paga.
+ *
+ * `payCurrency` es el ticker de NOWPayments (`sol`, `usdtsol`, `btc`…) con el
+ * que sale la factura ya montada, sin pasar por la pantalla de elegir moneda.
+ * Importa porque cada moneda tiene su propio mínimo: en Solana se paga menos de
+ * un dólar, mientras que en otras redes la comisión lo sube a diez y una
+ * donación pequeña no se puede ni pagar. Sin ticker, se elige en la pasarela
+ * como siempre.
+ *
+ * Si la pasarela rechaza esa moneda (no habilitada en la cuenta, ticker
+ * equivocado) se reintenta sin ella: antes una factura donde hay que elegir a
+ * mano que ninguna factura.
+ */
 export async function createNowInvoice(p: {
   orderId: string
   amountUsd: number
@@ -55,21 +68,33 @@ export async function createNowInvoice(p: {
   ipnUrl: string
   successUrl: string
   cancelUrl: string
-}): Promise<{ id: string; url: string }> {
-  const json = await call<{ id?: string | number; invoice_url?: string }>('/invoice', {
-    method: 'POST',
-    body: JSON.stringify({
-      price_amount: p.amountUsd,
-      price_currency: 'usd',
-      order_id: p.orderId,
-      order_description: p.description,
-      ipn_callback_url: p.ipnUrl,
-      success_url: p.successUrl,
-      cancel_url: p.cancelUrl,
-    }),
+  payCurrency?: string | null
+}): Promise<{ id: string; url: string; payCurrency: string | null }> {
+  const base = {
+    price_amount: p.amountUsd,
+    price_currency: 'usd',
+    order_id: p.orderId,
+    order_description: p.description,
+    ipn_callback_url: p.ipnUrl,
+    success_url: p.successUrl,
+    cancel_url: p.cancelUrl,
+  }
+  const post = (pay: string | null) =>
+    call<{ id?: string | number; invoice_url?: string }>('/invoice', {
+      method: 'POST',
+      body: JSON.stringify(pay ? { ...base, pay_currency: pay } : base),
+    })
+
+  const wanted = p.payCurrency?.trim().toLowerCase() || null
+  let payCurrency = wanted
+  const json = await post(wanted).catch((e) => {
+    if (!wanted) throw e
+    console.warn(`[nowpayments] ${wanted} rechazada, factura sin moneda fija`, e)
+    payCurrency = null
+    return post(null)
   })
   if (!json.id || !json.invoice_url) throw new Error('NOWPayments no devolvió la factura')
-  return { id: String(json.id), url: json.invoice_url }
+  return { id: String(json.id), url: json.invoice_url, payCurrency }
 }
 
 export type NowPayment = {

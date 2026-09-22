@@ -44,6 +44,14 @@ interface UIState {
   /** Diálogo de donaciones (widget de NOWPayments). */
   donateOpen: boolean
   setDonateOpen: (v: boolean) => void
+  /**
+   * Pantalla de gracias de una donación: el id del pago del que se enseña la
+   * tarjeta para X. null = cerrada. La abre la vuelta del pago
+   * (/app?donated=<id>) y también el diálogo de donar, para que el bonus por
+   * compartir no se pierda si se cerró sin publicar.
+   */
+  donateThanksId: string | null
+  setDonateThanksId: (v: string | null) => void
   /** Asistente de Radio Cabal (la burbuja de abajo a la derecha). */
   guideOpen: boolean
   setGuideOpen: (v: boolean) => void
@@ -81,6 +89,8 @@ export const useUI = create<UIState>((set) => ({
   setWelcomeShareOpen: (welcomeShareOpen) => set({ welcomeShareOpen }),
   donateOpen: false,
   setDonateOpen: (donateOpen) => set({ donateOpen }),
+  donateThanksId: null,
+  setDonateThanksId: (donateThanksId) => set({ donateThanksId }),
   guideOpen: false,
   setGuideOpen: (guideOpen) => set({ guideOpen }),
 }))

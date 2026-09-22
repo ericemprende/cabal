@@ -96,6 +96,7 @@ model User {
   projectClaims     ProjectClaim[]
   subscriptions     Subscription[]
   payments          Payment[]
+  donations         Donation[]
   emailCodes        EmailCode[]
   launchMemberships LaunchMember[]        @relation("launchMember")
   launchInvitesSent LaunchMember[]        @relation("launchInviter")
@@ -265,6 +266,29 @@ model Payment {
   @@unique([provider, externalId])
   @@index([userId, createdAt])
   @@index([createdAt])
+}
+
+// Donaciones voluntarias (el botón de donar de la cabecera). Una fila por
+// donación YA COBRADA: es el recibo con el que se abonan los puntos una sola
+// vez —paymentId es único, igual que en Subscription y AmmoEntry— y donde se
+// guarda si la persona ya cobró el bonus por publicar su tarjeta en X.
+//
+// El importe se guarda aquí además de en Payment porque es el que se convirtió
+// en puntos: si mañana cambia la regla de puntos por dólar, este recibo sigue
+// explicando de dónde salieron los puntos de aquella donación.
+model Donation {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  paymentId   String    @unique
+  amountUsd   Float
+  points      Int       @default(0)
+  // Bonus por compartir la tarjeta de la donación en X, una vez por donación.
+  sharedAt    DateTime?
+  sharePoints Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }
 
 // Códigos de seguridad enviados por correo (verificar el correo, entrar con

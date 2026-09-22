@@ -506,6 +506,8 @@ const POINT_RULES_FALLBACK: Record<string, number> = {
   points_share_follow_x: 10,
   points_verify_discord: 10,
   points_verify_telegram: 10,
+  points_per_usd_donated: 10,
+  points_share_donation: 15,
 }
 
 /** Reglas de puntos vigentes (editables en admin) para los "+N" de la interfaz. */

@@ -15,6 +15,7 @@ import {
   Flame,
   Gift,
   GraduationCap,
+  HandHeart,
   Heart,
   ImagePlus,
   KeyRound,
@@ -86,6 +87,8 @@ const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
   share_x: { label: 'Tarjeta compartida en X', icon: Send },
   follow_x: { label: 'Sigues a @Cabal_app en X', icon: AtSign },
   share_follow_x: { label: 'Compartiste que sigues a Cabal', icon: Send },
+  donation: { label: 'Donación a Cabal', icon: HandHeart },
+  share_donation: { label: 'Compartiste tu donación en X', icon: Send },
 }
 
 export function ProfileDialog() {

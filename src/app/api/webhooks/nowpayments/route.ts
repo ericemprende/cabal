@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { PLANS, grantDays, isPlanKey } from '@/lib/premium'
 import { PACKS, creditAmmo, giftPlanAmmo, isPackKey } from '@/lib/ammo'
+import { DONATION_PLAN, creditDonation } from '@/lib/donate-server'
 import { NOW_FINAL, fetchNowPayment, nowpaymentsConfigured, verifyNowSignature } from '@/lib/nowpayments'
 
 /**
@@ -12,7 +13,12 @@ import { NOW_FINAL, fetchNowPayment, nowpaymentsConfigured, verifyNowSignature }
  * 3. Antes de dar acceso, el estado "finished" se vuelve a pedir a la API de
  *    NOWPayments y se comprueban importe y moneda: el dinero manda sobre el
  *    mensaje.
- * 4. Conceder es idempotente: Subscription.paymentId es único.
+ * 4. Conceder es idempotente: Subscription.paymentId es único (y lo mismo
+ *    AmmoEntry.paymentId y Donation.paymentId).
+ *
+ * El mismo endpoint sirve los tres productos que se pagan en cripto, y el plan
+ * del pago es lo que los distingue: un plan Premium, un cargador de munición
+ * (ammo_*) o una donación voluntaria (DONATION_PLAN), que abona puntos.
  */
 export async function POST(req: Request) {
   if (!nowpaymentsConfigured()) {
@@ -54,12 +60,15 @@ export async function POST(req: Request) {
       await db.payment.update({ where: { id: payment.id }, data: { status, ...commonFields } })
     }
 
-    // Un cargador de munición se paga igual que un plan, pero en vez de dar
-    // acceso acredita balas. El prefijo del plan es lo que los distingue.
+    // Un cargador de munición o una donación se pagan igual que un plan, pero
+    // en vez de dar acceso acreditan balas o puntos. El plan los distingue.
     const ammoPack = payment.plan.startsWith('ammo_') ? payment.plan.slice(5) : null
-    const alreadyGranted = ammoPack
-      ? await db.ammoEntry.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
-      : await db.subscription.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
+    const isDonation = payment.plan === DONATION_PLAN
+    const alreadyGranted = isDonation
+      ? await db.donation.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
+      : ammoPack
+        ? await db.ammoEntry.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
+        : await db.subscription.findUnique({ where: { paymentId: payment.id }, select: { id: true } })
     if (status === 'finished' && paymentId && !alreadyGranted) {
       const confirmed = await fetchNowPayment(paymentId)
       const amountOk = Math.abs(Number(confirmed.price_amount) - payment.amountUsd) < 0.01
@@ -73,7 +82,10 @@ export async function POST(req: Request) {
         await db.payment.update({ where: { id: payment.id }, data: { status: 'amount_mismatch', ...commonFields } })
         return NextResponse.json({ received: true })
       }
-      if (ammoPack) {
+      if (isDonation) {
+        // Los puntos salen del importe confirmado, no del que dijo el navegador.
+        await creditDonation({ id: payment.id, userId: payment.userId, amountUsd: payment.amountUsd })
+      } else if (ammoPack) {
         if (!isPackKey(ammoPack)) {
           console.error(`[nowpayments] cargador desconocido en ${payment.id}: ${payment.plan}`)
           return NextResponse.json({ received: true })

@@ -21,6 +21,7 @@ import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { AmmoDialog } from '@/components/cabal/ammo-dialog'
 import { WelcomeShareDialog } from '@/components/cabal/welcome-share-dialog'
 import { DonateDialog } from '@/components/cabal/donate-dialog'
+import { DonateThanksDialog } from '@/components/cabal/donate-thanks-dialog'
 import { GuideAssistant } from '@/components/cabal/guide-assistant'
 import { LiveChat } from '@/components/cabal/live-chat'
 import { useUI, type TabKey } from '@/lib/store'
@@ -169,6 +170,26 @@ export default function Home() {
     }
   }, [premiumReturn])
 
+  // Vuelta de la donación: /app?donated=<id> abre la pantalla de gracias con la
+  // tarjeta para X (ver lib/donate-server.ts); donated=cancel es que cerró la
+  // factura sin pagar.
+  const [donateReturn] = useState(() => {
+    if (typeof window === 'undefined') return null
+    const value = new URLSearchParams(window.location.search).get('donated')
+    if (!value) return null
+    window.history.replaceState(null, '', window.location.pathname)
+    return value
+  })
+
+  useEffect(() => {
+    if (!donateReturn) return
+    if (donateReturn === 'cancel') {
+      toast('Donación cancelada', { description: 'Sigues siendo parte del Cabal igual 🫡' })
+      return
+    }
+    useUI.getState().setDonateThanksId(donateReturn)
+  }, [donateReturn])
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -239,6 +260,7 @@ export default function Home() {
       <AmmoDialog />
       <WelcomeShareDialog />
       <DonateDialog />
+      <DonateThanksDialog />
       <GuideAssistant />
     </div>
   )

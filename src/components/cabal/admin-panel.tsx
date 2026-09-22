@@ -135,6 +135,19 @@ const RULE_LABELS: Record<string, string> = {
   points_share_follow_x: 'Compartir la tarjeta de "sigo a Cabal"',
   points_verify_discord: 'Verificar cuenta de Discord',
   points_verify_telegram: 'Conectar Telegram al bot',
+  points_per_usd_donated: 'Donaciones: puntos por cada $1 donado',
+  points_share_donation: 'Compartir la tarjeta de la donación',
+}
+
+/**
+ * Motivos cuyos puntos no salen de una regla fija y por tanto no se editan
+ * arriba (el importe donado o la comisión manda), pero sí aparecen en la tarta
+ * de reparto de puntos.
+ */
+const EXTRA_REASON_LABELS: Record<string, string> = {
+  donation: 'Donaciones',
+  referral: 'Referidos',
+  swap_referral: 'Referidos por compra/venta',
 }
 
 type AdminAnalyticsDTO =
@@ -165,6 +178,8 @@ const REASON_COLORS: Record<string, string> = {
   share_follow_x: '#5ec2f7',
   verify_discord: '#5865F2',
   verify_telegram: '#229ED9',
+  donation: '#ff7ab8',
+  share_donation: '#ffa8cf',
 }
 
 type AdminView =
@@ -274,7 +289,11 @@ export function AdminPanel({
 
   const dist = (overview.data?.distribution ?? [])
     .filter((d) => d.total > 0)
-    .map((d) => ({ name: RULE_LABELS[`points_${d.reason}`] ?? d.reason, value: d.total, key: d.reason }))
+    .map((d) => ({
+      name: RULE_LABELS[`points_${d.reason}`] ?? EXTRA_REASON_LABELS[d.reason] ?? d.reason,
+      value: d.total,
+      key: d.reason,
+    }))
 
   const NAV_ITEMS = [
     { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
@@ -1224,6 +1243,13 @@ function AdminPremium({ enabled }: { enabled: boolean }) {
               <UserAvatar name={p.user.name} handle={p.user.handle} src={p.user.avatar} size="sm" />
               <span className="min-w-0 flex-1 truncate font-semibold">@{p.user.handle}</span>
               <span className="text-muted-foreground">{PREMIUM_PROVIDER_LABEL[p.provider] ?? p.provider}</span>
+              {/* No todo pago de aquí es un plan: también se cobran cargadores de
+                  munición y donaciones voluntarias, y en la caja de 30 días suman. */}
+              {(p.plan === 'donation' || p.plan.startsWith('ammo_')) && (
+                <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                  {p.plan === 'donation' ? 'donación' : 'munición'}
+                </span>
+              )}
               <span className="font-bold tabular-nums">${p.amountUsd.toLocaleString('es')}</span>
               <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-bold', p.status === 'paid' || p.status === 'finished' ? 'bg-[#8FA83F]/15 text-primary' : 'bg-white/5 text-muted-foreground')}>
                 {p.status}

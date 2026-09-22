@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { CABAL_X_HANDLE, followCardUrl, followRefUrl } from '@/lib/follow-x'
+import { donateCardUrl, donateRefUrl } from '@/lib/donate-server'
 import { shareCardUrl, shareRefUrl, siteUrl, type Locale } from '@/lib/waitlist'
 
 /**
@@ -100,6 +101,58 @@ export function buildFollowMetadata(handle: string | null, locale: Locale): Meta
     : DESCRIPTION
 
   const url = followRefUrl(handle, locale)
+
+  return {
+    title: TITLE,
+    description: DESCRIPTION,
+    metadataBase: new URL(siteUrl()),
+    alternates: { canonical: handle ? url : '/' },
+    openGraph: {
+      title: ogTitle,
+      description: ogDescription,
+      url,
+      siteName: 'Cabal',
+      type: 'website',
+      images: [image],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: ogTitle,
+      description: ogDescription,
+      images: [image.url],
+    },
+  }
+}
+
+/**
+ * Metadatos del enlace del post de la donación (`/d/<handle>`).
+ *
+ * Tercera campaña, tercera ruta, por lo mismo que /f: X guarda UNA tarjeta por
+ * URL y no hay forma de refrescarla, así que cada post necesita su enlace para
+ * llevar su imagen.
+ */
+export function buildDonateMetadata(handle: string | null, locale: Locale): Metadata {
+  const image = handle
+    ? {
+        url: donateCardUrl(handle, locale),
+        width: 1672,
+        height: 941,
+        alt: `@${handle} donó a @${CABAL_X_HANDLE}`,
+      }
+    : { url: '/og-cabal.png', width: 1200, height: 630, alt: 'Cabal' }
+
+  const ogTitle = handle
+    ? locale === 'en'
+      ? `@${handle} backs @${CABAL_X_HANDLE}`
+      : `@${handle} sostiene a @${CABAL_X_HANDLE}`
+    : TITLE
+  const ogDescription = handle
+    ? locale === 'en'
+      ? `@${handle} donated to keep Cabal free and ad-free: the radar where the community spots memecoins BEFORE they launch. Chip in too.`
+      : `@${handle} donó para mantener Cabal gratis y sin anuncios: el radar donde la comunidad ve los memecoins ANTES de que salgan. Aporta tú también.`
+    : DESCRIPTION
+
+  const url = donateRefUrl(handle, locale)
 
   return {
     title: TITLE,

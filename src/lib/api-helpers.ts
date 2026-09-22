@@ -21,6 +21,8 @@ export const POINT_RULE_KEYS = [
   'points_verify_telegram',
   'points_swap_referral_pct',
   'points_per_usd_fee',
+  'points_per_usd_donated',
+  'points_share_donation',
 ] as const
 
 export type PointReason =
@@ -42,6 +44,8 @@ export type PointReason =
   | 'follow_x'
   | 'share_follow_x'
   | 'swap_referral'
+  | 'donation'
+  | 'share_donation'
 
 const REASON_TO_KEY: Record<string, string> = {
   thesis: 'points_thesis',
@@ -55,6 +59,9 @@ const REASON_TO_KEY: Record<string, string> = {
   share_follow_x: 'points_share_follow_x',
   verify_discord: 'points_verify_discord',
   verify_telegram: 'points_verify_telegram',
+  // 'donation' no está aquí: sus puntos salen del importe donado, no de una
+  // regla fija (ver lib/donate.ts).
+  share_donation: 'points_share_donation',
 }
 
 // Valores por defecto si la Setting no existe en la BD. El seed solo las crea
@@ -72,6 +79,9 @@ const POINT_RULE_DEFAULTS: Record<string, number> = {
   points_share_follow_x: 10,
   points_verify_discord: 10,
   points_verify_telegram: 10,
+  // Puntos por cada dólar donado, y bonus por compartir la donación en X.
+  points_per_usd_donated: 10,
+  points_share_donation: 15,
 }
 
 export async function getPointRules(): Promise<Record<string, number>> {
