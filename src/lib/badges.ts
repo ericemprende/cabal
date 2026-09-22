@@ -1,14 +1,23 @@
 import { db } from '@/lib/db'
 import { cached } from '@/lib/cache'
-import type { BadgeDTO } from '@/lib/types'
+import { REP_MIN_VOTES } from '@/lib/reputation'
+import type { BadgeDTO, BadgeMetal } from '@/lib/types'
 
 /**
  * Emblemas del perfil: insignias por hitos (fundador, actividad…), no por
  * suscripción. El Premium se enseña aparte con la coronita (ver lib/premium).
  *
- * Se calculan al vuelo a partir de datos que ya existen (nada que sincronizar
- * ni que se pueda desincronizar); solo el corte de "fundador" se cachea, para
- * no contar la tabla de usuarios en cada perfil que se abre.
+ * Una silueta por familia y el metal diciendo cuánto: bronce al estrenarse,
+ * obsidiana al otro extremo. Antes eran nueve entradas planas y un mapa aparte
+ * para que no salieran dos de la misma familia; ahora la familia ya es la
+ * insignia y solo hay que quedarse con el corte más alto que se cumpla.
+ *
+ * Hay dos maneras de subir. Las que CUENTAN premian constancia (lanzamientos,
+ * tesis, hype repartido). Las que MIDEN premian acierto, y por eso piden un
+ * mínimo de intentos: con dos calls acertadas de dos no se es francotirador.
+ *
+ * Se calcula al vuelo con datos que ya existen; solo el corte de "fundador" se
+ * cachea, para no contar la tabla de usuarios en cada perfil que se abre.
  */
 
 const FOUNDER_LIMIT = 500
@@ -25,104 +34,159 @@ export type BadgeContext = {
     likesReceived: number
     hypesGiven: number
   }
+  /** Resultados de sus calls. Ver lib/call-score. */
+  calls: {
+    /** Calls con resultado que llegaron a 1.5X o más. */
+    won: number
+    /** Calls ya evaluadas. Las que aún no tienen pico no cuentan. */
+    total: number
+    /** El pico más alto que alcanzó una call suya, en X. */
+    best: number | null
+  }
+  /** Lo que la comunidad dice de él. Ver lib/reputation. */
+  rep: { score: number; votes: number }
 }
 
-type BadgeDef = BadgeDTO & { check: (ctx: BadgeContext) => boolean }
+type Rango = {
+  /** El corte, ya resuelto: true si esta cuenta lo alcanza. */
+  cumple: (c: BadgeContext) => boolean
+  metal: BadgeMetal
+  label: string
+  description: string
+}
 
-/**
- * Orden = el orden en que se enseñan: primero lo más difícil de conseguir.
- * Añadir un emblema nuevo es añadir una entrada aquí.
- */
-const BADGE_DEFS: BadgeDef[] = [
+type Familia = {
+  id: string
+  silueta: string
+  /** De menor a mayor: gana el último que se cumpla. */
+  rangos: Rango[]
+}
+
+const FAMILIAS: Familia[] = [
   {
-    id: 'founder',
-    label: 'Fundador',
-    description: `Una de las primeras ${FOUNDER_LIMIT} cuentas del Cabal`,
-    icon: 'gem',
-    check: (c) => c.isFounder,
+    id: 'launches',
+    silueta: 'rocket',
+    rangos: [
+      { cumple: (c) => c.stats.launchesCount >= 1, metal: 'bronce', label: 'Primer Launch', description: 'Publicó su primer lanzamiento en el Radar' },
+      { cumple: (c) => c.stats.launchesCount >= 10, metal: 'acero', label: 'Serial Launcher', description: 'Publicó 10 lanzamientos o más' },
+      { cumple: (c) => c.stats.launchesCount >= 50, metal: 'oro', label: 'Leyenda del Radar', description: 'Publicó 50 lanzamientos o más' },
+      { cumple: (c) => c.stats.launchesCount >= 250, metal: 'obsidiana', label: 'Comandante', description: 'Publicó 250 lanzamientos o más' },
+    ],
   },
   {
-    id: 'verified_dev',
-    label: 'Dev verificado',
-    description: 'Marcado como dev y con su wallet verificada',
-    icon: 'shield-check',
-    check: (c) => c.isDev && c.walletVerified,
+    id: 'theses',
+    silueta: 'scroll-unfurled',
+    rangos: [
+      { cumple: (c) => c.stats.thesesCount >= 10, metal: 'bronce', label: 'Analista', description: 'Escribió 10 tesis o más' },
+      { cumple: (c) => c.stats.thesesCount >= 50, metal: 'acero', label: 'Oráculo', description: 'Escribió 50 tesis o más' },
+      { cumple: (c) => c.stats.thesesCount >= 200, metal: 'oro', label: 'Vidente', description: 'Escribió 200 tesis o más' },
+      { cumple: (c) => c.stats.thesesCount >= 500, metal: 'obsidiana', label: 'Profeta', description: 'Escribió 500 tesis o más' },
+    ],
   },
   {
-    id: 'launch_50',
-    label: 'Leyenda del Radar',
-    description: 'Publicó 50 lanzamientos o más',
-    icon: 'flame',
-    check: (c) => c.stats.launchesCount >= 50,
+    id: 'aim',
+    silueta: 'dead-eye',
+    rangos: [
+      { cumple: (c) => acierto(c, 10, 40), metal: 'bronce', label: 'Tirador', description: 'Acierta el 40% de sus calls, con 10 o más evaluadas' },
+      { cumple: (c) => acierto(c, 25, 50), metal: 'acero', label: 'Tirador selecto', description: 'Acierta el 50% de sus calls, con 25 o más evaluadas' },
+      { cumple: (c) => acierto(c, 50, 60), metal: 'oro', label: 'Francotirador', description: 'Acierta el 60% de sus calls, con 50 o más evaluadas' },
+      { cumple: (c) => acierto(c, 100, 70), metal: 'obsidiana', label: 'Ojo de halcón', description: 'Acierta el 70% de sus calls, con 100 o más evaluadas' },
+    ],
   },
   {
-    id: 'launch_10',
-    label: 'Serial Launcher',
-    description: 'Publicó 10 lanzamientos o más',
-    icon: 'rocket',
-    check: (c) => c.stats.launchesCount >= 10,
+    id: 'best-call',
+    silueta: 'impact-point',
+    rangos: [
+      { cumple: (c) => (c.calls.best ?? 0) >= 2, metal: 'bronce', label: 'Diana', description: 'Una de sus calls llegó a 2X' },
+      { cumple: (c) => (c.calls.best ?? 0) >= 5, metal: 'acero', label: 'Impacto directo', description: 'Una de sus calls llegó a 5X' },
+      { cumple: (c) => (c.calls.best ?? 0) >= 10, metal: 'oro', label: 'Derribo', description: 'Una de sus calls llegó a 10X' },
+      { cumple: (c) => (c.calls.best ?? 0) >= 50, metal: 'obsidiana', label: 'Aniquilación', description: 'Una de sus calls llegó a 50X' },
+    ],
   },
   {
-    id: 'first_launch',
-    label: 'Primer Launch',
-    description: 'Publicó su primer lanzamiento en el Radar',
-    icon: 'rocket',
-    check: (c) => c.stats.launchesCount >= 1,
+    id: 'hype',
+    silueta: 'flame',
+    rangos: [
+      { cumple: (c) => c.stats.hypesGiven >= 100, metal: 'bronce', label: 'Hypeman', description: 'Dio hype a 100 lanzamientos o más' },
+      { cumple: (c) => c.stats.hypesGiven >= 500, metal: 'acero', label: 'Pirómano', description: 'Dio hype a 500 lanzamientos o más' },
+      { cumple: (c) => c.stats.hypesGiven >= 2000, metal: 'oro', label: 'Incendiario', description: 'Dio hype a 2.000 lanzamientos o más' },
+      { cumple: (c) => c.stats.hypesGiven >= 10000, metal: 'obsidiana', label: 'Lanzallamas', description: 'Dio hype a 10.000 lanzamientos o más' },
+    ],
   },
   {
-    id: 'thesis_50',
-    label: 'Oráculo',
-    description: 'Escribió 50 tesis o más',
-    icon: 'graduation-cap',
-    check: (c) => c.stats.thesesCount >= 50,
+    id: 'reach',
+    silueta: 'megaphone',
+    rangos: [
+      { cumple: (c) => c.stats.likesReceived >= 100, metal: 'bronce', label: 'Popular', description: 'Sus posts recibieron 100 me gusta o más' },
+      { cumple: (c) => c.stats.likesReceived >= 500, metal: 'acero', label: 'Viral', description: 'Sus posts recibieron 500 me gusta o más' },
+      { cumple: (c) => c.stats.likesReceived >= 2000, metal: 'oro', label: 'Altavoz', description: 'Sus posts recibieron 2.000 me gusta o más' },
+      { cumple: (c) => c.stats.likesReceived >= 10000, metal: 'obsidiana', label: 'Ídolo', description: 'Sus posts recibieron 10.000 me gusta o más' },
+    ],
   },
   {
-    id: 'thesis_10',
-    label: 'Analista',
-    description: 'Escribió 10 tesis o más',
-    icon: 'graduation-cap',
-    check: (c) => c.stats.thesesCount >= 10,
-  },
-  {
-    id: 'popular',
-    label: 'Popular',
-    description: 'Sus posts recibieron 100 likes o más',
-    icon: 'heart',
-    check: (c) => c.stats.likesReceived >= 100,
-  },
-  {
-    id: 'hypeman',
-    label: 'Hypeman',
-    description: 'Dio hype a 100 lanzamientos o más',
-    icon: 'zap',
-    check: (c) => c.stats.hypesGiven >= 100,
+    id: 'trust',
+    silueta: 'checked-shield',
+    rangos: [
+      { cumple: (c) => c.isDev && c.walletVerified, metal: 'bronce', label: 'Dev verificado', description: 'Marcado como dev y con su wallet verificada' },
+      { cumple: (c) => confianza(c, REP_MIN_VOTES, 70), metal: 'acero', label: 'Dev confiable', description: 'La comunidad le da un 70% de confianza o más' },
+      { cumple: (c) => confianza(c, 10, 85), metal: 'oro', label: 'Dev muy confiable', description: 'Un 85% de confianza con 10 valoraciones o más' },
+      { cumple: (c) => confianza(c, 30, 85), metal: 'obsidiana', label: 'Dev de élite', description: 'Un 85% de confianza con 30 valoraciones o más' },
+    ],
   },
 ]
 
-/**
- * Solo un emblema por "familia" (p. ej. no enseñar Serial Launcher junto a
- * Primer Launch): se queda el primero que aparezca en BADGE_DEFS, que ya
- * están en orden de más a menos difícil.
- */
-const FAMILY: Record<string, string> = {
-  launch_50: 'launch',
-  launch_10: 'launch',
-  first_launch: 'launch',
-  thesis_50: 'thesis',
-  thesis_10: 'thesis',
+/** Puntería: porcentaje de aciertos, pero solo con bastantes calls detrás. */
+function acierto(c: BadgeContext, minimo: number, pct: number): boolean {
+  if (c.calls.total < minimo) return false
+  return (c.calls.won * 100) / c.calls.total >= pct
 }
 
+/** Confianza: hace falta ser dev verificado y tener valoraciones suficientes. */
+function confianza(c: BadgeContext, minVotos: number, pct: number): boolean {
+  if (!c.isDev || !c.walletVerified) return false
+  return c.rep.votes >= minVotos && c.rep.score >= pct
+}
+
+/**
+ * Fundador no es un rango: o se estuvo en las primeras cuentas o no. Por eso no
+ * usa ninguno de los cuatro metales y lleva el verde de la marca.
+ */
+const FUNDADOR: BadgeDTO = {
+  id: 'founder',
+  label: 'Fundador',
+  description: `Una de las primeras ${FOUNDER_LIMIT} cuentas del Cabal`,
+  icon: 'ribbon-medal',
+  silueta: 'ribbon-medal',
+  metal: 'fundador',
+  rango: 0,
+}
+
+/** El orden es el de la vitrina: primero lo más difícil de conseguir. */
 export function computeBadges(ctx: BadgeContext): BadgeDTO[] {
-  const seen = new Set<string>()
   const out: BadgeDTO[] = []
-  for (const def of BADGE_DEFS) {
-    const family = FAMILY[def.id]
-    if (family && seen.has(family)) continue
-    if (!def.check(ctx)) continue
-    if (family) seen.add(family)
-    out.push({ id: def.id, label: def.label, description: def.description, icon: def.icon })
+  if (ctx.isFounder) out.push(FUNDADOR)
+
+  for (const fam of FAMILIAS) {
+    // De mayor a menor: el primero que se cumpla es el rango de esta cuenta
+    for (let i = fam.rangos.length - 1; i >= 0; i--) {
+      const r = fam.rangos[i]
+      if (!r.cumple(ctx)) continue
+      out.push({
+        id: `${fam.id}-${i + 1}`,
+        label: r.label,
+        description: r.description,
+        icon: fam.silueta,
+        silueta: fam.silueta,
+        metal: r.metal,
+        rango: i + 1,
+      })
+      break
+    }
   }
-  return out
+
+  // Obsidiana primero, bronce al final; Fundador siempre abre
+  const peso: Record<BadgeMetal, number> = { obsidiana: 4, oro: 3, acero: 2, bronce: 1, verde: 0, fundador: 5 }
+  return out.sort((a, b) => peso[b.metal] - peso[a.metal])
 }
 
 /**

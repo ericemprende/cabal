@@ -157,7 +157,7 @@ export function AuthDialog() {
                     type="button"
                     variant="outline"
                     onClick={() => startSocial('x')}
-                    className="h-10 gap-2 border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
+                    className="gap-2 border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
                   >
                     <XLogo className="h-3.5 w-3.5" aria-hidden />
                     X
@@ -168,7 +168,7 @@ export function AuthDialog() {
                     type="button"
                     variant="outline"
                     onClick={() => startSocial('google')}
-                    className="h-10 gap-2 border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
+                    className="gap-2 border-white/12 bg-[#0a0b08] text-[13px] font-bold text-foreground hover:border-white/25 hover:bg-white/5"
                   >
                     <GoogleG className="h-4 w-4" aria-hidden />
                     Google
@@ -278,7 +278,7 @@ export function AuthDialog() {
             <Button
               type="submit"
               disabled={pending || !handle.trim() || !password || (!isLogin && !email.trim())}
-              className="h-10 w-full gap-2 text-sm font-bold"
+              className="w-full gap-2 text-sm font-bold"
             >
               {pending ? 'Conectando…' : isLogin ? 'Iniciar sesión' : 'Crear mi cuenta'}
             </Button>

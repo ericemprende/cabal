@@ -39,6 +39,12 @@ export async function GET() {
       premiumStatus(me.id, me.isAdmin),
     ])
     const followedIds = new Set(followed.map((f) => f.targetId))
+    // El pico más alto de sus calls: es lo único de las insignias que no está
+    // ya en el usuario (callsWon/callsTotal los guarda refreshUserCallTotals).
+    const mejorCall = await db.post.aggregate({
+      where: { userId: me.id, kind: 'call' },
+      _max: { peakMultiple: true },
+    })
     const badges = computeBadges({
       createdAt: me.createdAt,
       isDev: me.isDev,
@@ -51,6 +57,8 @@ export async function GET() {
         likesReceived: likesReceived._sum.likes ?? 0,
         hypesGiven: hypes,
       },
+      calls: { won: me.callsWon, total: me.callsTotal, best: mejorCall._max.peakMultiple },
+      rep: { score: me.repScore, votes: me.repUp + me.repDown },
     })
 
     // rank by points

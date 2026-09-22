@@ -51,14 +51,14 @@ export function VerifyRequestRow({
         </div>
         {!verified && !pending && !open && (
           premium ? (
-            <Button size="sm" variant="outline" className="h-7 shrink-0 text-[12px]" onClick={() => setOpen(true)}>
+            <Button size="sm" variant="outline" className="shrink-0 text-[12px]" onClick={() => setOpen(true)}>
               Solicitar
             </Button>
           ) : (
             <Button
               size="sm"
               variant="outline"
-              className="h-7 shrink-0 gap-1 border-amber-400/40 text-[12px] text-amber-200"
+              className="shrink-0 gap-1 border-amber-400/40 text-[12px] text-amber-200"
               onClick={() => setPremiumOpen(true)}
             >
               <Crown className="h-3 w-3 fill-amber-300 text-amber-300" aria-hidden /> Premium
@@ -90,7 +90,7 @@ export function VerifyRequestRow({
             className="h-8 bg-[#0a0b08] text-base sm:text-[12px]"
             aria-label="Pruebas para la verificación"
           />
-          <Button type="submit" size="sm" className="h-8 shrink-0 text-[12px]" disabled={request.isPending}>
+          <Button type="submit" size="sm" className="shrink-0 text-[12px]" disabled={request.isPending}>
             {request.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Enviar'}
           </Button>
         </form>

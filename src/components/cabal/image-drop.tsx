@@ -115,7 +115,7 @@ export function ImageDrop({
             <Button
               onClick={applyUrl}
               disabled={disabled || !draftTrim}
-              className="h-9 shrink-0 px-3 text-xs font-bold"
+              className="shrink-0 px-3 text-xs font-bold"
             >
               Usar
             </Button>

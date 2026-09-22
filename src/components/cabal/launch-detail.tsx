@@ -339,7 +339,7 @@ export function LaunchDetailDialog() {
                         { onSuccess: () => setComment('') }
                       )
                     }}
-                    className="h-8 px-4 text-xs font-bold"
+                    className="px-4 text-xs font-bold"
                   >
                     Publicar
                   </Button>

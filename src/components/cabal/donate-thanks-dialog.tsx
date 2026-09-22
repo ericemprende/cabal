@@ -210,7 +210,7 @@ export function DonateThanksDialog() {
                     shareOpened.current = true
                     claim.mutate()
                   }}
-                  className="h-12 w-full gap-2 text-[15px] font-bold"
+                  className="w-full gap-2 text-[15px] font-bold"
                 >
                   <a href={post.intent} target="_blank" rel="noopener noreferrer">
                     <Send className="h-4 w-4" aria-hidden /> Compartir en X

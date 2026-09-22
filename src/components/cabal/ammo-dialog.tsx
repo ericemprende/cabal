@@ -72,7 +72,7 @@ export function AmmoDialog() {
                 setAmmoOpen(false)
                 openAuth('login')
               }}
-              className="h-10 px-5 font-bold"
+              className="px-5 font-bold"
             >
               Iniciar sesión
             </Button>
@@ -252,7 +252,7 @@ function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number 
             }
           )
         }
-        className="mt-3 h-11 w-full bg-amber-400 font-black uppercase tracking-wider text-[#1a1406] hover:bg-amber-300 disabled:opacity-40"
+        className="mt-3 w-full bg-amber-400 font-black uppercase tracking-wider text-[#1a1406] hover:bg-amber-300 disabled:opacity-40"
       >
         {fire.isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -343,7 +343,7 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
                 <Button
                   disabled={!pack.card || loading}
                   onClick={() => pay('card')}
-                  className="h-10 flex-1 bg-amber-400 font-bold text-[#1a1406] hover:bg-amber-300 disabled:opacity-40"
+                  className="flex-1 bg-amber-400 font-bold text-[#1a1406] hover:bg-amber-300 disabled:opacity-40"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
                   {pack.card ? `Tarjeta · $${pack.priceUsd}` : 'Tarjeta no disponible'}
@@ -352,7 +352,7 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
                   disabled={!pack.crypto || loading}
                   variant="outline"
                   onClick={() => pay('crypto')}
-                  className="h-10 flex-1 border-white/15 font-bold hover:border-amber-300/50 disabled:opacity-40"
+                  className="flex-1 border-white/15 font-bold hover:border-amber-300/50 disabled:opacity-40"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
                   {pack.crypto ? 'Cripto' : 'Cripto no disponible'}

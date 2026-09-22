@@ -25,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { BadgeDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Chapa, type Metal } from '@/components/cabal/chapa'
-import type { Silueta } from '@/lib/siluetas'
+import { SILUETAS, type Silueta } from '@/lib/siluetas'
 import { displayImageUrl } from '@/lib/remote-image'
 import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
 
@@ -285,28 +285,15 @@ export function PremiumPill({ className }: { className?: string }) {
 }
 
 // ---------- Emblemas del perfil (fundador, actividad…) ----------
-/**
- * Cada emblema es una chapa: su silueta y el metal que le toca. El icono que
- * manda lib/badges.ts es la clave; el metal sube con lo difícil que sea
- * conseguirlo, y Fundador va aparte porque no es un rango — o estuviste en las
- * primeras cuentas o no.
- */
-const BADGE_CHAPAS: Record<string, { silueta: Silueta; metal: Metal; rango: number }> = {
-  gem: { silueta: 'ribbon-medal', metal: 'fundador', rango: 0 },
-  'shield-check': { silueta: 'checked-shield', metal: 'acero', rango: 2 },
-  flame: { silueta: 'rank-3', metal: 'oro', rango: 3 },
-  rocket: { silueta: 'rocket', metal: 'bronce', rango: 1 },
-  'graduation-cap': { silueta: 'scroll-unfurled', metal: 'acero', rango: 2 },
-  heart: { silueta: 'megaphone', metal: 'bronce', rango: 1 },
-  zap: { silueta: 'lightning-arc', metal: 'oro', rango: 3 },
-}
+// La silueta, el metal y el rango los decide lib/badges.ts: aquí solo se pintan.
 
 export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className?: string }) {
   if (badges.length === 0) return null
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       {badges.map((b) => {
-        const chapa = BADGE_CHAPAS[b.icon] ?? BADGE_CHAPAS.gem
+        const silueta = (b.silueta ?? b.icon) as Silueta
+        if (!(silueta in SILUETAS)) return null
         return (
           <Tooltip key={b.id}>
             <TooltipTrigger asChild>
@@ -314,7 +301,7 @@ export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className
                 className="flex h-7 w-7 items-center justify-center rounded-full border border-white/12 bg-[#171a13] transition-colors hover:border-[#8FA83F]/60"
                 aria-label={`${b.label}: ${b.description}`}
               >
-                <Chapa silueta={chapa.silueta} metal={chapa.metal} className="h-4 w-4" />
+                <Chapa silueta={silueta} metal={(b.metal ?? 'acero') as Metal} className="h-4 w-4" />
               </span>
             </TooltipTrigger>
             <TooltipContent className="max-w-[220px] text-center">

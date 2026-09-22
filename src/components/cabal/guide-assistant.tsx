@@ -395,7 +395,7 @@ function SectionDetail({
       {(section.tab || section.href) && (
         <Button
           onClick={go}
-          className="mt-3 h-10 w-full text-[13px] font-bold"
+          className="mt-3 w-full text-[13px] font-bold"
         >
           Llévame ahí
         </Button>

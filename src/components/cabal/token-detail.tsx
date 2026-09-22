@@ -239,7 +239,7 @@ export function TokenDetailDialog() {
                         { onSuccess: () => setThesis('') }
                       )
                     }}
-                    className="h-8 gap-1.5 px-4 text-xs font-bold"
+                    className="gap-1.5 px-4 text-xs font-bold"
                   >
                     <Zap className="h-3 w-3" /> Publicar tesis
                   </Button>
@@ -329,7 +329,7 @@ function DevTrackRecord({
             variant={dev.isFollowed ? 'secondary' : 'default'}
             onClick={() => onFollow(dev.id)}
             className={cn(
-              'h-8 text-xs font-bold',
+              'text-xs font-bold',
               !dev.isFollowed && ''
             )}
           >

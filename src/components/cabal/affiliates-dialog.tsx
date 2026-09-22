@@ -63,7 +63,7 @@ export function AffiliatesDialog() {
               size="sm"
               onClick={copy}
               disabled={!link}
-              className="h-10 shrink-0 gap-1.5 px-3 text-xs font-bold"
+              className="shrink-0 gap-1.5 px-3 text-xs font-bold"
             >
               <Copy className="h-3.5 w-3.5" aria-hidden />
               {copied ? '¡Copiado!' : 'Copiar'}

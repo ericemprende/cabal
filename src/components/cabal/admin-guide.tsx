@@ -228,7 +228,7 @@ function CharacterRow({
             e.target.value = ''
           }}
         />
-        <Button asChild size="sm" variant="outline" className="h-8 gap-1.5 text-[12px]" disabled={uploading}>
+        <Button asChild size="sm" variant="outline" className="gap-1.5 text-[12px]" disabled={uploading}>
           <label htmlFor={inputId} className="cursor-pointer">
             {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
             {character.image ? 'Cambiar foto' : 'Subir foto'}
@@ -246,7 +246,7 @@ function CharacterRow({
           {url.trim() && (
             <Button
               size="sm"
-              className="h-8 shrink-0 px-2"
+              className="shrink-0 px-2"
               onClick={() => {
                 onUrl(url.trim())
                 setUrl('')
@@ -262,7 +262,7 @@ function CharacterRow({
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 gap-1.5 text-[12px] text-muted-foreground"
+            className="gap-1.5 text-[12px] text-muted-foreground"
             onClick={onMakeDefault}
             disabled={busy}
           >

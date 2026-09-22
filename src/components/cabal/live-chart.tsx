@@ -143,7 +143,7 @@ export function ExternalLinksRow({ network, contract, className }: { network: st
       <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
         <Button
           asChild
-          className="h-8 gap-1.5 px-3 text-[11px] font-black"
+          className="gap-1.5 px-3 text-[11px] font-black"
         >
           <a href={primary.url} target="_blank" rel="noreferrer" aria-label={`Comprar en ${primary.label}`}>
             <TrendingUp className="h-3.5 w-3.5" aria-hidden />
@@ -155,7 +155,7 @@ export function ExternalLinksRow({ network, contract, className }: { network: st
             key={link.url}
             variant="outline"
             asChild
-            className="h-8 gap-1.5 border-white/10 px-2.5 text-[11px] font-bold text-muted-foreground hover:bg-transparent hover:text-primary"
+            className="gap-1.5 border-white/10 px-2.5 text-[11px] font-bold text-muted-foreground hover:bg-transparent hover:text-primary"
           >
             <a href={link.url} target="_blank" rel="noreferrer" aria-label={`Comprar en ${link.label}`}>
               <ExternalLink className="h-3 w-3" aria-hidden />
@@ -177,7 +177,7 @@ export function ExternalLinksRow({ network, contract, className }: { network: st
           variant="outline"
           asChild
           className={cn(
-            'h-8 gap-1.5 border-white/10 px-2.5 text-[11px] font-bold text-muted-foreground hover:bg-transparent hover:text-primary',
+            'gap-1.5 border-white/10 px-2.5 text-[11px] font-bold text-muted-foreground hover:bg-transparent hover:text-primary',
             link.primary && 'border-primary/40 bg-primary/10 text-primary hover:border-primary/60 hover:bg-primary/15 hover:text-primary'
           )}
         >

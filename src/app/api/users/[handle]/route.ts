@@ -77,6 +77,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
       db.vote.count({ where: { userId: user.id, target: 'launch', kind: 'hype' } }),
       isFounder(user.createdAt),
     ])
+    // El pico más alto de sus calls: es lo único de las insignias que no está
+    // ya en el usuario (callsWon/callsTotal los guarda refreshUserCallTotals).
+    const mejorCall = await db.post.aggregate({
+      where: { userId: user.id, kind: 'call' },
+      _max: { peakMultiple: true },
+    })
     const badges = computeBadges({
       createdAt: user.createdAt,
       isDev: user.isDev,
@@ -89,6 +95,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
         likesReceived: likesReceived._sum.likes ?? 0,
         hypesGiven,
       },
+      calls: { won: user.callsWon, total: user.callsTotal, best: mejorCall._max.peakMultiple },
+      rep: { score: user.repScore, votes: user.repUp + user.repDown },
     })
 
     // Solo los "me gusta" de quien mira sobre estos posts, no todos los suyos

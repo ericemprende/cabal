@@ -222,7 +222,7 @@ export function ReputationActions({
                     </span>
                     <Button
                       size="sm"
-                      className="ml-auto h-8 text-xs font-bold"
+                      className="ml-auto text-xs font-bold"
                       onClick={saveReview}
                       disabled={rate.isPending || draft.trim() === mine.body}
                     >
@@ -283,7 +283,7 @@ function PremiumGate({ hasVote, onOpen }: { hasVote: boolean; onOpen: () => void
       <Button
         size="sm"
         onClick={onOpen}
-        className="h-8 bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
+        className="bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
       >
         Hazte Premium
       </Button>

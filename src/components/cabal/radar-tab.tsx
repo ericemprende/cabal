@@ -198,7 +198,7 @@ export function RadarTab() {
           <Button
             size="sm"
             onClick={() => router.push('/publicar')}
-            className="hidden h-8 gap-1 px-3 text-xs font-bold md:inline-flex"
+            className="hidden gap-1 px-3 text-xs font-bold md:inline-flex"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={3} /> Publicar
           </Button>

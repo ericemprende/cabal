@@ -160,7 +160,7 @@ export function AdminUsers({
           asChild
           size="sm"
           variant="ghost"
-          className="h-9 gap-1.5 border border-white/10 px-3 text-[11px] font-bold"
+          className="gap-1.5 border border-white/10 px-3 text-[11px] font-bold"
         >
           <a href="/api/admin/waitlist/export?all=1" download>
             <Download className="h-3.5 w-3.5" aria-hidden /> CSV registros X

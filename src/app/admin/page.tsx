@@ -118,7 +118,7 @@ function AdminLogin() {
           <Button
             type="submit"
             disabled={login.isPending}
-            className="h-11 w-full gap-2 text-sm font-bold"
+            className="w-full gap-2 text-sm font-bold"
           >
             {login.isPending ? (
               <>
@@ -166,7 +166,7 @@ function AdminDashboard() {
             variant="ghost"
             onClick={() => logout.mutate()}
             disabled={logout.isPending}
-            className="h-8 gap-1.5 border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"
+            className="gap-1.5 border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground"
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden /> Salir
           </Button>

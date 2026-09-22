@@ -230,7 +230,7 @@ export function QuickBuyButton({
           style={{ backgroundColor: BUY_GREEN }}
           onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = BUY_GREEN_HOVER)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN)}
-          className="mt-2.5 h-9 w-full gap-1.5 text-xs font-bold text-black"
+          className="mt-2.5 w-full gap-1.5 text-xs font-bold text-black"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Zap className="h-3.5 w-3.5" aria-hidden />}
           {pubkey ? `Comprar $${ticker}` : 'Conectar y comprar'}

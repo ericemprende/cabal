@@ -359,12 +359,20 @@ export interface PremiumInfoDTO {
 }
 
 /** Emblema del perfil por un hito (fundador, actividad…). Ver lib/badges.ts. */
+/** El metal de una insignia: dice el nivel. Fundador va aparte, no es un rango. */
+export type BadgeMetal = 'bronce' | 'acero' | 'oro' | 'obsidiana' | 'verde' | 'fundador'
+
 export interface BadgeDTO {
   id: string
   label: string
   description: string
-  /** Clave del icono; el mapeo a un componente de lucide-react vive en el cliente. */
+  /** Igual que `silueta`. Se mantiene por los clientes que aún leen este campo. */
   icon: string
+  /** Silueta de la chapa; las claves viven en lib/siluetas. */
+  silueta: string
+  metal: BadgeMetal
+  /** 1 a 4: cuántos remaches se encienden. 0 en Fundador, que no es un rango. */
+  rango: number
 }
 
 export interface LeaderboardEntryDTO {

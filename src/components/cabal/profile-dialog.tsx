@@ -371,7 +371,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           <Button
             onClick={save}
             disabled={updateMe.isPending}
-            className="h-10 w-full font-bold"
+            className="w-full font-bold"
           >
             {updateMe.isPending ? 'Guardando…' : 'Guardar perfil'}
           </Button>
@@ -434,7 +434,7 @@ function ReferralSection() {
           <Button
             size="sm"
             onClick={copy}
-            className="h-10 shrink-0 gap-1.5 px-3 text-xs font-bold"
+            className="shrink-0 gap-1.5 px-3 text-xs font-bold"
           >
             <Copy className="h-3.5 w-3.5" aria-hidden />
             {copied ? '¡Copiado!' : 'Copiar'}
@@ -571,7 +571,7 @@ function ClaimProjectSection() {
                 size="sm"
                 variant="ghost"
                 onClick={connectInjected}
-                className="h-9 shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+                className="shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
               >
                 {walletKind === 'phantom' ? 'Phantom' : 'MetaMask'}
               </Button>
@@ -583,7 +583,7 @@ function ClaimProjectSection() {
           size="sm"
           onClick={submit}
           disabled={claim.isPending}
-          className="mt-3 h-9 w-full gap-1.5 text-xs font-bold"
+          className="mt-3 w-full gap-1.5 text-xs font-bold"
         >
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
           {claim.isPending ? 'Verificando on-chain…' : 'Verificar y reclamar'}
@@ -705,7 +705,7 @@ function ConnectionRow({
           size="sm"
           onClick={onConnect}
           disabled={!configured && !demo}
-          className="h-8 shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+          className="shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-3 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
           variant="ghost"
         >
           {configured || demo ? cta : 'No disponible'}
@@ -966,7 +966,7 @@ function WalletManager({ me }: { me: MeDTO }) {
               size="sm"
               variant="ghost"
               onClick={connectInjected}
-              className="h-9 shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+              className="shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
             >
               {walletKind === 'phantom' ? 'Phantom' : 'MetaMask'}
             </Button>
@@ -975,7 +975,7 @@ function WalletManager({ me }: { me: MeDTO }) {
             size="sm"
             onClick={add}
             disabled={addWallet.isPending}
-            className="h-9 shrink-0 px-3 text-xs font-bold"
+            className="shrink-0 px-3 text-xs font-bold"
           >
             {addWallet.isPending ? '…' : 'Conectar'}
           </Button>
@@ -1082,7 +1082,7 @@ function WalletRow({
             variant="ghost"
             onClick={onVerify}
             disabled={verifying}
-            className="h-7 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2 text-[10px] font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
+            className="border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2 text-[10px] font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
           >
             {verifying ? 'Firmando…' : 'Firmar'}
           </Button>
@@ -1179,7 +1179,7 @@ function DevClaimForm({
         <Button
           onClick={submit}
           disabled={verifying}
-          className="h-9 w-full gap-1.5 text-xs font-bold"
+          className="w-full gap-1.5 text-xs font-bold"
         >
           <TrendingUp className="h-3.5 w-3.5" aria-hidden />
           {verifying ? 'Consultando on-chain…' : 'Verificar on-chain'}
@@ -1287,7 +1287,7 @@ function ClaimCard({
               variant="ghost"
               onClick={onRetry}
               disabled={busy}
-              className="h-7 gap-1 border border-white/10 px-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+              className="gap-1 border border-white/10 px-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
             >
               <RefreshCw className={cn('h-3 w-3', busy && 'animate-spin')} aria-hidden /> Reintentar
             </Button>
@@ -1407,7 +1407,7 @@ function AvatarEditor({
           size="sm"
           onClick={() => fileRef.current?.click()}
           disabled={uploading || busy}
-          className="h-8 shrink-0 gap-1.5 px-3 text-xs font-bold"
+          className="shrink-0 gap-1.5 px-3 text-xs font-bold"
         >
           <ImagePlus className="h-3.5 w-3.5" aria-hidden />
           {uploading ? 'Subiendo…' : 'Subir foto'}
@@ -1442,7 +1442,7 @@ function AvatarEditor({
           variant="ghost"
           onClick={applyUrl}
           disabled={busy || !urlDraft.trim()}
-          className="h-8 shrink-0 border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          className="shrink-0 border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           Usar
         </Button>
