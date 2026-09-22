@@ -184,6 +184,9 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
             <Link href="/privacidad" className="hover:text-foreground">
               Política de Privacidad
             </Link>
+            <Link href="/creditos" className="hover:text-foreground">
+              Créditos
+            </Link>
             <a href="mailto:legal@cabal.army" className="hover:text-foreground">
               legal@cabal.army
             </a>

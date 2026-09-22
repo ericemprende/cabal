@@ -279,7 +279,7 @@ export function PremiumPill({ className }: { className?: string }) {
         className
       )}
     >
-      <Crown className="h-3 w-3 fill-amber-300" aria-hidden /> Pro
+      <Chapa silueta="imperial-crown" metal="oro" className="h-[18px] w-[18px]" placa /> Pro
     </span>
   )
 }
@@ -301,7 +301,7 @@ export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className
                 className="flex h-7 w-7 items-center justify-center rounded-full border border-white/12 bg-[#171a13] transition-colors hover:border-[#8FA83F]/60"
                 aria-label={`${b.label}: ${b.description}`}
               >
-                <Chapa silueta={silueta} metal={(b.metal ?? 'acero') as Metal} className="h-4 w-4" />
+                <Chapa silueta={silueta} metal={(b.metal ?? 'acero') as Metal} className="h-5 w-5" placa />
               </span>
             </TooltipTrigger>
             <TooltipContent className="max-w-[220px] text-center">
@@ -585,7 +585,7 @@ export function PointsPill({ points, className }: { points: number; className?: 
       )}
       title="Puntos Cabal"
     >
-      <Zap className="h-3 w-3" aria-hidden />
+      <Chapa silueta="star-medal" metal="oro" className="h-[18px] w-[18px]" placa />
       {points.toLocaleString('es')}
     </span>
   )
@@ -683,7 +683,8 @@ export function CountdownPill({
           ? 'px-3 py-1.5 text-base'
           : 'px-2 py-1 text-xs'
   const dotCls = size === 'xs' ? 'h-1 w-1' : 'h-1.5 w-1.5'
-  const iconCls = size === 'xs' ? 'h-2.5 w-2.5' : 'h-3 w-3'
+  // Con placa, el octógono necesita 16px para leerse; por debajo se cierra
+  const iconCls = size === 'xs' ? 'h-4 w-4' : 'h-[18px] w-[18px]'
   // Rojo: en vivo o a punto de lanzar (<45 min) · Ámbar: pocas horas (<6 h) · Oliva: con tiempo
   const urgent = c.totalMs < 45 * 60_000
   const soon = c.totalMs < 6 * 3600_000
@@ -739,7 +740,7 @@ export function CountdownPill({
       {urgent ? (
         <span className={cn('live-dot-red shrink-0 rounded-full bg-[#ff4d5e]', dotCls)} aria-hidden />
       ) : (
-        <Timer className={cn('shrink-0', iconCls)} aria-hidden />
+        <Chapa silueta="stopwatch" metal={soon ? 'oro' : 'verde'} className={cn('shrink-0', iconCls)} placa />
       )}
       {estimated && '~'}
       {text}

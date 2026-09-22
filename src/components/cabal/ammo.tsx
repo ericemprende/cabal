@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bomb } from 'lucide-react'
+import { Chapa } from '@/components/cabal/chapa'
 import { cn } from '@/lib/utils'
 import { useAmmoInfo } from '@/lib/api-client'
 import { useUI, type AmmoTarget } from '@/lib/store'
@@ -158,7 +158,7 @@ export function AmmoBadge({ className }: { className?: string }) {
         className={cn('flex items-center gap-1.5', recoil && 'animate-ammo-recoil')}
         onAnimationEnd={() => setRecoil(false)}
       >
-        <Bomb className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+        <Chapa silueta="heavy-bullets" metal="oro" className="h-5 w-5" placa />
         {balance > 0 ? fmtBullets(balance) : 'MUNICIÓN'}
       </span>
     </button>
@@ -190,7 +190,7 @@ export function BoostButton({
         className
       )}
     >
-      <Bomb className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+      <Chapa silueta="heavy-bullets" metal="oro" className="h-5 w-5" placa />
       {boost && boost.bullets > 0 ? (
         <>
           Sumar balas

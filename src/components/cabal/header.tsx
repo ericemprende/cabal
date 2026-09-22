@@ -100,7 +100,7 @@ export function Header() {
           <Popover onOpenChange={(open) => open && chatReplies.markSeen()}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-primary" aria-label="Notificaciones">
-                <Chapa silueta="ringing-bell" metal="oro" className="h-[18px] w-[18px]" />
+                <Chapa silueta="ringing-bell" metal="oro" className="h-[18px] w-[18px]" placa />
                 {(soon.length > 0 || chatReplies.unread > 0) && (
                   <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary live-dot" />
                 )}

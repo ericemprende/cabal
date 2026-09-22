@@ -315,7 +315,7 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
               )}
               aria-label="Dar hype"
             >
-              <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-4 w-4" /> {launch.hype} hypes
+              <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-5 w-5" placa /> {launch.hype} hypes
             </button>
             <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} className="py-0.5" />
           </div>
@@ -408,13 +408,13 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           )}
           aria-label="Dar hype"
         >
-          <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-4 w-4" />
+          <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-5 w-5" placa />
           {launch.hype}
         </button>
         {/* El voto en contra, al lado del fueguito: pide motivo antes de contar */}
         <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} />
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Chapa silueta="chat-bubble" metal="acero" className="h-4 w-4" />
+          <Chapa silueta="chat-bubble" metal="acero" className="h-5 w-5" placa />
           {launch.postsCount}
         </span>
         <ReminderBell launchId={launch.id} launchAt={launch.launchAt} />

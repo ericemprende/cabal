@@ -78,7 +78,7 @@ export function LeaderboardTab() {
                 : 'border-white/10 bg-[#121410] text-muted-foreground hover:border-[#8FA83F]/30'
             )}
           >
-            <Chapa silueta={b.silueta} metal="acero" className="h-4 w-4" />
+            <Chapa silueta={b.silueta} metal="acero" className="h-5 w-5" placa />
             {b.label}
           </button>
         ))}

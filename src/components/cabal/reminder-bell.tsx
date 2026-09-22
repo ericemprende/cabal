@@ -78,7 +78,7 @@ export function ReminderBell({
         className
       )}
     >
-      <Chapa silueta="alarm-clock" metal={on ? 'verde' : 'acero'} className={size === 'sm' ? 'h-4 w-4' : 'h-[18px] w-[18px]'} />
+      <Chapa silueta="alarm-clock" metal={on ? 'verde' : 'acero'} className={size === 'sm' ? 'h-4 w-4' : 'h-[18px] w-[18px]'} placa />
     </button>
   )
 }

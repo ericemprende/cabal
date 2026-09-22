@@ -25,6 +25,7 @@ export function LegalPage({
           <nav className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link href="/terminos" className="hover:text-foreground">Términos</Link>
             <Link href="/privacidad" className="hover:text-foreground">Privacidad</Link>
+            <Link href="/creditos" className="hover:text-foreground">Créditos</Link>
           </nav>
         </div>
       </header>
