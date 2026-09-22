@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, HandHeart, Send, ShieldCheck, Sparkles } from 'lucide-react'
+import { ExternalLink, HandHeart, Send, ShieldCheck } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useUI } from '@/lib/store'
@@ -27,14 +27,9 @@ const WIDGET_URL = `https://nowpayments.io/embeds/donation-widget?api_key=${API_
 /** Página de donación a pantalla completa: la salida si el embed se atasca. */
 const PAGE_URL = `https://nowpayments.io/donation?api_key=${API_KEY}`
 
-/**
- * El embed mide 346 de ancho fijo (no es responsive, lo escalamos nosotros).
- * De alto, los 623 del snippet oficial solo valen para el primer paso: el de la
- * dirección y el QR es bastante más alto, y con una altura corta y sin scroll el
- * botón de continuar queda recortado y parece que el widget se ha colgado.
- */
+/** Medidas del embed: no es responsive, lo escalamos nosotros. */
 const WIDGET_W = 346
-const WIDGET_H = 780
+const WIDGET_H = 623
 
 /** Cuándo se vio el pop-up por última vez (ms). */
 const SEEN_KEY = 'cabal:donate:seen'
@@ -116,6 +111,10 @@ export function DonateDialog() {
   }, [])
 
   return (
+    /* El diálogo tiene que caber en pantalla: si el botón «Continue» del widget
+       queda por debajo del borde de la ventana y hay que arrastrar para llegar,
+       el clic se pierde (al iframe solo le llega un `blur`) y parece colgado.
+       Por eso todo lo de alrededor del widget es corto. */
     <Dialog
       open={donateOpen}
       onOpenChange={(v) => {
@@ -123,61 +122,37 @@ export function DonateDialog() {
         setDonateOpen(v)
       }}
     >
-      {/* El widget vive en un iframe ajeno: si el diálogo le roba el foco (al
-          abrirse o al detectar foco "fuera" del content), sus campos dejan de
-          responder y parece colgado. */}
       <DialogContent
         onOpenAutoFocus={(e) => e.preventDefault()}
         onFocusOutside={(e) => e.preventDefault()}
         className="max-h-[92dvh] overflow-y-auto border-white/15 bg-[#121410] p-0 sm:max-w-md"
       >
-        <div className="relative overflow-hidden border-b border-white/10 p-5">
+        <div className="relative overflow-hidden border-b border-white/10 px-5 py-4">
           <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
           <div className="relative flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10">
-              <HandHeart className="h-5 w-5 text-white" aria-hidden />
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10">
+              <HandHeart className="h-4.5 w-4.5 text-white" aria-hidden />
             </span>
-            <div>
+            <div className="min-w-0">
               <DialogTitle className="font-display text-lg font-bold">Apoya a Cabal</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Servidores, datos en vivo y desarrollo: esto lo sostiene la comunidad
+              <DialogDescription className="text-xs leading-snug text-muted-foreground">
+                Gratis, sin anuncios y sin vender tus datos: esto lo sostiene la comunidad.
+                Con <span className="font-bold text-white">$1 en SOL</span> ya estás aportando.
               </DialogDescription>
             </div>
           </div>
-          <p className="relative mt-3 text-[13px] leading-relaxed text-foreground/85">
-            Cabal es gratis, sin anuncios y sin vender tus datos. Lo que ves aquí —el radar, los
-            datos en vivo, el chat— sale del bolsillo de quien lo construye y de gente como tú.
-            Si esta plataforma te ha ahorrado un mal trade o te ha puesto delante de uno bueno,
-            contribuir es la forma de mantenerla en pie.
-          </p>
-          <p className="relative mt-3 flex items-start gap-2 rounded-xl border border-white/20 bg-white/[0.06] p-3 text-[13px] leading-relaxed text-foreground/90">
-            <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-white" aria-hidden />
-            <span>
-              <span className="font-bold text-white">Con $1 en SOL ya estás aportando.</span> No hay
-              mínimo ni cantidad pequeña: aquí suma más que mucha gente done poco a que poca gente
-              done mucho.
-            </span>
-          </p>
         </div>
 
         <DonateBody open={donateOpen} />
 
-        <div className="mx-3 mb-1 flex items-start gap-2.5 rounded-xl border border-primary/25 bg-primary/[0.07] p-3.5">
-          <HandHeart className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-          <p className="text-[13px] leading-relaxed text-foreground/90">
-            <span className="font-bold text-primary">Gracias de verdad.</span> Tanto si donas como
-            si no, gracias por estar aquí y por hacer que esto valga la pena. Cada aporte se va
-            entero a mantener Cabal viva y creciendo para toda la comunidad. 🫡
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-2 border-t border-white/10 p-4 pt-3">
+        <div className="flex flex-col gap-1.5 border-t border-white/10 px-4 py-3">
           <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden />
-            Pagos procesados por NOWPayments · SOL, USDT, BTC, ETH y +300 criptos
+            Pagos por NOWPayments · Gracias de verdad por sostener esto 🫡
           </p>
           <Button
             variant="ghost"
+            size="sm"
             className="w-full text-muted-foreground"
             onClick={() => {
               markSeen()
@@ -186,9 +161,6 @@ export function DonateDialog() {
           >
             Ahora no
           </Button>
-          <p className="text-center text-[11px] text-muted-foreground/70">
-            No te lo volvemos a preguntar hasta dentro de 24 h.
-          </p>
         </div>
       </DialogContent>
     </Dialog>
@@ -204,7 +176,7 @@ function DonateBody({ open }: { open: boolean }) {
   })
 
   return (
-    <div className="px-3 pb-3 pt-4">
+    <div className="px-2 pb-2 pt-3 sm:px-3">
       {cfg.data?.last && <PendingDonation last={cfg.data.last} />}
       <DonationWidget />
     </div>
@@ -248,32 +220,29 @@ function PendingDonation({ last }: { last: NonNullable<DonateConfigDTO['last']> 
 }
 
 /**
- * El embed mide 346 de ancho fijo: lo encogemos si la pantalla no da para tanto.
- * El iframe conserva su propio scroll (nada de `scrolling="no"`) para que ningún
- * paso del widget quede fuera de alcance.
+ * El widget, con las instrucciones delante.
+ *
+ * El embed viene en inglés y no preselecciona moneda (la cuenta no tiene página
+ * de donación configurada: su `donation-settings-by-apiKey` responde 404). Quien
+ * no despliega «Choose asset» pulsa Continue y solo recibe un «Please fill in
+ * the missing information» en rosa pálido, así que parece que se ha colgado.
+ * Por eso el aviso va aquí fuera, en español.
+ *
+ * El embed mide 346×623 y se deja EXACTAMENTE así. Nada de encogerlo: ni con
+ * `transform: scale()` ni con `zoom`, porque en cuanto el iframe se escala
+ * Chrome deja de acertar dónde se ha pulsado dentro de él y los clics se
+ * pierden (probado: con zoom 0.62 no llega ni un pointerdown al widget). Si la
+ * pantalla es más estrecha que el embed, se desplaza de lado y ya está.
  */
 function DonationWidget() {
-  const box = useRef<HTMLDivElement>(null)
-  const [scale, setScale] = useState(1)
-
-  const fit = useCallback(() => {
-    const el = box.current
-    if (!el) return
-    setScale(Math.min(1, el.clientWidth / WIDGET_W))
-  }, [])
-
-  useEffect(() => {
-    fit()
-    const el = box.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(fit)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [fit])
-
   return (
     <div className="w-full">
-      <div ref={box} className="w-full" style={{ height: WIDGET_H * scale }}>
+      <p className="mb-2 rounded-xl border border-primary/25 bg-primary/[0.07] px-3 py-2 text-[12px] leading-snug text-foreground/90">
+        <span className="font-bold text-primary">Ojo:</span> despliega{' '}
+        <span className="font-bold text-primary">«Choose asset»</span> y elige moneda (SOL, USDC)
+        antes de pulsar «Continue», o el botón no avanza.
+      </p>
+      <div className="w-full overflow-x-auto">
         <iframe
           src={WIDGET_URL}
           title="Donar a Cabal con cripto"
@@ -281,7 +250,6 @@ function DonationWidget() {
           height={WIDGET_H}
           loading="lazy"
           className="mx-auto block rounded-xl border-0"
-          style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
         >
           No se pudo cargar el widget de donaciones.
         </iframe>
