@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, BellRing } from 'lucide-react'
+import { Chapa } from '@/components/cabal/chapa'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useUI } from '@/lib/store'
@@ -62,7 +62,6 @@ export function ReminderBell({
     })
   }
 
-  const Icon = on ? BellRing : Bell
   return (
     <button
       type="button"
@@ -79,7 +78,7 @@ export function ReminderBell({
         className
       )}
     >
-      <Icon className={cn(size === 'sm' ? 'h-3.5 w-3.5' : 'h-4 w-4', on && 'fill-amber-300/30')} aria-hidden />
+      <Chapa silueta="alarm-clock" metal={on ? 'verde' : 'acero'} className={size === 'sm' ? 'h-4 w-4' : 'h-[18px] w-[18px]'} />
     </button>
   )
 }

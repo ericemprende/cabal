@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Crown, MessageCircle, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
@@ -297,9 +298,9 @@ export function RightRail() {
           <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">
             Publica launches y tesis → gana puntos → cámbialos por tokens cuando lancemos $CABAL.
           </p>
-          <button onClick={() => router.push('/publicar')} className="mt-2.5 w-full rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90">
+          <Button size="sm" onClick={() => router.push('/publicar')} className="mt-2.5 w-full">
             Publicar mi primer launch
-          </button>
+          </Button>
         </section>
       </div>
     </aside>

@@ -24,6 +24,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { BadgeDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { Chapa, type Metal } from '@/components/cabal/chapa'
+import type { Silueta } from '@/lib/siluetas'
 import { displayImageUrl } from '@/lib/remote-image'
 import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
 
@@ -283,14 +285,20 @@ export function PremiumPill({ className }: { className?: string }) {
 }
 
 // ---------- Emblemas del perfil (fundador, actividad…) ----------
-const BADGE_ICONS: Record<string, typeof Gem> = {
-  gem: Gem,
-  'shield-check': ShieldCheck,
-  flame: Flame,
-  rocket: Rocket,
-  'graduation-cap': GraduationCap,
-  heart: Heart,
-  zap: Zap,
+/**
+ * Cada emblema es una chapa: su silueta y el metal que le toca. El icono que
+ * manda lib/badges.ts es la clave; el metal sube con lo difícil que sea
+ * conseguirlo, y Fundador va aparte porque no es un rango — o estuviste en las
+ * primeras cuentas o no.
+ */
+const BADGE_CHAPAS: Record<string, { silueta: Silueta; metal: Metal; rango: number }> = {
+  gem: { silueta: 'ribbon-medal', metal: 'fundador', rango: 0 },
+  'shield-check': { silueta: 'checked-shield', metal: 'acero', rango: 2 },
+  flame: { silueta: 'rank-3', metal: 'oro', rango: 3 },
+  rocket: { silueta: 'rocket', metal: 'bronce', rango: 1 },
+  'graduation-cap': { silueta: 'scroll-unfurled', metal: 'acero', rango: 2 },
+  heart: { silueta: 'megaphone', metal: 'bronce', rango: 1 },
+  zap: { silueta: 'lightning-arc', metal: 'oro', rango: 3 },
 }
 
 export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className?: string }) {
@@ -298,15 +306,15 @@ export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       {badges.map((b) => {
-        const Icon = BADGE_ICONS[b.icon] ?? Gem
+        const chapa = BADGE_CHAPAS[b.icon] ?? BADGE_CHAPAS.gem
         return (
           <Tooltip key={b.id}>
             <TooltipTrigger asChild>
               <span
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-[#8FA83F]/30 bg-[#8FA83F]/10 text-primary transition-colors hover:border-[#8FA83F]/60"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/12 bg-[#171a13] transition-colors hover:border-[#8FA83F]/60"
                 aria-label={`${b.label}: ${b.description}`}
               >
-                <Icon className="h-3.5 w-3.5" aria-hidden />
+                <Chapa silueta={chapa.silueta} metal={chapa.metal} className="h-4 w-4" />
               </span>
             </TooltipTrigger>
             <TooltipContent className="max-w-[220px] text-center">

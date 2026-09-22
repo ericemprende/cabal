@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Crown, Info, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Chapa } from '@/components/cabal/chapa'
+import type { Silueta } from '@/lib/siluetas'
 import { PointsPill, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { DiscordLogo } from '@/components/cabal/discord-logo'
 import { useFollowToggle, useLeaderboard } from '@/lib/api-client'
@@ -60,11 +62,11 @@ export function LeaderboardTab() {
       <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
         {(
           [
-            { key: 'callers', label: 'Top Callers', icon: Target },
-            { key: 'points', label: 'Puntos Cabal', icon: Zap },
-            { key: 'devs', label: 'Devs', icon: Wrench },
-            { key: 'clans', label: 'Clanes', icon: Shield },
-          ] as { key: Board; label: string; icon: typeof Target }[]
+            { key: 'callers', label: 'Top Callers', silueta: 'target-arrows' as const },
+            { key: 'points', label: 'Puntos Cabal', silueta: 'star-medal' as const },
+            { key: 'devs', label: 'Devs', silueta: 'anvil-impact' as const },
+            { key: 'clans', label: 'Clanes', silueta: 'winged-emblem' as const },
+          ] as { key: Board; label: string; silueta: Silueta }[]
         ).map((b) => (
           <button
             key={b.key}
@@ -76,7 +78,7 @@ export function LeaderboardTab() {
                 : 'border-white/10 bg-[#121410] text-muted-foreground hover:border-[#8FA83F]/30'
             )}
           >
-            <b.icon className="h-3.5 w-3.5" aria-hidden />
+            <Chapa silueta={b.silueta} metal="acero" className="h-4 w-4" />
             {b.label}
           </button>
         ))}

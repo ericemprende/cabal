@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { Chapa } from '@/components/cabal/chapa'
 import { displayImageUrl } from '@/lib/remote-image'
 import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, TokenGlyph, useCountdown, useNow, OfficialBadge } from '@/components/cabal/shared'
 import { fmtPct, launchPhase, networkMeta, timeAgo, type LaunchPhase } from '@/lib/cabal'
@@ -197,7 +198,7 @@ export function RadarTab() {
           <Button
             size="sm"
             onClick={() => router.push('/publicar')}
-            className="hidden h-8 gap-1 rounded-full px-3 text-xs font-bold md:inline-flex"
+            className="hidden h-8 gap-1 px-3 text-xs font-bold md:inline-flex"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={3} /> Publicar
           </Button>
@@ -314,7 +315,7 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
               )}
               aria-label="Dar hype"
             >
-              <Flame className={cn('h-3.5 w-3.5', launch.hyped && 'fill-primary')} /> {launch.hype} hypes
+              <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-4 w-4" /> {launch.hype} hypes
             </button>
             <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} className="py-0.5" />
           </div>
@@ -407,13 +408,13 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           )}
           aria-label="Dar hype"
         >
-          <Flame className={cn('h-3.5 w-3.5', launch.hyped && 'fill-primary')} />
+          <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-4 w-4" />
           {launch.hype}
         </button>
         {/* El voto en contra, al lado del fueguito: pide motivo antes de contar */}
         <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} />
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
-          <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+          <Chapa silueta="chat-bubble" metal="acero" className="h-4 w-4" />
           {launch.postsCount}
         </span>
         <ReminderBell launchId={launch.id} launchAt={launch.launchAt} />

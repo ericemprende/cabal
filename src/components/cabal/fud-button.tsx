@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Loader2, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Chapa } from '@/components/cabal/chapa'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -117,7 +118,7 @@ export function FudButton({
                 className="resize-none bg-[#0a0b08] text-base sm:text-[13px]"
               />
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <MessageSquare className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <Chapa silueta="turd" metal={fudded ? 'bronce' : 'acero'} className="h-4 w-4" />
                 <span className="min-w-0 flex-1">{error ?? 'Se publicará como comentario público, firmado por ti'}</span>
                 <span className="shrink-0 tabular-nums">
                   {reason.trim().length}/{FUD_REASON_MIN}

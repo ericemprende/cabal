@@ -25,6 +25,7 @@ import { AffiliatesDialog } from '@/components/cabal/affiliates-dialog'
 import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens, useUserSearch } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { Chapa } from '@/components/cabal/chapa'
 import { ContractResult, isContractAddress } from '@/components/cabal/contract-buy'
 import { AmmoBadge } from '@/components/cabal/ammo'
 import { DonateButton } from '@/components/cabal/donate-dialog'
@@ -99,7 +100,7 @@ export function Header() {
           <Popover onOpenChange={(open) => open && chatReplies.markSeen()}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-primary" aria-label="Notificaciones">
-                <Bell className="h-[18px] w-[18px]" />
+                <Chapa silueta="ringing-bell" metal="oro" className="h-[18px] w-[18px]" />
                 {(soon.length > 0 || chatReplies.unread > 0) && (
                   <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary live-dot" />
                 )}

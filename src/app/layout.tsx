@@ -5,6 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
 import { InstallApp } from "@/components/cabal/install-app";
+import { ChapaDefs } from "@/components/cabal/chapa";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -62,6 +63,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased bg-background text-foreground`}
       >
+        {/* Los degradados de las chapas, una sola vez para toda la página */}
+        <ChapaDefs />
         <Providers>{children}</Providers>
         <InstallApp />
         {/* En móvil, por encima de la barra de navegación inferior */}
