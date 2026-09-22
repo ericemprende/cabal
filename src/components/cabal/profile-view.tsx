@@ -23,6 +23,7 @@ import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { AmmoDialog } from '@/components/cabal/ammo-dialog'
 import { DonateDialog } from '@/components/cabal/donate-dialog'
+import { GuideAssistant } from '@/components/cabal/guide-assistant'
 import { useFollowToggle, useSession, useUserFollows, useUserProfile } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { usePresenceConnection, useIsOnline } from '@/lib/presence'
@@ -81,6 +82,7 @@ export function ProfileView({ handle }: { handle: string }) {
       <PremiumDialog />
       <AmmoDialog />
       <DonateDialog />
+      <GuideAssistant />
     </div>
   )
 }
