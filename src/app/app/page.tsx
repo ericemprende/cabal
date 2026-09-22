@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Coins, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Radio, Trophy, Zap } from 'lucide-react'
+import { Coins, MessageCircle, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
 import { Ticker } from '@/components/cabal/ticker'
@@ -213,12 +213,12 @@ export default function Home() {
             {/* Mobile section title */}
             <div className="mb-3 flex items-center gap-2 md:hidden">
               {tab === 'chat' ? (
-                <Radio className="h-4 w-4 text-primary" aria-hidden />
+                <MessageCircle className="h-4 w-4 text-primary" aria-hidden />
               ) : (
                 <RadarIcon className="h-4 w-4 text-primary" aria-hidden />
               )}
               <h1 className="font-display text-lg font-bold capitalize">
-                {tab === 'leaderboard' ? 'líderes' : tab === 'chat' ? 'Radio Cabal' : tab}
+                {tab === 'leaderboard' ? 'líderes' : tab === 'chat' ? 'Chat del Cabal' : tab}
               </h1>
             </div>
 

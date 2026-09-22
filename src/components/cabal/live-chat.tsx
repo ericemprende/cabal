@@ -113,7 +113,7 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
         </span>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Radio Cabal</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Chat del Cabal</p>
         <span className="ml-auto flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
           <Users className="h-3 w-3" aria-hidden /> {onlineIds.size}
         </span>

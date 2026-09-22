@@ -78,7 +78,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     key: 'radio',
-    title: 'Radio Cabal',
+    title: 'Chat del Cabal',
     summary: 'El chat en vivo del escuadrón.',
     body:
       'Charlas, alpha y oportunidades en tiempo real. Se ve quién está conectado, se puede responder a un mensaje concreto y te avisamos cuando alguien te contesta. De vez en cuando aparecen avisos del propio Cabal.',
