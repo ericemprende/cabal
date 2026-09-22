@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { HandHeart, Send, ShieldCheck, Sparkles } from 'lucide-react'
+import { ExternalLink, HandHeart, Send, ShieldCheck, Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { useUI } from '@/lib/store'
@@ -24,9 +24,17 @@ import { fmtUsd, type DonateConfigDTO } from '@/lib/donate'
 const API_KEY = process.env.NEXT_PUBLIC_NOWPAYMENTS_DONATION_KEY || 'fc1b8492-4709-4e61-ba59-9a241322ffa0'
 const WIDGET_URL = `https://nowpayments.io/embeds/donation-widget?api_key=${API_KEY}`
 
-/** Medidas fijas del embed: no es responsive, lo escalamos nosotros. */
+/** Página de donación a pantalla completa: la salida si el embed se atasca. */
+const PAGE_URL = `https://nowpayments.io/donation?api_key=${API_KEY}`
+
+/**
+ * El embed mide 346 de ancho fijo (no es responsive, lo escalamos nosotros).
+ * De alto, los 623 del snippet oficial solo valen para el primer paso: el de la
+ * dirección y el QR es bastante más alto, y con una altura corta y sin scroll el
+ * botón de continuar queda recortado y parece que el widget se ha colgado.
+ */
 const WIDGET_W = 346
-const WIDGET_H = 623
+const WIDGET_H = 780
 
 /** Cuándo se vio el pop-up por última vez (ms). */
 const SEEN_KEY = 'cabal:donate:seen'
@@ -239,7 +247,11 @@ function PendingDonation({ last }: { last: NonNullable<DonateConfigDTO['last']> 
   )
 }
 
-/** El embed mide 346×623 fijos: lo encogemos si la pantalla no da para tanto. */
+/**
+ * El embed mide 346 de ancho fijo: lo encogemos si la pantalla no da para tanto.
+ * El iframe conserva su propio scroll (nada de `scrolling="no"`) para que ningún
+ * paso del widget quede fuera de alcance.
+ */
 function DonationWidget() {
   const box = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
@@ -260,19 +272,29 @@ function DonationWidget() {
   }, [fit])
 
   return (
-    <div ref={box} className="w-full" style={{ height: WIDGET_H * scale }}>
-      <iframe
-        src={WIDGET_URL}
-        title="Donar a Cabal con cripto"
-        width={WIDGET_W}
-        height={WIDGET_H}
-        loading="lazy"
-        scrolling="no"
-        className="mx-auto block overflow-hidden rounded-xl border-0"
-        style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
+    <div className="w-full">
+      <div ref={box} className="w-full" style={{ height: WIDGET_H * scale }}>
+        <iframe
+          src={WIDGET_URL}
+          title="Donar a Cabal con cripto"
+          width={WIDGET_W}
+          height={WIDGET_H}
+          loading="lazy"
+          className="mx-auto block rounded-xl border-0"
+          style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
+        >
+          No se pudo cargar el widget de donaciones.
+        </iframe>
+      </div>
+      <a
+        href={PAGE_URL}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11.5px] text-muted-foreground/80 underline-offset-2 hover:text-primary hover:underline"
       >
-        No se pudo cargar el widget de donaciones.
-      </iframe>
+        <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        ¿Se te queda atascado? Abre la donación en una pestaña
+      </a>
     </div>
   )
 }
