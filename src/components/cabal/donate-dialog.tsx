@@ -93,7 +93,7 @@ export function DonateDialog() {
       const busy =
         s.authOpen || s.premiumOpen || s.ammoOpen || s.profileOpen || s.adminOpen ||
         s.searchOpen || s.affiliatesOpen || s.composerOpen || s.welcomeShareOpen ||
-        !!s.launchDetailId || !!s.tokenDetailId
+        s.guideOpen || !!s.launchDetailId || !!s.tokenDetailId
       // Si está ocupado no insistimos ahora: sin marca, vuelve a intentarlo al entrar de nuevo.
       if (busy) return
       markSeen()

@@ -23,7 +23,7 @@ const ACTIVITY_FILTERS: { value: ActivityFilter; label: string; icon: typeof Rad
   { value: 'all', label: 'Todo', icon: Radio },
   { value: 'launch', label: 'Launches', icon: Rocket },
   { value: 'post', label: 'Tesis', icon: MessageSquare },
-  { value: 'chat', label: 'Chat en vivo', icon: MessageCircle },
+  { value: 'chat', label: 'Radio Cabal', icon: Radio },
 ]
 
 /** Lista de quién está conectado ahora mismo, para el tooltip del icono del chat. */
@@ -102,7 +102,7 @@ export function LeftFeed() {
               <button
                 onClick={() => setCollapsed(false)}
                 className="relative flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white/5"
-                aria-label={`Chat en vivo, ${onlineCount} conectados${unread ? `, ${unread} sin leer` : ''}`}
+                aria-label={`Radio Cabal, ${onlineCount} conectados${unread ? `, ${unread} sin leer` : ''}`}
               >
                 <MessageCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
                 {unread > 0 ? (

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Radar, Coins, Rss, Trophy, Plus, MessageCircle } from 'lucide-react'
+import { Radar, Coins, Rss, Trophy, Plus, Radio } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUI, type TabKey } from '@/lib/store'
 import { useGoToTab } from '@/lib/use-go-to-tab'
@@ -17,7 +17,7 @@ const LEFT: NavTab[] = [
   { key: 'feed', label: 'Feed', icon: Rss },
 ]
 const RIGHT: NavTab[] = [
-  { key: 'chat', label: 'Chat', icon: MessageCircle },
+  { key: 'chat', label: 'Radio', icon: Radio },
   { key: 'leaderboard', label: 'Líderes', icon: Trophy },
 ]
 

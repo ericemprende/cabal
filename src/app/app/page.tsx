@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Coins, MessageCircle, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
+import { Coins, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Radio, Trophy, Zap } from 'lucide-react'
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
 import { Ticker } from '@/components/cabal/ticker'
@@ -21,6 +21,7 @@ import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { AmmoDialog } from '@/components/cabal/ammo-dialog'
 import { WelcomeShareDialog } from '@/components/cabal/welcome-share-dialog'
 import { DonateDialog } from '@/components/cabal/donate-dialog'
+import { GuideAssistant } from '@/components/cabal/guide-assistant'
 import { LiveChat } from '@/components/cabal/live-chat'
 import { useUI, type TabKey } from '@/lib/store'
 import { qk, useConfirmPremiumCheckout, useMe, usePointRules } from '@/lib/api-client'
@@ -191,12 +192,12 @@ export default function Home() {
             {/* Mobile section title */}
             <div className="mb-3 flex items-center gap-2 md:hidden">
               {tab === 'chat' ? (
-                <MessageCircle className="h-4 w-4 text-primary" aria-hidden />
+                <Radio className="h-4 w-4 text-primary" aria-hidden />
               ) : (
                 <RadarIcon className="h-4 w-4 text-primary" aria-hidden />
               )}
               <h1 className="font-display text-lg font-bold capitalize">
-                {tab === 'leaderboard' ? 'líderes' : tab === 'chat' ? 'Chat en vivo' : tab}
+                {tab === 'leaderboard' ? 'líderes' : tab === 'chat' ? 'Radio Cabal' : tab}
               </h1>
             </div>
 
@@ -238,6 +239,7 @@ export default function Home() {
       <AmmoDialog />
       <WelcomeShareDialog />
       <DonateDialog />
+      <GuideAssistant />
     </div>
   )
 }

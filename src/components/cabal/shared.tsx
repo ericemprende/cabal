@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { defaultAvatarFor } from '@/lib/default-avatar'
 import {
   Check,
   CheckCircle2,
@@ -117,24 +118,6 @@ export function TimezoneHint({
   )
 }
 
-// ---------- Initials del usuario ----------
-function initialOf(name?: string | null): string {
-  const n = (name ?? '').trim()
-  if (!n) return '?'
-  const parts = n.split(/\s+/)
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
-  return n[0].toUpperCase()
-}
-
-// ---------- Avatar monocromático (iniciales, sin emoji) ----------
-const AVATAR_TONES = [
-  'from-[#20231a] to-[#12140e] text-[#c3cbaa]',
-  'from-[#1b1e22] to-[#101214] text-[#b7c2c9]',
-  'from-[#221f18] to-[#131109] text-[#ccc2a8]',
-  'from-[#181f1c] to-[#0e1210] text-[#adc2b8]',
-  'from-[#232019] to-[#14110a] text-[#c9bfa4]',
-]
-
 export function UserAvatar({
   name,
   handle,
@@ -162,7 +145,8 @@ export function UserAvatar({
   className?: string
   ring?: boolean
 }) {
-  const tone = AVATAR_TONES[((name ?? handle ?? '?').codePointAt(0) ?? 0) % AVATAR_TONES.length]
+  // A quien no ha subido foto se le asigna un personaje del escuadrón, siempre el mismo.
+  const fallback = defaultAvatarFor(handle ?? name)
   const dims =
     size === 'xs'
       ? 'h-6 w-6 text-[9px]'
@@ -196,16 +180,18 @@ export function UserAvatar({
       ) : (
         <div
           className={cn(
-            'flex items-center justify-center rounded-full bg-gradient-to-br font-machina font-bold',
-            tone,
+            'relative overflow-hidden rounded-full',
             ring && !official && 'ring-1 ring-white/10',
             official && 'official-glow',
             dims,
             className
           )}
+          style={{ backgroundColor: fallback.color }}
           aria-hidden
         >
-          {initialOf(name ?? handle)}
+          {/* Sin foto propia, un personaje del escuadrón sobre un color de la
+              marca. Es el mismo siempre para la misma persona. */}
+          <img src={fallback.image} alt="" className="h-full w-full object-cover" draggable={false} />
         </div>
       )}
       {(verified || official) && (

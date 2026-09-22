@@ -44,6 +44,9 @@ interface UIState {
   /** Diálogo de donaciones (widget de NOWPayments). */
   donateOpen: boolean
   setDonateOpen: (v: boolean) => void
+  /** Asistente de Radio Cabal (la burbuja de abajo a la derecha). */
+  guideOpen: boolean
+  setGuideOpen: (v: boolean) => void
 }
 
 export const useUI = create<UIState>((set) => ({
@@ -78,4 +81,6 @@ export const useUI = create<UIState>((set) => ({
   setWelcomeShareOpen: (welcomeShareOpen) => set({ welcomeShareOpen }),
   donateOpen: false,
   setDonateOpen: (donateOpen) => set({ donateOpen }),
+  guideOpen: false,
+  setGuideOpen: (guideOpen) => set({ guideOpen }),
 }))
