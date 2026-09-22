@@ -289,11 +289,11 @@ export function CallShareDialog({
           )}
 
           {nativeShare && cardFile ? (
-            <Button onClick={shareFromDevice} className="h-11 w-full gap-2 rounded-xl bg-primary text-[14px] font-bold text-primary-foreground hover:bg-[#9dba46]">
+            <Button onClick={shareFromDevice} className="h-11 w-full gap-2 text-[14px] font-bold">
               <Send className="h-4 w-4" /> Compartir en X
             </Button>
           ) : (
-            <Button asChild className="h-11 w-full gap-2 rounded-xl bg-primary text-[14px] font-bold text-primary-foreground hover:bg-[#9dba46]">
+            <Button asChild className="h-11 w-full gap-2 text-[14px] font-bold">
               <a href={intentUrl} target="_blank" rel="noopener noreferrer">
                 <Send className="h-4 w-4" /> Compartir en X
               </a>
@@ -491,7 +491,7 @@ export function PostCard({
                 size="sm"
                 onClick={sendReply}
                 disabled={!reply.trim() || createPost.isPending}
-                className="h-8 shrink-0 gap-1 rounded-lg bg-primary px-3 text-[11px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                className="h-8 shrink-0 gap-1 px-3 text-[11px] font-bold"
               >
                 <Send className="h-3 w-3" /> Enviar
               </Button>

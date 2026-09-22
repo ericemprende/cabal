@@ -89,7 +89,7 @@ export function Header() {
           <Button
             size="sm"
             onClick={() => router.push('/publicar')}
-            className="neon-shadow hidden h-9 gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-bold text-primary-foreground hover:bg-[#8FA83F] sm:inline-flex"
+            className="neon-shadow hidden sm:inline-flex"
           >
             <Plus className="h-4 w-4" strokeWidth={3} />
             Publicar launch
@@ -253,7 +253,7 @@ export function Header() {
               <Button
                 size="sm"
                 onClick={() => openAuth('login')}
-                className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                className="h-9 gap-1.5 px-3 text-[13px] font-bold"
               >
                 <LogIn className="h-4 w-4" aria-hidden />
                 <span className="hidden sm:inline">Iniciar sesión</span>

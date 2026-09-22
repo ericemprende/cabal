@@ -339,7 +339,7 @@ export function LaunchDetailDialog() {
                         { onSuccess: () => setComment('') }
                       )
                     }}
-                    className="h-8 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                    className="h-8 px-4 text-xs font-bold"
                   >
                     Publicar
                   </Button>

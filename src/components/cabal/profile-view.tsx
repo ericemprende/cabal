@@ -193,7 +193,7 @@ function ProfileHeader({
                   {!profile.premium && (
                     <Button
                       onClick={() => setPremiumOpen(true)}
-                      className="h-10 gap-1.5 rounded-xl bg-amber-400 px-4 font-bold text-[#171200] hover:bg-amber-300"
+                      className="h-10 gap-1.5 bg-amber-400 px-4 font-bold text-[#171200] hover:bg-amber-300"
                     >
                       <Crown className="h-4 w-4 fill-[#171200]" aria-hidden /> Hazte Pro
                     </Button>
@@ -201,7 +201,7 @@ function ProfileHeader({
                   <Button
                     onClick={() => setProfileOpen(true)}
                     variant="outline"
-                    className="h-10 rounded-xl border-white/15 bg-transparent px-4 font-bold hover:bg-white/5"
+                    className="h-10 border-white/15 bg-transparent px-4 font-bold hover:bg-white/5"
                   >
                     Editar perfil
                   </Button>
@@ -210,12 +210,7 @@ function ProfileHeader({
                 <Button
                   onClick={toggleFollow}
                   disabled={follow.isPending}
-                  className={cn(
-                    'h-10 rounded-xl px-5 font-bold',
-                    user.isFollowed
-                      ? 'border border-white/15 bg-transparent text-foreground hover:bg-white/5'
-                      : 'bg-primary text-primary-foreground hover:bg-[#9dba46]'
-                  )}
+                  variant={user.isFollowed ? 'secondary' : 'default'}
                 >
                   {user.isFollowed ? 'Siguiendo' : 'Seguir'}
                 </Button>

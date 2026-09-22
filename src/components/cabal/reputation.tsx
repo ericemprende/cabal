@@ -283,7 +283,7 @@ function PremiumGate({ hasVote, onOpen }: { hasVote: boolean; onOpen: () => void
       <Button
         size="sm"
         onClick={onOpen}
-        className="h-8 rounded-lg bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
+        className="h-8 bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
       >
         Hazte Premium
       </Button>

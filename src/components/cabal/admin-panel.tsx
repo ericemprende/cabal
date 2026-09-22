@@ -333,7 +333,7 @@ export function AdminPanel({
               size="sm"
               variant="ghost"
               onClick={onClose}
-              className="ml-auto h-8 rounded-lg border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:hidden"
+              className="ml-auto h-8 border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:hidden"
             >
               Cerrar
             </Button>
@@ -362,7 +362,7 @@ export function AdminPanel({
             size="sm"
             variant="ghost"
             onClick={onClose}
-            className="mt-4 hidden h-8 w-full rounded-lg border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:flex"
+            className="mt-4 hidden h-8 w-full border border-white/10 px-3 text-xs font-semibold text-muted-foreground hover:text-foreground sm:flex"
           >
             Cerrar
           </Button>
@@ -454,7 +454,7 @@ export function AdminPanel({
             <Button
               onClick={() => saveRules.mutate(rulesToSave())}
               disabled={saveRules.isPending}
-              className="h-10 gap-2 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]"
+              className="h-10 gap-2 font-bold"
             >
               <Save className="h-4 w-4" /> Guardar reglas
             </Button>
@@ -688,7 +688,7 @@ function AdminUserRow({
           size="sm"
           variant="ghost"
           onClick={() => setEditing((v) => !v)}
-          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          className="h-8 gap-1.5 border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
         </Button>
@@ -707,10 +707,10 @@ function AdminUserRow({
             className="h-8 w-16 border-white/10 bg-[#121410] text-center font-mono text-xs font-bold"
             aria-label="Monto"
           />
-          <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8 rounded-lg bg-primary text-primary-foreground hover:bg-[#8FA83F]" aria-label="Añadir puntos">
+          <Button size="icon" onClick={() => doAdjust(1)} className="h-8 w-8" aria-label="Añadir puntos">
             <Plus className="h-4 w-4" strokeWidth={3} />
           </Button>
-          <Button size="icon" variant="secondary" onClick={() => doAdjust(-1)} className="h-8 w-8 rounded-lg text-[#ff8080] hover:bg-destructive/15" aria-label="Quitar puntos">
+          <Button size="icon" variant="secondary" onClick={() => doAdjust(-1)} className="h-8 w-8 text-[#ff8080] hover:bg-destructive/15" aria-label="Quitar puntos">
             <Minus className="h-4 w-4" strokeWidth={3} />
           </Button>
         </div>
@@ -753,7 +753,7 @@ function AdminUserRow({
               size="sm"
               onClick={save}
               disabled={updateUser.isPending}
-              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+              className="h-8 gap-1.5 px-4 text-xs font-bold"
             >
               <Save className="h-3.5 w-3.5" /> {updateUser.isPending ? 'Guardando…' : 'Guardar perfil'}
             </Button>
@@ -912,7 +912,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
           size="sm"
           variant="ghost"
           onClick={() => setEditing((v) => !v)}
-          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          className="h-8 gap-1.5 border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
         </Button>
@@ -922,7 +922,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
               size="icon"
               variant="ghost"
               disabled={deleteLaunch.isPending}
-              className="h-8 w-8 rounded-lg border border-white/10 text-[#ff8080] hover:bg-destructive/15"
+              className="h-8 w-8 border border-white/10 text-[#ff8080] hover:bg-destructive/15"
               aria-label="Eliminar launch"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -1082,7 +1082,7 @@ function AdminLaunchRow({ launch, enabled }: { launch: LaunchDTO; enabled: boole
               size="sm"
               onClick={save}
               disabled={updateLaunch.isPending}
-              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+              className="h-8 gap-1.5 px-4 text-xs font-bold"
             >
               <Save className="h-3.5 w-3.5" /> {updateLaunch.isPending ? 'Guardando…' : 'Guardar launch'}
             </Button>
@@ -1212,7 +1212,7 @@ function AdminPremium({ enabled }: { enabled: boolean }) {
           <Button
             onClick={doGrant}
             disabled={grant.isPending || !handle.trim()}
-            className="h-9 gap-1.5 rounded-lg bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
+            className="h-9 gap-1.5 bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
           >
             <Crown className="h-3.5 w-3.5 fill-[#171200]" /> Regalar
           </Button>
@@ -1289,7 +1289,7 @@ function AdminPremiumRow({
       {sub.active && sub.provider !== 'stripe' && (
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button size="sm" variant="ghost" disabled={revoking} className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-[#ff8080] hover:bg-destructive/15">
+            <Button size="sm" variant="ghost" disabled={revoking} className="h-8 gap-1.5 border border-white/10 px-2.5 text-xs font-semibold text-[#ff8080] hover:bg-destructive/15">
               <XCircle className="h-3.5 w-3.5" /> Retirar
             </Button>
           </AlertDialogTrigger>
@@ -1390,7 +1390,7 @@ function AdminAffiliates({ enabled }: { enabled: boolean }) {
           <Button
             onClick={addPlatform}
             disabled={create.isPending || !newName.trim()}
-            className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            className="h-9 gap-1.5 px-3 text-xs font-bold"
           >
             <Plus className="h-3.5 w-3.5" /> Añadir
           </Button>
@@ -1774,7 +1774,7 @@ function SwapFeeRow({ config, enabled }: { config: SwapFeeConfigDTO; enabled: bo
         onClick={() => save.mutate(draft, { onSuccess: (res) => setDraft(res.config) })}
         disabled={!dirty || save.isPending}
         size="sm"
-        className="mt-3 h-8 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F] disabled:opacity-40"
+        className="mt-3 h-8 gap-1.5 px-3 text-xs font-bold disabled:opacity-40"
       >
         <Save className="h-3.5 w-3.5" /> Guardar {meta.label}
       </Button>
@@ -1832,7 +1832,7 @@ function AffiliateRow({
             size="sm"
             onClick={saveAll}
             disabled={save.isPending}
-            className="h-9 gap-1.5 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            className="h-9 gap-1.5 px-3 text-xs font-bold"
           >
             <Save className="h-3.5 w-3.5" /> Guardar
           </Button>
@@ -1843,7 +1843,7 @@ function AffiliateRow({
               size="sm"
               variant="ghost"
               disabled={enabled === false}
-              className="h-9 w-9 shrink-0 rounded-lg p-0 text-muted-foreground hover:text-[#ff8080]"
+              className="h-9 w-9 shrink-0 p-0 text-muted-foreground hover:text-[#ff8080]"
               aria-label={`Eliminar ${platform.name}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -1982,7 +1982,7 @@ function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }
           size="sm"
           variant="ghost"
           onClick={() => setEditing((v) => !v)}
-          className="h-8 gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+          className="h-8 gap-1.5 border border-white/10 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
         >
           <Pencil className="h-3 w-3" /> {editing ? 'Cerrar' : 'Editar'}
         </Button>
@@ -2054,7 +2054,7 @@ function AdminTokenRow({ token, enabled }: { token: TokenDTO; enabled: boolean }
               size="sm"
               onClick={save}
               disabled={updateToken.isPending}
-              className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+              className="h-8 gap-1.5 px-4 text-xs font-bold"
             >
               <Save className="h-3.5 w-3.5" /> {updateToken.isPending ? 'Guardando…' : 'Guardar token'}
             </Button>
@@ -2257,7 +2257,7 @@ function AdminModeration({ enabled }: { enabled: boolean }) {
                       size="icon"
                       variant="ghost"
                       disabled={deletePost.isPending}
-                      className="h-8 w-8 rounded-lg border border-white/10 text-[#ff8080] hover:bg-destructive/15"
+                      className="h-8 w-8 border border-white/10 text-[#ff8080] hover:bg-destructive/15"
                       aria-label="Eliminar"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -2362,7 +2362,7 @@ function AdminClaims({ enabled }: { enabled: boolean }) {
                       size="sm"
                       onClick={() => act.mutate({ id: c.id, action: 'approve' })}
                       disabled={act.isPending}
-                      className="h-8 gap-1 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                      className="h-8 gap-1 px-2.5 text-[11px] font-bold"
                     >
                       <CheckCircle2 className="h-3 w-3" aria-hidden /> Aprobar
                     </Button>
@@ -2371,7 +2371,7 @@ function AdminClaims({ enabled }: { enabled: boolean }) {
                       variant="ghost"
                       onClick={() => act.mutate({ id: c.id, action: 'reject' })}
                       disabled={act.isPending}
-                      className="h-8 gap-1 rounded-lg border border-[#ff8080]/30 px-2.5 text-[11px] font-bold text-[#ff8080] hover:bg-[#ff8080]/10"
+                      className="h-8 gap-1 border border-[#ff8080]/30 px-2.5 text-[11px] font-bold text-[#ff8080] hover:bg-[#ff8080]/10"
                     >
                       <XCircle className="h-3 w-3" aria-hidden /> Rechazar
                     </Button>
@@ -2462,7 +2462,7 @@ function AdminVerification({ enabled }: { enabled: boolean }) {
                       size="sm"
                       onClick={() => act.mutate({ id: r.id, action: 'approve' })}
                       disabled={act.isPending}
-                      className="h-8 gap-1 rounded-lg bg-primary px-2.5 text-[11px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                      className="h-8 gap-1 px-2.5 text-[11px] font-bold"
                     >
                       <CheckCircle2 className="h-3 w-3" aria-hidden /> Aprobar
                     </Button>
@@ -2471,7 +2471,7 @@ function AdminVerification({ enabled }: { enabled: boolean }) {
                       variant="ghost"
                       onClick={() => act.mutate({ id: r.id, action: 'reject' })}
                       disabled={act.isPending}
-                      className="h-8 gap-1 rounded-lg border border-[#ff8080]/30 px-2.5 text-[11px] font-bold text-[#ff8080] hover:bg-[#ff8080]/10"
+                      className="h-8 gap-1 border border-[#ff8080]/30 px-2.5 text-[11px] font-bold text-[#ff8080] hover:bg-[#ff8080]/10"
                     >
                       <XCircle className="h-3 w-3" aria-hidden /> Rechazar
                     </Button>
@@ -2738,7 +2738,7 @@ function AdminAmmo({ enabled }: { enabled: boolean }) {
           <Button
             onClick={doSave}
             disabled={save.isPending || Object.keys(draft).length === 0}
-            className="h-9 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+            className="h-9 gap-1.5 px-4 text-xs font-bold"
           >
             <Save className="h-3.5 w-3.5" /> Guardar munición
           </Button>
@@ -2772,7 +2772,7 @@ function AdminAmmo({ enabled }: { enabled: boolean }) {
               <Button
                 onClick={doGive}
                 disabled={give.isPending || !handle.trim()}
-                className="h-9 gap-1.5 rounded-lg bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
+                className="h-9 gap-1.5 bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
               >
                 <Bomb className="h-3.5 w-3.5" /> Dar
               </Button>

@@ -63,7 +63,7 @@ export function TelegramConnect() {
                 () => win?.close()
               )
             }}
-            className="h-8 gap-1.5 rounded-lg bg-[#229ED9] px-3 text-xs font-bold text-white hover:bg-[#1c8cc2]"
+            className="h-8 gap-1.5 bg-[#229ED9] px-3 text-xs font-bold text-white hover:bg-[#1c8cc2]"
           >
             {createCode.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             Conectar mi Telegram
@@ -74,7 +74,7 @@ export function TelegramConnect() {
           variant="outline"
           disabled={createCode.isPending}
           onClick={() => newCode()}
-          className="h-8 gap-1.5 rounded-lg border-white/10 px-3 text-xs font-semibold"
+          className="h-8 gap-1.5 border-white/10 px-3 text-xs font-semibold"
         >
           <Users className="h-3.5 w-3.5" /> Añadir a un grupo o canal
         </Button>

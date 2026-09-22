@@ -92,7 +92,7 @@ export function AdminChatAnnounce({ enabled }: { enabled: boolean }) {
           variant="outline"
           onClick={() => sendNow.mutate()}
           disabled={sendNow.isPending || !cfg.body.trim()}
-          className="ml-auto h-8 gap-1.5 rounded-lg border-white/10 text-xs"
+          className="ml-auto h-8 gap-1.5 border-white/10 text-xs"
         >
           {sendNow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           Enviar ahora
@@ -209,7 +209,7 @@ export function AdminChatAnnounce({ enabled }: { enabled: boolean }) {
           size="sm"
           onClick={() => save.mutate(draft)}
           disabled={!dirty || save.isPending}
-          className="h-9 gap-1.5 rounded-lg text-xs font-bold"
+          className="h-9 gap-1.5 text-xs font-bold"
         >
           {save.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           Guardar cambios

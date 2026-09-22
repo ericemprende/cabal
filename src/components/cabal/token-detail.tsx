@@ -239,7 +239,7 @@ export function TokenDetailDialog() {
                         { onSuccess: () => setThesis('') }
                       )
                     }}
-                    className="h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                    className="h-8 gap-1.5 px-4 text-xs font-bold"
                   >
                     <Zap className="h-3 w-3" /> Publicar tesis
                   </Button>
@@ -329,8 +329,8 @@ function DevTrackRecord({
             variant={dev.isFollowed ? 'secondary' : 'default'}
             onClick={() => onFollow(dev.id)}
             className={cn(
-              'h-8 rounded-lg text-xs font-bold',
-              !dev.isFollowed && 'bg-primary text-primary-foreground hover:bg-[#8FA83F]'
+              'h-8 text-xs font-bold',
+              !dev.isFollowed && ''
             )}
           >
             {dev.isFollowed ? 'Siguiendo' : 'Seguir'}

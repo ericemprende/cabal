@@ -197,7 +197,7 @@ export function RadarTab() {
           <Button
             size="sm"
             onClick={() => router.push('/publicar')}
-            className="hidden h-8 gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F] md:inline-flex"
+            className="hidden h-8 gap-1 rounded-full px-3 text-xs font-bold md:inline-flex"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={3} /> Publicar
           </Button>
@@ -218,7 +218,7 @@ export function RadarTab() {
             <p className="font-semibold">No hay launches con este filtro</p>
             <p className="text-sm text-muted-foreground">Sé el primero en avisar a la comunidad (+{rules.points_launch} puntos)</p>
           </div>
-          <Button onClick={() => router.push('/publicar')} className="bg-primary font-bold text-primary-foreground hover:bg-[#8FA83F]">
+          <Button onClick={() => router.push('/publicar')} className="font-bold">
             Publicar lanzamiento
           </Button>
         </div>

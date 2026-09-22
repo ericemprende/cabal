@@ -72,7 +72,7 @@ export function AdminNotify({ enabled }: { enabled: boolean }) {
             )
           }
           disabled={action.isPending}
-          className="ml-auto h-8 gap-1.5 rounded-lg border-white/10 text-xs"
+          className="ml-auto h-8 gap-1.5 border-white/10 text-xs"
         >
           <Play className="h-3.5 w-3.5" /> Enviar pendientes ahora
         </Button>
@@ -299,7 +299,7 @@ function BotSection({
               style={{ backgroundColor: BRAND[provider] }}
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BRAND_HOVER[provider])}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BRAND[provider])}
-              className="h-9 gap-1.5 rounded-lg font-bold text-white"
+              className="h-9 gap-1.5 font-bold text-white"
             >
               {update.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Conectar bot
@@ -342,7 +342,7 @@ function BotSection({
                 action.mutate({ action: 'refresh', provider }, { onSuccess: () => toast.success(`${refreshLabel}: hecho`) })
               }
               disabled={action.isPending}
-              className="h-8 gap-1.5 rounded-lg border-white/10 text-xs"
+              className="h-8 gap-1.5 border-white/10 text-xs"
             >
               <RefreshCw className="h-3.5 w-3.5" /> {refreshLabel}
             </Button>
@@ -374,7 +374,7 @@ function BotSection({
                 )
               }
               disabled={action.isPending}
-              className="h-8 gap-1.5 rounded-lg bg-primary text-xs font-bold text-primary-foreground"
+              className="h-8 gap-1.5 text-xs font-bold"
             >
               <Send className="h-3.5 w-3.5" /> Probar
             </Button>
@@ -460,7 +460,7 @@ function BotAudience({ provider }: { provider: BotProviderName }) {
           size="sm"
           variant="outline"
           onClick={() => setOpen((v) => !v)}
-          className="h-8 gap-1.5 rounded-lg border-white/10 text-xs"
+          className="h-8 gap-1.5 border-white/10 text-xs"
           aria-expanded={open}
         >
           {open ? 'Ocultar' : 'Ver'} comunidades

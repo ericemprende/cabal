@@ -222,7 +222,7 @@ function Step({
         disabled={disabled}
         size="sm"
         onClick={disabled ? undefined : onClaim}
-        className="h-8 shrink-0 gap-1.5 rounded-lg bg-primary text-[12.5px] font-bold text-primary-foreground hover:bg-[#9dba46]"
+        className="h-8 shrink-0 gap-1.5 text-[12.5px] font-bold"
       >
         {disabled ? (
           <span className="flex items-center gap-1.5">

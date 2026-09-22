@@ -69,7 +69,7 @@ export function PremiumDialog() {
                   setPremiumOpen(false)
                   openAuth('login')
                 }}
-                className="h-10 rounded-xl bg-primary px-5 font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                className="h-10 px-5 font-bold"
               >
                 Iniciar sesión
               </Button>
@@ -185,7 +185,7 @@ function PlanCard({
           size="sm"
           disabled={!plan.card || paying}
           onClick={() => onPay('card')}
-          className="h-9 gap-1.5 rounded-lg bg-primary text-xs font-bold text-primary-foreground hover:bg-[#8FA83F] disabled:opacity-40"
+          className="h-9 gap-1.5 text-xs font-bold disabled:opacity-40"
         >
           {paying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" aria-hidden />}
           Tarjeta
@@ -195,7 +195,7 @@ function PlanCard({
           variant="outline"
           disabled={!plan.crypto || paying}
           onClick={() => onPay('crypto')}
-          className="h-9 gap-1.5 rounded-lg border-white/15 bg-transparent text-xs font-bold hover:bg-white/5 disabled:opacity-40"
+          className="h-9 gap-1.5 border-white/15 bg-transparent text-xs font-bold hover:bg-white/5 disabled:opacity-40"
         >
           <Wallet className="h-3.5 w-3.5" aria-hidden /> Cripto
         </Button>
@@ -277,7 +277,7 @@ function ActiveStatus({
           onClick={onManage}
           disabled={managing}
           variant="outline"
-          className="h-10 w-full gap-2 rounded-xl border-white/15 bg-transparent font-bold hover:bg-white/5"
+          className="h-10 w-full gap-2 border-white/15 bg-transparent font-bold hover:bg-white/5"
         >
           <CalendarClock className="h-4 w-4" aria-hidden /> {managing ? 'Abriendo…' : 'Gestionar facturación'}
         </Button>

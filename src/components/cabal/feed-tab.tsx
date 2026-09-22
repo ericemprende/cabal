@@ -174,7 +174,7 @@ export function FeedTab() {
                 size="sm"
                 onClick={submit}
                 disabled={!canSubmit || createPost.isPending}
-                className="ml-auto h-8 gap-1.5 rounded-lg bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-[#8FA83F]"
+                className="ml-auto h-8 gap-1.5 px-4 text-xs font-bold"
               >
                 <Zap className="h-3 w-3" /> Publicar
               </Button>

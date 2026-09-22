@@ -133,7 +133,7 @@ function NeedsLogin() {
       </p>
       <Button
         asChild
-        className="animate-cta-glow mt-6 h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#9dba46]"
+        className="animate-cta-glow mt-6 h-12 w-full gap-2 text-[15px] font-bold"
       >
         <a href="/api/waitlist/x/start">
           <XLogo className="h-4 w-4" /> Acceso con X
@@ -302,7 +302,7 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
       <Button
         type="submit"
         disabled={submit.isPending}
-        className="mt-5 h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#8FA83F]"
+        className="mt-5 h-12 w-full gap-2 text-[15px] font-bold"
       >
         {submit.isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -465,7 +465,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
       </p>
 
       {approved && (
-        <Button asChild className="animate-cta-glow mt-3 h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#9dba46]">
+        <Button asChild className="animate-cta-glow mt-3 h-12 w-full gap-2 text-[15px] font-bold">
           <Link href="/app">Entrar a la app</Link>
         </Button>
       )}

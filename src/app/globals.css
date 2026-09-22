@@ -603,3 +603,56 @@
   color: var(--foreground);
   font-weight: 600;
 }
+
+/* ---------- Botones ----------
+ * La forma sale de la chapa de las insignias: un rectángulo con las esquinas
+ * cortadas. El recorte va en el propio botón, así que cualquier fondo que le
+ * llegue —del sistema o de una clase suelta— queda con el mismo chaflán.
+ *
+ * El hover no cambia de color: aclara el que ya tiene. Antes había tres verdes
+ * distintos (bg-primary/90, #8FA83F y #9dba46) porque cada botón eligió el suyo.
+ */
+.btn-cabal {
+  --chaflan: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+  clip-path: var(--chaflan);
+  font-weight: 700;
+  transition: filter 0.15s, transform 0.1s;
+}
+.btn-cabal:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn-cabal:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.96);
+}
+/* El anillo de foco no puede ir por fuera: el clip-path lo recortaría. */
+.btn-cabal:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--primary), inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+/* La luz de arriba es lo que da el volumen, igual que en la chapa. */
+.btn-relieve {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+/* Contorno de las variantes sin relleno. Se abre en los chaflanes, como en un
+   visor: es intencionado, no un fallo del recorte. */
+.btn-contorno {
+  box-shadow: inset 0 0 0 1px var(--btn-borde, rgb(255 255 255 / 0.2));
+}
+
+/* Tamaños: alto, padding y chaflán suben juntos. */
+.btn-sm {
+  --chaflan: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.btn-lg {
+  --chaflan: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+/* Con el dedo hacen falta 44px: el tamaño pequeño sube en pantallas estrechas. */
+@media (max-width: 640px) {
+  .btn-sm {
+    height: 2.5rem;
+    padding-inline: 1rem;
+    font-size: 0.8125rem;
+  }
+}

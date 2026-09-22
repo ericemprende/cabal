@@ -298,7 +298,7 @@ export function TradePanel({
             style={{ backgroundColor: BUY_GREEN }}
             onMouseEnter={(e) => !e.currentTarget.disabled && (e.currentTarget.style.backgroundColor = BUY_GREEN_HOVER)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN)}
-            className="h-11 w-full gap-2 rounded-lg font-bold text-black"
+            className="h-11 w-full gap-2 font-bold text-black"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Zap className="h-4 w-4" aria-hidden />}
             {pubkey ? `Comprar $${ticker}` : 'Conectar y comprar'}
@@ -348,7 +348,7 @@ export function TradePanel({
           <Button
             onClick={sellNow}
             disabled={busy || !(Number(amount) > 0)}
-            className="h-11 w-full gap-2 rounded-lg bg-[#ff5c5c] font-bold text-white hover:bg-[#ff7373]"
+            className="h-11 w-full gap-2 bg-[#ff5c5c] font-bold text-white hover:bg-[#ff7373]"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Zap className="h-4 w-4" aria-hidden />}
             {pubkey ? `Vender $${ticker}` : 'Conectar y vender'}

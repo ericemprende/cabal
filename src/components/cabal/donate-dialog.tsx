@@ -73,17 +73,14 @@ export function DonateButton({ className }: { className?: string }) {
   const setDonateOpen = useUI((s) => s.setDonateOpen)
   return (
     <Button
-      variant="ghost"
+      variant="donar"
       size="sm"
       onClick={() => {
         markSeen()
         setDonateOpen(true)
       }}
       title="Donar a Cabal"
-      className={cn(
-        'animate-donate-glow h-9 gap-1.5 rounded-lg border border-white/25 bg-white/10 px-2.5 text-[13px] font-bold text-white hover:bg-white/20 hover:text-white sm:px-3',
-        className
-      )}
+      className={cn('animate-donate-glow h-9 gap-1.5 px-2.5 text-[13px] sm:px-3', className)}
     >
       <HandHeart className="animate-donate-wiggle h-4 w-4" aria-hidden />
       <span className="hidden sm:inline">Donar</span>
@@ -397,7 +394,7 @@ function AmountPicker({ cfg }: { cfg: DonateConfigDTO }) {
           const popup = window.open('', '_blank')
           start.mutate({ amountUsd: amount, currency, popup })
         }}
-        className="h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#9dba46]"
+        className="h-12 w-full gap-2 text-[15px] font-bold"
       >
         {start.isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -462,7 +459,7 @@ function PendingDonation({ last }: { last: NonNullable<DonateConfigDTO['last']> 
             setDonateOpen(false)
             setDonateThanksId(last.id)
           }}
-          className="mt-2 h-8 gap-1.5 rounded-lg bg-primary text-[12.5px] font-bold text-primary-foreground hover:bg-[#9dba46]"
+          className="mt-2 h-8 gap-1.5 text-[12.5px] font-bold"
         >
           <Send className="h-3.5 w-3.5" aria-hidden />
           {last.confirmed ? `Compartir +${last.shareBonus}` : 'Ver estado'}

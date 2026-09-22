@@ -109,7 +109,7 @@ export function WelcomeShareDialog() {
             <Button
               asChild
               onClick={() => (data.shared ? setWelcomeShareOpen(false) : markShared.mutate())}
-              className="h-12 w-full gap-2 rounded-xl bg-primary text-[15px] font-bold text-primary-foreground hover:bg-[#9dba46]"
+              className="h-12 w-full gap-2 text-[15px] font-bold"
             >
               <a href={post.intent} target="_blank" rel="noopener noreferrer">
                 <Send className="h-4 w-4" aria-hidden /> Compartir en X

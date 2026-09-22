@@ -693,7 +693,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                 <Button
                   onClick={submit}
                   disabled={saving || uploading}
-                  className="h-11 shrink-0 gap-2 rounded-xl bg-primary px-6 font-bold text-primary-foreground neon-shadow hover:bg-[#8FA83F]"
+                  className="h-11 shrink-0 gap-2 px-6 font-bold neon-shadow"
                 >
                   <Zap className="h-4 w-4" strokeWidth={2.5} />
                   {editId
@@ -755,10 +755,10 @@ function SuccessPanel({
         <Zap className="h-4 w-4" aria-hidden /> +{earned} puntos Cabal
       </p>
       <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
-        <Button onClick={onGoRadar} className="h-10 rounded-xl bg-primary px-5 font-bold text-primary-foreground hover:bg-[#8FA83F]">
+        <Button onClick={onGoRadar} className="h-10 px-5 font-bold">
           <Radar className="h-4 w-4" aria-hidden /> Ver en el Radar
         </Button>
-        <Button onClick={onReset} variant="outline" className="h-10 rounded-xl border-white/15 bg-transparent px-5 font-bold hover:bg-white/5">
+        <Button onClick={onReset} variant="outline" className="h-10 border-white/15 bg-transparent px-5 font-bold hover:bg-white/5">
           Publicar otro
         </Button>
       </div>

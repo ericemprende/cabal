@@ -54,7 +54,7 @@ export function DiscordConnect() {
             size="sm"
             disabled={createCode.isPending}
             onClick={() => newCode('private')}
-            className="h-8 gap-1.5 rounded-lg bg-[#5865F2] px-3 text-xs font-bold text-white hover:bg-[#4752c4]"
+            className="h-8 gap-1.5 bg-[#5865F2] px-3 text-xs font-bold text-white hover:bg-[#4752c4]"
           >
             {createCode.isPending && mode === 'private' ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -69,7 +69,7 @@ export function DiscordConnect() {
           variant="outline"
           disabled={createCode.isPending}
           onClick={() => newCode('server')}
-          className="h-8 gap-1.5 rounded-lg border-white/10 px-3 text-xs font-semibold"
+          className="h-8 gap-1.5 border-white/10 px-3 text-xs font-semibold"
         >
           <Users className="h-3.5 w-3.5" /> Añadir a un servidor
         </Button>
