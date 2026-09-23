@@ -49,44 +49,78 @@ async function syncLaunchedTokens(): Promise<void> {
     take: BATCH,
   })
 
-  for (const launch of launches) {
-    const contract = launch.contract as string
-    // Si ya hay un token con ese contrato (dos launches del mismo proyecto, o
-    // uno creado a mano) no se duplica: se enlaza si está libre, o se deja.
-    const existing = await db.token.findFirst({ where: { contract }, select: { id: true, launchId: true } })
-    if (existing) {
-      if (!existing.launchId) {
-        await db.token.update({ where: { id: existing.id }, data: { launchId: launch.id } }).catch(() => {})
-      }
-      continue
-    }
+  for (const launch of launches) await createTokenForLaunch(launch)
+}
 
-    // Un launch privado pudo anunciarse sin ticker; ya salió, así que se busca
-    let ticker = launch.ticker
-    if (!ticker) {
-      const meta = await fetchTokenMeta(contract).catch(() => null)
-      ticker = meta?.symbol || launch.name.slice(0, 12).toUpperCase()
-    }
+type LaunchForToken = {
+  id: string
+  name: string
+  ticker: string | null
+  emoji: string
+  image: string | null
+  network: string
+  contract: string | null
+  launchAt: Date
+  createdById: string
+  submitterRole: string
+  top10Pct: number
+}
 
-    await db.token
-      .create({
-        data: {
-          name: launch.name,
-          ticker,
-          emoji: launch.emoji,
-          image: launch.image,
-          network: launch.network,
-          contract,
-          launchedAt: launch.launchAt,
-          launchId: launch.id,
-          devId: await devFor(launch),
-          top10Pct: launch.top10Pct,
-          // Precio y market cap reales los pone refreshMarket en esta misma pasada
-          price: 0,
-        },
-      })
-      .catch(() => {}) // Otra petición lo creó a la vez: launchId es único
+/**
+ * Crea el token de un launch que ya salió y tiene contrato. Lo usa la
+ * sincronización y también el admin al publicar un token ya lanzado, para que
+ * aparezca en la pestaña Tokens sin esperar a la siguiente pasada.
+ */
+export async function createTokenForLaunch(launch: LaunchForToken): Promise<void> {
+  const contract = launch.contract
+  if (!contract) return
+  // Si ya hay un token con ese contrato (dos launches del mismo proyecto, o
+  // uno creado a mano) no se duplica: se enlaza si está libre, o se deja.
+  const existing = await db.token.findFirst({ where: { contract }, select: { id: true, launchId: true } })
+  if (existing) {
+    if (!existing.launchId) {
+      await db.token.update({ where: { id: existing.id }, data: { launchId: launch.id } }).catch(() => {})
+    }
+    return
   }
+
+  // Un launch privado pudo anunciarse sin ticker; ya salió, así que se busca
+  let ticker = launch.ticker
+  if (!ticker) {
+    const meta = await fetchTokenMeta(contract).catch(() => null)
+    ticker = meta?.symbol || launch.name.slice(0, 12).toUpperCase()
+  }
+
+  await db.token
+    .create({
+      data: {
+        name: launch.name,
+        ticker,
+        emoji: launch.emoji,
+        image: launch.image,
+        network: launch.network,
+        contract,
+        launchedAt: launch.launchAt,
+        launchId: launch.id,
+        devId: await devFor(launch),
+        top10Pct: launch.top10Pct,
+        // Precio y market cap reales los pone refreshMarket en esta misma pasada
+        price: 0,
+      },
+    })
+    .catch(() => {}) // Otra petición lo creó a la vez: launchId es único
+}
+
+/** Precio y market cap de un solo token, para no enseñarlo a $0 recién creado. */
+export async function refreshMarketFor(contract: string): Promise<void> {
+  const m = (await fetchMarketBatch([contract]).catch(() => null))?.get(contract)
+  if (!m) return
+  await db.token
+    .updateMany({
+      where: { contract },
+      data: { price: m.priceUsd, mc: m.marketCap, volume24h: m.volume24h, change24h: m.change24h, athMc: m.marketCap },
+    })
+    .catch(() => null)
 }
 
 /** Refresca precio, market cap, volumen y variación de todos los tokens. */

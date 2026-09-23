@@ -1105,6 +1105,27 @@ export function useAdminUpdateLaunch(enabled: boolean) {
   })
 }
 
+/** Publica un launch (próximo o ya lanzado) firmado por la cuenta oficial de Cabal. */
+export function useAdminCreateLaunch() {
+  const invalidate = useInvalidateOnSuccess()
+  return useMutation({
+    mutationFn: (data: Record<string, unknown> & { mode: 'upcoming' | 'launched' }) =>
+      jsonFetch<{ ok: boolean; launch: { id: string; name: string } }>('/api/admin/launches', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (res, vars) => {
+      invalidate()
+      toast.success(
+        vars.mode === 'launched'
+          ? `${res.launch.name} publicado en Tokens, avalado por Cabal`
+          : `${res.launch.name} publicado en el Radar, avalado por Cabal`
+      )
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 export function useAdminDeleteLaunch(enabled: boolean) {
   const invalidate = useInvalidateOnSuccess()
   return useMutation({

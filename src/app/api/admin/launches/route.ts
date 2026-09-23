@@ -6,6 +6,11 @@ import { toUserDTO } from '@/lib/serializers'
 import { invalidate } from '@/lib/cache'
 import type { LaunchDTO } from '@/lib/types'
 import { buildLaunchChangeNote } from '@/lib/launch-change-note'
+import { parseLaunchInput } from '@/lib/launch-input'
+import { systemUserId } from '@/lib/chat-announce'
+import { createTokenForLaunch, refreshMarketFor } from '@/lib/tokens-sync'
+import { getIpfsImage } from '@/lib/ipfs-cache'
+import { ipfsCid } from '@/lib/remote-image'
 
 const safeUrl = (v: unknown) =>
   typeof v === 'string' && (v.startsWith('/uploads/') || v.startsWith('/seed/') || v.startsWith('https://'))
@@ -69,6 +74,71 @@ export async function GET(req: Request) {
       postsCount: 0,
     }))
     return NextResponse.json(dto)
+  } catch (e) {
+    if (e instanceof ForbiddenError) return NextResponse.json({ error: e.message }, { status: 403 })
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+  }
+}
+
+/**
+ * POST: el admin publica un proyecto avalado por Cabal. Lo firma la cuenta
+ * oficial de Cabal y sale ya verificado. Dos modos:
+ * - upcoming: un launch próximo, que entra en el Radar como cualquier otro.
+ * - launched: un token que ya salió. Exige el contrato y crea el token en la
+ *   pestaña Tokens en el acto, con su precio si ya cotiza.
+ */
+export async function POST(req: Request) {
+  try {
+    await requireAdmin(req)
+    const body = await req.json()
+    const launched = body.mode === 'launched'
+    // Ya lanzado sin fecha: se toma ahora mismo
+    if (launched && !body.launchAt) body.launchAt = new Date().toISOString()
+    const parsed = parseLaunchInput(body)
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+    const data = parsed.data
+
+    if (launched) {
+      if (!data.contract) {
+        return NextResponse.json({ error: 'Un token ya lanzado necesita su contrato (CA)' }, { status: 400 })
+      }
+      if (data.launchAt.getTime() > Date.now()) {
+        return NextResponse.json({ error: 'Un token ya lanzado no puede tener fecha futura' }, { status: 400 })
+      }
+      data.dateConfirmed = true
+    }
+    // Un mismo contrato no se publica dos veces: el token ya existe en Cabal
+    if (data.contract) {
+      const dup = await db.token.findFirst({ where: { contract: data.contract }, select: { ticker: true } })
+      if (dup) {
+        return NextResponse.json({ error: `Ese contrato ya está publicado como $${dup.ticker}` }, { status: 409 })
+      }
+    }
+
+    const launch = await db.launch.create({
+      data: {
+        ...data,
+        // Cabal lo avala, no es su dev: el token queda sin dev hasta que se reclame
+        submitterRole: 'community',
+        createdById: await systemUserId(),
+        verified: true,
+        verifiedVia: 'admin',
+        ...(typeof body.lpLocked === 'boolean' && { lpLocked: body.lpLocked }),
+        ...(typeof body.mintRevoked === 'boolean' && { mintRevoked: body.mintRevoked }),
+      },
+    })
+
+    if (launched && launch.contract) {
+      await createTokenForLaunch(launch)
+      await db.token.updateMany({ where: { launchId: launch.id }, data: { verified: true } })
+      await refreshMarketFor(launch.contract)
+      await invalidate('tokens:*')
+    }
+    await invalidate('launches:*')
+    for (const cid of [ipfsCid(launch.image), ipfsCid(launch.banner)]) {
+      if (cid) void getIpfsImage(cid)
+    }
+    return NextResponse.json({ ok: true, launch: { id: launch.id, name: launch.name } }, { status: 201 })
   } catch (e) {
     if (e instanceof ForbiddenError) return NextResponse.json({ error: e.message }, { status: 403 })
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

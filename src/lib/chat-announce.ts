@@ -125,8 +125,11 @@ export async function saveChatAnnounceConfig(patch: ConfigPatch): Promise<AdminC
   return chatAnnounceConfig()
 }
 
-/** Cuenta oficial que firma los avisos. Se crea sola la primera vez. */
-async function systemUserId(): Promise<string> {
+/**
+ * Cuenta oficial de Cabal. Firma los avisos del chat y los proyectos que el
+ * admin publica avalados por Cabal. Se crea sola la primera vez.
+ */
+export async function systemUserId(): Promise<string> {
   const saved = await db.setting.findUnique({ where: { key: K.userId } })
   if (saved) {
     const u = await db.user.findUnique({ where: { id: saved.value }, select: { id: true } })

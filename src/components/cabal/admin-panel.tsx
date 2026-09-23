@@ -63,6 +63,7 @@ import { AdminUsers } from '@/components/cabal/admin-users'
 import { AdminNotify } from '@/components/cabal/admin-notify'
 import { AdminChatAnnounce } from '@/components/cabal/admin-chat-announce'
 import { AdminGuide } from '@/components/cabal/admin-guide'
+import { AdminPublish } from '@/components/cabal/admin-publish'
 import {
   jsonFetch,
   qk,
@@ -192,6 +193,7 @@ type AdminView =
   | 'reclamos'
   | 'verificacion'
   | 'reglas'
+  | 'publicar'
   | 'proyectos'
   | 'tokens'
   | 'afiliados'
@@ -301,6 +303,7 @@ export function AdminPanel({
     { key: 'municion', label: 'Munición y boosts', icon: Bomb },
     { key: 'verificacion', label: 'Verificación oficial', icon: ShieldCheck },
     { key: 'reclamos', label: 'Reclamos de proyectos', icon: BadgeCheck },
+    { key: 'publicar', label: 'Publicar como Cabal', icon: Plus },
     { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
     { key: 'tokens', label: 'Tokens', icon: Coins },
     { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
@@ -392,6 +395,8 @@ export function AdminPanel({
 
         {view === 'verificacion' && <AdminVerification enabled={enabled} />}
         {view === 'reclamos' && <AdminClaims enabled={enabled} />}
+
+        {view === 'publicar' && <AdminPublish />}
 
         {view === 'proyectos' && <AdminLaunches enabled={enabled} />}
 
