@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { CabalWordmark, NetworkIcon, TimezoneHint } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { LAUNCHPADS, NETWORKS, type NetworkKey } from '@/lib/cabal'
 import { uploadImage, useCreateLaunch, useLaunch, usePointRules, useUpdateLaunch } from '@/lib/api-client'
 import type { TokenMeta } from '@/lib/chain-stats'
@@ -91,23 +92,24 @@ function fromLaunch(l: LaunchDetailDTO): FormInitial {
  * formulario que luego no se podría guardar.
  */
 export default function PublicarLaunchPage() {
+  const t = useT()
   // ?edit= se lee tras montar: al prerenderizar la página no existe window
   const [mode, setMode] = useState<{ ready: boolean; editId: string | null }>({ ready: false, editId: null })
   useEffect(() => {
-    const t = setTimeout(
+    const timer = setTimeout(
       () => setMode({ ready: true, editId: new URLSearchParams(window.location.search).get('edit') }),
       0
     )
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [])
   const editing = useLaunch(mode.editId)
 
   if (!mode.ready) return null
   if (!mode.editId) return <LaunchForm initial={EMPTY_INITIAL} />
-  if (editing.isPending) return <FormNotice>Cargando el launch…</FormNotice>
-  if (!editing.data) return <FormNotice>No encontramos ese launch.</FormNotice>
+  if (editing.isPending) return <FormNotice>{t.publish.loadingLaunch}</FormNotice>
+  if (!editing.data) return <FormNotice>{t.publish.notFound}</FormNotice>
   if (!editing.data.canEdit) {
-    return <FormNotice>Solo quien publicó este launch o un administrador puede editarlo.</FormNotice>
+    return <FormNotice>{t.publish.notYours}</FormNotice>
   }
   // key: si cambia el launch que se edita, el formulario arranca de cero
   return <LaunchForm key={mode.editId} initial={fromLaunch(editing.data)} editId={mode.editId} />
@@ -126,6 +128,7 @@ function FormNotice({ children }: { children: React.ReactNode }) {
 }
 
 function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string }) {
+  const t = useT()
   const router = useRouter()
   const { openLaunch } = useUI()
   const createLaunch = useCreateLaunch()
@@ -157,7 +160,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     }
     let cancelled = false
     setLookup({ state: 'loading' })
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await fetch(`/api/tokens/lookup?ca=${encodeURIComponent(lookupCa)}`)
         const meta = (await res.json()) as TokenMeta
@@ -179,8 +182,8 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
           telegram: f.telegram || meta.telegram,
         }))
         setLookup({ state: 'found', source: meta.source === 'pumpfun' ? 'pump.fun' : 'DexScreener' })
-        toast.success(`${meta.symbol ? `$${meta.symbol}` : 'Token'} encontrado`, {
-          description: 'Rellenamos los datos del token. Revísalos antes de publicar.',
+        toast.success(t.publish.toasts.found(meta.symbol ? `$${meta.symbol}` : 'Token'), {
+          description: t.publish.toasts.foundBody,
         })
       } catch {
         if (!cancelled) setLookup({ state: 'notfound' })
@@ -188,7 +191,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     }, 400)
     return () => {
       cancelled = true
-      clearTimeout(t)
+      clearTimeout(timer)
     }
   }, [lookupCa, savedCa])
 
@@ -198,11 +201,11 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     try {
       const url = await uploadImage(file)
       setForm((f) => ({ ...f, [key]: url }))
-      toast.success(key === 'image' ? 'Imagen subida' : 'Banner subido')
+      toast.success(key === 'image' ? t.publish.toasts.imageUp : t.publish.toasts.bannerUp)
     } catch (e) {
       setForm((f) => ({ ...f, [key]: '' }))
       toast.error((e as Error).message, {
-        description: 'Tip: también puedes pegar la URL de la imagen sin subirla.',
+        description: t.publish.toasts.urlTip,
       })
     }
   }
@@ -213,25 +216,25 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     setError('')
     // En móvil la subida tarda: publicar antes de que termine dejaba el launch sin imagen
     if (uploading) {
-      setError('Espera a que termine de subir la imagen')
+      setError(t.publish.errors.uploading)
       return
     }
     if (!form.name.trim() || !form.launchAt) {
-      setError('Nombre y fecha son obligatorios')
+      setError(t.publish.errors.required)
       return
     }
     if (!form.ticker.trim() && !isPrivate) {
-      setError('Ingresa el ticker o marca el lanzamiento como privado')
+      setError(t.publish.errors.tickerOrPrivate)
       return
     }
     const contract = form.contract.trim()
     if (contract && !/^[a-zA-Z0-9:_-]{2,80}$/.test(contract)) {
-      setError('El CA/contrato solo admite letras, números y : _ - (2 a 80 caracteres)')
+      setError(t.publish.errors.contract)
       return
     }
     const liveUrl = form.liveUrl.trim()
     if (isLive && !/^https:\/\//.test(liveUrl)) {
-      setError('El link de la transmisión en vivo debe empezar con https://')
+      setError(t.publish.errors.liveUrl)
       return
     }
     // datetime-local se interpreta en la zona horaria del dispositivo del publicador;
@@ -252,7 +255,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
     if (editId) {
       updateLaunch.mutate(payload, {
         onSuccess: () => {
-          toast.success('Cambios guardados')
+          toast.success(t.publish.toasts.saved)
           // De vuelta al radar con la ficha abierta, para ver el resultado
           openLaunch(editId)
           router.push('/app')
@@ -271,7 +274,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
           setEarned(data.pointsEarned)
           setDone(true)
           window.scrollTo({ top: 0, behavior: 'smooth' })
-          toast.success('Launch publicado', { description: `+${data.pointsEarned} puntos Cabal` })
+          toast.success(t.publish.toasts.published, { description: t.publish.toasts.publishedPoints(data.pointsEarned) })
         },
         onError: (e: Error) => {
           setError(e.message)
@@ -301,9 +304,9 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
             href="/app"
             className="flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" aria-hidden /> <span className="hidden min-[400px]:inline">Volver</span>
+            <ArrowLeft className="h-4 w-4" aria-hidden /> <span className="hidden min-[400px]:inline">{t.publish.back}</span>
           </Link>
-          <Link href="/app" className="ml-1 flex min-w-0 items-center outline-none transition-opacity hover:opacity-80" aria-label="Ir al inicio">
+          <Link href="/app" className="ml-1 flex min-w-0 items-center outline-none transition-opacity hover:opacity-80" aria-label={t.publish.goHome}>
             <CabalWordmark />
           </Link>
           {!editId && (
@@ -327,12 +330,10 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
             {/* Page heading */}
             <div className="mb-5">
               <h1 className="font-machina flex items-center gap-2.5 text-xl font-bold sm:text-2xl uppercase tracking-wide">
-                <Rocket className="h-6 w-6 text-primary" aria-hidden /> {editId ? 'Editar lanzamiento' : 'Publicar lanzamiento'}
+                <Rocket className="h-6 w-6 text-primary" aria-hidden /> {editId ? t.publish.titleEdit : t.publish.titleNew}
               </h1>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                {editId
-                  ? 'Actualiza la información, las redes o la fecha. Los cambios se ven al momento en el Radar.'
-                  : `Avisa a la comunidad antes de que salga. Ganas puntos cuando la gente da hype a tu launch (+${rules.points_hype_received} por hype).`}
+                {editId ? t.publish.leadEdit : t.publish.leadNew(rules.points_hype_received)}
               </p>
             </div>
 
@@ -340,21 +341,21 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
             <div className="card-surface min-w-0 space-y-5 rounded-2xl border border-white/10 p-4 sm:p-6">
               {/* ¿Quién publica este launch? (obligatorio) */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">¿Quién publica este launch? *</Label>
-                <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Rol de quien publica">
+                <Label className="text-xs font-semibold">{t.publish.whoPosts}</Label>
+                <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label={t.publish.whoPostsAria}>
                   <RoleOption
                     active={submitterRole === 'dev'}
                     onClick={() => setSubmitterRole('dev')}
                     icon={<Code2 className="h-3.5 w-3.5" aria-hidden />}
-                    title="Soy el dev"
-                    subtitle="Postulo mi propio proyecto"
+                    title={t.publish.roleDev}
+                    subtitle={t.publish.roleDevSub}
                   />
                   <RoleOption
                     active={submitterRole === 'community'}
                     onClick={() => setSubmitterRole('community')}
                     icon={<Radar className="h-3.5 w-3.5" aria-hidden />}
-                    title="Comunidad"
-                    subtitle="Encontré la info y la comparto (+puntos)"
+                    title={t.publish.roleCommunity}
+                    subtitle={t.publish.roleCommunitySub}
                   />
                 </div>
               </div>
@@ -362,18 +363,18 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
               {/* Nombre + ticker */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="pl-name" className="text-xs font-semibold">Nombre *</Label>
-                  <Input id="pl-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Smole Coin" className="h-10 bg-[#0a0b08]" />
+                  <Label htmlFor="pl-name" className="text-xs font-semibold">{t.publish.name}</Label>
+                  <Input id="pl-name" value={form.name} onChange={(e) => set('name', e.target.value)} placeholder={t.publish.namePlaceholder} className="h-10 bg-[#0a0b08]" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pl-ticker" className="text-xs font-semibold">
-                    Ticker <span className="font-normal text-muted-foreground">· opcional</span>
+                    {t.publish.ticker} <span className="font-normal text-muted-foreground">{t.publish.optional}</span>
                   </Label>
                   <Input
                     id="pl-ticker"
                     value={form.ticker}
                     onChange={(e) => set('ticker', e.target.value.toUpperCase())}
-                    placeholder={isPrivate ? 'Reservado' : 'SMOL'}
+                    placeholder={isPrivate ? t.publish.tickerReserved : 'SMOL'}
                     disabled={false}
                     className="h-10 bg-[#0a0b08] font-mono"
                   />
@@ -408,10 +409,10 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                 </span>
                 <span className="min-w-0">
                   <span className={cn('flex items-center gap-1.5 text-[13px] font-bold', isPrivate ? 'text-amber-300' : 'text-foreground')}>
-                    <EyeOff className="h-3.5 w-3.5" aria-hidden /> Lanzamiento privado
+                    <EyeOff className="h-3.5 w-3.5" aria-hidden /> {t.publish.privateLaunch}
                   </span>
                   <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
-                    Anuncia el launch sin revelar el ticker: la comunidad verá “Privado” y el ticker se reserva hasta la fecha del lanzamiento.
+                    {t.publish.privateBody}
                   </span>
                 </span>
               </button>
@@ -445,16 +446,16 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                   </span>
                   <span className="min-w-0">
                     <span className={cn('flex items-center gap-1.5 text-[13px] font-bold', isLive ? 'text-primary' : 'text-foreground')}>
-                      <MonitorPlay className="h-3.5 w-3.5" aria-hidden /> Lanzamiento en vivo
+                      <MonitorPlay className="h-3.5 w-3.5" aria-hidden /> {t.publish.liveLaunch}
                     </span>
                     <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
-                      El proyecto se lanza con transmisión en directo: la ficha incrusta el video para que la comunidad lo vea sin salir de Cabal.
+                      {t.publish.liveBody}
                     </span>
                   </span>
                 </button>
                 {isLive && (
                   <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3">
-                    <Label htmlFor="pl-live" className="text-xs font-semibold">Link de la transmisión</Label>
+                    <Label htmlFor="pl-live" className="text-xs font-semibold">{t.publish.liveLink}</Label>
                     <Input
                       id="pl-live"
                       value={form.liveUrl}
@@ -465,7 +466,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                       className="h-10 bg-[#0a0b08] text-sm"
                     />
                     <p className="text-[10px] leading-relaxed text-muted-foreground">
-                      YouTube, Twitch, Vimeo o cualquier link del directo. Se incrusta automáticamente en el pop-up del launch.
+                      {t.publish.liveHint}
                     </p>
                   </div>
                 )}
@@ -473,7 +474,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
 
               {/* Red */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Red *</Label>
+                <Label className="text-xs font-semibold">{t.publish.network}</Label>
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(NETWORKS).map(([key, meta]) => (
                     <button
@@ -496,20 +497,20 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
               {/* CA del token (opcional): activa el gráfico en vivo en la ficha */}
               <div className="space-y-1.5">
                 <Label htmlFor="pl-contract" className="flex items-center gap-1.5 text-xs font-semibold">
-                  <Hash className="h-3 w-3 text-primary/70" aria-hidden /> CA / Contrato del token
-                  <span className="font-normal text-muted-foreground">· opcional</span>
+                  <Hash className="h-3 w-3 text-primary/70" aria-hidden /> {t.publish.contract}
+                  <span className="font-normal text-muted-foreground">{t.publish.optional}</span>
                 </Label>
                 <Input
                   id="pl-contract"
                   value={form.contract}
                   onChange={(e) => set('contract', e.target.value)}
-                  placeholder="Ej: 7xKX...pump (si el token ya está desplegado)"
+                  placeholder={t.publish.contractPlaceholder}
                   autoComplete="off"
                   spellCheck={false}
                   className="h-10 bg-[#0a0b08] font-mono text-sm"
                 />
                 {lookup.state === 'loading' ? (
-                  <p className="text-[11px] font-medium text-muted-foreground">Buscando el token…</p>
+                  <p className="text-[11px] font-medium text-muted-foreground">{t.publish.searchingToken}</p>
                 ) : lookup.state === 'found' ? (
                   <p className="flex items-center gap-1 text-[11px] font-semibold text-primary">
                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Token verificado en {lookup.source}: datos rellenados
@@ -528,19 +529,19 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
               {/* Datos premium: solo los ve quien paga el plan Premium (o tu equipo) */}
               <div className="space-y-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-3.5">
                 <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-200">
-                  <Crown className="h-3.5 w-3.5 fill-amber-300 text-amber-300" aria-hidden /> Datos Premium
-                  <span className="font-normal text-muted-foreground">· solo los ve quien tiene el plan Premium</span>
+                  <Crown className="h-3.5 w-3.5 fill-amber-300 text-amber-300" aria-hidden /> {t.publish.premiumData}
+                  <span className="font-normal text-muted-foreground">{t.publish.premiumDataNote}</span>
                 </p>
                 <div className="space-y-1.5">
                   <Label htmlFor="pl-devwallet" className="flex items-center gap-1.5 text-xs font-semibold">
-                    <Wallet className="h-3 w-3 text-amber-300/80" aria-hidden /> Wallet del dev
-                    <span className="font-normal text-muted-foreground">· opcional</span>
+                    <Wallet className="h-3 w-3 text-amber-300/80" aria-hidden /> {t.publish.devWallet}
+                    <span className="font-normal text-muted-foreground">{t.publish.optional}</span>
                   </Label>
                   <Input
                     id="pl-devwallet"
                     value={form.devWallet}
                     onChange={(e) => set('devWallet', e.target.value)}
-                    placeholder="La dirección que desplegó o va a desplegar el token"
+                    placeholder={t.publish.devWalletPlaceholder}
                     autoComplete="off"
                     spellCheck={false}
                     className="h-10 bg-[#0a0b08] font-mono text-sm"
@@ -548,13 +549,13 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="pl-launchpad" className="text-xs font-semibold">
-                    Launchpad <span className="font-normal text-muted-foreground">· opcional</span>
+                    {t.publish.launchpad} <span className="font-normal text-muted-foreground">{t.publish.optional}</span>
                   </Label>
                   <Input
                     id="pl-launchpad"
                     value={form.launchpad}
                     onChange={(e) => set('launchpad', e.target.value)}
-                    placeholder="Dónde sale el token: pump.fun, Zora…"
+                    placeholder={t.publish.launchpadPlaceholder}
                     className="h-10 bg-[#0a0b08] text-sm"
                   />
                   {(LAUNCHPADS[form.network as NetworkKey] ?? []).length > 0 && (
@@ -581,7 +582,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
 
               {/* Fecha */}
               <div className="space-y-1.5">
-                <Label htmlFor="pl-when" className="text-xs font-semibold">Fecha y hora *</Label>
+                <Label htmlFor="pl-when" className="text-xs font-semibold">{t.publish.dateTime}</Label>
                 <Input
                   id="pl-when"
                   type="datetime-local"
@@ -617,10 +618,10 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                   </span>
                   <span className="min-w-0">
                     <span className={cn('block text-[12px] font-bold', !dateConfirmed ? 'text-amber-300' : 'text-foreground')}>
-                      Fecha todavía no confirmada (estimada)
+                      {t.publish.dateUnconfirmed}
                     </span>
                     <span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground">
-                      Actívalo si no eres el dev y no hay fecha oficial. La comunidad verá que es un estimado hasta que se marque como confirmada.
+                      {t.publish.dateUnconfirmedBody}
                     </span>
                   </span>
                 </button>
@@ -635,8 +636,8 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                   onPickUrl={(u) => set('image', u)}
                   onRemove={() => set('image', '')}
                   aspect="square"
-                  label="Imagen del token"
-                  hint="Subir imagen"
+                  label={t.publish.tokenImage}
+                  hint={t.publish.uploadImage}
                   disabled={saving}
                 />
                 <ImageDrop
@@ -646,7 +647,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                   onPickUrl={(u) => set('banner', u)}
                   onRemove={() => set('banner', '')}
                   aspect="video"
-                  label="Banner"
+                  label={t.publish.banner}
                   hint="Sube un banner (16:9)"
                   disabled={saving}
                 />
@@ -654,12 +655,12 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
 
               {/* Pitch */}
               <div className="space-y-1.5">
-                <Label htmlFor="pl-desc" className="text-xs font-semibold">¿Por qué va a ser grande? (tu pitch)</Label>
+                <Label htmlFor="pl-desc" className="text-xs font-semibold">{t.publish.pitch}</Label>
                 <Textarea
                   id="pl-desc"
                   value={form.description}
                   onChange={(e) => set('description', e.target.value)}
-                  placeholder="LP quemada, mint revocado, comunidad lista, KOLs confirmados…"
+                  placeholder={t.publish.pitchPlaceholder}
                   className="min-h-[88px] resize-none bg-[#0a0b08]"
                 />
               </div>
@@ -667,15 +668,15 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
               {/* Links */}
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="pl-web" className="text-xs font-semibold text-muted-foreground">Website</Label>
+                  <Label htmlFor="pl-web" className="text-xs font-semibold text-muted-foreground">{t.publish.website}</Label>
                   <Input id="pl-web" value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="https://…" className="h-9 bg-[#0a0b08] text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="pl-x" className="text-xs font-semibold text-muted-foreground">X / Twitter</Label>
+                  <Label htmlFor="pl-x" className="text-xs font-semibold text-muted-foreground">{t.publish.x}</Label>
                   <Input id="pl-x" value={form.twitter} onChange={(e) => set('twitter', e.target.value)} placeholder="https://x.com/…" className="h-9 bg-[#0a0b08] text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="pl-tg" className="text-xs font-semibold text-muted-foreground">Telegram</Label>
+                  <Label htmlFor="pl-tg" className="text-xs font-semibold text-muted-foreground">{t.publish.telegram}</Label>
                   <Input id="pl-tg" value={form.telegram} onChange={(e) => set('telegram', e.target.value)} placeholder="https://t.me/…" className="h-9 bg-[#0a0b08] text-sm" />
                 </div>
               </div>
@@ -686,9 +687,7 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
               <div className="flex flex-col-reverse items-stretch gap-3 border-t border-white/10 pt-4 sm:flex-row sm:items-center">
                 <p className="flex flex-1 items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
                   <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary/70" />
-                  {editId
-                    ? 'Si cambias la fecha, el countdown se recalcula para todo el mundo.'
-                    : 'El countdown empieza de inmediato. La comunidad verá tu launch primero en el Radar.'}
+                  {editId ? t.publish.footerEdit : t.publish.footerNew}
                 </p>
                 <Button
                   onClick={submit}
@@ -698,13 +697,13 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                   <Zap className="h-4 w-4" strokeWidth={2.5} />
                   {editId
                     ? saving
-                      ? 'Guardando…'
-                      : 'Guardar cambios'
+                      ? t.publish.saving
+                      : t.publish.saveChanges
                     : saving
-                      ? 'Publicando…'
+                      ? t.publish.publishing
                       : uploading
-                        ? 'Subiendo imagen…'
-                      : `Publicar · +${rules.points_launch} pts`}
+                        ? t.publish.uploadingImage
+                        : t.publish.publishPts(rules.points_launch)}
                 </Button>
               </div>
             </div>
@@ -716,10 +715,12 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
       <footer className="mt-auto border-t border-white/10 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
         <div className="mx-auto flex max-w-[1800px] flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row">
           <p>
-            <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · la comunidad que ve los launches antes que nadie
+            <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> ·{' '}
+            {t.appFooter.tagline}
           </p>
           <p className="flex items-center gap-1">
-            <Zap className="h-3 w-3 text-primary/70" aria-hidden /> Tesis +{rules.points_thesis} · Launch +{rules.points_launch} · Se canjean por $CABAL
+            <Zap className="h-3 w-3 text-primary/70" aria-hidden />{' '}
+            {t.appFooter.points(rules.points_thesis, rules.points_launch)}
           </p>
         </div>
       </footer>
@@ -739,27 +740,28 @@ function SuccessPanel({
   onReset: () => void
   onGoRadar: () => void
 }) {
+  const t = useT()
   return (
     <div className="card-surface flex flex-col items-center gap-4 rounded-2xl border border-white/10 px-6 py-14 text-center">
       <span className="flex h-16 w-16 items-center justify-center rounded-full border border-[#8FA83F]/40 bg-[#8FA83F]/10">
         <CheckCircle2 className="h-8 w-8 text-primary" aria-hidden />
       </span>
       <div>
-        <h2 className="font-machina text-xl font-bold uppercase tracking-wide">¡Launch publicado!</h2>
+        <h2 className="font-machina text-xl font-bold uppercase tracking-wide">{t.publish.doneTitle}</h2>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          {ticker ? <span className="font-bold text-foreground">${ticker}</span> : 'Tu launch'} ya está en el Radar.
-          La comunidad empieza a verlo ahora mismo.
+          {ticker ? <span className="font-bold text-foreground">${ticker}</span> : t.publish.yourLaunch}
+          {t.publish.doneBody}
         </p>
       </div>
       <p className="flex items-center gap-1.5 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-3.5 py-1.5 text-sm font-bold text-primary">
-        <Zap className="h-4 w-4" aria-hidden /> +{earned} puntos Cabal
+        <Zap className="h-4 w-4" aria-hidden /> {t.publish.earnedPoints(earned)}
       </p>
       <div className="mt-2 flex flex-wrap items-center justify-center gap-2.5">
         <Button onClick={onGoRadar} className="px-5 font-bold">
-          <Radar className="h-4 w-4" aria-hidden /> Ver en el Radar
+          <Radar className="h-4 w-4" aria-hidden /> {t.publish.seeInRadar}
         </Button>
         <Button onClick={onReset} variant="outline" className="border-white/15 bg-transparent px-5 font-bold hover:bg-white/5">
-          Publicar otro
+          {t.publish.publishAnother}
         </Button>
       </div>
     </div>

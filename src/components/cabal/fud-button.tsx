@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Loader2, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { Chapa } from '@/components/cabal/chapa'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
@@ -31,6 +32,7 @@ export function FudButton({
   size?: 'sm' | 'md'
   className?: string
 }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   const vote = useFudVote()
@@ -54,8 +56,8 @@ export function FudButton({
             : 'border-white/10 text-muted-foreground hover:border-amber-700/50 hover:text-amber-200',
           className
         )}
-        title={fudded ? 'Votaste en contra: pulsa para ver tu motivo o retractarte' : 'Votar en contra (hay que explicar por qué)'}
-        aria-label={fudded ? 'Retirar tu voto en contra' : 'Votar en contra de este proyecto'}
+        title={fudded ? t.fud.votedTitle : t.fud.voteTitle}
+        aria-label={fudded ? t.fud.removeAria : t.fud.voteAria}
       >
         <span className={cn('leading-none', size === 'md' ? 'text-base' : 'text-[13px]')} aria-hidden>
           💩
@@ -71,19 +73,17 @@ export function FudButton({
         >
           <DialogTitle className="flex items-center gap-2 text-base">
             <span aria-hidden>💩</span>
-            {fudded ? 'Ya votaste en contra' : '¿Por qué es un mal proyecto?'}
+            {fudded ? t.fud.already : t.fud.why}
           </DialogTitle>
 
           {fudded ? (
             <>
               <p className="text-[13px] leading-relaxed text-muted-foreground">
-                Tu motivo está publicado en los comentarios del proyecto, con tu nombre. Si te responden y te convencen
-                de que estabas equivocado, puedes retractarte: el voto deja de contar y tu comentario se queda marcado
-                como retractado, para que el hilo siga teniendo sentido.
+                {t.fud.alreadyBody}
               </p>
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
-                  Mantener mi voto
+                  {t.fud.keepVote}
                 </Button>
                 <Button
                   variant="outline"
@@ -98,15 +98,14 @@ export function FudButton({
                   }
                 >
                   {retract.isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />}
-                  Me retracto
+                  {t.fud.retract}
                 </Button>
               </div>
             </>
           ) : (
             <>
               <p className="text-[13px] leading-relaxed text-muted-foreground">
-                El popó solo cuenta con una razón detrás. Escribe qué viste —el equipo, el contrato, la distribución, lo
-                que sea— y se publicará como comentario tuyo en el hilo del proyecto, donde te podrán responder.
+                {t.fud.reasonBody}
               </p>
               <Textarea
                 value={reason}
@@ -114,12 +113,12 @@ export function FudButton({
                 maxLength={FUD_REASON_MAX}
                 rows={4}
                 autoFocus
-                placeholder="Ej: el dev tiene el 40% del supply en una wallet y ya rugueó otro token en agosto…"
+                placeholder={t.fud.reasonPlaceholder}
                 className="resize-none bg-[#0a0b08] text-base sm:text-[13px]"
               />
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <Chapa silueta="turd" metal={fudded ? 'bronce' : 'acero'} className="h-5 w-5" placa />
-                <span className="min-w-0 flex-1">{error ?? 'Se publicará como comentario público, firmado por ti'}</span>
+                <span className="min-w-0 flex-1">{error ?? t.fud.publicNote}</span>
                 <span className="shrink-0 tabular-nums">
                   {reason.trim().length}/{FUD_REASON_MIN}
                 </span>

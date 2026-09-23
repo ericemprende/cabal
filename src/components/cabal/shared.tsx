@@ -24,6 +24,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { BadgeDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { Chapa, type Metal } from '@/components/cabal/chapa'
 import { SILUETAS, type Silueta } from '@/lib/siluetas'
 import { displayImageUrl } from '@/lib/remote-image'
@@ -73,6 +74,7 @@ export function TimezoneHint({
   className?: string
   compact?: boolean
 }) {
+  const t = useT()
   const [tz, setTz] = useState<TzInfo | null>(null)
   useEffect(() => {
     // async: evita cascada de renders y mismatch de hidratación SSR/cliente
@@ -94,10 +96,10 @@ export function TimezoneHint({
       <span>
         {tz ? (
           <>
-            Hora de <span className="font-semibold text-zinc-300">{tz.city}</span> ({tz.offsetLabel})
+            {t.shared.hourIn} <span className="font-semibold text-zinc-300">{tz.city}</span> ({tz.offsetLabel})
           </>
         ) : (
-          'Detectando zona horaria…'
+          t.shared.detectingTz
         )}
       </span>
       {valid && (
@@ -147,6 +149,7 @@ export function UserAvatar({
   className?: string
   ring?: boolean
 }) {
+  const t = useT()
   // A quien no ha subido foto se le asigna un personaje del escuadrón, siempre el mismo.
   const fallback = defaultAvatarFor(handle ?? name)
   const dims =
@@ -199,9 +202,9 @@ export function UserAvatar({
       {(verified || official) && (
         <span
           className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#0a0b08]"
-          title={official ? 'Verificado por Cabal' : 'Wallet verificada'}
+          title={official ? t.shared.verifiedByCabal : t.shared.verifiedWallet}
         >
-          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-label="Verificado">
+          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" aria-label={t.shared.verified}>
             <circle cx="8" cy="8" r="8" fill={official ? '#7fe04a' : '#8FA83F'} />
             <path d="M4.5 8.2 7 10.6 11.5 5.6" stroke="#101403" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -209,21 +212,21 @@ export function UserAvatar({
       )}
       {premium && (
         // Encima del avatar, sin tapar la foto: la base de la corona toca el borde del círculo
-        <span className="pointer-events-none absolute bottom-full left-1/2 -mb-px -translate-x-1/2" title="Premium">
+        <span className="pointer-events-none absolute bottom-full left-1/2 -mb-px -translate-x-1/2" title={t.shared.premium}>
           <Crown
             className={cn(
               'fill-amber-400 text-amber-400 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
               size === 'xs' || size === 'sm' ? 'h-3 w-3' : size === 'xl' ? 'h-5 w-5' : 'h-4 w-4'
             )}
-            aria-label="Premium"
+            aria-label={t.shared.premium}
           />
         </span>
       )}
       {online && (
         <span
           className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a0b08] bg-emerald-400"
-          title="Conectado ahora"
-          aria-label="Conectado ahora"
+          title={t.shared.onlineNow}
+          aria-label={t.shared.onlineNow}
         />
       )}
     </div>
@@ -241,6 +244,7 @@ export function OfficialBadge({
   title?: string
   className?: string
 }) {
+  const t = useT()
   const seal = (
     <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 drop-shadow-[0_0_4px_rgba(127,224,74,0.6)]" aria-hidden>
       <path
@@ -414,16 +418,17 @@ export function TokenGlyph({
 
 // ---------- Chip de contrato (CA) con botón copiar ----------
 export function CopyCA({ contract, className }: { contract: string; className?: string }) {
+  const t = useT()
   const [copied, setCopied] = useState(false)
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(contract)
       setCopied(true)
-      toast.success('CA copiado al portapapeles')
+      toast.success(t.shared.caCopied)
       setTimeout(() => setCopied(false), 1800)
     } catch {
-      toast.error('No se pudo copiar el CA')
+      toast.error(t.shared.caCopyFailed)
     }
   }
 
@@ -432,7 +437,7 @@ export function CopyCA({ contract, className }: { contract: string; className?: 
       type="button"
       onClick={copy}
       title={contract}
-      aria-label={`Copiar contrato: ${contract}`}
+      aria-label={t.shared.copyContract(contract)}
       className={cn(
         'group inline-flex max-w-full items-center gap-1 rounded-md border border-white/10 bg-white/4 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-zinc-300 transition-colors hover:border-primary/40 hover:text-primary',
         copied && 'border-primary/50 text-primary',
@@ -557,17 +562,18 @@ export function TickerLabel({
   isPrivate?: boolean
   className?: string
 }) {
+  const t = useT()
   if (isPrivate || !ticker) {
     // La píldora vive en un span interno con tamaño fijo: así el className del
     // padre (p. ej. text-[15px] del ticker) nunca la agranda ni rompe el layout.
     return (
       <span
         className={cn('inline-flex shrink-0 items-center', className)}
-        title="Ticker reservado · se revela en el lanzamiento"
+        title={t.shared.tickerReserved}
       >
         <span className="inline-flex items-center gap-1 rounded-md border border-amber-300/30 bg-amber-300/8 px-1.5 py-px text-[9px] font-bold uppercase leading-4 tracking-wide text-amber-300/90">
           <Lock className="h-2.5 w-2.5" aria-hidden />
-          Privado
+          {t.shared.private}
         </span>
       </span>
     )
@@ -577,16 +583,17 @@ export function TickerLabel({
 
 // ---------- Points pill ----------
 export function PointsPill({ points, className }: { points: number; className?: string }) {
+  const t = useT()
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1 rounded-full border border-[#8FA83F]/25 bg-[#8FA83F]/8 px-2 py-0.5 text-[11px] font-semibold text-primary',
         className
       )}
-      title="Puntos Cabal"
+      title={t.shared.points}
     >
       <Chapa silueta="star-medal" metal="oro" className="h-[18px] w-[18px]" placa />
-      {points.toLocaleString('es')}
+      {points.toLocaleString()}
     </span>
   )
 }
@@ -594,14 +601,15 @@ export function PointsPill({ points, className }: { points: number; className?: 
 // ---------- Post kind badge ----------
 /** `reply` = el post contesta a otro: se marca como respuesta, no como comentario suelto. */
 export function KindBadge({ kind, reply }: { kind: string; reply?: boolean }) {
+  const t = useT()
   const map: Record<string, { label: string; cls: string }> = {
-    thesis: { label: 'Tesis', cls: 'bg-[#8FA83F]/12 text-primary border-[#8FA83F]/30' },
-    call: { label: 'Call', cls: 'bg-amber-400/12 text-amber-300 border-amber-400/30' },
-    trade: { label: 'Trade', cls: 'bg-fuchsia-400/10 text-fuchsia-300 border-fuchsia-400/25' },
-    comment: { label: 'Comentario', cls: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
+    thesis: { label: t.shared.kinds.thesis, cls: 'bg-[#8FA83F]/12 text-primary border-[#8FA83F]/30' },
+    call: { label: t.shared.kinds.call, cls: 'bg-amber-400/12 text-amber-300 border-amber-400/30' },
+    trade: { label: t.shared.kinds.trade, cls: 'bg-fuchsia-400/10 text-fuchsia-300 border-fuchsia-400/25' },
+    comment: { label: t.shared.kinds.comment, cls: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20' },
     // Motivo de un voto en contra (el popó del Radar): siempre lleva su razón.
-    fud: { label: '💩 Crítica', cls: 'bg-amber-900/25 text-amber-200 border-amber-700/40' },
-    reply: { label: 'Respuesta', cls: 'bg-sky-400/10 text-sky-300 border-sky-400/25' },
+    fud: { label: t.shared.kinds.fud, cls: 'bg-amber-900/25 text-amber-200 border-amber-700/40' },
+    reply: { label: t.shared.kinds.reply, cls: 'bg-sky-400/10 text-sky-300 border-sky-400/25' },
   }
   const meta = (reply && kind === 'comment' ? map.reply : map[kind]) ?? map.comment
   return (
@@ -643,15 +651,16 @@ export function useNow(intervalMs = 1000) {
 
 /** Fecha aún no confirmada: badge chiquito para poner junto a la fecha o el countdown. */
 export function EstimatedDateBadge({ className }: { className?: string }) {
+  const t = useT()
   return (
     <span
-      title="Quien subió el proyecto todavía no tiene la fecha confirmada"
+      title={t.shared.estimatedTitle}
       className={cn(
         'inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-amber-300/40 bg-amber-300/10 px-1 py-px text-[9px] font-black uppercase tracking-wide text-amber-300',
         className
       )}
     >
-      Estimada
+      {t.shared.estimated}
     </span>
   )
 }
@@ -671,6 +680,7 @@ export function CountdownPill({
   /** La fecha es un estimado sin confirmar: antepone "~" y lo aclara en el title. */
   estimated?: boolean
 }) {
+  const t = useT()
   const c = useCountdown(target, !estimated)
   // Compacto: cuenta atrás corta para tarjetas — incluye min+seg cuando queda <24h
   const text = compact ? c.compactText : c.text
@@ -692,29 +702,29 @@ export function CountdownPill({
     return (
       <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>
         <span className={cn('live-dot-red shrink-0 rounded-full bg-[#ff4d5e]', dotCls)} />
-        En vivo
+        {t.shared.live}
       </span>
     )
   // Fecha estimada que ya pasó: no ha salido nada, sigue esperando al dev
   if (c.pending)
     return (
       <span
-        title="La fecha era estimada y ya pasó: quien lo subió todavía no ha confirmado el lanzamiento"
+        title={t.shared.pendingTitle}
         className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-amber-300/40 bg-amber-300/10 font-bold uppercase text-amber-300', cls, className)}
       >
-        Pendiente
+        {t.shared.pending}
       </span>
     )
   if (c.recent)
     return (
       <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-[#8FA83F]/30 bg-[#8FA83F]/8 font-bold uppercase text-primary', cls, className)}>
-        Lanzado
+        {t.shared.launched}
       </span>
     )
   if (c.ended)
     return (
       <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-zinc-500/30 bg-zinc-500/10 font-semibold text-zinc-400', cls, className)}>
-        Finalizado
+        {t.shared.finished}
       </span>
     )
   return (
@@ -731,10 +741,10 @@ export function CountdownPill({
       )}
       title={
         estimated
-          ? 'Fecha estimada, todavía sin confirmar'
+          ? t.shared.estimatedDate
           : urgent
-            ? 'Lanzamiento inminente'
-            : 'Tiempo para el lanzamiento'
+            ? t.shared.imminent
+            : t.shared.timeToLaunch
       }
     >
       {urgent ? (
@@ -769,12 +779,13 @@ export function SafetyChecks({
   top10Pct: number
   compact?: boolean
 }) {
+  const t = useT()
   const s = safetyCheck({ lpLocked, mintRevoked, top10Pct })
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <CheckItem ok={lpLocked} label="LP bloqueada" showLabel={!compact} />
-      <CheckItem ok={mintRevoked} label="Mint revocado" showLabel={!compact} />
-      <CheckItem ok={top10Pct <= 20} label={`Top10 ${top10Pct}%`} showLabel={!compact} warn />
+      <CheckItem ok={lpLocked} label={t.shared.lpLocked} showLabel={!compact} />
+      <CheckItem ok={mintRevoked} label={t.shared.mintRevoked} showLabel={!compact} />
+      <CheckItem ok={top10Pct <= 20} label={t.shared.top10(top10Pct)} showLabel={!compact} warn />
       {compact && (
         <span className={cn('inline-flex items-center gap-1 text-[11px]', top10Pct <= 20 ? 'text-primary' : 'text-amber-300/90')}>
           {top10Pct}%

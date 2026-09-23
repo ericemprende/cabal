@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { CopyCA, NetworkBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { TrustBadge } from '@/components/cabal/reputation'
 import { PostCard } from '@/components/cabal/post-card'
@@ -21,6 +22,7 @@ import { useUI } from '@/lib/store'
 import type { TokenDetailDTO } from '@/lib/types'
 
 export function TokenDetailDialog() {
+  const t = useT()
   const { tokenDetailId, openToken } = useUI()
   const { data: token, isLoading } = useToken(tokenDetailId)
   const createPost = useCreatePost()
@@ -66,14 +68,14 @@ export function TokenDetailDialog() {
       >
         <button
           onClick={() => setExpanded((v) => !v)}
-          aria-label={expanded ? 'Achicar' : 'Ampliar'}
+          aria-label={expanded ? t.launchDetail.shrink : t.launchDetail.expand}
           className="absolute right-12 top-4 z-10 hidden rounded-xs sm:block text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
         >
           {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
         </button>
         {isLoading || !token ? (
           <div className="space-y-3 p-6">
-            <DialogTitle className="sr-only">Detalle del token</DialogTitle>
+            <DialogTitle className="sr-only">{t.tokenDetail.title}</DialogTitle>
             <Skeleton className="h-10 w-2/3" />
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-32 w-full" />
@@ -90,7 +92,7 @@ export function TokenDetailDialog() {
                       {token.name} <span className="text-primary text-glow">${token.ticker}</span>
                     </h2>
                     <NetworkBadge network={token.network} />
-                    {token.verified && <OfficialBadge label title="Token oficial verificado por Cabal" />}
+                    {token.verified && <OfficialBadge label title={t.tokenDetail.officialTitle} />}
                     {token.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1.5 py-0.5 text-[10px] font-black text-[#ff8080]">RUG</span>}
                     {token.boost && <BoostCounter boost={token.boost} />}
                   </div>
@@ -113,7 +115,7 @@ export function TokenDetailDialog() {
 
               {/* chart: en vivo (widget on-chain) o histórico (sintético) */}
               <div className="mt-4">
-                <div className="mb-2 flex items-center gap-1 rounded-lg border border-white/10 bg-[#0a0b08] p-1" role="tablist" aria-label="Modo del gráfico">
+                <div className="mb-2 flex items-center gap-1 rounded-lg border border-white/10 bg-[#0a0b08] p-1" role="tablist" aria-label={t.tokenDetail.chartMode}>
                   <button
                     type="button"
                     role="tab"
@@ -186,7 +188,7 @@ export function TokenDetailDialog() {
                         <Tooltip
                           contentStyle={{ background: '#121410', border: '1px solid rgba(143,168,63,0.25)', borderRadius: 10, fontSize: 12 }}
                           labelStyle={{ color: '#8b917f' }}
-                          formatter={(v) => [fmtMc(Number(v)), 'Market Cap']}
+                          formatter={(v) => [fmtMc(Number(v)), t.tokenDetail.marketCap]}
                         />
                         <Area type="monotone" dataKey="mc" stroke="#8FA83F" strokeWidth={2} fill="url(#mcFill)" />
                       </AreaChart>
@@ -197,10 +199,10 @@ export function TokenDetailDialog() {
 
               {/* stats */}
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <Stat label="Holders" value={fmtNum(token.holders)} />
-                <Stat label="Vol 24h" value={fmtMc(token.volume24h)} />
-                <Stat label="Top 10" value={`${token.top10Pct}%`} warn={token.top10Pct > 20} />
-                <Stat label="Tesis" value={String(token.postsCount)} />
+                <Stat label={t.tokenDetail.holders} value={fmtNum(token.holders)} />
+                <Stat label={t.tokenDetail.volume24h} value={fmtMc(token.volume24h)} />
+                <Stat label={t.tokenDetail.top10} value={`${token.top10Pct}%`} warn={token.top10Pct > 20} />
+                <Stat label={t.tokenDetail.theses} value={String(token.postsCount)} />
               </div>
             </div>
 
@@ -225,9 +227,9 @@ export function TokenDetailDialog() {
                 <Textarea
                   value={thesis}
                   onChange={(e) => setThesis(e.target.value)}
-                  placeholder={`Tu tesis sobre ${token.ticker}: ¿por qué va a subir? (+${rules.points_thesis} puntos)`}
+                  placeholder={t.tokenDetail.thesisPlaceholder(token.ticker, rules.points_thesis)}
                   className="min-h-[64px] resize-none border-0 bg-transparent text-sm focus-visible:ring-0"
-                  aria-label="Escribir tesis"
+                  aria-label={t.tokenDetail.thesisAria}
                 />
                 <div className="flex justify-end">
                   <Button
@@ -241,13 +243,13 @@ export function TokenDetailDialog() {
                     }}
                     className="gap-1.5 px-4 text-xs font-bold"
                   >
-                    <Zap className="h-3 w-3" /> Publicar tesis
+                    <Zap className="h-3 w-3" /> {t.tokenDetail.publishThesis}
                   </Button>
                 </div>
               </div>
               <div className="max-h-[40dvh] space-y-2.5 overflow-y-auto pr-1">
                 {token.posts.length === 0 && (
-                  <p className="py-6 text-center text-sm text-muted-foreground">Nadie ha publicado tesis todavía. Tú puedes ser el primero</p>
+                  <p className="py-6 text-center text-sm text-muted-foreground">{t.tokenDetail.noTheses}</p>
                 )}
                 {token.posts.map((p) => (
                   <PostCard key={p.id} post={p} />
@@ -282,11 +284,12 @@ function DevTrackRecord({
   history: TokenDetailDTO['devHistory']
   onFollow: (id: string) => void
 }) {
+  const t = useT()
   const { openToken } = useUI()
   return (
     <div className="border-b border-white/10 p-5">
       <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> Historial del dev
+        <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> {t.tokenDetail.devHistory}
         <span className="font-normal normal-case text-primary/80">· verificado por wallet</span>
       </p>
       <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5 sm:flex-row sm:items-center">
@@ -303,7 +306,7 @@ function DevTrackRecord({
             </p>
             <p className="text-xs text-muted-foreground">@{dev.handle}</p>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
-              {dev.walletVerified ? 'Wallet verificada' : 'Wallet sin verificar'}
+              {dev.walletVerified ? t.tokenDetail.verifiedWallet : t.tokenDetail.unverifiedWallet}
             </p>
             {/* Qué opina la comunidad del dev, no del token */}
             <TrustBadge rep={dev.reputation} className="mt-1" />
@@ -311,15 +314,15 @@ function DevTrackRecord({
         </Link>
         <div className="flex items-center gap-4 sm:ml-auto sm:justify-end">
           <div className="text-center">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Tokens</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.tokenDetail.tokens}</p>
             <p className="text-sm font-bold">{stats.tokensLaunched}</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Rugs</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.tokenDetail.rugs}</p>
             <p className={cn('text-sm font-bold', stats.rugs > 0 ? 'text-[#ff8080]' : 'text-primary')}>{stats.rugs}</p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ret. ATH</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.tokenDetail.athRet}</p>
             <p className={cn('text-sm font-bold', stats.avgPerformance >= 50 ? 'text-primary' : 'text-amber-300')}>
               {stats.avgPerformance}%
             </p>
@@ -333,7 +336,7 @@ function DevTrackRecord({
               !dev.isFollowed && ''
             )}
           >
-            {dev.isFollowed ? 'Siguiendo' : 'Seguir'}
+            {dev.isFollowed ? t.tokenDetail.following : t.tokenDetail.follow}
           </Button>
         </div>
       </div>
@@ -367,31 +370,30 @@ function DevTrackRecord({
  * inventa un historial; se dice claramente y se indica cómo reclamarlo.
  */
 function UnverifiedDev({ publishedBy }: { publishedBy: TokenDetailDTO['publishedBy'] }) {
+  const t = useT()
   const { openToken } = useUI()
   return (
     <div className="border-b border-white/10 p-5">
       <p className="flex items-center gap-1.5 pb-2.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> Historial del dev
+        <History className="h-3.5 w-3.5 text-primary/70" aria-hidden /> {t.tokenDetail.devHistory}
       </p>
       <div className="rounded-xl border border-dashed border-white/15 bg-[#0a0b08] p-3.5">
-        <p className="text-sm font-bold">Dev sin verificar</p>
+        <p className="text-sm font-bold">{t.tokenDetail.unverifiedDev}</p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           {publishedBy ? (
             <>
-              Lo encontró{' '}
+              {t.tokenDetail.foundBy}{' '}
               <Link
                 href={`/u/${publishedBy.handle}`}
                 onClick={() => openToken(null)}
                 className="font-semibold text-foreground hover:underline"
               >
                 @{publishedBy.handle}
-              </Link>{' '}
-              y lo
-              publicó en el Radar.{' '}
+              </Link>
+              {t.tokenDetail.postedInRadar}
             </>
           ) : null}
-          Si eres su dev, reclámalo desde tu perfil conectando la wallet que lo creó: al verificarse on-chain
-          pasará a contar en tu historial.
+          {t.tokenDetail.claimIt}
         </p>
       </div>
     </div>
