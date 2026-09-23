@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { fmtMc, timeAgo } from '@/lib/cabal'
 import { BadgesRow, NetworkBadge, PremiumPill, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
@@ -88,6 +89,7 @@ export function ProfileView({ handle }: { handle: string }) {
 }
 
 function ProfileContent({ profile }: { profile: PublicProfileDTO }) {
+  const t = useT()
   const { user, counts } = profile
   const [list, setList] = useState<'followers' | 'following' | null>(null)
 
@@ -99,12 +101,12 @@ function ProfileContent({ profile }: { profile: PublicProfileDTO }) {
       <CallStats handle={user.handle} />
 
       <div className="grid grid-cols-2 gap-2.5">
-        <Stat icon={Rocket} label="Launches" value={String(counts.launches)} />
+        <Stat icon={Rocket} label={t.profileView.launches} value={String(counts.launches)} />
         <Stat
           icon={Code2}
-          label="Tokens como dev"
+          label={t.profileView.devTokens}
           value={String(counts.tokens + profile.devClaims.length)}
-          hint="Verificados on-chain"
+          hint={t.profileView.onChainVerified}
         />
       </div>
 
@@ -127,6 +129,7 @@ function ProfileHeader({
   profile: PublicProfileDTO
   onOpenList: (type: 'followers' | 'following') => void
 }) {
+  const t = useT()
   const { user, counts, isMe } = profile
   const { setProfileOpen, openAuth, setPremiumOpen } = useUI()
   const { data: session } = useSession()
@@ -186,8 +189,8 @@ function ProfileHeader({
 
             <div className="flex flex-col items-start gap-2 sm:ml-auto sm:items-end">
             <div className="flex items-center gap-2">
-              <CountButton label="Siguiendo" value={counts.following} onClick={() => onOpenList('following')} />
-              <CountButton label="Seguidores" value={counts.followers} onClick={() => onOpenList('followers')} />
+              <CountButton label={t.profileView.following} value={counts.following} onClick={() => onOpenList('following')} />
+              <CountButton label={t.profileView.followers} value={counts.followers} onClick={() => onOpenList('followers')} />
               {isMe ? (
                 <>
                   {!profile.premium && (
@@ -212,7 +215,7 @@ function ProfileHeader({
                   disabled={follow.isPending}
                   variant={user.isFollowed ? 'secondary' : 'default'}
                 >
-                  {user.isFollowed ? 'Siguiendo' : 'Seguir'}
+                  {user.isFollowed ? t.profileView.following : t.profileView.follow}
                 </Button>
               )}
             </div>
@@ -233,7 +236,7 @@ function ProfileHeader({
                 className="flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold hover:border-white/25"
               >
                 <XLogo className="h-3 w-3" /> @{user.xHandle}
-                {user.xVerified && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label="Verificado con X" />}
+                {user.xVerified && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label={t.profileView.xVerified} />}
               </a>
             )}
             {user.tgHandle && (
@@ -246,8 +249,8 @@ function ProfileHeader({
                 <Send className="h-3 w-3" aria-hidden /> @{user.tgHandle.replace(/^@+/, '')}
               </a>
             )}
-            <Verification ok={user.walletVerified} label="Wallet verificada" />
-            <Verification ok={user.googleVerified} label="Google verificado" />
+            <Verification ok={user.walletVerified} label={t.profileView.walletVerified} />
+            <Verification ok={user.googleVerified} label={t.profileView.googleVerified} />
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" aria-hidden /> Se unió en {joined}
             </span>
@@ -308,13 +311,14 @@ function Stat({
 // ---------------- Proyectos ----------------
 
 function Projects({ profile }: { profile: PublicProfileDTO }) {
+  const t = useT()
   const { openLaunch, openToken } = useUI()
   const { tokens, devClaims, launches } = profile
   const empty = tokens.length === 0 && devClaims.length === 0 && launches.length === 0
 
   return (
     <section className="space-y-3">
-      <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Proyectos</h2>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profileView.projects}</h2>
 
       {empty && (
         <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
@@ -396,29 +400,31 @@ function Projects({ profile }: { profile: PublicProfileDTO }) {
 }
 
 function LaunchState({ status }: { status: string }) {
+  const t = useT()
   const meta =
     status === 'upcoming'
-      ? { label: 'Próximo', cls: 'bg-[#8FA83F]/15 text-primary' }
+      ? { label: t.profileView.upcoming, cls: 'bg-[#8FA83F]/15 text-primary' }
       : status === 'live'
-        ? { label: 'En vivo', cls: 'bg-[#ff4d5e]/15 text-[#ff8080]' }
-        : { label: 'Finalizado', cls: 'bg-white/5 text-muted-foreground' }
+        ? { label: t.profileView.live, cls: 'bg-[#ff4d5e]/15 text-[#ff8080]' }
+        : { label: t.profileView.finished, cls: 'bg-white/5 text-muted-foreground' }
   return <span className={cn('rounded-md px-2 py-0.5 text-[10px] font-bold', meta.cls)}>{meta.label}</span>
 }
 
 // ---------------- Actividad: tesis y posts ----------------
 
 function Activity({ profile }: { profile: PublicProfileDTO }) {
+  const t = useT()
   const [tab, setTab] = useState<'theses' | 'posts'>('theses')
   const theses = profile.posts.filter((p) => p.kind === 'thesis')
   const shown = tab === 'theses' ? theses : profile.posts
 
   return (
     <section className="space-y-3">
-      <div role="tablist" aria-label="Actividad" className="flex items-center gap-1.5">
+      <div role="tablist" aria-label={t.profileView.activity} className="flex items-center gap-1.5">
         {(
           [
-            ['theses', `Tesis · ${profile.counts.theses}`],
-            ['posts', `Todo · ${profile.counts.posts}`],
+            ['theses', t.profileView.tabTheses(profile.counts.theses)],
+            ['posts', t.profileView.tabAll(profile.counts.posts)],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -440,7 +446,7 @@ function Activity({ profile }: { profile: PublicProfileDTO }) {
 
       {shown.length === 0 ? (
         <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
-          {tab === 'theses' ? 'Todavía no ha publicado ninguna tesis.' : 'Todavía no ha publicado nada.'}
+          {tab === 'theses' ? t.profileView.noTheses : t.profileView.nothingYet}
         </p>
       ) : (
         <div className="space-y-2.5">
@@ -464,6 +470,7 @@ function FollowListDialog({
   type: 'followers' | 'following' | null
   onClose: () => void
 }) {
+  const t = useT()
   const { data, isPending } = useUserFollows(handle, type ?? 'followers', type !== null)
   const users = data?.users ?? []
 
@@ -471,7 +478,7 @@ function FollowListDialog({
     <Dialog open={type !== null} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[80dvh] overflow-hidden border-white/10 bg-[#121410] p-0 sm:max-w-md">
         <DialogTitle className="border-b border-white/10 px-5 py-4 text-base font-bold">
-          {type === 'following' ? `@${handle} sigue a` : `Seguidores de @${handle}`}
+          {type === 'following' ? t.profileView.followsList(handle) : t.profileView.followersList(handle)}
         </DialogTitle>
         <div className="max-h-[60dvh] overflow-y-auto p-2">
           {isPending ? (
@@ -482,7 +489,7 @@ function FollowListDialog({
             </div>
           ) : users.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted-foreground">
-              {type === 'following' ? 'Todavía no sigue a nadie.' : 'Todavía no tiene seguidores.'}
+              {type === 'following' ? t.profileView.followsNobody : t.profileView.noFollowers}
             </p>
           ) : (
             users.map((u) => (
@@ -497,7 +504,7 @@ function FollowListDialog({
                   <p className="truncate text-sm font-semibold">{u.name}</p>
                   <p className="truncate text-xs text-muted-foreground">@{u.handle}</p>
                 </div>
-                {u.isFollowed && <span className="text-[11px] text-muted-foreground">Siguiendo</span>}
+                {u.isFollowed && <span className="text-[11px] text-muted-foreground">{t.profileView.following}</span>}
               </Link>
             ))
           )}

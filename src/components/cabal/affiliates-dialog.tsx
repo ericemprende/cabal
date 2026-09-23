@@ -9,9 +9,11 @@ import { UserAvatar } from '@/components/cabal/shared'
 import { timeAgo } from '@/lib/cabal'
 import { useMyAffiliates } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { useT } from '@/lib/i18n/provider'
 
 /** Mis afiliados: quiénes entraron con mi enlace y cuántos puntos me dejó cada uno. */
 export function AffiliatesDialog() {
+  const t = useT()
   const { affiliatesOpen, setAffiliatesOpen } = useUI()
   const { data, isPending, isError } = useMyAffiliates(affiliatesOpen)
   const [copied, setCopied] = useState(false)
@@ -22,10 +24,10 @@ export function AffiliatesDialog() {
     try {
       await navigator.clipboard.writeText(link)
       setCopied(true)
-      toast.success('Enlace copiado')
+      toast.success(t.affiliates.linkCopied)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      toast.error('No se pudo copiar el enlace')
+      toast.error(t.affiliates.linkCopyFailed)
     }
   }
 
@@ -39,18 +41,19 @@ export function AffiliatesDialog() {
       >
         <div className="border-b border-white/10 p-5">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <Users className="h-5 w-5 text-primary" aria-hidden /> Afiliados
+            <Users className="h-5 w-5 text-primary" aria-hidden /> {t.affiliates.title}
           </DialogTitle>
           <p className="mt-1 text-[13px] text-muted-foreground">
-            Quien se registra con tu enlace te deja el{' '}
-            <span className="font-bold text-primary">{data?.percent ?? 10}%</span> de los puntos que genere.
+            {t.affiliates.lead1}
+            <span className="font-bold text-primary">{data?.percent ?? 10}%</span>
+            {t.affiliates.lead2}
           </p>
         </div>
 
         <div className="space-y-4 p-5">
           <div className="grid grid-cols-2 gap-2">
-            <Stat label="Afiliados" value={isPending ? '…' : String(list.length)} />
-            <Stat label="Puntos generados" value={isPending ? '…' : `+${data?.totalEarned ?? 0}`} accent />
+            <Stat label={t.affiliates.count} value={isPending ? '…' : String(list.length)} />
+            <Stat label={t.affiliates.earned} value={isPending ? '…' : `+${data?.totalEarned ?? 0}`} accent />
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -66,7 +69,7 @@ export function AffiliatesDialog() {
               className="shrink-0 gap-1.5 px-3 text-xs font-bold"
             >
               <Copy className="h-3.5 w-3.5" aria-hidden />
-              {copied ? '¡Copiado!' : 'Copiar'}
+              {copied ? t.affiliates.copied : t.affiliates.copy}
             </Button>
           </div>
 
@@ -75,7 +78,7 @@ export function AffiliatesDialog() {
               No pudimos cargar tus afiliados. Inténtalo de nuevo.
             </p>
           ) : isPending ? (
-            <p className="p-6 text-center text-xs text-muted-foreground">Cargando…</p>
+            <p className="p-6 text-center text-xs text-muted-foreground">{t.affiliates.loading}</p>
           ) : list.length === 0 ? (
             <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-xs text-muted-foreground">
               Aún no tienes afiliados. Comparte tu enlace para empezar a sumar.
@@ -85,10 +88,10 @@ export function AffiliatesDialog() {
               <table className="w-full min-w-[480px] text-left text-[13px]">
                 <thead className="bg-white/[0.03] text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   <tr>
-                    <th className="px-3 py-2">Afiliado</th>
-                    <th className="px-3 py-2">Se unió</th>
-                    <th className="px-3 py-2 text-right">Sus puntos</th>
-                    <th className="px-3 py-2 text-right">Te generó</th>
+                    <th className="px-3 py-2">{t.affiliates.colAffiliate}</th>
+                    <th className="px-3 py-2">{t.affiliates.colJoined}</th>
+                    <th className="px-3 py-2 text-right">{t.affiliates.colPoints}</th>
+                    <th className="px-3 py-2 text-right">{t.affiliates.colEarned}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">

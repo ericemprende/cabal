@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { useLang, useT } from '@/lib/i18n/provider'
 import { useAmmoInfo, useBoostScores, useBuyAmmoPack, useFireAmmo, useSession } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { Bullet, BulletRow, bulletsAsTime, fmtBullets } from '@/components/cabal/ammo'
@@ -21,6 +22,7 @@ import type { AmmoPackDTO, BoostScoreDTO } from '@/lib/types'
  * la ficha de un proyecto (con el objetivo ya cargado).
  */
 export function AmmoDialog() {
+  const t = useT()
   const { ammoOpen, ammoTarget, setAmmoOpen, openAuth, setPremiumOpen } = useUI()
   const { data: session } = useSession()
   const { data: info, isPending } = useAmmoInfo(ammoOpen)
@@ -40,14 +42,14 @@ export function AmmoDialog() {
               <Bomb className="h-5 w-5 text-amber-300" strokeWidth={2.5} aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <DialogTitle className="font-display text-lg font-bold">Arsenal</DialogTitle>
+              <DialogTitle className="font-display text-lg font-bold">{t.arsenal.title}</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Una bala = un minuto arriba del Radar, con el gráfico listo y el botón de comprar a la vista.
+                {t.arsenal.lead}
               </DialogDescription>
             </div>
             {loggedIn && info && (
               <div className="shrink-0 text-right">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tus balas</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{t.arsenal.yourBullets}</p>
                 <p className="font-mono text-2xl font-bold tabular-nums text-amber-300">
                   {info.balance.toLocaleString('es')}
                 </p>
@@ -66,7 +68,7 @@ export function AmmoDialog() {
 
         {!loggedIn ? (
           <div className="space-y-3 p-8 text-center">
-            <p className="text-sm text-muted-foreground">Inicia sesión para conseguir munición.</p>
+            <p className="text-sm text-muted-foreground">{t.arsenal.loginNeeded}</p>
             <Button
               onClick={() => {
                 setAmmoOpen(false)
@@ -95,8 +97,8 @@ export function AmmoDialog() {
               <div className="flex items-start gap-2 rounded-xl border border-amber-300/25 bg-gradient-to-r from-amber-400/10 to-transparent p-3">
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden />
                 <p className="text-[12px] leading-relaxed text-foreground/85">
-                  <span className="font-bold text-amber-200">Cargador Dorado</span> a partir de{' '}
-                  {info.goldenAt.toLocaleString('es')} balas activas: el proyecto sale dorado y con destello en todo Cabal.
+                  <span className="font-bold text-amber-200">{t.arsenal.goldenMag}</span>
+                  {t.arsenal.goldenFrom(info.goldenAt.toLocaleString())}
                 </p>
               </div>
               <button
@@ -108,8 +110,9 @@ export function AmmoDialog() {
               >
                 <Crown className="mt-0.5 h-4 w-4 shrink-0 fill-amber-300 text-amber-300" aria-hidden />
                 <p className="text-[12px] leading-relaxed text-foreground/85">
-                  Los planes <span className="font-bold text-amber-200">Premium</span> regalan munición al activarse:
-                  desde {fmtBullets(smallestGift(info.planGifts))} balas.
+                  {t.arsenal.premiumGift1}
+                  <span className="font-bold text-amber-200">Premium</span>
+                  {t.arsenal.premiumGift2(fmtBullets(smallestGift(info.planGifts)))}
                 </p>
               </button>
             </div>
@@ -122,8 +125,10 @@ export function AmmoDialog() {
 
 /** Promoción de lanzamiento: el descuento y hasta cuándo dura. */
 function PromoBanner({ promo }: { promo: { pct: number; until: string | null } }) {
+  const t = useT()
+  const [lang] = useLang()
   const until = promo.until
-    ? new Date(promo.until).toLocaleDateString('es', { day: 'numeric', month: 'long' })
+    ? new Date(promo.until).toLocaleDateString(lang, { day: 'numeric', month: 'long' })
     : null
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2.5">
@@ -131,9 +136,9 @@ function PromoBanner({ promo }: { promo: { pct: number; until: string | null } }
         −{promo.pct}%
       </span>
       <p className="text-[13px] font-semibold text-foreground/90">
-        Promoción de lanzamiento en todos los cargadores
+        {t.arsenal.promo}
       </p>
-      {until && <span className="ml-auto text-[11px] text-muted-foreground">hasta el {until}</span>}
+      {until && <span className="ml-auto text-[11px] text-muted-foreground">{t.arsenal.until(until)}</span>}
     </div>
   )
 }
@@ -153,6 +158,7 @@ const QUICK_SHOTS = [
 
 /** Elegir cuántas balas gastar sobre el objetivo y dispararlas. */
 function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number }) {
+  const t = useT()
   const { ammoTarget, setAmmoOpen } = useUI()
   const fire = useFireAmmo()
   const { data: scores } = useBoostScores()
@@ -171,7 +177,7 @@ function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number 
     <section className="rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-4">
       <div className="flex items-center gap-2.5">
         <Crosshair className="h-4 w-4 shrink-0 text-amber-300" aria-hidden />
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Objetivo</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.arsenal.target}</p>
         <div className="ml-auto flex min-w-0 items-center gap-2">
           <TokenGlyph src={ammoTarget.image} ticker={ammoTarget.name} size="xs" className="rounded-full" />
           <span className="min-w-0 truncate text-sm font-bold">{ammoTarget.name}</span>
@@ -204,10 +210,10 @@ function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number 
               : 'border-white/10 text-muted-foreground hover:border-amber-300/40'
           )}
         >
-          Todo
+          {t.arsenal.all}
         </button>
         <label className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="sr-only sm:not-sr-only">Balas</span>
+          <span className="sr-only sm:not-sr-only">{t.arsenal.bullets}</span>
           <input
             type="number"
             min={1}
@@ -225,8 +231,7 @@ function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number 
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <BulletRow count={Math.ceil((bullets / 1440) * 12)} max={12} />
         <p className="text-[13px] text-foreground/85">
-          <span className="font-bold text-amber-300">{bullets.toLocaleString('es')} balas</span> ={' '}
-          {bulletsAsTime(bullets)} destacado
+          {t.arsenal.bulletsFeatured(bullets.toLocaleString(), bulletsAsTime(bullets))}
         </p>
       </div>
 
@@ -246,7 +251,7 @@ function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number 
             { targetType: ammoTarget.type, targetId: ammoTarget.id, bullets },
             {
               onSuccess: () => {
-                toast.success(`¡Fuego! ${bullets.toLocaleString('es')} balas sobre ${ammoTarget.name}`)
+                toast.success(t.arsenal.fired(bullets.toLocaleString(), ammoTarget.name))
                 setAmmoOpen(false)
               },
             }
@@ -258,10 +263,10 @@ function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number 
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : enough ? (
           <>
-            <Bomb className="h-4 w-4" strokeWidth={2.5} /> Disparar
+            <Bomb className="h-4 w-4" strokeWidth={2.5} /> {t.arsenal.fire}
           </>
         ) : (
-          'Te faltan balas — compra un cargador'
+          t.arsenal.notEnough
         )}
       </Button>
     </section>
@@ -270,6 +275,7 @@ function FireSection({ balance, goldenAt }: { balance: number; goldenAt: number 
 
 /** Los cargadores a la venta, al estilo de una vitrina de armería. */
 function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boolean }) {
+  const t = useT()
   const [chosen, setChosen] = useState<string | null>(null)
   const buy = useBuyAmmoPack()
 
@@ -283,7 +289,7 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
   if (packs.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-muted-foreground">
-        Todavía no hay cargadores a la venta. Vuelve pronto.
+        {t.arsenal.noPacks}
       </p>
     )
   }
@@ -291,7 +297,7 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
   return (
     <section className="space-y-2">
       <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-        {hasTarget ? 'Recargar' : 'Elige tu cargador'}
+        {hasTarget ? t.arsenal.reload : t.arsenal.choosePack}
       </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {packs.map((p) => {
@@ -346,7 +352,7 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
                   className="flex-1 bg-amber-400 font-bold text-[#1a1406] hover:bg-amber-300 disabled:opacity-40"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                  {pack.card ? `Tarjeta · $${pack.priceUsd}` : 'Tarjeta no disponible'}
+                  {pack.card ? t.arsenal.cardPrice(pack.priceUsd) : t.arsenal.cardOff}
                 </Button>
                 <Button
                   disabled={!pack.crypto || loading}
@@ -355,7 +361,7 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
                   className="flex-1 border-white/15 font-bold hover:border-amber-300/50 disabled:opacity-40"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wallet className="h-4 w-4" />}
-                  {pack.crypto ? 'Cripto' : 'Cripto no disponible'}
+                  {pack.crypto ? t.arsenal.crypto : t.arsenal.cryptoOff}
                 </Button>
               </>
             )
@@ -391,6 +397,7 @@ function RankMeter({
   goldenAt: number
   onPickBullets: (n: number) => void
 }) {
+  const t = useT()
   if (!scores) return null
 
   const mine = scores[targetKey]?.bullets ?? 0
@@ -412,12 +419,12 @@ function RankMeter({
   return (
     <div className="mt-3 rounded-lg border border-white/10 bg-black/25 p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Quedarías</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.arsenal.youWouldBe}</p>
         <p className="text-[12px] text-muted-foreground">
           <span className={cn('text-xl font-black tabular-nums', first ? 'text-amber-300' : 'text-foreground')}>
             {rank}º
           </span>{' '}
-          de {total}
+          {t.arsenal.outOf(total)}
         </p>
       </div>
 
@@ -429,30 +436,32 @@ function RankMeter({
         />
       </div>
       <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-        {projected.toLocaleString('es')} balas
-        {!first && ` · el nº1 tiene ${leader.toLocaleString('es')}`}
+        {t.arsenal.bulletsCount(projected.toLocaleString())}
+        {!first && t.arsenal.leaderHas(leader.toLocaleString())}
       </p>
 
       {first ? (
         <p className="mt-2 text-[12px] font-semibold text-amber-200">
-          Te llevas el banner grande del Radar{goesGolden ? ' y entras en Cargador Dorado' : ''}.
+          {t.arsenal.youGetBanner}
+          {goesGolden ? t.arsenal.andGolden : ''}.
         </p>
       ) : (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <p className="text-[12px] text-foreground/85">
-            Te faltan <span className="font-bold text-amber-300">{(leader + 1 - projected).toLocaleString('es')}</span>{' '}
-            balas para el banner.
+            {t.arsenal.missing1}
+            <span className="font-bold text-amber-300">{(leader + 1 - projected).toLocaleString()}</span>
+            {t.arsenal.missing2}
           </p>
           {canAfford ? (
             <button
               onClick={() => onPickBullets(toBeFirst)}
               className="rounded-full border border-amber-300/50 bg-amber-400/10 px-2.5 py-1 text-[11px] font-bold text-amber-200 transition-colors hover:bg-amber-400/20"
             >
-              Disparar {toBeFirst.toLocaleString('es')} y al nº1
+              {t.arsenal.fireToFirst(toBeFirst.toLocaleString())}
             </button>
           ) : (
             <span className="text-[11px] text-muted-foreground">
-              (necesitarías {toBeFirst.toLocaleString('es')} balas de golpe)
+              {t.arsenal.wouldNeed(toBeFirst.toLocaleString())}
             </span>
           )}
         </div>
