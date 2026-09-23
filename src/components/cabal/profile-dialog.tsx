@@ -62,6 +62,8 @@ import {
   type AuthStatusDTO,
 } from '@/lib/api-client'
 import type { DevClaimDTO, MeDTO, WalletLinkDTO } from '@/lib/types'
+import { connectedWallet } from '@/lib/wallets'
+import { useWalletPicker } from '@/components/cabal/wallet-picker'
 import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 import { PushSettings } from '@/components/cabal/push-settings'
@@ -492,31 +494,15 @@ function ClaimProjectSection() {
   const [network, setNetwork] = useState('solana')
   const [contract, setContract] = useState('')
   const [wallet, setWallet] = useState('')
-  const [walletKind, setWalletKind] = useState<'phantom' | 'evm' | null>(null)
+  const walletKind = injectedWalletFor(network)
 
-  useEffect(() => {
-    const t = setTimeout(() => setWalletKind(injectedWalletFor(network)), 0)
-    return () => clearTimeout(t)
-  }, [network])
+  const pickers = { solana: useWalletPicker('solana'), evm: useWalletPicker('evm') }
 
+  // Abre el selector con las wallets instaladas de esa red (Phantom, Solflare, MetaMask, Rabby…)
   const connectInjected = async () => {
-    try {
-      if (walletKind === 'phantom') {
-        const provider = window.phantom?.solana ?? window.solana
-        if (!provider?.connect) throw new Error('No se detectó Phantom')
-        const res = await provider.connect()
-        setWallet(res.publicKey.toString())
-      } else if (walletKind === 'evm') {
-        const accounts = (await window.ethereum?.request({ method: 'eth_requestAccounts' })) as
-          | string[]
-          | undefined
-        if (accounts?.[0]) setWallet(accounts[0])
-      } else {
-        toast.error('No hay wallet del navegador para esta red; pega la dirección a mano')
-      }
-    } catch (e) {
-      toast.error((e as Error).message || 'Conexión rechazada')
-    }
+    if (!walletKind) return
+    const a = await pickers[walletKind].requestWallet({ forcePicker: true })
+    if (a) setWallet(a)
   }
 
   const submit = () => {
@@ -535,6 +521,8 @@ function ClaimProjectSection() {
 
   return (
     <div className="space-y-3">
+      {pickers.solana.picker}
+      {pickers.evm.picker}
       <p className="text-[12px] leading-relaxed text-muted-foreground">
         ¿Eres el dev de un proyecto publicado aquí? Pega su CA, conecta tu wallet y verificamos
         on-chain que es tuyo. Al confirmarlo, el proyecto queda vinculado a tu perfil.
@@ -594,7 +582,7 @@ function ClaimProjectSection() {
                 onClick={connectInjected}
                 className="shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
               >
-                {walletKind === 'phantom' ? 'Phantom' : 'MetaMask'}
+                Wallet
               </Button>
             )}
           </div>
@@ -877,13 +865,9 @@ const ageOf = (ms: number | null | undefined) =>
 function WalletManager({ me }: { me: MeDTO }) {
   const [network, setNetwork] = useState('solana')
   const [address, setAddress] = useState('')
-  const [walletKind, setWalletKind] = useState<'phantom' | 'evm' | null>(null)
+  const walletKind = injectedWalletFor(network)
 
-  useEffect(() => {
-    // async: las wallets inyectadas solo existen en el cliente
-    const t = setTimeout(() => setWalletKind(injectedWalletFor(network)), 0)
-    return () => clearTimeout(t)
-  }, [network])
+  const pickers = { solana: useWalletPicker('solana'), evm: useWalletPicker('evm') }
 
   const addWallet = useAddWallet()
   const verifySig = useVerifyWalletSignature()
@@ -891,24 +875,11 @@ function WalletManager({ me }: { me: MeDTO }) {
   const verifyToken = useVerifyDevToken()
   const removeClaim = useRemoveDevToken()
 
+  // Abre el selector con las wallets instaladas de esa red (Phantom, Solflare, MetaMask, Rabby…)
   const connectInjected = async () => {
-    try {
-      if (walletKind === 'phantom') {
-        const provider = window.phantom?.solana ?? window.solana
-        if (!provider?.connect) throw new Error('No se detectó Phantom')
-        const res = await provider.connect()
-        setAddress(res.publicKey.toString())
-      } else if (walletKind === 'evm') {
-        const accounts = (await window.ethereum?.request({ method: 'eth_requestAccounts' })) as
-          | string[]
-          | undefined
-        if (accounts?.[0]) setAddress(accounts[0])
-      } else {
-        toast.error('No hay wallet del navegador para esta red; pega la dirección a mano')
-      }
-    } catch (e) {
-      toast.error((e as Error).message || 'Conexión rechazada')
-    }
+    if (!walletKind) return
+    const a = await pickers[walletKind].requestWallet({ forcePicker: true })
+    if (a) setAddress(a)
   }
 
   const add = () => {
@@ -921,16 +892,31 @@ function WalletManager({ me }: { me: MeDTO }) {
       {
         network,
         address: a,
-        label: walletKind === 'phantom' ? 'Phantom' : walletKind === 'evm' ? 'MetaMask' : 'Manual',
+        label: (walletKind && connectedWallet(walletKind)?.address === a && connectedWallet(walletKind)?.name) || 'Manual',
       },
       { onSuccess: () => setAddress('') }
     )
+  }
+
+  // Para firmar hace falta tener conectada justo la wallet de esa dirección: si no, se abre el selector
+  const verifyWithWallet = async (w: WalletLinkDTO) => {
+    const family = injectedWalletFor(w.network)
+    if (!family) return
+    const current = connectedWallet(family)?.address
+    const same = (a?: string | null) => (family === 'evm' ? a?.toLowerCase() === w.address.toLowerCase() : a === w.address)
+    if (!same(current)) {
+      const a = await pickers[family].requestWallet({ forcePicker: true })
+      if (!a) return
+    }
+    verifySig.mutate({ id: w.id, network: w.network, address: w.address })
   }
 
   const unsigned = me.wallets.filter((w) => !w.signature)
 
   return (
     <div className="space-y-3">
+      {pickers.solana.picker}
+      {pickers.evm.picker}
       {/* Wallets conectadas */}
       {me.wallets.length > 0 && (
         <div className="space-y-1.5">
@@ -939,7 +925,7 @@ function WalletManager({ me }: { me: MeDTO }) {
               key={w.id}
               wallet={w}
               onRemove={() => removeWallet.mutate(w.id)}
-              onVerify={() => verifySig.mutate({ id: w.id, network: w.network, address: w.address })}
+              onVerify={() => verifyWithWallet(w)}
               verifying={verifySig.isPending}
               busy={removeWallet.isPending}
             />
@@ -989,7 +975,7 @@ function WalletManager({ me }: { me: MeDTO }) {
               onClick={connectInjected}
               className="shrink-0 border border-[#8FA83F]/35 bg-[#8FA83F]/10 px-2.5 text-xs font-bold text-primary hover:bg-[#8FA83F]/20 hover:text-primary"
             >
-              {walletKind === 'phantom' ? 'Phantom' : 'MetaMask'}
+              Wallet
             </Button>
           )}
           <Button

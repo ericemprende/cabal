@@ -1,13 +1,13 @@
 /**
  * Helpers de cliente para comprar en redes EVM (Ethereum, Base, BNB Chain)
- * con MetaMask o cualquier otro proveedor inyectado en window.ethereum
- * (estándar EIP-1193) — análogo a phantomProvider() para Solana, pero sin
- * un objeto estable: hay que llamar eth_requestAccounts, asegurarse de estar
- * en la red correcta, y a veces firmar un typed-data (Permit2) antes de
+ * con MetaMask, Rabby, Coinbase o cualquier wallet EIP-1193 (elegida en el
+ * selector de wallets). A diferencia de Solana, no basta con firmar: hay
+ * que llamar eth_requestAccounts, asegurarse de estar en la red correcta, y a veces firmar un typed-data (Permit2) antes de
  * mandar la transacción.
  */
 
 import type { EvmTxToSignDTO, Permit2Eip712DTO } from '@/lib/types'
+import { activeEvmProvider, type Eip1193Provider } from '@/lib/wallets'
 
 export type EvmNetwork = 'ethereum' | 'base' | 'bsc' | 'robinhood' | 'arc'
 
@@ -72,14 +72,12 @@ export function isEvmNetwork(network: string): network is EvmNetwork {
   return network === 'ethereum' || network === 'base' || network === 'bsc' || network === 'robinhood' || network === 'arc'
 }
 
-type Eip1193Provider = {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
-}
-
+/**
+ * El proveedor de la wallet EVM que la persona eligió en el selector (ver
+ * lib/wallets.ts); si todavía no eligió ninguna, el de window.ethereum.
+ */
 export function evmProvider(): Eip1193Provider | null {
-  if (typeof window === 'undefined') return null
-  const w = window as unknown as { ethereum?: Eip1193Provider }
-  return w.ethereum ?? null
+  return activeEvmProvider()
 }
 
 /** Conecta (eth_requestAccounts) y devuelve la primera cuenta, o null si el usuario canceló o no hay proveedor. */

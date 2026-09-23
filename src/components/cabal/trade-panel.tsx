@@ -7,7 +7,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useBuildBuy, useBuildBuyEvm, useBuildSell, useConfirmSwap, useConfirmSwapEvm, useSwapConfig, useSwapConfigEvm, useTokenBalance } from '@/lib/api-client'
-import { connectEvmWallet, ensureEvmChain, EVM_EXPLORER, evmProvider, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
+import { ensureEvmChain, EVM_EXPLORER, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
+import { disconnectWallet, isUserRejection, solanaSignAndSend } from '@/lib/wallets'
+import { useConnectedAddress, useWalletPicker } from '@/components/cabal/wallet-picker'
 
 /**
  * Panel de trading propio, al estilo fomo: pestañas Compra/Venta. Comprar usa
@@ -15,7 +17,8 @@ import { connectEvmWallet, ensureEvmChain, EVM_EXPLORER, evmProvider, isEvmNetwo
  * tiene la wallet conectada de este token.
  *
  * Cabal solo cotiza y arma la(s) transacción(es) (POST /api/swap/build o
- * /api/swap/sell); quien opera las firma con su propia wallet (Phantom) y las
+ * /api/swap/sell); quien opera las firma con su propia wallet (Phantom,
+ * Solflare, MetaMask… la que elija en el selector) y las
  * manda ella misma a la red — Cabal nunca ve ni toca una clave privada.
  *
  * La primerísima vez que Cabal entrega un mint dado (comprándolo, o
@@ -47,17 +50,6 @@ function feeLabel(fee: { feeBps: number; smallTradeUsd: number; smallTradeFeeBps
 const BUY_GREEN = '#0ECB81'
 const BUY_GREEN_HOVER = '#12e08f'
 
-type PhantomSolana = {
-  connect: () => Promise<{ publicKey: { toString(): string } }>
-  signAndSendTransaction: (tx: Transaction | VersionedTransaction) => Promise<{ signature: string }>
-}
-
-function phantomProvider(): PhantomSolana | null {
-  if (typeof window === 'undefined') return null
-  const w = window as unknown as { phantom?: { solana?: PhantomSolana }; solana?: PhantomSolana & { isPhantom?: boolean } }
-  return w.phantom?.solana ?? (w.solana?.isPhantom ? w.solana : null) ?? null
-}
-
 export function TradePanel({
   contract,
   network,
@@ -80,36 +72,16 @@ export function TradePanel({
   const confirmEvm = useConfirmSwapEvm()
   const [tab, setTab] = useState<'buy' | 'sell'>('buy')
   const [amount, setAmount] = useState('') // USD (comprar) o % del saldo (vender)
-  const [pubkey, setPubkey] = useState<string | null>(null)
+  const family = isEvm ? 'evm' : 'solana'
+  const pubkey = useConnectedAddress(family)
+  const { requestWallet, picker } = useWalletPicker(family)
   const [busy, setBusy] = useState(false)
   const { data: balance } = useTokenBalance(tab === 'sell' ? pubkey : null, tab === 'sell' ? contract : null)
 
   if ((network !== 'solana' && !isEvm) || !config?.enabled) return null
 
-  const connect = async (): Promise<string | null> => {
-    if (isEvm) {
-      if (!evmProvider()) {
-        toast.error('Instala MetaMask para comprar desde Cabal', { description: 'metamask.io' })
-        return null
-      }
-      const pk = await connectEvmWallet()
-      if (pk) setPubkey(pk)
-      return pk
-    }
-    const p = phantomProvider()
-    if (!p) {
-      toast.error('Instala Phantom para comprar desde Cabal', { description: 'phantom.app' })
-      return null
-    }
-    try {
-      const res = await p.connect()
-      const pk = res.publicKey.toString()
-      setPubkey(pk)
-      return pk
-    } catch {
-      return null // el usuario canceló la conexión
-    }
-  }
+  // Abre el selector de wallets si todavía no hay una conectada en esta página
+  const connect = (): Promise<string | null> => requestWallet()
 
   const buyEvmNow = async (pk: string) => {
     const usd = Number(amount)
@@ -132,7 +104,7 @@ export function TradePanel({
       setAmount('')
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
-      if (!/user rejected/i.test(msg)) {
+      if (!isUserRejection(e)) {
         toast.error('No se pudo completar la compra', { description: msg.slice(0, 140) || 'Inténtalo de nuevo' })
       }
     } finally {
@@ -151,9 +123,6 @@ export function TradePanel({
       return
     }
 
-    const p = phantomProvider()
-    if (!p) return
-
     setBusy(true)
     try {
       const res = await build.mutateAsync({ outputMint: contract, amountUsd: usd, userPublicKey: pk })
@@ -161,11 +130,11 @@ export function TradePanel({
       // Cuenta de comisión del token, solo si nadie lo compró antes por Cabal
       if (res.createFeeAccountTx) {
         const setupTx = Transaction.from(Buffer.from(res.createFeeAccountTx.base64, 'base64'))
-        await p.signAndSendTransaction(setupTx)
+        await solanaSignAndSend(setupTx)
       }
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
-      const { signature } = await p.signAndSendTransaction(swapTx)
+      const signature = await solanaSignAndSend(swapTx)
       if (res.intentId) confirm.mutate({ intentId: res.intentId, signature })
 
       toast.success('Compra enviada', {
@@ -175,8 +144,7 @@ export function TradePanel({
       setAmount('')
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
-      // Phantom no da un código estable para "el usuario canceló": se detecta por el texto
-      if (!/user rejected/i.test(msg)) {
+      if (!isUserRejection(e)) {
         toast.error('No se pudo completar la compra', { description: msg.slice(0, 140) || 'Inténtalo de nuevo' })
       }
     } finally {
@@ -189,9 +157,6 @@ export function TradePanel({
     if (!(pct > 0 && pct <= 100)) return
     const pk = pubkey ?? (await connect())
     if (!pk) return
-    const p = phantomProvider()
-    if (!p) return
-
     setBusy(true)
     try {
       const res = await sell.mutateAsync({ inputMint: contract, percent: pct, userPublicKey: pk })
@@ -199,11 +164,11 @@ export function TradePanel({
       // Cuenta de comisión en SOL, solo si nadie la generó todavía por Cabal
       if (res.createFeeAccountTx) {
         const setupTx = Transaction.from(Buffer.from(res.createFeeAccountTx.base64, 'base64'))
-        await p.signAndSendTransaction(setupTx)
+        await solanaSignAndSend(setupTx)
       }
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
-      const { signature } = await p.signAndSendTransaction(swapTx)
+      const signature = await solanaSignAndSend(swapTx)
       if (res.intentId) confirm.mutate({ intentId: res.intentId, signature })
 
       toast.success('Venta enviada', {
@@ -213,7 +178,7 @@ export function TradePanel({
       setAmount('')
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
-      if (!/user rejected/i.test(msg)) {
+      if (!isUserRejection(e)) {
         toast.error('No se pudo completar la venta', { description: msg.slice(0, 140) || 'Inténtalo de nuevo' })
       }
     } finally {
@@ -223,6 +188,7 @@ export function TradePanel({
 
   return (
     <div className={cn('w-full shrink-0 rounded-xl border border-white/10 bg-[#0a0b08] p-3', className)}>
+      {picker}
       {/* En redes EVM solo hay compra todavía (no hay venta integrada), así que no tiene sentido mostrar pestañas */}
       {!isEvm && (
         <div className="grid grid-cols-2 gap-1 rounded-lg border border-white/10 bg-[#121410] p-1">
@@ -356,6 +322,21 @@ export function TradePanel({
         </div>
       )}
 
+      {pubkey && (
+        <p className="mt-2.5 text-center text-[10px] text-muted-foreground">
+          <span className="font-mono">{pubkey.slice(0, 4)}…{pubkey.slice(-4)}</span>
+          {' · '}
+          <button
+            onClick={() => {
+              disconnectWallet(family)
+              void requestWallet()
+            }}
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Cambiar wallet
+          </button>
+        </p>
+      )}
       {config.fee?.note && <p className="mt-2.5 text-center text-[10px] leading-relaxed text-muted-foreground/80">{config.fee.note}</p>}
 
       <a

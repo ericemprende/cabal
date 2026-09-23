@@ -9,7 +9,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/provider'
 import { useBuildBuy, useBuildBuyEvm, useConfirmSwap, useConfirmSwapEvm, useSwapConfig, useSwapConfigEvm } from '@/lib/api-client'
-import { connectEvmWallet, ensureEvmChain, EVM_EXPLORER, evmProvider, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
+import { ensureEvmChain, EVM_EXPLORER, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
+import { isUserRejection, solanaSignAndSend } from '@/lib/wallets'
+import { useConnectedAddress, useWalletPicker } from '@/components/cabal/wallet-picker'
 
 /**
  * Botón compacto de "Comprar" para usar al lado de un token en una lista
@@ -32,17 +34,6 @@ function feeLabel(fee: { feeBps: number; smallTradeUsd: number; smallTradeFeeBps
   if (!Number.isFinite(amountUsd) || amountUsd <= 0) return `${pct}%`
   const feeUsd = (amountUsd * bps) / 10000
   return `${pct}% ($${feeUsd.toFixed(feeUsd < 1 ? 2 : 0)})`
-}
-
-type PhantomSolana = {
-  connect: () => Promise<{ publicKey: { toString(): string } }>
-  signAndSendTransaction: (tx: Transaction | VersionedTransaction) => Promise<{ signature: string }>
-}
-
-function phantomProvider(): PhantomSolana | null {
-  if (typeof window === 'undefined') return null
-  const w = window as unknown as { phantom?: { solana?: PhantomSolana }; solana?: PhantomSolana & { isPhantom?: boolean } }
-  return w.phantom?.solana ?? (w.solana?.isPhantom ? w.solana : null) ?? null
 }
 
 export function QuickBuyButton({
@@ -70,7 +61,9 @@ export function QuickBuyButton({
   const confirmEvm = useConfirmSwapEvm()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('')
-  const [pubkey, setPubkey] = useState<string | null>(null)
+  const family = isEvm ? 'evm' : 'solana'
+  const pubkey = useConnectedAddress(family)
+  const { requestWallet, picker } = useWalletPicker(family)
   const [busy, setBusy] = useState(false)
 
   if ((network !== 'solana' && !isEvm) || !config?.enabled) return null
@@ -79,18 +72,11 @@ export function QuickBuyButton({
     const usd = Number(amount)
     if (!(usd > 0)) return
 
-    if (isEvm) {
-      let pk = pubkey
-      if (!evmProvider()) {
-        toast.error(t.buy.needMetamask, { description: 'metamask.io' })
-        return
-      }
-      if (!pk) {
-        pk = await connectEvmWallet()
-        if (!pk) return // el usuario canceló la conexión
-        setPubkey(pk)
-      }
+    // Abre el selector de wallets si todavía no hay una conectada en esta página
+    const pk = await requestWallet()
+    if (!pk) return // cerró el selector o rechazó la conexión
 
+    if (isEvm) {
       setBusy(true)
       try {
         await ensureEvmChain(network as EvmNetwork)
@@ -111,7 +97,7 @@ export function QuickBuyButton({
         setAmount('')
       } catch (e) {
         const msg = (e as Error)?.message ?? ''
-        if (!/user rejected/i.test(msg)) {
+        if (!isUserRejection(e)) {
           toast.error(t.buy.failed, { description: msg.slice(0, 140) || t.buy.tryAgain })
         }
       } finally {
@@ -120,33 +106,17 @@ export function QuickBuyButton({
       return
     }
 
-    let pk = pubkey
-    const p = phantomProvider()
-    if (!p) {
-      toast.error(t.buy.needPhantom, { description: 'phantom.app' })
-      return
-    }
-    if (!pk) {
-      try {
-        const res = await p.connect()
-        pk = res.publicKey.toString()
-        setPubkey(pk)
-      } catch {
-        return // el usuario canceló la conexión
-      }
-    }
-
     setBusy(true)
     try {
       const res = await build.mutateAsync({ outputMint: contract, amountUsd: usd, userPublicKey: pk })
 
       if (res.createFeeAccountTx) {
         const setupTx = Transaction.from(Buffer.from(res.createFeeAccountTx.base64, 'base64'))
-        await p.signAndSendTransaction(setupTx)
+        await solanaSignAndSend(setupTx)
       }
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
-      const { signature } = await p.signAndSendTransaction(swapTx)
+      const signature = await solanaSignAndSend(swapTx)
       if (res.intentId) confirm.mutate({ intentId: res.intentId, signature })
 
       toast.success(t.buy.sent, {
@@ -157,7 +127,7 @@ export function QuickBuyButton({
       setAmount('')
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
-      if (!/user rejected/i.test(msg)) {
+      if (!isUserRejection(e)) {
         toast.error(t.buy.failed, { description: msg.slice(0, 140) || t.buy.tryAgain })
       }
     } finally {
@@ -166,6 +136,8 @@ export function QuickBuyButton({
   }
 
   return (
+    <>
+    {picker}
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
@@ -240,5 +212,6 @@ export function QuickBuyButton({
         {config.fee?.note && <p className="mt-2 text-center text-[10px] leading-relaxed text-muted-foreground/80">{config.fee.note}</p>}
       </PopoverContent>
     </Popover>
+    </>
   )
 }

@@ -1,7 +1,6 @@
 ﻿'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import bs58 from 'bs58'
 import { toast } from 'sonner'
 import type {
   VerifyRequestDTO,
@@ -46,6 +45,7 @@ import type {
 import type { CallPeriod } from '@/lib/call-score'
 import { DEFAULT_CHAT_ROOM, type ChatRoom } from '@/lib/chat-rooms'
 import { useUI } from '@/lib/store'
+import { activeEvmProvider, connectedWallet, solanaSignMessage, type WalletFamily } from '@/lib/wallets'
 
 export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -79,36 +79,19 @@ export type SessionDTO = {
   user?: UserDTO
 }
 
-// ---------- Proveedores de wallet del navegador ----------
-type PhantomProvider = {
-  connect?: () => Promise<{ publicKey: { toString(): string } }>
-  signMessage?: (msg: Uint8Array, enc: 'utf8') => Promise<{ signature: Uint8Array }>
-}
+// ---------- Wallets del navegador ----------
 
-type EvmProvider = {
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
-}
-
-declare global {
-  interface Window {
-    phantom?: { solana?: PhantomProvider }
-    solana?: PhantomProvider
-    ethereum?: EvmProvider
-  }
-}
-
-/** ¿Hay wallet del navegador disponible para esta red? */
-export function injectedWalletFor(network: string): 'phantom' | 'evm' | null {
-  if (typeof window === 'undefined') return null
-  const solana = ['solana'].includes(network)
-  if (solana && (window.phantom?.solana || window.solana)) return 'phantom'
-  if (['ethereum', 'base', 'bsc', 'robinhood', 'arc'].includes(network) && window.ethereum) return 'evm'
+/** Familia de wallets que sirve para una red (el selector lista las instaladas de esa familia). */
+export function injectedWalletFor(network: string): WalletFamily | null {
+  if (network === 'solana') return 'solana'
+  if (['ethereum', 'base', 'bsc', 'robinhood', 'arc'].includes(network)) return 'evm'
   return null
 }
 
 /**
- * Pide la firma del mensaje de verificación con la wallet del navegador:
- * - Solana: phantom.solana.signMessage → base58 (verificada con tweetnacl).
+ * Pide la firma del mensaje de verificación a la wallet conectada con el
+ * selector (tiene que ser la que tiene esa dirección):
+ * - Solana: solana:signMessage → base58 (verificada con tweetnacl).
  * - EVM: personal_sign → verificada con ecrecover (ethers) en el backend.
  */
 export async function requestWalletSignature(
@@ -116,16 +99,15 @@ export async function requestWalletSignature(
   address: string,
   message: string
 ): Promise<string> {
-  if (network === 'solana') {
-    const provider = window.phantom?.solana ?? window.solana
-    if (!provider?.signMessage) throw new Error('No se detectó Phantom. Instala la extensión o pega la dirección.')
-    const encoded = new TextEncoder().encode(message)
-    const res = await provider.signMessage(encoded, 'utf8')
-    return bs58.encode(res.signature)
+  const family = injectedWalletFor(network)
+  const current = family ? connectedWallet(family) : null
+  const same = current && (family === 'evm' ? current.address.toLowerCase() === address.toLowerCase() : current.address === address)
+  if (!current || !same) {
+    throw new Error(`Conecta la wallet ${address.slice(0, 4)}…${address.slice(-4)} para firmar`)
   }
-  const ethereum = window.ethereum
-  if (!ethereum) throw new Error('No se detectó MetaMask. Instala la extensión o pega la dirección.')
-  await ethereum.request({ method: 'eth_requestAccounts' })
+  if (family === 'solana') return solanaSignMessage(new TextEncoder().encode(message))
+  const ethereum = activeEvmProvider()
+  if (!ethereum) throw new Error('No se detectó ninguna wallet EVM. Instala una o pega la dirección.')
   const hexMessage =
     '0x' +
     Array.from(new TextEncoder().encode(message))
