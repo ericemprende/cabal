@@ -99,10 +99,25 @@ export function Header() {
           {/* Notifications */}
           <Popover onOpenChange={(open) => open && chatReplies.markSeen()}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative h-9 w-9 text-muted-foreground hover:text-primary" aria-label="Notificaciones">
-                <Chapa silueta="ringing-bell" metal="oro" className="h-[18px] w-[18px]" placa />
-                {(soon.length > 0 || chatReplies.unread > 0) && (
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary live-dot" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 text-muted-foreground hover:text-primary"
+                aria-label={chatReplies.unread > 0 ? `Notificaciones (${chatReplies.unread} sin leer)` : 'Notificaciones'}
+              >
+                {/* La campanita solo se mueve cuando hay algo sin leer de verdad.
+                    Antes bastaba con que hubiera un launch proximo para tenerla
+                    palpitando siempre, que es como no avisar de nada. */}
+                <Chapa
+                  silueta="ringing-bell"
+                  metal="oro"
+                  className={cn('h-[18px] w-[18px]', chatReplies.unread > 0 && 'bell-swing')}
+                  placa
+                />
+                {chatReplies.unread > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground ring-2 ring-[#0a0b08]">
+                    {chatReplies.unread > 99 ? '99+' : chatReplies.unread}
+                  </span>
                 )}
               </Button>
             </PopoverTrigger>

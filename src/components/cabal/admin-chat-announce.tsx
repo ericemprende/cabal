@@ -131,7 +131,7 @@ export function AdminChatAnnounce({ enabled }: { enabled: boolean }) {
         </div>
 
         <label className="block">
-          <span className="text-[13px] font-semibold">Mensaje</span>
+          <span className="text-[13px] font-semibold">Mensaje · 🇪🇸 sala en español</span>
           <Textarea
             value={cfg.body}
             maxLength={MAX_BODY}
@@ -140,6 +140,20 @@ export function AdminChatAnnounce({ enabled }: { enabled: boolean }) {
           />
           <span className="mt-1 block text-right text-[11px] text-muted-foreground">
             {cfg.body.length}/{MAX_BODY}
+          </span>
+        </label>
+
+        {/* El aviso sale en las dos salas del chat; cada una lleva su texto. */}
+        <label className="block">
+          <span className="text-[13px] font-semibold">Mensaje · 🇬🇧 sala en inglés</span>
+          <Textarea
+            value={cfg.bodyEn}
+            maxLength={MAX_BODY}
+            onChange={(e) => set('bodyEn', e.target.value)}
+            className="mt-1.5 min-h-[96px] resize-none border-white/10 bg-[#121410] text-[13px]"
+          />
+          <span className="mt-1 block text-right text-[11px] text-muted-foreground">
+            {cfg.bodyEn.length}/{MAX_BODY} · si lo dejas vacío, la sala en inglés recibe el texto de arriba
           </span>
         </label>
 
@@ -182,14 +196,24 @@ export function AdminChatAnnounce({ enabled }: { enabled: boolean }) {
               aria-label="Enlace del botón"
             />
           )}
-          <Input
-            value={cfg.linkLabel}
-            onChange={(e) => set('linkLabel', e.target.value)}
-            maxLength={40}
-            placeholder="Texto del botón"
-            className="mt-2 h-9 border-white/10 bg-[#121410] text-[13px]"
-            aria-label="Texto del botón"
-          />
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            <Input
+              value={cfg.linkLabel}
+              onChange={(e) => set('linkLabel', e.target.value)}
+              maxLength={40}
+              placeholder="Texto del botón (🇪🇸)"
+              className="h-9 border-white/10 bg-[#121410] text-[13px]"
+              aria-label="Texto del botón en español"
+            />
+            <Input
+              value={cfg.linkLabelEn}
+              onChange={(e) => set('linkLabelEn', e.target.value)}
+              maxLength={40}
+              placeholder="Texto del botón (🇬🇧)"
+              className="h-9 border-white/10 bg-[#121410] text-[13px]"
+              aria-label="Texto del botón en inglés"
+            />
+          </div>
           <p className="mt-2 text-[11px] text-muted-foreground">Deja el enlace vacío para publicar el aviso sin botón.</p>
         </div>
 

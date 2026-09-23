@@ -4,11 +4,14 @@ import { getCurrentUser } from '@/lib/api-helpers'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { pusherServer, CHAT_CHANNEL, CHAT_EVENT } from '@/lib/pusher-server'
 import { chatMessageInclude as include, toChatMessageDTO as toDTO } from '@/lib/chat'
+import { toChatRoom } from '@/lib/chat-rooms'
 
-// Últimos mensajes del chat global (historial al entrar).
-export async function GET() {
+// Últimos mensajes de una sala del chat (historial al entrar).
+export async function GET(req: Request) {
   try {
+    const room = toChatRoom(new URL(req.url).searchParams.get('room'))
     const rows = await db.chatMessage.findMany({
+      where: { room },
       orderBy: { createdAt: 'desc' },
       take: 50,
       include,
@@ -31,16 +34,21 @@ export async function POST(req: Request) {
     if (!text) return NextResponse.json({ error: 'El mensaje está vacío' }, { status: 400 })
     if (text.length > 500) return NextResponse.json({ error: 'Máximo 500 caracteres' }, { status: 400 })
 
-    // Solo se acepta responder a un mensaje que exista.
+    const room = toChatRoom(body?.room)
+
+    // Solo se acepta responder a un mensaje que exista y esté en esta misma
+    // sala: una cita de la otra sala se vería sin contexto.
     let replyToId: string | null = null
     if (typeof body?.replyToId === 'string' && body.replyToId) {
-      const target = await db.chatMessage.findUnique({ where: { id: body.replyToId }, select: { id: true } })
-      if (!target) return NextResponse.json({ error: 'El mensaje al que respondes ya no existe' }, { status: 400 })
+      const target = await db.chatMessage.findUnique({ where: { id: body.replyToId }, select: { id: true, room: true } })
+      if (!target || target.room !== room) {
+        return NextResponse.json({ error: 'El mensaje al que respondes ya no existe' }, { status: 400 })
+      }
       replyToId = target.id
     }
 
     const row = await db.chatMessage.create({
-      data: { userId: me.id, body: text, replyToId },
+      data: { userId: me.id, body: text, replyToId, room },
       include,
     })
     const dto = toDTO(row)

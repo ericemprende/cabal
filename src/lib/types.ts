@@ -886,6 +886,8 @@ export interface ChatMessageDTO {
   id: string
   body: string
   createdAt: string
+  /** Sala de la que es el mensaje: "es" | "en" (ver lib/chat-rooms.ts). */
+  room: string
   /** Aviso automático de Cabal (ver lib/chat-announce.ts), no lo escribió nadie. */
   system: boolean
   /** Botón del aviso: "donate" abre el diálogo de donaciones, o una ruta/URL. */
@@ -910,9 +912,12 @@ export interface AdminChatAnnounceDTO {
   /** Cada cuántas horas se repite (1–720). */
   hours: number
   body: string
+  /** El mismo aviso para la sala en inglés del chat. */
+  bodyEn: string
   /** "donate" (diálogo de donaciones), una ruta interna, una URL https, o "" sin botón. */
   linkUrl: string
   linkLabel: string
+  linkLabelEn: string
   /** No repetirlo si nadie ha escrito en el chat desde el último aviso. */
   onlyIfActive: boolean
   lastAt: string | null

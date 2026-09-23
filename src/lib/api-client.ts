@@ -44,6 +44,7 @@ import type {
   UserDTO,
 } from '@/lib/types'
 import type { CallPeriod } from '@/lib/call-score'
+import { DEFAULT_CHAT_ROOM, type ChatRoom } from '@/lib/chat-rooms'
 import { useUI } from '@/lib/store'
 
 export async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
@@ -1401,14 +1402,20 @@ export function useConfirmPremiumCheckout() {
 
 // ---------- Chat en vivo ----------
 /** Historial de los últimos mensajes del chat global (los nuevos llegan por Pusher, ver live-chat.tsx). */
-export function useChatMessages() {
-  return useQuery<ChatMessageDTO[]>({ queryKey: qk.chatMessages, queryFn: () => jsonFetch('/api/chat/messages') })
+export function useChatMessages(room: ChatRoom = DEFAULT_CHAT_ROOM) {
+  return useQuery<ChatMessageDTO[]>({
+    queryKey: [...qk.chatMessages, room],
+    queryFn: () => jsonFetch(`/api/chat/messages?room=${room}`),
+  })
 }
 
-export function useSendChatMessage() {
+export function useSendChatMessage(room: ChatRoom = DEFAULT_CHAT_ROOM) {
   return useMutation({
     mutationFn: ({ body, replyToId }: { body: string; replyToId?: string | null }) =>
-      jsonFetch<ChatMessageDTO>('/api/chat/messages', { method: 'POST', body: JSON.stringify({ body, replyToId }) }),
+      jsonFetch<ChatMessageDTO>('/api/chat/messages', {
+        method: 'POST',
+        body: JSON.stringify({ body, replyToId, room }),
+      }),
   })
 }
 

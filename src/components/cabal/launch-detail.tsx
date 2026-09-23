@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { RichText } from '@/components/cabal/rich-text'
 import { displayImageUrl } from '@/lib/remote-image'
 import { TrustBadge } from '@/components/cabal/reputation'
 import { CopyCA, CountdownPill, EstimatedDateBadge, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
@@ -98,7 +99,7 @@ export function LaunchDetailDialog() {
                   </div>
                 </div>
               </DialogTitle>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground/85">{launch.description}</p>
+              <RichText text={launch.description} className="mt-3 block whitespace-pre-wrap text-sm leading-relaxed text-foreground/85" />
 
               {/* socials */}
               <div className="mt-3 flex flex-wrap gap-2">

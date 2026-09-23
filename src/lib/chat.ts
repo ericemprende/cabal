@@ -12,6 +12,7 @@ export const chatMessageInclude = {
 type Row = {
   id: string
   body: string
+  room: string
   createdAt: Date
   system: boolean
   linkUrl: string | null
@@ -25,6 +26,7 @@ export function toChatMessageDTO(m: Row): ChatMessageDTO {
   return {
     id: m.id,
     body: m.body,
+    room: m.room,
     createdAt: m.createdAt.toISOString(),
     system: m.system,
     linkUrl: m.linkUrl,

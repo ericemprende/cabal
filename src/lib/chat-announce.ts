@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { chatMessageInclude as include, toChatMessageDTO as toDTO } from '@/lib/chat'
 import { CHAT_CHANNEL, CHAT_EVENT, pusherServer } from '@/lib/pusher-server'
+import type { ChatRoom } from '@/lib/chat-rooms'
 import type { AdminChatAnnounceDTO, ChatMessageDTO } from '@/lib/types'
 
 /**
@@ -24,8 +25,10 @@ const K = {
   enabled: 'chat_announce_enabled',
   hours: 'chat_announce_hours',
   body: 'chat_announce_body',
+  bodyEn: 'chat_announce_body_en',
   link: 'chat_announce_link',
   label: 'chat_announce_label',
+  labelEn: 'chat_announce_label_en',
   onlyIfActive: 'chat_announce_only_active',
   last: 'chat_announce_last',
   userId: 'chat_announce_user_id',
@@ -38,8 +41,12 @@ const DEFAULTS = {
   body:
     'Cabal es gratis y sin anuncios, pero los servidores y los datos en vivo no lo son. ' +
     'Con 1 USDT ya estás aportando: lo que entra se va entero en mantener esto en pie. 🫡',
+  bodyEn:
+    'Cabal is free and ad-free, but servers and live data are not. ' +
+    'One single USDT already helps: every cent that comes in goes into keeping this running. 🫡',
   link: 'donate',
   label: 'Donar a Cabal',
+  labelEn: 'Donate to Cabal',
   hours: 24,
 }
 
@@ -74,8 +81,10 @@ export async function chatAnnounceConfig(): Promise<AdminChatAnnounceDTO> {
     enabled: v(K.enabled) === '1',
     hours,
     body: v(K.body) ?? DEFAULTS.body,
+    bodyEn: v(K.bodyEn) ?? DEFAULTS.bodyEn,
     linkUrl: v(K.link) ?? DEFAULTS.link,
     linkLabel: v(K.label) ?? DEFAULTS.label,
+    linkLabelEn: v(K.labelEn) ?? DEFAULTS.labelEn,
     onlyIfActive: v(K.onlyIfActive) !== '0',
     lastAt,
     nextAt: lastAt ? new Date(new Date(lastAt).getTime() + hours * 3_600_000).toISOString() : null,
@@ -83,7 +92,10 @@ export async function chatAnnounceConfig(): Promise<AdminChatAnnounceDTO> {
 }
 
 type ConfigPatch = Partial<
-  Pick<AdminChatAnnounceDTO, 'enabled' | 'hours' | 'body' | 'linkUrl' | 'linkLabel' | 'onlyIfActive'>
+  Pick<
+    AdminChatAnnounceDTO,
+    'enabled' | 'hours' | 'body' | 'bodyEn' | 'linkUrl' | 'linkLabel' | 'linkLabelEn' | 'onlyIfActive'
+  >
 >
 
 export async function saveChatAnnounceConfig(patch: ConfigPatch): Promise<AdminChatAnnounceDTO> {
@@ -94,8 +106,10 @@ export async function saveChatAnnounceConfig(patch: ConfigPatch): Promise<AdminC
   if (typeof patch.enabled === 'boolean') put(K.enabled, patch.enabled ? '1' : '0')
   if (typeof patch.hours === 'number' && Number.isFinite(patch.hours)) put(K.hours, String(clampHours(patch.hours)))
   if (typeof patch.body === 'string') put(K.body, patch.body.trim().slice(0, MAX_ANNOUNCE_BODY))
+  if (typeof patch.bodyEn === 'string') put(K.bodyEn, patch.bodyEn.trim().slice(0, MAX_ANNOUNCE_BODY))
   if (typeof patch.linkUrl === 'string') put(K.link, normalizeAnnounceLink(patch.linkUrl))
   if (typeof patch.linkLabel === 'string') put(K.label, patch.linkLabel.trim().slice(0, 40))
+  if (typeof patch.linkLabelEn === 'string') put(K.labelEn, patch.linkLabelEn.trim().slice(0, 40))
   if (typeof patch.onlyIfActive === 'boolean') put(K.onlyIfActive, patch.onlyIfActive ? '1' : '0')
 
   // Al encenderlo por primera vez el reloj arranca ahora: si no, el primer
@@ -174,19 +188,32 @@ export async function postChatAnnouncement({ force = false } = {}): Promise<Chat
   })
 
   const link = normalizeAnnounceLink(cfg.linkUrl)
-  const row = await db.chatMessage.create({
-    data: {
-      userId: await systemUserId(),
-      body: body.slice(0, MAX_ANNOUNCE_BODY),
-      system: true,
-      linkUrl: link || null,
-      linkLabel: link ? cfg.linkLabel.trim().slice(0, 40) || 'Abrir' : null,
-    },
-    include,
-  })
-  const dto = toDTO(row)
+  const userId = await systemUserId()
 
-  // Sin Pusher el aviso queda guardado igual: se ve al recargar el historial.
-  if (pusherServer) await pusherServer.trigger(CHAT_CHANNEL, CHAT_EVENT, dto).catch(() => {})
-  return dto
+  // El aviso se publica en las dos salas, cada una en su idioma: quien está en
+  // el chat en inglés no tiene por qué leer el recordatorio en español.
+  const versions: { room: ChatRoom; body: string; label: string }[] = [
+    { room: 'es', body, label: cfg.linkLabel.trim().slice(0, 40) || 'Abrir' },
+    { room: 'en', body: (cfg.bodyEn.trim() || body).slice(0, MAX_ANNOUNCE_BODY), label: cfg.linkLabelEn.trim().slice(0, 40) || 'Open' },
+  ]
+
+  let first: ChatMessageDTO | null = null
+  for (const v of versions) {
+    const row = await db.chatMessage.create({
+      data: {
+        userId,
+        room: v.room,
+        body: v.body.slice(0, MAX_ANNOUNCE_BODY),
+        system: true,
+        linkUrl: link || null,
+        linkLabel: link ? v.label : null,
+      },
+      include,
+    })
+    const dto = toDTO(row)
+    first ??= dto
+    // Sin Pusher el aviso queda guardado igual: se ve al recargar el historial.
+    if (pusherServer) await pusherServer.trigger(CHAT_CHANNEL, CHAT_EVENT, dto).catch(() => {})
+  }
+  return first
 }

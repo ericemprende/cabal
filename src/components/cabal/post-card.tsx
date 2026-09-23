@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check, Copy, CornerUpLeft, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { RichText } from '@/components/cabal/rich-text'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { Button } from '@/components/ui/button'
@@ -371,17 +372,16 @@ export function PostCard({
 
           {post.parent && <ParentQuote post={post} parent={post.parent} compact={compact} />}
 
-          <p
+          <RichText
+            text={post.content}
             className={cn(
-              'mt-1.5 whitespace-pre-wrap break-words leading-relaxed text-foreground/90',
+              'mt-1.5 block whitespace-pre-wrap break-words leading-relaxed text-foreground/90',
               compact ? 'line-clamp-3 text-[13px]' : 'text-sm',
               // Crítica retirada: se queda en el hilo (las respuestas hablan de
               // ella) pero apagada, para que no siga pesando como acusación.
               post.retracted && 'text-muted-foreground line-through decoration-white/25'
             )}
-          >
-            {post.content}
-          </p>
+          />
 
           {post.kind === 'fud' && (
             <p className="mt-1 text-[11px] font-semibold text-amber-200/70">

@@ -8,9 +8,12 @@ import { jsonFetch, useChatMessages, useSendChatMessage, useSession } from '@/li
 import { useOnlineIds, useIsOnline } from '@/lib/presence'
 import { getPusherClient, CHAT_CHANNEL, CHAT_EVENT, CHAT_LIKE_EVENT } from '@/lib/pusher-client'
 import { markChatRead } from '@/lib/chat-unread'
+import { CHAT_ROOMS, CHAT_ROOM_META, type ChatRoom } from '@/lib/chat-rooms'
+import { useChatRoom } from '@/lib/use-chat-room'
 import { useUI } from '@/lib/store'
 import type { ChatMessageDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { RichText } from '@/components/cabal/rich-text'
 
 /**
  * Chat en vivo global del Cabal. Historial vía React Query, mensajes nuevos
@@ -18,11 +21,12 @@ import { cn } from '@/lib/utils'
  * verde de "conectado" viene de la misma suscripción (ver lib/presence.ts).
  */
 export function LiveChat({ className, showUnavailable }: { className?: string; showUnavailable?: boolean } = {}) {
-  const { data: history } = useChatMessages()
+  const [room, setRoom] = useChatRoom()
+  const { data: history } = useChatMessages(room)
   const [live, setLive] = useState<ChatMessageDTO[]>([])
   const onlineIds = useOnlineIds()
   const { data: session } = useSession()
-  const send = useSendChatMessage()
+  const send = useSendChatMessage(room)
   const { openAuth } = useUI()
   const [text, setText] = useState('')
   const [replyTo, setReplyTo] = useState<ChatMessageDTO | null>(null)
@@ -35,7 +39,12 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
     const pusher = getPusherClient()
     if (!pusher) return
     const channel = pusher.channel(CHAT_CHANNEL) ?? pusher.subscribe(CHAT_CHANNEL)
-    const onMessage = (msg: ChatMessageDTO) => setLive((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+    // El canal es uno solo (la presencia es de toda la casa); lo que separa
+    // las salas es este filtro: cada una solo se queda con lo suyo.
+    const onMessage = (msg: ChatMessageDTO) => {
+      if (msg.room !== room) return
+      setLive((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]))
+    }
     const onLike = (p: { id: string; likedBy: string[] }) => setLikes((prev) => ({ ...prev, [p.id]: p.likedBy }))
     channel.bind(CHAT_EVENT, onMessage)
     channel.bind(CHAT_LIKE_EVENT, onLike)
@@ -43,15 +52,22 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
       channel.unbind(CHAT_EVENT, onMessage)
       channel.unbind(CHAT_LIKE_EVENT, onLike)
     }
-  }, [])
+  }, [room])
+
+  // Lo recibido en vivo pertenece a la sala en la que se estaba: al saltar se
+  // vacía y manda el historial de la nueva.
+  useEffect(() => {
+    setLive([])
+    setReplyTo(null)
+  }, [room])
 
   const messages = [...(history ?? []), ...live].slice(-100)
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
     // Mientras el chat está a la vista, lo que llega queda leído
-    markChatRead()
-  }, [messages.length])
+    markChatRead(room)
+  }, [messages.length, room])
 
   const me = session?.loggedIn ? session.user?.id ?? null : null
 
@@ -114,6 +130,7 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
         </span>
         <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Chat del Cabal</p>
+        <RoomTabs room={room} onChange={setRoom} />
         <span className="ml-auto flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
           <Users className="h-3 w-3" aria-hidden /> {onlineIds.size}
         </span>
@@ -121,7 +138,9 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
 
       <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto px-3 py-2.5">
         {messages.length === 0 && (
-          <p className="pt-6 text-center text-xs text-muted-foreground">Sé el primero en escribir</p>
+          <p className="pt-6 text-center text-xs text-muted-foreground">
+            {room === 'en' ? 'Be the first to write here' : 'Sé el primero en escribir'}
+          </p>
         )}
         {messages.map((m) =>
           m.system ? (
@@ -165,7 +184,7 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
             if (!session?.loggedIn) openAuth('login')
           }}
           maxLength={500}
-          placeholder="Escribe al Cabal…"
+          placeholder={room === 'en' ? 'Say something to the Cabal…' : 'Escribe al Cabal…'}
           className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0f110c] px-3 py-2 text-base outline-none sm:text-[13px] focus:border-[#8FA83F]/40"
         />
         <button
@@ -200,7 +219,7 @@ function SystemLine({ msg }: { msg: ChatMessageDTO }) {
       <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-primary">
         <Megaphone className="h-3.5 w-3.5 shrink-0" aria-hidden /> Cabal
       </p>
-      <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-snug text-foreground/90">{msg.body}</p>
+      <RichText text={msg.body} className="mt-1 block whitespace-pre-wrap break-words text-[13px] leading-snug text-foreground/90" />
       {href === 'donate' && (
         <button onClick={() => setDonateOpen(true)} className={btn}>
           <HandHeart className="h-3.5 w-3.5" aria-hidden /> {label}
@@ -254,7 +273,7 @@ function ChatLine({
             <span className="font-bold">@{msg.replyTo.user.handle}</span> {msg.replyTo.body}
           </button>
         )}
-        <p className={cn('break-words text-[13px] leading-snug text-foreground/90')}>{msg.body}</p>
+        <RichText text={msg.body} className="block break-words text-[13px] leading-snug text-foreground/90" />
       </div>
       {/* Corazón: con "me gusta" se queda visible; si no, aparece al pasar el mouse (siempre en táctil). */}
       <button
@@ -280,6 +299,37 @@ function ChatLine({
       >
         <CornerUpLeft className="h-3.5 w-3.5" aria-hidden />
       </button>
+    </div>
+  )
+}
+
+/**
+ * Las dos salas, con su banderita. Es un submenú dentro del propio chat: se
+ * salta de una a otra sin salir de la pestaña ni perder lo escrito.
+ */
+function RoomTabs({ room, onChange }: { room: ChatRoom; onChange: (r: ChatRoom) => void }) {
+  return (
+    <div className="flex items-center gap-0.5 rounded-full border border-white/10 bg-[#0f110c] p-0.5" role="tablist">
+      {CHAT_ROOMS.map((r) => {
+        const meta = CHAT_ROOM_META[r]
+        const active = r === room
+        return (
+          <button
+            key={r}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(r)}
+            title={meta.label}
+            className={cn(
+              'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors',
+              active ? 'bg-[#8FA83F]/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <span aria-hidden>{meta.flag}</span>
+            {meta.short}
+          </button>
+        )
+      })}
     </div>
   )
 }
