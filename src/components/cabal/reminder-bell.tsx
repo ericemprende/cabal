@@ -70,15 +70,15 @@ export function ReminderBell({
       aria-label={on ? 'Quitar aviso del lanzamiento' : `Avisarme ${leadText} antes del lanzamiento`}
       title={on ? 'Aviso activado · toca para quitarlo' : `Avisarme ${leadText} antes`}
       className={cn(
-        'flex items-center justify-center rounded-full border transition-all active:scale-95',
-        size === 'sm' ? 'h-[26px] w-[26px]' : 'h-8 w-8',
-        on
-          ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
-          : 'border-white/10 text-muted-foreground hover:border-amber-400/40 hover:text-amber-300',
+        // Sin placa ni fondo: a este tamaño el octogono tapaba el reloj y en el
+        // pie oscuro de la tarjeta no se distinguia nada.
+        'flex items-center justify-center rounded-full transition-all hover:brightness-125 active:scale-95',
+        size === 'sm' ? 'h-7 w-7' : 'h-8 w-8',
+        on && 'ring-1 ring-amber-300/60 bg-amber-400/15',
         className
       )}
     >
-      <Chapa silueta="alarm-clock" metal={on ? 'verde' : 'acero'} className={size === 'sm' ? 'h-4 w-4' : 'h-[18px] w-[18px]'} placa />
+      <Chapa silueta="alarm-clock" metal="oro" className={size === 'sm' ? 'h-[22px] w-[22px]' : 'h-6 w-6'} />
     </button>
   )
 }

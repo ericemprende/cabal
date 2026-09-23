@@ -394,7 +394,9 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
 
       <SafetyChecks lpLocked={launch.lpLocked} mintRevoked={launch.mintRevoked} top10Pct={launch.top10Pct} />
 
-      <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-white/8 pt-2.5">
+      {/* El pie se apoya en un velo verde difuminado: sobre el negro puro los
+          iconos de chapa se perdian */}
+      <div className="relative -mx-4 -mb-4 mt-auto flex flex-wrap items-center gap-2 border-t border-[#8FA83F]/20 bg-gradient-to-t from-[#8FA83F]/25 via-[#8FA83F]/10 to-transparent px-4 pb-3 pt-2.5">
         <button
           onClick={(e) => {
             e.stopPropagation()
