@@ -66,32 +66,32 @@ import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 import { PushSettings } from '@/components/cabal/push-settings'
 import { LangSwitch } from '@/components/cabal/lang-switch'
-import { useT } from '@/lib/i18n/provider'
+import { useLang, useT } from '@/lib/i18n/provider'
 import { TelegramConnect } from '@/components/cabal/telegram-connect'
 import { DiscordConnect } from '@/components/cabal/discord-connect'
 import { DiscordLogo } from '@/components/cabal/discord-logo'
 import { FollowXCampaign } from '@/components/cabal/follow-x-campaign'
 
-const REASON_META: Record<string, { label: string; icon: typeof Zap }> = {
-  thesis: { label: 'Tesis publicada', icon: GraduationCap },
-  comment: { label: 'Comentario', icon: MessageSquare },
-  launch: { label: 'Launch publicado', icon: Rocket },
-  like_received: { label: 'Likes recibidos', icon: Heart },
-  hype_received: { label: 'Hype recibido', icon: Flame },
-  daily_visit: { label: 'Visita diaria', icon: CalendarDays },
-  admin_adjust: { label: 'Bonus del Cabal', icon: Gift },
-  redeem: { label: 'Canje', icon: RefreshCw },
-  verify_x: { label: 'Cuenta de X verificada', icon: AtSign },
-  verify_google: { label: 'Cuenta de Google verificada', icon: Mail },
-  verify_wallet: { label: 'Wallet verificada con firma', icon: ShieldCheck },
-  verify_discord: { label: 'Cuenta de Discord verificada', icon: MessageSquare },
-  verify_telegram: { label: 'Telegram conectado al bot', icon: Send },
-  referral: { label: 'Puntos por referidos', icon: Users },
-  share_x: { label: 'Tarjeta compartida en X', icon: Send },
-  follow_x: { label: 'Sigues a @Cabal_app en X', icon: AtSign },
-  share_follow_x: { label: 'Compartiste que sigues a Cabal', icon: Send },
-  donation: { label: 'Donación a Cabal', icon: HandHeart },
-  share_donation: { label: 'Compartiste tu donación en X', icon: Send },
+const REASON_META: Record<string, { icon: typeof Zap }> = {
+  thesis: { icon: GraduationCap },
+  comment: { icon: MessageSquare },
+  launch: { icon: Rocket },
+  like_received: { icon: Heart },
+  hype_received: { icon: Flame },
+  daily_visit: { icon: CalendarDays },
+  admin_adjust: { icon: Gift },
+  redeem: { icon: RefreshCw },
+  verify_x: { icon: AtSign },
+  verify_google: { icon: Mail },
+  verify_wallet: { icon: ShieldCheck },
+  verify_discord: { icon: MessageSquare },
+  verify_telegram: { icon: Send },
+  referral: { icon: Users },
+  share_x: { icon: Send },
+  follow_x: { icon: AtSign },
+  share_follow_x: { icon: Send },
+  donation: { icon: HandHeart },
+  share_donation: { icon: Send },
 }
 
 export function ProfileDialog() {
@@ -109,6 +109,7 @@ export function ProfileDialog() {
 
 function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data']> }) {
   const t = useT()
+  const [lang] = useLang()
   const { setProfileOpen, setPremiumOpen } = useUI()
   const updateMe = useUpdateMe()
   const { data: authStatus } = useAuthStatus()
@@ -191,14 +192,16 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] font-bold text-amber-200">
-                {me?.premium.active ? 'Eres Premium' : 'Hazte Premium'}
+                {me?.premium.active ? t.profile.premiumOn : t.profile.premiumOff}
               </span>
               <span className="block text-[11px] text-muted-foreground">
                 {me?.premium.active
                   ? me.premium.until
-                    ? `Activo hasta el ${new Date(me.premium.until).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}`
-                    : 'Sin fecha de caducidad'
-                  : 'La wallet del dev, el launchpad y el contrato antes del lanzamiento'}
+                    ? t.profile.activeUntil(
+                        new Date(me.premium.until).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' })
+                      )
+                    : t.profile.noExpiry
+                  : t.profile.premiumPitch}
               </span>
             </span>
             <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground" aria-hidden />
@@ -215,10 +218,10 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           <div className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
             <Bell className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold">Avisos de lanzamientos por correo</p>
+              <p className="text-[13px] font-semibold">{t.profile.emailAlerts}</p>
               <p className="text-[11px] text-muted-foreground">
-                10 y 5 minutos antes, de los launches a los que diste hype o cuyo dev sigues
-                {!(me?.premium.active && me?.emailVerified) && ' · necesita Premium y correo verificado'}
+                {t.profile.emailAlertsBody}
+                {!(me?.premium.active && me?.emailVerified) && t.profile.emailAlertsNeedsPremium}
               </p>
             </div>
             <Switch
@@ -249,10 +252,10 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2 border-b border-white/10 p-4">
-          <Stat icon={<MessageSquare className="h-3.5 w-3.5" />} label="Posts" value={me?.stats.postsCount ?? 0} />
-          <Stat icon={<Rocket className="h-3.5 w-3.5" />} label="Launches" value={me?.stats.launchesCount ?? 0} />
-          <Stat icon={<Flame className="h-3.5 w-3.5" />} label="Hypes" value={me?.stats.hypesGiven ?? 0} />
-          <Stat icon={<Zap className="h-3.5 w-3.5" />} label="Lifetime" value={me?.lifetimePoints ?? 0} />
+          <Stat icon={<MessageSquare className="h-3.5 w-3.5" />} label={t.profile.posts} value={me?.stats.postsCount ?? 0} />
+          <Stat icon={<Rocket className="h-3.5 w-3.5" />} label={t.profile.launches} value={me?.stats.launchesCount ?? 0} />
+          <Stat icon={<Flame className="h-3.5 w-3.5" />} label={t.profile.hypes} value={me?.stats.hypesGiven ?? 0} />
+          <Stat icon={<Zap className="h-3.5 w-3.5" />} label={t.profile.lifetime} value={me?.lifetimePoints ?? 0} />
         </div>
 
         {/* Points wallet */}
@@ -260,7 +263,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Balance de puntos Cabal</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.profile.balance}</p>
                 <p className="font-machina mt-1 flex items-center gap-2 text-3xl font-bold text-primary">
                   {(me?.points ?? 0).toLocaleString('es')}
                   <Zap className="h-5 w-5 text-primary/80" aria-hidden />
@@ -277,10 +280,10 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           <FollowXCampaign className="mt-3" />
 
           {/* history */}
-          <p className="pb-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Historial de puntos</p>
+          <p className="pb-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.history}</p>
           <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
             {(me?.pointEvents ?? []).length === 0 && (
-              <p className="py-4 text-center text-sm text-muted-foreground">Publica tesis o launches para ganar puntos</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">{t.profile.historyEmpty}</p>
             )}
             {(me?.pointEvents ?? []).map((e) => {
               const meta = REASON_META[e.reason]
@@ -291,7 +294,9 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
                     <Icon className="h-3.5 w-3.5" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium">{e.note ?? meta?.label ?? e.reason}</p>
+                    <p className="truncate text-[13px] font-medium">
+                      {e.note ?? t.profile.reasons[e.reason as keyof typeof t.profile.reasons] ?? e.reason}
+                    </p>
                     <p className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</p>
                   </div>
                   <span className={cn('font-mono text-[13px] font-bold', e.amount >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
@@ -308,13 +313,13 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
 
         {/* Conexiones: X y Google (OAuth 2.0 real con fallback demo) */}
         <div className="space-y-2 border-b border-white/10 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Conexiones y verificación</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.connections}</p>
           <ConnectionRow
             icon={<AtSign className="h-4 w-4" />}
-            title="Cuenta de X"
-            subtitle="Verifica tu identidad con tu cuenta de X · +5 puntos"
+            title={t.profile.xAccount}
+            subtitle={t.profile.xAccountSub}
             verified={me?.xVerified ?? false}
-            verifiedLabel={me?.xHandle ? `@${me.xHandle}` : 'Verificada'}
+            verifiedLabel={me?.xHandle ? `@${me.xHandle}` : t.profile.verifiedShort}
             provider="x"
             cta="Conectar con X"
             configured={authStatus?.x.configured ?? false}
@@ -323,10 +328,10 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           />
           <ConnectionRow
             icon={<Mail className="h-4 w-4" />}
-            title="Cuenta de Google"
-            subtitle="Confirma tu email con Google · +5 puntos"
+            title={t.profile.googleAccount}
+            subtitle={t.profile.googleAccountSub}
             verified={me?.googleVerified ?? false}
-            verifiedLabel={me?.googleEmail ?? 'Verificada'}
+            verifiedLabel={me?.googleEmail ?? t.profile.verifiedShort}
             provider="google"
             cta="Conectar con Google"
             configured={authStatus?.google.configured ?? false}
@@ -335,10 +340,10 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           />
           <ConnectionRow
             icon={<DiscordLogo className="h-4 w-4" />}
-            title="Cuenta de Discord"
-            subtitle={`Verifica tu Discord · +${rules.points_verify_discord} puntos`}
+            title={t.profile.discordAccount}
+            subtitle={t.profile.discordAccountSub(rules.points_verify_discord)}
             verified={me?.discordVerified ?? false}
-            verifiedLabel={me?.discordName ?? 'Verificada'}
+            verifiedLabel={me?.discordName ?? t.profile.verifiedShort}
             provider="discord"
             cta="Conectar con Discord"
             configured={authStatus?.discord.configured ?? false}
@@ -350,19 +355,19 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
 
         {/* Wallets conectadas + verificación de tokens como dev */}
         <div className="space-y-2.5 border-b border-white/10 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Wallets y track record de dev</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.wallets}</p>
           <WalletManager me={me} />
         </div>
 
         {/* Opciones avanzadas: reclamar proyectos como propios */}
         <div className="space-y-2.5 border-b border-white/10 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Opciones avanzadas · Reclamar proyecto</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.advanced}</p>
           <ClaimProjectSection />
         </div>
 
         {/* Edit profile */}
         <div className="space-y-3.5 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editar perfil</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.editProfile}</p>
 
           {/* Foto de perfil: subir archivo o pegar URL */}
           <AvatarEditor
@@ -376,7 +381,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
           />
 
           <div className="space-y-1.5">
-            <Label htmlFor="pf-name" className="text-xs text-muted-foreground">Nombre</Label>
+            <Label htmlFor="pf-name" className="text-xs text-muted-foreground">{t.profile.name}</Label>
             <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} className="h-9 bg-[#0a0b08]" />
           </div>
           <div className="space-y-1.5">
@@ -388,7 +393,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             disabled={updateMe.isPending}
             className="w-full font-bold"
           >
-            {updateMe.isPending ? 'Guardando…' : 'Guardar perfil'}
+            {updateMe.isPending ? t.profile.savingProfile : t.profile.saveProfile}
           </Button>
         </div>
 
@@ -414,6 +419,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
 // Cada persona que se registra con este código deja el points_referral_percent%
 // de los puntos que genere (configurable desde el panel admin).
 function ReferralSection() {
+  const t = useT()
   const { data: ref } = useReferral()
   const [copied, setCopied] = useState(false)
   if (!ref) return null
@@ -425,16 +431,16 @@ function ReferralSection() {
     try {
       await navigator.clipboard.writeText(link)
       setCopied(true)
-      toast.success('Enlace copiado')
+      toast.success(t.profile.linkCopied)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      toast.error('No se pudo copiar el enlace')
+      toast.error(t.profile.linkCopyFailed)
     }
   }
 
   return (
     <div className="space-y-2 border-b border-white/10 p-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Invita y gana</p>
+      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.inviteTitle}</p>
       <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-3.5">
         <p className="text-[13px] leading-relaxed text-muted-foreground">
           Comparte tu enlace: quien se registre con él te deja el{' '}
@@ -452,16 +458,16 @@ function ReferralSection() {
             className="shrink-0 gap-1.5 px-3 text-xs font-bold"
           >
             <Copy className="h-3.5 w-3.5" aria-hidden />
-            {copied ? '¡Copiado!' : 'Copiar'}
+            {copied ? t.profile.copied : t.profile.copy}
           </Button>
         </div>
         <div className="mt-2.5 grid grid-cols-2 gap-2">
           <div className="rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Invitados</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t.profile.invited}</p>
             <p className="text-base font-bold tabular-nums">{ref.referrals}</p>
           </div>
           <div className="rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Puntos por referidos</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{t.profile.referralPoints}</p>
             <p className="text-base font-bold tabular-nums text-primary">+{ref.earned}</p>
           </div>
         </div>
@@ -1371,6 +1377,7 @@ function AvatarEditor({
   onApply: (url: string) => void
   busy?: boolean
 }) {
+  const t = useT()
   const fileRef = useRef<HTMLInputElement>(null)
   const [urlDraft, setUrlDraft] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -1382,9 +1389,9 @@ function AvatarEditor({
       setUploading(true)
       const url = await uploadImage(file)
       onApply(url)
-      toast.success('Foto de perfil actualizada')
+      toast.success(t.profile.photoUpdated)
     } catch (e) {
-      toast.error((e as Error).message || 'No se pudo subir la imagen')
+      toast.error((e as Error).message || t.profile.photoFailed)
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''

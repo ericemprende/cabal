@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { timeAgo } from '@/lib/cabal'
 import { UserAvatar } from '@/components/cabal/shared'
 import { REP_BODY_MAX, REP_MIN_VOTES, REP_TONE_CLASS, repLabel } from '@/lib/reputation'
@@ -30,6 +31,7 @@ export function TrustBadge({
   handle?: string
   className?: string
 }) {
+  const t = useT()
   const label = repLabel(rep.score, rep.votes)
   const tone = REP_TONE_CLASS[label.tone]
   const enough = rep.votes >= REP_MIN_VOTES
@@ -47,10 +49,10 @@ export function TrustBadge({
       {enough ? (
         <>
           <span className="tabular-nums">{rep.score}%</span>
-          <span className="font-semibold opacity-80">{label.text}</span>
+          <span className="font-semibold opacity-80">{t.reputation.labels[label.tone].text}</span>
         </>
       ) : (
-        <span className="font-semibold">Sin valoraciones</span>
+        <span className="font-semibold">{t.reputation.labels.none.text}</span>
       )}
     </>
   )
@@ -65,7 +67,7 @@ export function TrustBadge({
 
   if (!handle) {
     return (
-      <span className={classes} title={label.hint}>
+      <span className={classes} title={t.reputation.labels[label.tone].hint(REP_MIN_VOTES)}>
         {content}
       </span>
     )
@@ -74,7 +76,7 @@ export function TrustBadge({
     <Link
       href={`/u/${handle}#reputacion`}
       className={cn(classes, 'transition-opacity hover:opacity-80')}
-      title={label.hint}
+      title={t.reputation.labels[label.tone].hint(REP_MIN_VOTES)}
     >
       {content}
     </Link>
@@ -100,6 +102,7 @@ export function ReputationActions({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const t = useT()
   const { data } = useUserReputation(handle)
   const rate = useRateUser(handle)
   const { openAuth, setPremiumOpen } = useUI()
@@ -134,14 +137,14 @@ export function ReputationActions({
     // queda atrapado con una valoración que ya no sostiene.
     if (next !== 0 && !data?.canVote) {
       if (needsPremium) return goPremium()
-      toast.error(self ? 'No puedes valorarte a ti mismo' : 'Verifica tu correo, tu X o tu wallet para poder valorar')
+      toast.error(self ? t.reputation.selfVote : t.reputation.needVerify)
       return
     }
     rate.mutate(
       { value: next, body: next === 0 ? '' : mine?.body ?? '' },
       {
         onSuccess: (res) => {
-          if (next === 0) toast.success('Valoración retirada')
+          if (next === 0) toast.success(t.reputation.voteRemoved)
           // Tras votar, el pop-up invita a contar por qué
           else if (!open) openDialog(res.mine?.body ?? '')
         },
@@ -155,7 +158,7 @@ export function ReputationActions({
       { value: mine.value, body: draft.trim() },
       {
         onSuccess: () => {
-          toast.success(draft.trim() ? 'Reseña publicada' : 'Reseña borrada')
+          toast.success(draft.trim() ? t.reputation.reviewPosted : t.reputation.reviewDeleted)
           onOpenChange(false)
         },
       }
@@ -187,9 +190,9 @@ export function ReputationActions({
         <DialogContent className="max-h-[85dvh] overflow-y-auto border-white/10 bg-[#0d0e0a] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-1.5 font-display text-base">
-              <ThumbsUp className="h-4 w-4 text-primary" aria-hidden /> Reputación de {name}
+              <ThumbsUp className="h-4 w-4 text-primary" aria-hidden /> {t.reputation.title(name)}
             </DialogTitle>
-            <DialogDescription className="text-[11px]">Qué opina el Cabal de esta persona, no de sus proyectos</DialogDescription>
+            <DialogDescription className="text-[11px]">{t.reputation.lead}</DialogDescription>
           </DialogHeader>
 
           <Scoreboard summary={summary} loading={!data} />
@@ -205,7 +208,7 @@ export function ReputationActions({
               {needsPremium && <PremiumGate hasVote={Boolean(mine)} onOpen={goPremium} />}
 
               {data?.reason === 'unverified' && (
-                <p className="text-[11px] text-amber-300/90">Verifica tu correo, tu X o tu wallet en tu perfil para poder valorar.</p>
+                <p className="text-[11px] text-amber-300/90">{t.reputation.needVerifyProfile}</p>
               )}
 
               {mine && data?.canVote ? (
@@ -213,7 +216,7 @@ export function ReputationActions({
                   <Textarea
                     value={draft}
                     onChange={(e) => setDraft(e.target.value.slice(0, REP_BODY_MAX))}
-                    placeholder={`¿Por qué ${mine.value === 1 ? 'confías' : 'no confías'} en ${name}? Cuenta tu experiencia (opcional).`}
+                    placeholder={t.reputation.reviewPlaceholder(mine.value === 1, name)}
                     className="min-h-[72px] resize-none border-white/10 bg-transparent text-sm"
                   />
                   <div className="mt-2 flex items-center gap-2">
@@ -226,13 +229,13 @@ export function ReputationActions({
                       onClick={saveReview}
                       disabled={rate.isPending || draft.trim() === mine.body}
                     >
-                      {mine.body ? 'Guardar reseña' : 'Publicar reseña'}
+                      {mine.body ? t.reputation.saveReview : t.reputation.postReview}
                     </Button>
                   </div>
-                  <p className="mt-1.5 text-[10px] text-muted-foreground">Pulsa de nuevo tu voto para retirarlo.</p>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground">{t.reputation.pressAgain}</p>
                 </div>
               ) : (
-                data?.canVote && <p className="text-[11px] text-muted-foreground">Vota para poder dejar una reseña.</p>
+                data?.canVote && <p className="text-[11px] text-muted-foreground">{t.reputation.voteFirst}</p>
               )}
             </div>
           )}
@@ -246,19 +249,20 @@ export function ReputationActions({
             </div>
           ) : data.reviews.length > 0 ? (
             <div className="space-y-1.5">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Reseñas</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.reputation.reviews}</p>
               {data.reviews.map((r) => (
                 <ReviewRow key={r.id} review={r} />
               ))}
               {data.more > 0 && (
                 <p className="pt-1 text-center text-[11px] text-muted-foreground">
-                  y {data.more} {data.more === 1 ? 'reseña más' : 'reseñas más'}
+                  {t.reputation.moreReviews(data.more)}
                 </p>
               )}
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-xs text-muted-foreground">
-              Todavía no hay reseñas escritas.{!self && data.canVote && ' Sé el primero en contar tu experiencia.'}
+              {t.reputation.noReviews}
+              {!self && data.canVote && t.reputation.beFirst}
             </p>
           )}
         </DialogContent>
@@ -273,25 +277,29 @@ export function ReputationActions({
  * no entra y dónde se consigue.
  */
 function PremiumGate({ hasVote, onOpen }: { hasVote: boolean; onOpen: () => void }) {
+  const t = useT()
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3">
       <Crown className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" aria-hidden />
       <p className="min-w-0 flex-1 text-[12px] leading-relaxed text-foreground/85">
-        Valorar a otras personas y dejar reseñas es parte de <strong className="font-bold text-amber-300">Cabal Premium</strong>.
-        {hasVote && ' Tu valoración sigue publicada: pulsa tu voto para retirarla.'}
+        {t.reputation.premiumGate1}
+        <strong className="font-bold text-amber-300">Cabal Premium</strong>
+        {t.reputation.premiumGate2}
+        {hasVote && t.reputation.premiumGateVote}
       </p>
       <Button
         size="sm"
         onClick={onOpen}
         className="bg-amber-400 px-3 text-xs font-bold text-[#171200] hover:bg-amber-300"
       >
-        Hazte Premium
+        {t.reputation.goPremium}
       </Button>
     </div>
   )
 }
 
 function Scoreboard({ summary, loading }: { summary: ReputationSummaryDTO; loading: boolean }) {
+  const t = useT()
   const label = repLabel(summary.score, summary.votes)
   const tone = REP_TONE_CLASS[label.tone]
   const enough = summary.votes >= REP_MIN_VOTES
@@ -303,13 +311,13 @@ function Scoreboard({ summary, loading }: { summary: ReputationSummaryDTO; loadi
         ) : enough ? (
           <p className={cn('font-display text-3xl font-black leading-none tabular-nums', tone.text)}>{summary.score}%</p>
         ) : (
-          <p className="font-display text-xl font-bold leading-none text-muted-foreground">Sin reputación</p>
+          <p className="font-display text-xl font-bold leading-none text-muted-foreground">{t.reputation.noReputation}</p>
         )}
-        {enough && <p className={cn('text-sm font-bold', tone.text)}>{label.text}</p>}
+        {enough && <p className={cn('text-sm font-bold', tone.text)}>{t.reputation.labels[label.tone].text}</p>}
         <p className="ml-auto text-[11px] text-muted-foreground">
           {summary.votes === 0
-            ? 'Nadie la ha valorado todavía'
-            : `${summary.votes.toLocaleString('es')} ${summary.votes === 1 ? 'valoración' : 'valoraciones'}`}
+            ? t.reputation.nobodyRated
+            : t.reputation.votes(summary.votes.toLocaleString(), summary.votes === 1)}
         </p>
       </div>
 
@@ -355,8 +363,9 @@ function VoteButton({
   count?: number
   wide?: boolean
 }) {
+  const t = useT()
   const Icon = kind === 'up' ? ThumbsUp : ThumbsDown
-  const text = kind === 'up' ? 'Confío' : 'No confío'
+  const text = kind === 'up' ? t.reputation.trust : t.reputation.distrust
   return (
     <button
       type="button"
@@ -382,10 +391,11 @@ function VoteButton({
 }
 
 function ReviewRow({ review }: { review: ReputationReviewDTO }) {
+  const t = useT()
   const up = review.value === 1
   return (
     <article className="flex gap-2.5 rounded-xl border border-white/8 bg-[#0a0b08] p-3">
-      <Link href={`/u/${review.author.handle}`} aria-label={`Perfil de @${review.author.handle}`}>
+      <Link href={`/u/${review.author.handle}`} aria-label={t.reputation.profileOf(review.author.handle)}>
         <UserAvatar
           name={review.author.name}
           handle={review.author.handle}
@@ -399,7 +409,7 @@ function ReviewRow({ review }: { review: ReputationReviewDTO }) {
           <Link href={`/u/${review.author.handle}`} className="font-semibold hover:underline">
             {review.author.name}
           </Link>
-          {review.author.xVerified && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label="Verificado con X" />}
+          {review.author.xVerified && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label={t.reputation.xVerified} />}
           <span
             className={cn(
               'flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
@@ -407,11 +417,11 @@ function ReviewRow({ review }: { review: ReputationReviewDTO }) {
             )}
           >
             {up ? <ThumbsUp className="h-2.5 w-2.5" aria-hidden /> : <ThumbsDown className="h-2.5 w-2.5" aria-hidden />}
-            {up ? 'Confía' : 'No confía'}
+            {up ? t.reputation.trusts : t.reputation.distrusts}
           </span>
           <span className="text-[11px] text-muted-foreground">
             {timeAgo(review.createdAt)}
-            {review.edited ? ' · editada' : ''}
+            {review.edited ? t.reputation.edited : ''}
           </span>
         </div>
         <p className="mt-1 whitespace-pre-wrap break-words text-[13px] leading-relaxed">{review.body}</p>
