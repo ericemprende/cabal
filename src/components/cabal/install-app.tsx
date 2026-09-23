@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Download, Share, X } from 'lucide-react'
+import { useT } from '@/lib/i18n/provider'
 
 /**
  * Instalar Cabal como app (PWA).
@@ -35,6 +36,7 @@ function isIos(): boolean {
 }
 
 export function InstallApp() {
+  const t = useT()
   const [event, setEvent] = useState<InstallEvent | null>(null)
   const [show, setShow] = useState(false)
   const [iosHelp, setIosHelp] = useState(false)
@@ -95,17 +97,17 @@ export function InstallApp() {
     <div
       className="fixed inset-x-2 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-2xl border border-[#8FA83F]/30 bg-[#121410]/95 p-3 shadow-lg backdrop-blur-md md:hidden"
       role="dialog"
-      aria-label="Instalar Cabal"
+      aria-label={t.install.aria}
     >
       <div className="flex items-start gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/icon-192.png" alt="" className="h-10 w-10 shrink-0 rounded-xl" />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold">Instala Cabal en tu teléfono</p>
+          <p className="text-[13px] font-bold">{t.install.title}</p>
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
             {iosHelp
-              ? 'Toca Compartir y luego “Añadir a pantalla de inicio”.'
-              : 'Pantalla completa, icono propio y entras de un toque.'}
+              ? t.install.iosBody
+              : t.install.body}
           </p>
           {!iosHelp && (
             <button
@@ -113,13 +115,13 @@ export function InstallApp() {
               className="mt-2 flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground"
             >
               {isIos() ? <Share className="h-3.5 w-3.5" aria-hidden /> : <Download className="h-3.5 w-3.5" aria-hidden />}
-              {isIos() ? 'Cómo instalarla' : 'Instalar'}
+              {isIos() ? t.install.iosCta : t.install.cta}
             </button>
           )}
         </div>
         <button
           onClick={dismiss}
-          aria-label="Ahora no"
+          aria-label={t.install.dismiss}
           className="-mr-1 -mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground"
         >
           <X className="h-4 w-4" aria-hidden />

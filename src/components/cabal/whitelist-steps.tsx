@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Skeleton } from '@/components/ui/skeleton'
 import { jsonFetch, qk } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { XLogo } from '@/components/cabal/x-logo'
 import { FollowXCampaign } from '@/components/cabal/follow-x-campaign'
 import type { Locale, WaitlistStatusDTO } from '@/lib/waitlist'
@@ -54,6 +55,7 @@ const ERRORS: Record<string, string> = {
 }
 
 export function WhitelistSteps() {
+  const t = useT()
   const qc = useQueryClient()
   const status = useQuery<WaitlistStatusDTO>({
     queryKey: qk.waitlistMe,
@@ -71,9 +73,9 @@ export function WhitelistSteps() {
 
   useEffect(() => {
     if (justConnected.error) {
-      toast.error(ERRORS[justConnected.error] ?? 'No se pudo completar el registro')
+      toast.error(ERRORS[justConnected.error] ?? t.landing.errors.generic)
     } else if (justConnected.ok) {
-      toast.success('Cuenta de X conectada', { description: 'Completa tus datos para entrar en la lista' })
+      toast.success(t.waitlist.connected, { description: t.waitlist.connectedBody })
     }
   }, [justConnected])
 
@@ -125,37 +127,33 @@ export function WhitelistSteps() {
 
 /** Alguien llegó a /whitelist sin haber pasado por X: lo devolvemos al paso 1. */
 function NeedsLogin() {
+  const t = useT()
   return (
     <div className="rounded-2xl border border-white/10 bg-[#121410] p-6 text-center">
-      <h1 className="font-display text-xl font-bold">Primero conecta tu cuenta de X</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        La lista de espera empieza verificando tu identidad en X. Solo te toma un clic.
-      </p>
+      <h1 className="font-display text-xl font-bold">{t.waitlist.needsLoginTitle}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{t.waitlist.needsLoginBody}</p>
       <Button
         asChild
         className="animate-cta-glow mt-6 w-full gap-2 text-[15px] font-bold"
       >
         <a href="/api/waitlist/x/start">
-          <XLogo className="h-4 w-4" /> Acceso con X
+          <XLogo className="h-4 w-4" /> {t.landing.cta.login}
         </a>
       </Button>
     </div>
   )
 }
 
-const STEP_LABELS: { key: WaitlistStatusDTO['step']; label: string }[] = [
-  { key: 'login', label: 'Conecta X' },
-  { key: 'form', label: 'Tus datos' },
-  { key: 'done', label: 'Comparte' },
-]
+const STEP_KEYS: WaitlistStatusDTO['step'][] = ['login', 'form', 'done']
 
 function Steps({ current }: { current: WaitlistStatusDTO['step'] }) {
-  const index = STEP_LABELS.findIndex((s) => s.key === current)
+  const t = useT()
+  const index = STEP_KEYS.findIndex((key) => key === current)
   return (
     <ol className="flex border-b border-white/10 bg-[#0a0b08]">
-      {STEP_LABELS.map((s, i) => (
+      {STEP_KEYS.map((key, i) => (
         <li
-          key={s.key}
+          key={key}
           aria-current={i === index ? 'step' : undefined}
           className={cn(
             'flex flex-1 items-center justify-center gap-2 px-2 py-3 text-[12px] font-bold',
@@ -174,7 +172,7 @@ function Steps({ current }: { current: WaitlistStatusDTO['step'] }) {
           >
             {i < index ? <CheckCircle2 className="h-3 w-3" aria-hidden /> : i + 1}
           </span>
-          {s.label}
+          {t.waitlist.steps[key]}
         </li>
       ))}
     </ol>
@@ -183,6 +181,7 @@ function Steps({ current }: { current: WaitlistStatusDTO['step'] }) {
 
 // --- Paso 2: datos básicos (nombre y @handle vienen de la API de X) ---
 function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () => void }) {
+  const t = useT()
   const e = status.entry!
   const [form, setForm] = useState({
     name: e.xName || e.xHandle,
@@ -199,7 +198,7 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
     mutationFn: (data: typeof form) =>
       jsonFetch<{ ok: boolean }>('/api/waitlist/register', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => {
-      toast.success('¡Estás en la lista de espera!')
+      toast.success(t.waitlist.onList)
       onDone()
     },
     onError: (err: Error) => toast.error(err.message),
@@ -212,10 +211,8 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
         submit.mutate(form)
       }}
     >
-      <h1 className="font-display text-xl font-bold">Completa tus datos</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Tu cuenta de X ya está verificada. Solo falta un email para avisarte cuando abramos tu acceso.
-      </p>
+      <h1 className="font-display text-xl font-bold">{t.waitlist.formTitle}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{t.waitlist.formLead}</p>
 
       {/* Identidad traída de X: no editable */}
       <div className="mt-5 flex items-center gap-3 rounded-xl border border-[#8FA83F]/30 bg-[#8FA83F]/[0.08] p-3">
@@ -226,15 +223,15 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">@{e.xHandle}</p>
-          <p className="text-[11px] text-muted-foreground">{e.xFollowers.toLocaleString('es')} seguidores en X</p>
+          <p className="text-[11px] text-muted-foreground">{t.waitlist.followers(e.xFollowers.toLocaleString())}</p>
         </div>
         <span className="flex items-center gap-1 rounded-full border border-[#8FA83F]/40 bg-[#8FA83F]/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-primary">
-          <BadgeCheck className="h-3 w-3" aria-hidden /> Verificado
+          <BadgeCheck className="h-3 w-3" aria-hidden /> {t.waitlist.verified}
         </span>
       </div>
 
       <div className="mt-4 space-y-3.5">
-        <Field label="Nombre" hint="Precargado desde tu perfil de X">
+        <Field label={t.waitlist.name} hint={t.waitlist.nameHint}>
           <Input
             value={form.name}
             onChange={set('name')}
@@ -244,12 +241,12 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
           />
         </Field>
 
-        <Field label="Email" hint="X no nos lo facilita, escríbelo tú">
+        <Field label={t.waitlist.email} hint={t.waitlist.emailHint}>
           <Input
             type="email"
             value={form.email}
             onChange={set('email')}
-            placeholder="tu@email.com"
+            placeholder={t.waitlist.emailPlaceholder}
             maxLength={120}
             required
             className="h-11 border-white/10 bg-[#0a0b08]"
@@ -257,43 +254,43 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
         </Field>
 
         <div className="grid gap-3.5 sm:grid-cols-2">
-          <Field label="Telegram" optional>
+          <Field label={t.waitlist.telegram} optional>
             <Input
               value={form.telegram}
               onChange={set('telegram')}
-              placeholder="@usuario"
+              placeholder={t.waitlist.telegramPlaceholder}
               maxLength={40}
               className="h-11 border-white/10 bg-[#0a0b08]"
             />
           </Field>
-          <Field label="País" optional>
+          <Field label={t.waitlist.country} optional>
             <Input
               value={form.country}
               onChange={set('country')}
-              placeholder="España"
+              placeholder={t.waitlist.countryPlaceholder}
               maxLength={60}
               className="h-11 border-white/10 bg-[#0a0b08]"
             />
           </Field>
         </div>
 
-        <Field label="Wallet" optional hint="Solana o EVM, para los airdrops de $CABAL">
+        <Field label={t.waitlist.wallet} optional hint={t.waitlist.walletHint}>
           <Input
             value={form.wallet}
             onChange={set('wallet')}
-            placeholder="Dirección pública"
+            placeholder={t.waitlist.walletPlaceholder}
             maxLength={80}
             className="h-11 border-white/10 bg-[#0a0b08] font-mono text-base sm:text-xs"
           />
         </Field>
 
-        <Field label="¿Por qué quieres entrar?" optional hint="Nos ayuda a priorizar tu solicitud">
+        <Field label={t.waitlist.why} optional hint={t.waitlist.whyHint}>
           <Textarea
             value={form.reason}
             onChange={set('reason')}
             maxLength={300}
             rows={3}
-            placeholder="Tradeo memecoins en Solana desde 2023, publico análisis en X…"
+            placeholder={t.waitlist.whyPlaceholder}
             className="resize-none border-white/10 bg-[#0a0b08] text-base sm:text-sm"
           />
         </Field>
@@ -309,12 +306,12 @@ function StepForm({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =>
         ) : (
           <Sparkles className="h-4 w-4" aria-hidden />
         )}
-        Confirmar datos
+        {t.waitlist.confirm}
       </Button>
 
       <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
         <Zap className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-        Después podrás ganar tus primeros 10 puntos compartiendo tu tarjeta en X
+        {t.waitlist.confirmHint}
       </p>
     </form>
   )
@@ -331,11 +328,12 @@ function Field({
   optional?: boolean
   children: React.ReactNode
 }) {
+  const t = useT()
   return (
     <div className="space-y-1.5">
       <Label className="flex items-baseline gap-1.5 text-[13px] font-semibold">
         {label}
-        {optional && <span className="text-[11px] font-normal text-muted-foreground">(opcional)</span>}
+        {optional && <span className="text-[11px] font-normal text-muted-foreground">{t.waitlist.optional}</span>}
       </Label>
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
@@ -345,6 +343,7 @@ function Field({
 
 // --- Paso 3: compartir la tarjeta en X ---
 function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () => void }) {
+  const t = useT()
   const e = status.entry!
   // Arranca en el idioma detectado por el navegador y se puede cambiar a mano:
   // ambas variantes ya vienen en la respuesta, así que el cambio es inmediato.
@@ -388,8 +387,8 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
       jsonFetch<{ ok: boolean; pointsEarned: number }>('/api/waitlist/shared', { method: 'POST' }),
     onSuccess: (res) => {
       if (res.pointsEarned > 0) {
-        toast.success(`+${res.pointsEarned} puntos Cabal`, {
-          description: 'Tus primeros puntos por difundir el escuadrón',
+        toast.success(t.waitlist.firstPoints(res.pointsEarned), {
+          description: t.waitlist.firstPointsBody,
         })
       }
       onDone()
@@ -404,7 +403,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
   )
   const ctaLabel = (
     <>
-      <Send className="h-4 w-4" aria-hidden /> Compartir en X
+      <Send className="h-4 w-4" aria-hidden /> {t.waitlist.shareOnX}
       {!e.shared && <span className="font-mono">+{status.shareBonus}</span>}
     </>
   )
@@ -428,12 +427,12 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
     try {
       await copyImage(cardFile)
       setCopiedFor(post.card)
-      toast.success('Imagen copiada', {
-        description: 'Ahora pulsa Compartir en X y pégala con Ctrl+V (⌘V en Mac).',
+      toast.success(t.waitlist.imageCopied, {
+        description: t.waitlist.imageCopiedBody,
       })
     } catch {
-      toast.error('Tu navegador no dejó copiar la imagen', {
-        description: 'Descárgala y adjúntala desde el botón de imagen de X.',
+      toast.error(t.waitlist.imageCopyFailed, {
+        description: t.waitlist.imageCopyFailedBody,
       })
     }
   }
@@ -442,31 +441,29 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
     <div>
       <div className="flex items-center gap-2">
         <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
-        <h1 className="font-display text-xl font-bold">Ya estás dentro, @{e.xHandle}</h1>
+        <h1 className="font-display text-xl font-bold">{t.waitlist.inTitle(e.xHandle)}</h1>
       </div>
 
       <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] p-4">
         <div>
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Tu posición</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">{t.waitlist.position}</p>
           <p className="font-machina text-3xl font-bold text-primary">#{e.position}</p>
         </div>
         <div className="ml-auto text-right">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Estado</p>
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">{t.waitlist.status}</p>
           <p className={cn('text-sm font-bold', approved ? 'text-primary' : 'text-foreground')}>
-            {approved ? 'Acceso habilitado' : 'No aprobada'}
+            {approved ? t.waitlist.approved : t.waitlist.notApproved}
           </p>
         </div>
       </div>
 
       <p className="mt-4 text-sm text-muted-foreground">
-        {approved
-          ? 'Tu acceso está habilitado: ya puedes entrar a la app.'
-          : 'Tu solicitud no fue aprobada.'}
+        {approved ? t.waitlist.approvedBody : t.waitlist.notApprovedBody}
       </p>
 
       {approved && (
         <Button asChild className="animate-cta-glow mt-3 w-full gap-2 text-[15px] font-bold">
-          <Link href="/app">Entrar a la app</Link>
+          <Link href="/app">{t.waitlist.enterApp}</Link>
         </Button>
       )}
 
@@ -475,10 +472,9 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
         <div className="mt-5 flex items-start gap-3 rounded-xl border border-[#8FA83F]/40 bg-[#8FA83F]/10 p-4">
           <Zap className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
           <div>
-            <p className="text-[14px] font-bold text-primary">Gana tus primeros {status.shareBonus} puntos</p>
+            <p className="text-[14px] font-bold text-primary">{t.waitlist.earnFirst(status.shareBonus)}</p>
             <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
-              Avísale al mundo que haces parte de Cabal Army: comparte tu tarjeta en X y se te abonan{' '}
-              {status.shareBonus} puntos Cabal al instante.
+              {t.waitlist.earnFirstBody(status.shareBonus)}
             </p>
           </div>
         </div>
@@ -488,7 +484,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
       <div className="mt-4 overflow-hidden rounded-xl border border-white/10 bg-[#0a0b08]">
         <div className="p-4 pb-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tu post</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.waitlist.yourPost}</p>
             <button
               type="button"
               onClick={() => setLocale(other)}
@@ -504,7 +500,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
         <img
           key={post.card}
           src={post.card}
-          alt={`Tarjeta de @${e.xHandle} para compartir en X`}
+          alt={t.waitlist.cardAlt(e.xHandle)}
           width={1672}
           height={941}
           className="w-full border-t border-white/10"
@@ -515,7 +511,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
         {!nativeShare && (
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
             <Paperclip className="h-3 w-3 shrink-0" aria-hidden />
-            <span>Para que la imagen salga siempre, adjúntala al post:</span>
+            <span>{t.waitlist.attachHint}</span>
             {copyable && (
               <>
                 <button
@@ -525,7 +521,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
                   className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
                 >
                   {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}
-                  {copied ? 'Copiada' : 'Copiar'}
+                  {copied ? t.post.copied : t.post.copy}
                 </button>
                 <span aria-hidden>·</span>
               </>
@@ -537,7 +533,7 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
               className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
             >
               <Download className="h-3 w-3" aria-hidden />
-              Descargar
+              {t.post.download}
             </button>
           </p>
         )}
@@ -557,14 +553,12 @@ function StepShare({ status, onDone }: { status: WaitlistStatusDTO; onDone: () =
 
       {e.shared && (
         <p className="mt-2.5 flex items-center justify-center gap-1.5 text-[12px] text-primary">
-          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> ¡Gracias por compartir! Ya tienes tus{' '}
-          {status.shareBonus} puntos.
+          <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> {t.waitlist.thanks(status.shareBonus)}
         </p>
       )}
 
       <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground">
-        Tu tarjeta lleva tu enlace de afiliado: quien se registre desde ella queda en tu equipo y te genera el{' '}
-        <span className="font-bold text-primary">10%</span> de todos los puntos que consiga dentro de la plataforma.
+        {t.waitlist.affiliateNote} <span className="font-bold text-primary">10%</span> {t.waitlist.affiliateNote2}
       </p>
 
       {/* Campaña de X: aquí es donde está la gente antes del lanzamiento, así que

@@ -5,18 +5,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { useLang, useT } from '@/lib/i18n/provider'
 import { useOpenBillingPortal, usePremiumInfo, useSession, useStartPremiumCheckout } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { bulletsAsTime } from '@/components/cabal/ammo'
 import type { PremiumPlanDTO } from '@/lib/types'
-
-const BENEFITS = [
-  'La wallet del dev, si se conoce',
-  'El launchpad donde sale el token',
-  'El contrato, si ya existe antes del lanzamiento',
-  'Insignia de verificado para tu perfil y tus launches, frente a clones',
-  'Valorar a otras personas (confío / no confío) y dejar reseñas públicas',
-]
 
 /**
  * Diálogo para hacerse Premium: elegir plan (mensual/anual) y pasarela
@@ -26,6 +19,7 @@ const BENEFITS = [
  * esperar al webhook (ver useConfirmPremiumCheckout en app/page.tsx).
  */
 export function PremiumDialog() {
+  const t = useT()
   const { premiumOpen, setPremiumOpen, openAuth } = useUI()
   const { data: session } = useSession()
   const { data: info, isPending } = usePremiumInfo(premiumOpen)
@@ -44,14 +38,12 @@ export function PremiumDialog() {
               <Crown className="h-5 w-5 fill-amber-300 text-amber-300" aria-hidden />
             </span>
             <div>
-              <DialogTitle className="font-display text-lg font-bold">Cabal Premium</DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Desbloquea la información completa de cada proyecto
-              </DialogDescription>
+              <DialogTitle className="font-display text-lg font-bold">{t.premium.title}</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">{t.premium.lead}</DialogDescription>
             </div>
           </div>
           <ul className="relative mt-4 space-y-1.5">
-            {BENEFITS.map((b) => (
+            {t.premium.benefits.map((b) => (
               <li key={b} className="flex items-start gap-2 text-[13px] text-foreground/85">
                 <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
                 {b}
@@ -63,7 +55,7 @@ export function PremiumDialog() {
         <div className="p-5">
           {!loggedIn ? (
             <div className="space-y-3 text-center">
-              <p className="text-sm text-muted-foreground">Inicia sesión para suscribirte a Premium.</p>
+              <p className="text-sm text-muted-foreground">{t.premium.loginNeeded}</p>
               <Button
                 onClick={() => {
                   setPremiumOpen(false)
@@ -71,7 +63,7 @@ export function PremiumDialog() {
                 }}
                 className="px-5 font-bold"
               >
-                Iniciar sesión
+                {t.premium.login}
               </Button>
             </div>
           ) : isPending || !info ? (
@@ -132,6 +124,7 @@ function PlanCard({
   paying: boolean
   onPay: (method: 'card' | 'crypto') => void
 }) {
+  const t = useT()
   const highlighted = plan.savingsPct > 0
   return (
     <div
@@ -156,11 +149,11 @@ function PlanCard({
         )}
       </div>
       <p className="text-[11px] text-muted-foreground">
-        ${plan.perMonthUsd.toFixed(2)}/mes · {plan.months} {plan.months === 1 ? 'mes' : 'meses'}
+        {t.premium.perMonth(`$${plan.perMonthUsd.toFixed(2)}`, plan.months)}
       </p>
       {highlighted && plan.savingsUsd > 0 && (
         <p className="mt-0.5 text-[11px] font-semibold text-amber-300/90">
-          Ahorras {formatUsd(plan.savingsUsd)} frente al mensual
+          {t.premium.savings(formatUsd(plan.savingsUsd))}
         </p>
       )}
 
@@ -168,14 +161,14 @@ function PlanCard({
       {plan.ammoBullets > 0 && (
         <div className="mt-3 rounded-lg border border-amber-300/25 bg-amber-400/[0.07] p-2.5">
           <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-amber-300/90">
-            <Bomb className="h-3 w-3" strokeWidth={3} aria-hidden /> Incluye munición
+            <Bomb className="h-3 w-3" strokeWidth={3} aria-hidden /> {t.premium.includesAmmo}
           </p>
           <p className="mt-1 font-mono text-lg font-bold leading-none tabular-nums text-amber-200">
-            {plan.ammoBullets.toLocaleString('es')}
+            {plan.ammoBullets.toLocaleString()}
           </p>
           <p className="mt-1 text-[11px] leading-snug text-foreground/80">
-            balas = <span className="font-bold text-amber-200">{bulletsAsTime(plan.ammoBullets)}</span> con tu proyecto
-            destacado arriba del Radar
+            {t.premium.bulletsMean} <span className="font-bold text-amber-200">{bulletsAsTime(plan.ammoBullets)}</span>{' '}
+            {t.premium.bulletsTail}
           </p>
         </div>
       )}
@@ -188,7 +181,7 @@ function PlanCard({
           className="gap-1.5 text-xs font-bold disabled:opacity-40"
         >
           {paying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CreditCard className="h-3.5 w-3.5" aria-hidden />}
-          Tarjeta
+          {t.premium.card}
         </Button>
         <Button
           size="sm"
@@ -197,11 +190,11 @@ function PlanCard({
           onClick={() => onPay('crypto')}
           className="gap-1.5 border-white/15 bg-transparent text-xs font-bold hover:bg-white/5 disabled:opacity-40"
         >
-          <Wallet className="h-3.5 w-3.5" aria-hidden /> Cripto
+          <Wallet className="h-3.5 w-3.5" aria-hidden /> {t.premium.crypto}
         </Button>
       </div>
       {!plan.card && !plan.crypto && (
-        <p className="mt-2 text-[10px] text-muted-foreground">Este plan no tiene ninguna pasarela activa todavía.</p>
+        <p className="mt-2 text-[10px] text-muted-foreground">{t.premium.noGateway}</p>
       )}
     </div>
   )
@@ -213,24 +206,23 @@ function PlanCard({
  * del Radar con el gráfico y el botón de comprar delante de todo el mundo.
  */
 function AmmoExplainer({ plans }: { plans: PremiumPlanDTO[] }) {
+  const t = useT()
   const best = plans.reduce((a, b) => (b.ammoBullets > a.ammoBullets ? b : a))
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-4">
       <p className="flex items-center gap-2 text-sm font-bold">
         <Bomb className="h-4 w-4 text-amber-300" strokeWidth={2.5} aria-hidden />
-        ¿Qué es la munición?
+        {t.premium.whatIsAmmo}
       </p>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-        Cada bala es <span className="font-semibold text-foreground/90">un minuto</span> de tu proyecto destacado en lo
-        alto del Radar: banner grande con tu gráfico en vivo y el botón de comprar a la vista, más tu ticker pasando por
-        la cinta superior en todas las pestañas de Cabal.
+        {t.premium.ammoBody1}
+        <span className="font-semibold text-foreground/90">{t.premium.ammoBodyMinute}</span>
+        {t.premium.ammoBody2}
       </p>
       <ul className="mt-2.5 space-y-1.5">
         {[
-          `Tu plan ya trae balas de regalo — hasta ${best.ammoBullets.toLocaleString('es')} con el ${best.label.toLowerCase()}`,
-          'Las gastas cuando quieras: no caducan hasta que las disparas',
-          'Puedes sumarlas a un proyecto tuyo o empujar el de otro',
-          'Si quieres más, se compran aparte en cargadores',
+          t.premium.ammoGift(best.ammoBullets.toLocaleString(), best.label.toLowerCase()),
+          ...t.premium.ammoPoints,
         ].map((line) => (
           <li key={line} className="flex items-start gap-2 text-[12px] text-foreground/85">
             <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
@@ -251,24 +243,28 @@ function ActiveStatus({
   onManage: () => void
   managing: boolean
 }) {
-  const until = status.until ? new Date(status.until).toLocaleDateString('es', { day: 'numeric', month: 'long', year: 'numeric' }) : null
+  const t = useT()
+  const [lang] = useLang()
+  const until = status.until
+    ? new Date(status.until).toLocaleDateString(lang, { day: 'numeric', month: 'long', year: 'numeric' })
+    : null
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-amber-400/30 bg-amber-400/8 p-4 text-center">
         <Crown className="mx-auto h-6 w-6 fill-amber-300 text-amber-300" aria-hidden />
-        <p className="mt-1.5 text-sm font-bold text-amber-200">Ya eres Premium</p>
+        <p className="mt-1.5 text-sm font-bold text-amber-200">{t.premium.alreadyPremium}</p>
         <p className="mt-1 text-[13px] text-muted-foreground">
           {until
             ? status.cancelAtPeriodEnd
-              ? `Activo hasta el ${until} (no se renovará)`
+              ? t.premium.activeUntilNoRenew(until)
               : status.renews
-                ? `Se renueva el ${until}`
-                : `Activo hasta el ${until}`
-            : 'Sin fecha de caducidad'}
+                ? t.premium.renewsOn(until)
+                : t.premium.activeUntil(until)
+            : t.premium.noExpiry}
         </p>
         {status.pastDue && (
           <p className="mt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-[#ff8080]">
-            <RefreshCcw className="h-3.5 w-3.5" aria-hidden /> No pudimos cobrar la renovación. Revisa tu método de pago.
+            <RefreshCcw className="h-3.5 w-3.5" aria-hidden /> {t.premium.pastDue}
           </p>
         )}
       </div>
@@ -279,7 +275,7 @@ function ActiveStatus({
           variant="outline"
           className="w-full gap-2 border-white/15 bg-transparent font-bold hover:bg-white/5"
         >
-          <CalendarClock className="h-4 w-4" aria-hidden /> {managing ? 'Abriendo…' : 'Gestionar facturación'}
+          <CalendarClock className="h-4 w-4" aria-hidden /> {managing ? t.premium.opening : t.premium.manageBilling}
         </Button>
       )}
     </div>
