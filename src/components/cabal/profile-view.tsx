@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BadgeCheck, CalendarDays, Code2, Crown, Rocket, Send, Target, Trophy } from 'lucide-react'
+import { BadgeCheck, CalendarDays, Code2, Crown, Rocket, Send, ShieldCheck, Target, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -177,6 +177,11 @@ function ProfileHeader({
               <button type="button" onClick={() => setRepOpen(true)} className="mt-1 inline-flex transition-opacity hover:opacity-80">
                 <TrustBadge rep={user.reputation} />
               </button>
+              {profile.official && (
+                <p className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-[#7fe04a]/40 bg-[#7fe04a]/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#a6f27a]">
+                  <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> {t.profileView.officialAccount}
+                </p>
+              )}
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 @{user.handle}
                 {online && (

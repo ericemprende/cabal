@@ -795,6 +795,8 @@ export interface PublicProfileDTO {
   isMe: boolean
   /** Tiene el plan Premium activo ahora mismo (para la coronita). */
   premium: boolean
+  /** Es la cuenta oficial de Cabal (la que firma avisos y proyectos avalados). */
+  official: boolean
   badges: BadgeDTO[]
   counts: {
     followers: number

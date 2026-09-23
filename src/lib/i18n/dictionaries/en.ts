@@ -921,6 +921,7 @@ export const en: Dict = {
   },
 
   profileView: {
+    officialAccount: 'Official Cabal account',
     launches: 'Launches',
     devTokens: 'Tokens as dev',
     onChainVerified: 'Verified on-chain',

@@ -8,6 +8,7 @@ import { preloadPostRefs, toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import { hasPremium } from '@/lib/premium'
 import { computeBadges, isFounder } from '@/lib/badges'
 import type { PostDTO, PublicProfileDTO } from '@/lib/types'
+import { OFFICIAL_ACCOUNT_KEY } from '@/lib/chat-announce'
 
 /**
  * GET /api/users/<handle> — perfil público de un usuario.
@@ -114,11 +115,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
       launches.map((l) => l.id)
     )
 
+    const officialId = (await db.setting.findUnique({ where: { key: OFFICIAL_ACCOUNT_KEY } }))?.value
     const dto: PublicProfileDTO = {
       user: toPublicUserDTO(user, Boolean(viewer)),
       joinedAt: user.createdAt.toISOString(),
       isMe,
       premium,
+      official: officialId === user.id,
       badges,
       counts: {
         followers,

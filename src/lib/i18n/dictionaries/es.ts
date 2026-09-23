@@ -920,6 +920,7 @@ export const es = {
   },
 
   profileView: {
+    officialAccount: 'Cuenta oficial de Cabal',
     launches: 'Launches',
     devTokens: 'Tokens como dev',
     onChainVerified: 'Verificados on-chain',
