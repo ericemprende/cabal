@@ -12,8 +12,9 @@ import { useUI, type TabKey } from '@/lib/store'
 import { useGoToTab } from '@/lib/use-go-to-tab'
 import { useOnlineCount } from '@/lib/presence'
 import { useChatUnread } from '@/lib/chat-unread'
+import { useT } from '@/lib/i18n/provider'
 
-type NavTab = { key: TabKey; label: string; silueta: Silueta }
+type NavTab = { key: 'radar' | 'tokens' | 'feed' | 'leaderboard'; silueta: Silueta }
 
 /**
  * Barra inferior del móvil: cuatro secciones y el botón de publicar en medio.
@@ -26,22 +27,35 @@ type NavTab = { key: TabKey; label: string; silueta: Silueta }
  * siempre, estés donde estés.
  */
 const LEFT: NavTab[] = [
-  { key: 'radar', label: 'Radar', silueta: 'radar-sweep' },
-  { key: 'tokens', label: 'Tokens', silueta: 'coins-pile' },
+  { key: 'radar', silueta: 'radar-sweep' },
+  { key: 'tokens', silueta: 'coins-pile' },
 ]
 const RIGHT: NavTab[] = [
   // El Feed son las tesis escritas: la pluma y el pergamino, que la burbuja de
   // chat es del Chat y tenerlas las dos confundía una cosa con la otra.
-  { key: 'feed', label: 'Feed', silueta: 'scroll-quill' },
-  { key: 'leaderboard', label: 'Líderes', silueta: 'laurels-trophy' },
+  { key: 'feed', silueta: 'scroll-quill' },
+  { key: 'leaderboard', silueta: 'laurels-trophy' },
 ]
 
 export function MobileNav() {
+  const t = useT()
   const { tab } = useUI()
   // Desde un perfil también hay que volver a /app para ver la sección
   const setTab = useGoToTab()
-  const button = (t: NavTab) => (
-    <NavButton key={t.key} label={t.label} silueta={t.silueta} active={tab === t.key} onClick={() => setTab(t.key)} />
+  const labels: Record<NavTab['key'], string> = {
+    radar: t.nav.radarShort,
+    tokens: t.nav.tokens,
+    feed: t.nav.feed,
+    leaderboard: t.nav.leaders,
+  }
+  const button = (item: NavTab) => (
+    <NavButton
+      key={item.key}
+      label={labels[item.key]}
+      silueta={item.silueta}
+      active={tab === item.key}
+      onClick={() => setTab(item.key)}
+    />
   )
   return (
     <>
@@ -101,10 +115,11 @@ function FloatingButtons() {
 
 /** Actividad: el flotante de arriba. Lleva el punto de "hay cosas nuevas" vivo. */
 function ActivityFab({ open, onOpen }: { open: boolean; onOpen: () => void }) {
+  const t = useT()
   return (
     <button
       onClick={onOpen}
-      aria-label="Actividad del Cabal: launches y tesis en vivo"
+      aria-label={t.nav.activityFab}
       aria-expanded={open}
       // Justo encima del flotante del Chat (48 px de alto + 8 px de aire)
       className={cn(
@@ -131,6 +146,7 @@ function ActivityFab({ open, onOpen }: { open: boolean; onOpen: () => void }) {
  * En escritorio esto no existe: allí el Chat vive en la columna de Actividad.
  */
 function ChatFab() {
+  const t = useT()
   const { tab } = useUI()
   const setTab = useGoToTab()
   const onlineCount = useOnlineCount()
@@ -140,7 +156,7 @@ function ChatFab() {
   return (
     <button
       onClick={() => setTab('chat')}
-      aria-label={badge ? `Chat, ${badge} mensajes sin leer` : 'Chat'}
+      aria-label={badge ? t.nav.chatUnread(badge) : t.nav.chat}
       aria-current={active ? 'page' : undefined}
       // Se apoya sobre la barra (56 px de alto) más el hueco del iPhone
       className={cn(

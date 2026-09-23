@@ -24,12 +24,14 @@ import { DonateDialog } from '@/components/cabal/donate-dialog'
 import { DonateThanksDialog } from '@/components/cabal/donate-thanks-dialog'
 import { GuideAssistant } from '@/components/cabal/guide-assistant'
 import { LiveChat } from '@/components/cabal/live-chat'
+import { useT } from '@/lib/i18n/provider'
 import { useUI, type TabKey } from '@/lib/store'
 import { qk, useConfirmPremiumCheckout, useMe, usePointRules } from '@/lib/api-client'
 import { usePresenceConnection } from '@/lib/presence'
 import { cn } from '@/lib/utils'
 
 export default function Home() {
+  const t = useT()
   const { tab, setSearchOpen, setAdminOpen, setWelcomeShareOpen } = useUI()
   const { data: me } = useMe()
   const rules = usePointRules()
@@ -203,11 +205,11 @@ export default function Home() {
 
           <div className="min-w-0 flex-1">
             {/* Desktop tab bar */}
-            <div className="mb-4 hidden items-center gap-1 md:flex" role="tablist" aria-label="Secciones">
-              <TabButton active={tab === 'radar'} onClick={() => useUI.getState().setTab('radar')} icon={RadarTabIcon} label="Radar de Launches" />
-              <TabButton active={tab === 'tokens'} onClick={() => useUI.getState().setTab('tokens')} icon={Coins} label="Tokens" />
-              <TabButton active={tab === 'feed'} onClick={() => useUI.getState().setTab('feed')} icon={MessageSquare} label="Feed" />
-              <TabButton active={tab === 'leaderboard'} onClick={() => useUI.getState().setTab('leaderboard')} icon={Trophy} label="Líderes" />
+            <div className="mb-4 hidden items-center gap-1 md:flex" role="tablist" aria-label={t.nav.sections}>
+              <TabButton active={tab === 'radar'} onClick={() => useUI.getState().setTab('radar')} icon={RadarTabIcon} label={t.nav.radar} />
+              <TabButton active={tab === 'tokens'} onClick={() => useUI.getState().setTab('tokens')} icon={Coins} label={t.nav.tokens} />
+              <TabButton active={tab === 'feed'} onClick={() => useUI.getState().setTab('feed')} icon={MessageSquare} label={t.nav.feed} />
+              <TabButton active={tab === 'leaderboard'} onClick={() => useUI.getState().setTab('leaderboard')} icon={Trophy} label={t.nav.leaders} />
             </div>
 
             {/* Mobile section title */}
@@ -218,7 +220,15 @@ export default function Home() {
                 <RadarIcon className="h-4 w-4 text-primary" aria-hidden />
               )}
               <h1 className="font-display text-lg font-bold capitalize">
-                {tab === 'leaderboard' ? 'líderes' : tab === 'chat' ? 'Chat del Cabal' : tab}
+                {tab === 'leaderboard'
+                  ? t.nav.leaders
+                  : tab === 'chat'
+                    ? t.chat.title
+                    : tab === 'tokens'
+                      ? t.nav.tokens
+                      : tab === 'feed'
+                        ? t.nav.feed
+                        : t.nav.radarShort}
               </h1>
             </div>
 
@@ -240,10 +250,12 @@ export default function Home() {
       <footer className="mt-auto border-t border-white/10 pb-16 pt-6 md:pb-10" style={{ marginBottom: 0 }}>
         <div className="mx-auto flex max-w-[1800px] flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row">
           <p>
-            <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · la comunidad que ve los launches antes que nadie
+            <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> ·{' '}
+            {t.appFooter.tagline}
           </p>
           <p className="flex items-center gap-1">
-            <Zap className="h-3 w-3 text-primary/70" aria-hidden /> Tesis +{rules.points_thesis} · Launch +{rules.points_launch} · Se canjean por $CABAL
+            <Zap className="h-3 w-3 text-primary/70" aria-hidden />{' '}
+            {t.appFooter.points(rules.points_thesis, rules.points_launch)}
           </p>
         </div>
       </footer>

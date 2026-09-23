@@ -19,6 +19,7 @@ import {
   Heart,
   ImagePlus,
   KeyRound,
+  Languages,
   Mail,
   MessageSquare,
   RefreshCw,
@@ -64,6 +65,8 @@ import type { DevClaimDTO, MeDTO, WalletLinkDTO } from '@/lib/types'
 import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 import { PushSettings } from '@/components/cabal/push-settings'
+import { LangSwitch } from '@/components/cabal/lang-switch'
+import { useT } from '@/lib/i18n/provider'
 import { TelegramConnect } from '@/components/cabal/telegram-connect'
 import { DiscordConnect } from '@/components/cabal/discord-connect'
 import { DiscordLogo } from '@/components/cabal/discord-logo'
@@ -105,6 +108,7 @@ export function ProfileDialog() {
 }
 
 function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data']> }) {
+  const t = useT()
   const { setProfileOpen, setPremiumOpen } = useUI()
   const updateMe = useUpdateMe()
   const { data: authStatus } = useAuthStatus()
@@ -223,6 +227,17 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
               onCheckedChange={(v) => updateMe.mutate({ notifyEmail: v })}
             />
           </div>
+        </div>
+
+        {/* Idioma de la plataforma: lo primero de los ajustes, porque de él
+            depende entender todo lo demás. */}
+        <div className="flex items-center gap-3 border-b border-white/10 p-4">
+          <Languages className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold">{t.lang.label}</p>
+            <p className="text-[11px] text-muted-foreground">{t.lang.hint}</p>
+          </div>
+          <LangSwitch size="md" className="shrink-0" />
         </div>
 
         {/* Avisos push del navegador / la app instalada */}

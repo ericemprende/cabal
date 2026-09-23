@@ -6,6 +6,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
 import { InstallApp } from "@/components/cabal/install-app";
 import { ChapaDefs } from "@/components/cabal/chapa";
+import { LangProvider } from "@/lib/i18n/provider";
+import { resolveLang } from "@/lib/i18n/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,19 +55,25 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // El idioma se resuelve aquí (cookie → navegador) para que el HTML salga ya
+  // traducido: decidirlo en el navegador haría parpadear toda la página.
+  const lang = await resolveLang();
+
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang={lang} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased bg-background text-foreground`}
       >
         {/* Los degradados de las chapas, una sola vez para toda la página */}
         <ChapaDefs />
-        <Providers>{children}</Providers>
+        <LangProvider initial={lang}>
+          <Providers>{children}</Providers>
+        </LangProvider>
         <InstallApp />
         {/* En móvil, por encima de la barra de navegación inferior */}
         <Toaster position="bottom-center" mobileOffset={{ bottom: "calc(80px + env(safe-area-inset-bottom))" }} />

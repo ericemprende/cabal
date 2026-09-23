@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Crown, Info, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { Chapa } from '@/components/cabal/chapa'
 import type { Silueta } from '@/lib/siluetas'
 import { PointsPill, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
@@ -30,16 +31,17 @@ function CommunityPicker({
   value: string | null
   onChange: (v: string | null) => void
 }) {
+  const t = useT()
   return (
     <label className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
       <Users className="h-3.5 w-3.5" aria-hidden />
-      <span className="sr-only">Comunidad</span>
+      <span className="sr-only">{t.leaderboard.community}</span>
       <select
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || null)}
         className="rounded-full border border-white/10 bg-[#121410] px-2.5 py-1 text-[11px] font-bold text-foreground"
       >
-        <option value="">Todo Cabal</option>
+        <option value="">{t.leaderboard.allCabal}</option>
         {communities.map((c) => (
           <option key={c.key} value={c.key}>
             {c.label} ({c.calls})
@@ -51,6 +53,7 @@ function CommunityPicker({
 }
 
 export function LeaderboardTab() {
+  const t = useT()
   const [period, setPeriod] = useState<CallPeriod>('7d')
   // null = todo Cabal; una clave = solo las calls nacidas en ese grupo/servidor
   const [community, setCommunity] = useState<string | null>(null)
@@ -62,11 +65,11 @@ export function LeaderboardTab() {
       <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
         {(
           [
-            { key: 'callers', label: 'Top Callers', silueta: 'target-arrows' as const },
-            { key: 'points', label: 'Puntos Cabal', silueta: 'star-medal' as const },
-            { key: 'devs', label: 'Devs', silueta: 'anvil-impact' as const },
-            { key: 'clans', label: 'Clanes', silueta: 'winged-emblem' as const },
-          ] as { key: Board; label: string; silueta: Silueta }[]
+            { key: 'callers', silueta: 'target-arrows' as const },
+            { key: 'points', silueta: 'star-medal' as const },
+            { key: 'devs', silueta: 'anvil-impact' as const },
+            { key: 'clans', silueta: 'winged-emblem' as const },
+          ] as { key: Board; silueta: Silueta }[]
         ).map((b) => (
           <button
             key={b.key}
@@ -79,7 +82,7 @@ export function LeaderboardTab() {
             )}
           >
             <Chapa silueta={b.silueta} metal="acero" className="h-5 w-5" placa />
-            {b.label}
+            {t.leaderboard.boards[b.key]}
           </button>
         ))}
       </div>
@@ -87,7 +90,7 @@ export function LeaderboardTab() {
       {/* Periodo: solo cambia Top Callers (calls publicadas dentro del periodo) */}
       {board === 'callers' && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#121410] p-0.5" role="tablist" aria-label="Periodo">
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-[#121410] p-0.5" role="tablist" aria-label={t.leaderboard.period}>
             {CALL_PERIODS.map((p) => (
               <button
                 key={p.key}
@@ -99,7 +102,7 @@ export function LeaderboardTab() {
                   period === p.key ? 'bg-[#8FA83F]/15 text-primary' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                {p.label}
+                {t.leaderboard.periods[p.key]}
               </button>
             ))}
           </div>
@@ -133,10 +136,8 @@ export function LeaderboardTab() {
           {board === 'callers' && data?.callers.length === 0 && (
             <div className="rounded-xl border border-dashed border-white/10 px-4 py-10 text-center">
               <Target className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden />
-              <p className="mt-2 text-sm font-semibold">Nadie tiene calls con resultado en este periodo</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Publica una call con el CA del token en el Feed: su resultado se calcula en unos minutos.
-              </p>
+              <p className="mt-2 text-sm font-semibold">{t.leaderboard.noCallsTitle}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{t.leaderboard.noCallsBody}</p>
             </div>
           )}
           {(board === 'callers' ? data?.callers : board === 'devs' ? data?.devs : data?.points)?.map((entry) => (
@@ -154,16 +155,16 @@ export function LeaderboardTab() {
  * desde aquí cualquiera puede entrar con su enlace.
  */
 function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommunity: (key: string) => void }) {
+  const t = useT()
   if (clans.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-white/10 px-4 py-10 text-center">
         <Shield className="mx-auto h-7 w-7 text-muted-foreground" aria-hidden />
-        <p className="mt-2 text-sm font-semibold">Todavía no hay comunidades con el bot</p>
+        <p className="mt-2 text-sm font-semibold">{t.leaderboard.noClansTitle}</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Un clan es tu grupo de Telegram o tu servidor de Discord, tal cual: añade el bot de Cabal y las calls que deis
-          allí puntúan aquí.{' '}
+          {t.leaderboard.noClansBody}{' '}
           <a href="/bot" target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">
-            Cómo añadirlo
+            {t.leaderboard.howToAdd}
           </a>
         </p>
       </div>
@@ -182,13 +183,13 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
               <p className="truncate text-xs text-muted-foreground">
                 {c.provider === 'telegram' ? 'Telegram' : 'Discord'}
                 {c.members !== null && ` · ${c.members.toLocaleString('es')} miembros`}
-                {c.online !== null && ` · ${c.online.toLocaleString('es')} en línea`}
-                {c.callers > 0 && ` · ${c.callers} caller${c.callers === 1 ? '' : 's'}`}
+                {c.online !== null && t.leaderboard.online(c.online.toLocaleString())}
+                {c.callers > 0 && t.leaderboard.callers(c.callers)}
               </p>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-sm font-bold text-primary">{c.score} pts</p>
-              <p className="text-[11px] text-muted-foreground">Cabal Score</p>
+              <p className="text-[11px] text-muted-foreground">{t.leaderboard.cabalScore}</p>
             </div>
           </div>
 
@@ -200,23 +201,29 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
           {c.cabalMembers !== null && c.cabalMembers > 0 && (
             <p
               className="flex w-fit items-center gap-1.5 rounded-lg border border-[#8FA83F]/20 bg-[#8FA83F]/8 px-2 py-1 text-[11px]"
-              title={`${c.cabalMembers.toLocaleString('es')} ${c.cabalMembers === 1 ? 'miembro tiene' : 'miembros tienen'} cuenta en Cabal`}
+              title={t.leaderboard.membersInCabal(c.cabalMembers.toLocaleString(), c.cabalMembers === 1)}
             >
               <img src="/cabal-logo.webp" alt="" className="h-3.5 w-3.5 shrink-0 object-contain" aria-hidden />
-              <span className="font-bold text-primary">{c.cabalMembers.toLocaleString('es')}</span>
-              <span className="sr-only">en Cabal</span>
+              <span className="font-bold text-primary">{c.cabalMembers.toLocaleString()}</span>
+              <span className="sr-only">{t.leaderboard.inCabal}</span>
             </p>
           )}
 
           <div className="grid grid-cols-3 gap-2 text-center">
-            <Stat label="Calls" value={String(c.calls)} />
-            <Stat label="Aciertos" value={c.calls > 0 ? `${c.winRate}%` : '—'} hint={c.calls > 0 ? `${c.wins} de ${c.calls}` : undefined} />
-            <Stat label="Mejor call" value={fmtMultiple(c.bestMultiple)} accent={(c.bestMultiple ?? 0) >= WIN_MULTIPLE} />
+            <Stat label={t.leaderboard.calls} value={String(c.calls)} />
+            <Stat
+              label={t.leaderboard.hits}
+              value={c.calls > 0 ? `${c.winRate}%` : '—'}
+              hint={c.calls > 0 ? t.leaderboard.hitsOf(c.wins, c.calls) : undefined}
+            />
+            <Stat label={t.leaderboard.bestCall} value={fmtMultiple(c.bestMultiple)} accent={(c.bestMultiple ?? 0) >= WIN_MULTIPLE} />
           </div>
 
           {c.topCallers.length > 0 && (
             <div className="space-y-1">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sus mejores callers</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                {t.leaderboard.theirTopCallers}
+              </p>
               {c.topCallers.map((u) => (
                 <Link
                   key={u.handle}
@@ -237,14 +244,14 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
               onClick={() => onOpenCommunity(c.key)}
               className="flex-1 rounded-lg border border-white/10 px-2 py-1.5 text-[11px] font-bold text-foreground/90 transition-colors hover:border-[#8FA83F]/40 hover:text-primary"
             >
-              Ver sus callers
+              {t.leaderboard.seeTheirCallers}
             </button>
             {c.link && (
               <a
                 href={c.link}
                 target="_blank"
                 rel="noreferrer"
-                aria-label={`Unirme a ${c.name} en ${c.provider === 'telegram' ? 'Telegram' : 'Discord'}`}
+                aria-label={t.leaderboard.joinAria(c.name, c.provider === 'telegram' ? 'Telegram' : 'Discord')}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary/90 px-2 py-1.5 text-[11px] font-bold text-primary-foreground transition-opacity hover:opacity-90"
               >
                 {/* El icono dice a dónde te llevas: al grupo o al servidor */}
@@ -253,7 +260,7 @@ function ClanBoard({ clans, onOpenCommunity }: { clans: ClanDTO[]; onOpenCommuni
                 ) : (
                   <DiscordLogo className="h-3 w-3" />
                 )}
-                Unirme
+                {t.leaderboard.join}
               </a>
             )}
           </div>
@@ -317,6 +324,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
   const follow = useFollowToggle()
   const { user, rank } = entry
   const winRate = entry.winRate ?? 0
+  const t = useT()
   const online = useIsOnline(user.id)
 
   return (
@@ -324,7 +332,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
       <span className={cn('w-8 shrink-0 text-center font-machina text-sm font-bold', rank <= 3 ? 'text-primary' : 'text-muted-foreground')}>
         {String(rank).padStart(2, '0')}
       </span>
-      <Link href={`/u/${user.handle}`} className="shrink-0" aria-label={`Perfil de @${user.handle}`}>
+      <Link href={`/u/${user.handle}`} className="shrink-0" aria-label={t.leaderboard.profileOf(user.handle)}>
         <UserAvatar name={user.name} handle={user.handle} src={user.avatar} size="md" verified={user.walletVerified} official={user.verified} online={online} />
       </Link>
       <div className="min-w-0 flex-1">
@@ -343,9 +351,11 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
               <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/50 to-[#8FA83F]" style={{ width: `${entry.calls.winRate}%` }} />
             </div>
             <span className="text-[10px] font-semibold text-muted-foreground">
-              {entry.calls.wins}/{entry.calls.calls} aciertos · {entry.calls.winRate}%
+              {t.leaderboard.hitsLine(entry.calls.wins, entry.calls.calls, entry.calls.winRate)}
             </span>
-            <span className="text-[10px] font-semibold text-amber-300/90">mejor {fmtMultiple(entry.calls.bestMultiple)}</span>
+            <span className="text-[10px] font-semibold text-amber-300/90">
+              {t.leaderboard.best} {fmtMultiple(entry.calls.bestMultiple)}
+            </span>
           </div>
         )}
         {/* win rate bar for devs */}
@@ -355,7 +365,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
               <div className="h-full rounded-full bg-gradient-to-r from-[#8FA83F]/50 to-[#8FA83F]" style={{ width: `${winRate}%` }} />
             </div>
             <span className="text-[10px] font-semibold text-muted-foreground">
-              {user.callsWon}/{user.callsTotal} aciertos · {winRate}%
+              {t.leaderboard.hitsLine(user.callsWon, user.callsTotal, winRate)}
             </span>
           </div>
         )}
@@ -364,16 +374,16 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
         {board === 'points' && <PointsPill points={entry.metric} />}
         {board === 'callers' && (
           <div className="text-right">
-            <p className="text-sm font-bold text-primary">{entry.metric.toLocaleString('es')}</p>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Cabal Score</p>
+            <p className="text-sm font-bold text-primary">{entry.metric.toLocaleString()}</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.leaderboard.cabalScore}</p>
           </div>
         )}
         {board === 'devs' && (
           <div className="text-right">
             <p className="flex items-center justify-end gap-1 text-sm font-bold text-primary">
-              <Zap className="h-3 w-3" /> {entry.metric.toLocaleString('es')}
+              <Zap className="h-3 w-3" /> {entry.metric.toLocaleString()}
             </p>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">puntos</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t.leaderboard.points}</p>
           </div>
         )}
         {!user.isFollowed && (
@@ -382,7 +392,7 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
             onClick={() => follow.mutate(user.id)}
             className="hidden rounded-full sm:block border border-[#8FA83F]/30 px-3 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-[#8FA83F]/10"
           >
-            Seguir
+            {t.leaderboard.follow}
           </button>
         )}
       </div>
@@ -392,31 +402,30 @@ function Row({ entry, board }: { entry: LeaderboardEntryDTO; board: Board }) {
 
 /** Cómo se calcula el Cabal Score de las calls. */
 function ScoreHelp() {
+  const t = useT()
   return (
     <Popover>
       <PopoverTrigger className="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-semibold text-muted-foreground hover:text-primary">
-        <Info className="h-3.5 w-3.5" aria-hidden /> ¿Cómo se calcula?
+        <Info className="h-3.5 w-3.5" aria-hidden /> {t.leaderboard.howScored}
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 border-white/10 bg-popover p-3 text-xs">
-        <p className="font-bold text-foreground">Cabal Score</p>
-        <p className="mt-1 leading-relaxed text-muted-foreground">
-          Cada call suma puntos según el pico que alcanzó el token después de publicarla (máximo desde la call ÷ precio de entrada).
-        </p>
+        <p className="font-bold text-foreground">{t.leaderboard.cabalScore}</p>
+        <p className="mt-1 leading-relaxed text-muted-foreground">{t.leaderboard.scoreIntro}</p>
         <ul className="mt-2 space-y-1">
-          {SCORE_TIERS.map((t) => (
-            <li key={t.min} className="flex justify-between">
-              <span>{t.label}</span>
-              <span className="font-bold text-primary">+{t.points}</span>
+          {SCORE_TIERS.map((tier, i) => (
+            <li key={tier.min} className="flex justify-between">
+              {/* El primer tramo es el unico con palabras ("10X o mas"); los
+                  demas son rangos de numeros y valen igual en los dos idiomas. */}
+              <span>{i === 0 ? t.leaderboard.tierTop(tier.min) : tier.label}</span>
+              <span className="font-bold text-primary">+{tier.points}</span>
             </li>
           ))}
           <li className="flex justify-between">
-            <span>Sin llegar a {WIN_MULTIPLE}X y cae más de {Math.round((1 - LOSS_MULTIPLE) * 100)}%</span>
+            <span>{t.leaderboard.scoreLoss(WIN_MULTIPLE, Math.round((1 - LOSS_MULTIPLE) * 100))}</span>
             <span className="font-bold text-[#ff8080]">{LOSS_POINTS}</span>
           </li>
         </ul>
-        <p className="mt-2 leading-relaxed text-muted-foreground">
-          Acierto = pico de {WIN_MULTIPLE}X o más. Los resultados se actualizan cada pocos minutos y quedan fijos a los 30 días.
-        </p>
+        <p className="mt-2 leading-relaxed text-muted-foreground">{t.leaderboard.scoreOutro(WIN_MULTIPLE)}</p>
       </PopoverContent>
     </Popover>
   )

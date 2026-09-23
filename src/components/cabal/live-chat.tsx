@@ -14,6 +14,7 @@ import { useUI } from '@/lib/store'
 import type { ChatMessageDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { RichText } from '@/components/cabal/rich-text'
+import { useLang, useT } from '@/lib/i18n/provider'
 
 /**
  * Chat en vivo global del Cabal. Historial vía React Query, mensajes nuevos
@@ -21,7 +22,11 @@ import { RichText } from '@/components/cabal/rich-text'
  * verde de "conectado" viene de la misma suscripción (ver lib/presence.ts).
  */
 export function LiveChat({ className, showUnavailable }: { className?: string; showUnavailable?: boolean } = {}) {
-  const [room, setRoom] = useChatRoom()
+  const t = useT()
+  const [lang] = useLang()
+  // La sala que se abre la primera vez es la del idioma de la plataforma; a
+  // partir de ahí manda lo que la persona elija con las banderitas.
+  const [room, setRoom] = useChatRoom(lang)
   const { data: history } = useChatMessages(room)
   const [live, setLive] = useState<ChatMessageDTO[]>([])
   const onlineIds = useOnlineIds()
@@ -117,7 +122,7 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
     if (!showUnavailable) return null
     return (
       <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-muted-foreground">
-        El chat en vivo no está disponible en este momento
+        {t.chat.unavailable}
       </p>
     )
   }
@@ -129,7 +134,7 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
         </span>
-        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Chat del Cabal</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.chat.title}</p>
         <RoomTabs room={room} onChange={setRoom} />
         <span className="ml-auto flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
           <Users className="h-3 w-3" aria-hidden /> {onlineIds.size}
@@ -138,9 +143,7 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
 
       <div ref={listRef} className="flex-1 space-y-2.5 overflow-y-auto px-3 py-2.5">
         {messages.length === 0 && (
-          <p className="pt-6 text-center text-xs text-muted-foreground">
-            {room === 'en' ? 'Be the first to write here' : 'Sé el primero en escribir'}
-          </p>
+          <p className="pt-6 text-center text-xs text-muted-foreground">{t.chat.empty}</p>
         )}
         {messages.map((m) =>
           m.system ? (
@@ -163,9 +166,9 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
         <div className="flex items-center gap-2 border-t border-white/10 px-3 py-1.5 text-[11px] text-muted-foreground">
           <CornerUpLeft className="h-3 w-3 shrink-0" aria-hidden />
           <p className="min-w-0 flex-1 truncate">
-            Respondiendo a <span className="font-bold text-foreground">{replyTo.user.name}</span>: {replyTo.body}
+            {t.chat.replyingTo} <span className="font-bold text-foreground">{replyTo.user.name}</span>: {replyTo.body}
           </p>
-          <button onClick={() => setReplyTo(null)} className="shrink-0 hover:text-foreground" aria-label="Cancelar respuesta">
+          <button onClick={() => setReplyTo(null)} className="shrink-0 hover:text-foreground" aria-label={t.chat.cancelReply}>
             <X className="h-3.5 w-3.5" aria-hidden />
           </button>
         </div>
@@ -184,14 +187,14 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
             if (!session?.loggedIn) openAuth('login')
           }}
           maxLength={500}
-          placeholder={room === 'en' ? 'Say something to the Cabal…' : 'Escribe al Cabal…'}
+          placeholder={t.chat.placeholder}
           className="min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0f110c] px-3 py-2 text-base outline-none sm:text-[13px] focus:border-[#8FA83F]/40"
         />
         <button
           onClick={handleSend}
           disabled={!text.trim() || send.isPending}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-          aria-label="Enviar mensaje"
+          aria-label={t.chat.send}
         >
           <Send className="h-4 w-4" aria-hidden />
         </button>
@@ -254,6 +257,7 @@ function ChatLine({
   onReply: (msg: ChatMessageDTO) => void
   onJump: (id: string) => void
 }) {
+  const t = useT()
   const online = useIsOnline(msg.user.id)
   const liked = !!me && likedBy.includes(me)
   return (
@@ -283,9 +287,9 @@ function ChatLine({
           liked ? 'text-rose-400' : 'text-muted-foreground hover:text-rose-400',
           likedBy.length === 0 && 'sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100'
         )}
-        aria-label={liked ? 'Quitar me gusta' : `Me gusta el mensaje de ${msg.user.name}`}
+        aria-label={liked ? t.chat.unlike : t.chat.likeMessage(msg.user.name)}
         aria-pressed={liked}
-        title="Me gusta"
+        title={t.chat.like}
       >
         <Heart className={cn('h-3.5 w-3.5', liked && 'fill-rose-400')} aria-hidden />
         {likedBy.length > 0 && <span className="tabular-nums">{likedBy.length}</span>}
@@ -294,8 +298,8 @@ function ChatLine({
       <button
         onClick={() => onReply(msg)}
         className="shrink-0 rounded p-1 text-muted-foreground hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
-        aria-label={`Responder a ${msg.user.name}`}
-        title="Responder"
+        aria-label={t.chat.replyTo(msg.user.name)}
+        title={t.chat.reply}
       >
         <CornerUpLeft className="h-3.5 w-3.5" aria-hidden />
       </button>

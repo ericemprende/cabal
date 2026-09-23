@@ -1,0 +1,348 @@
+/**
+ * Textos de la plataforma en español. Este archivo es la referencia: el tipo
+ * del diccionario sale de aquí, así que cualquier clave que se añada obliga a
+ * traducirla en en.ts para que compile.
+ *
+ * Lo que lleva datos dentro se escribe como función (`hola: (n) => ...`) en vez
+ * de plantillas con marcadores: así el tipo dice qué necesita cada texto y no
+ * hay forma de olvidarse de un dato.
+ */
+export const es = {
+  lang: {
+    label: 'Idioma',
+    hint: 'Elige en qué idioma quieres toda la plataforma.',
+    spanish: 'Español',
+    english: 'Inglés',
+  },
+
+  common: {
+    cancel: 'Cancelar',
+    close: 'Cerrar',
+    save: 'Guardar',
+    saving: 'Guardando…',
+    loading: 'Cargando…',
+    retry: 'Reintentar',
+    open: 'Abrir',
+    free: 'Gratis',
+  },
+
+  landing: {
+    earlyAccess: 'Acceso anticipado',
+    hero: {
+      titleTop: 'Entra al radar',
+      titleAccent: 'antes que el resto',
+      body:
+        'Cabal abre por invitación. Apúntate a la lista de espera con tu cuenta de X, reserva tu plaza y tu @handle, y sé de los primeros en ver los lanzamientos cuando abramos.',
+      invitedBy: 'Te invitó',
+      sharePoints: 'Gana 10 puntos Cabal al compartir tu tarjeta después de registrarte',
+      notConfigured: 'Falta definir X_CLIENT_ID y X_CLIENT_SECRET en el servidor.',
+    },
+    cta: {
+      continue: 'Continuar mi registro',
+      login: 'Acceso con X',
+      unavailable: 'Acceso con X no disponible',
+    },
+    stats: {
+      onList: 'Ya en la lista',
+      seats: 'Plazas de la primera tanda',
+      cost: 'Coste',
+    },
+    trust: [
+      'Verificación con tu cuenta real de X: sin bots, sin cuentas duplicadas.',
+      'No pedimos permiso para publicar ni acceso a tus mensajes.',
+      'Tu @handle queda reservado hasta el día del lanzamiento.',
+    ],
+    mockup: {
+      before: 'Al registrarte generamos ',
+      card: 'tu tarjeta',
+      after: ' con tu foto y tu @usuario, lista para publicar en X.',
+      squadAlt: 'El escuadrón de Cabal: la comunidad que lanza y respalda proyectos.',
+    },
+    benefitsTitle: {
+      before: 'Por qué merece la pena entrar ',
+      accent: 'antes',
+    },
+    benefitsLead:
+      'Cabal no es otro grupo de señales. Es el registro público de quién lanzó qué, quién lo vio venir y quién se equivocó.',
+    benefits: [
+      {
+        title: 'Los launches, antes de que salgan',
+        body:
+          'El radar de Cabal recoge lanzamientos que la comunidad publica con fecha y hora. Llegas al minuto cero, no cuando ya está en todos los grupos.',
+      },
+      {
+        title: 'Historial real de cada dev',
+        body:
+          'Cada token queda ligado a la wallet que lo lanzó, con métricas on-chain verificadas: máximo histórico, liquidez bloqueada, mint revocado y rugs anteriores.',
+      },
+      {
+        title: 'Puntos que se canjean por $CABAL',
+        body:
+          'Publicas una tesis, aciertas un call, aportas información: sumas puntos Cabal. Los puntos del periodo previo al lanzamiento cuentan doble.',
+      },
+      {
+        title: 'Una comunidad cerrada, no un grupo de señales',
+        body:
+          'Tesis argumentadas, debate público y reputación acumulada. Quien acierta sube en la tabla; quien inventa, se queda sin credibilidad.',
+      },
+      {
+        title: 'Transmisiones en vivo del lanzamiento',
+        body:
+          'Los devs presentan su proyecto en directo desde la ficha del launch. Preguntas en tiempo real antes de poner un solo dólar.',
+      },
+      {
+        title: 'Ventajas de fundador',
+        body:
+          'Quien entra por la lista de espera conserva su plaza, su @handle y una insignia de miembro fundador cuando abramos al público.',
+      },
+    ],
+    footer: {
+      tagline: 'la comunidad que ve los launches antes que nadie.',
+      legal:
+        'Solo pedimos tu cuenta de X para verificar que eres una persona real y reservar tu @handle. Nada de esto es consejo financiero.',
+      terms: 'Términos de Servicio',
+      privacy: 'Política de Privacidad',
+      credits: 'Créditos',
+    },
+    errors: {
+      access_denied: 'Cancelaste la autorización en X',
+      state: 'La sesión expiró, vuelve a intentarlo',
+      token: 'X rechazó el intercambio del código',
+      profile: 'No se pudo leer tu perfil de X',
+      no_config: 'El acceso con X aún no está configurado',
+      server: 'Error inesperado, inténtalo de nuevo',
+      generic: 'No se pudo completar el registro',
+    },
+  },
+
+  header: {
+    goToRadar: 'Ir al Radar',
+    searchPlaceholder: 'Busca tokens, personas o pega un contrato…',
+    searchAria: 'Buscar tokens, launches, personas o pegar un contrato',
+    publishLaunch: 'Publicar launch',
+    you: 'Tú',
+    points: 'Puntos Cabal',
+    viewProfile: 'Ver mi perfil',
+    myCabal: 'Mi Cabal (perfil)',
+    affiliates: 'Afiliados',
+    premiumOn: 'Tu plan Premium',
+    premiumOff: 'Hazte Pro',
+    search: 'Buscar',
+    admin: 'Dashboard Admin',
+    loggingOut: 'Cerrando…',
+    logout: 'Cerrar sesión',
+    login: 'Iniciar sesión',
+    loginShort: 'Entrar',
+    userMenu: 'Menú de usuario',
+  },
+
+  search: {
+    title: 'Buscar',
+    placeholder: 'SMOL, @cryptonita, o pega un contrato…',
+    aria: 'Buscar en Cabal',
+    contract: 'Contrato · Gráfico y compra',
+    launches: 'Lanzamientos · Radar',
+    liveTokens: 'Tokens en vivo',
+    people: 'Personas',
+    traders: 'Traders',
+    private: 'Privado',
+    noResults: (q: string) => `Sin resultados para “${q}”`,
+  },
+
+  nav: {
+    radar: 'Radar de Launches',
+    radarShort: 'Radar',
+    tokens: 'Tokens',
+    feed: 'Feed',
+    leaders: 'Líderes',
+    chat: 'Chat',
+    activity: 'Actividad',
+    publish: 'Publicar',
+    profile: 'Perfil',
+    sections: 'Secciones',
+    activityFab: 'Actividad del Cabal: launches y tesis en vivo',
+    chatUnread: (n: string) => `Chat, ${n} mensajes sin leer`,
+  },
+
+  radar: {
+    all: 'Todas',
+    statusAria: 'Estado de los launches',
+    status: { active: 'Próximos', ended: 'Finalizados', all: 'Todos' },
+    byDate: 'Por fecha',
+    mostHype: 'Más hype',
+    publish: 'Publicar',
+    publishLaunch: 'Publicar lanzamiento',
+    emptyTitle: 'No hay launches con este filtro',
+    emptyBody: (points: number) => `Sé el primero en avisar a la comunidad (+${points} puntos)`,
+    featured: 'Destacado',
+    hypes: (n: number) => `${n} hypes`,
+    giveHype: 'Dar hype',
+    roleDev: 'DEV',
+    roleScout: 'SCOUT',
+    roleDevTitle: 'Publicado por el dev del proyecto',
+    roleScoutTitle: 'Encontrado por la comunidad',
+    launchingNow: 'Lanzando ahora',
+    alreadyOut: 'Ya salió',
+    estimatedDate: 'Fecha estimada',
+    launchesIn: 'Lanza en',
+    devVerified: 'Dev verificado',
+    devUnverified: 'Dev sin verificar',
+    communityPost: 'Post de comunidad',
+    officialTitle: 'Launch oficial verificado por Cabal',
+    chart: 'Gráfico',
+    chartTitle: 'Ver gráfico en vivo en el detalle',
+    chartAria: 'Abrir gráfico en vivo en el detalle',
+  },
+
+  tokens: {
+    sort: {
+      trending: 'Tendencia',
+      new: 'Nuevos',
+      winners: 'Ganadores',
+      losers: 'Perdedores',
+      risk: 'Riesgo',
+    },
+    col: {
+      token: 'Token',
+      network: 'Red',
+      price: 'Precio',
+      mc: 'Market Cap',
+      change: '24h',
+      holders: 'Holders',
+      volume: 'Vol 24h',
+      dev: 'Dev',
+    },
+    officialTitle: 'Token oficial verificado por Cabal',
+    noHolders: 'Sin datos de holders todavía',
+    unverifiedDev: 'Dev sin verificar',
+    unverified: 'Sin verificar',
+  },
+
+  feed: {
+    kinds: { thesis: 'Tesis', call: 'Call', comment: 'Comentario' },
+    placeholder: 'Comparte una tesis, un call o tu último movimiento… la comunidad lee antes de comprar.',
+    writeAria: 'Escribir post',
+    contractPlaceholder: 'CA / contrato del token (obligatorio para una call)',
+    contractAria: 'Contrato del token',
+    checking: 'Verificando contrato…',
+    token: 'Token',
+    detectedIn: 'detectado en',
+    withImage: ' · con imagen',
+    withoutImage: ' · sin imagen todavía',
+    network: 'red',
+    notFound:
+      'No lo encontramos en DexScreener ni pump.fun. Revisa el contrato o la red antes de publicar: puede que no aparezca la imagen ni el resultado en vivo.',
+    publish: 'Publicar',
+    pointsStrip: 'Puntos Cabal:',
+    pointsDetail: (thesis: number, launch: number, like: number) =>
+      ` tesis +${thesis} · launch publicado +${launch} · likes recibidos +${like} · se canjean por tokens del airdrop de $CABAL`,
+  },
+
+  leaderboard: {
+    boards: { callers: 'Top Callers', points: 'Puntos Cabal', devs: 'Devs', clans: 'Clanes' },
+    community: 'Comunidad',
+    allCabal: 'Todo Cabal',
+    period: 'Periodo',
+    periods: { '24h': '24 h', '7d': '7 días', '30d': '30 días', all: 'Todo' },
+    noCallsTitle: 'Nadie tiene calls con resultado en este periodo',
+    noCallsBody: 'Publica una call con el CA del token en el Feed: su resultado se calcula en unos minutos.',
+    noClansTitle: 'Todavía no hay comunidades con el bot',
+    noClansBody:
+      'Un clan es tu grupo de Telegram o tu servidor de Discord, tal cual: añade el bot de Cabal y las calls que deis allí puntúan aquí.',
+    howToAdd: 'Cómo añadirlo',
+    online: (n: string) => ` · ${n} en línea`,
+    callers: (n: number) => ` · ${n} caller${n === 1 ? '' : 's'}`,
+    cabalScore: 'Cabal Score',
+    inCabal: 'en Cabal',
+    membersInCabal: (n: string, one: boolean) => `${n} ${one ? 'miembro tiene' : 'miembros tienen'} cuenta en Cabal`,
+    calls: 'Calls',
+    hits: 'Aciertos',
+    hitsOf: (wins: number, calls: number) => `${wins} de ${calls}`,
+    bestCall: 'Mejor call',
+    theirTopCallers: 'Sus mejores callers',
+    seeTheirCallers: 'Ver sus callers',
+    join: 'Unirme',
+    joinAria: (name: string, provider: string) => `Unirme a ${name} en ${provider}`,
+    profileOf: (handle: string) => `Perfil de @${handle}`,
+    hitsLine: (wins: number, calls: number, rate: number) => `${wins}/${calls} aciertos · ${rate}%`,
+    best: 'mejor',
+    points: 'puntos',
+    follow: 'Seguir',
+    howScored: '¿Cómo se calcula?',
+    tierTop: (x: number) => `${x}X o más`,
+    scoreIntro:
+      'Cada call suma puntos según el pico que alcanzó el token después de publicarla (máximo desde la call ÷ precio de entrada).',
+    scoreLoss: (win: number, drop: number) => `Sin llegar a ${win}X y cae más de ${drop}%`,
+    scoreOutro: (win: number) =>
+      `Acierto = pico de ${win}X o más. Los resultados se actualizan cada pocos minutos y quedan fijos a los 30 días.`,
+  },
+
+  activity: {
+    title: 'Actividad del Cabal',
+    live: 'Actividad en vivo',
+    filter: 'Filtrar actividad',
+    filters: { all: 'Todo', launch: 'Launches', post: 'Tesis', chat: 'Chat' },
+    unread: (n: string) => `${n} sin leer`,
+    show: 'Mostrar Actividad del Cabal',
+    hide: 'Ocultar Actividad del Cabal',
+    chatAria: (online: number, unread: string) =>
+      `Chat del Cabal, ${online} conectados${unread ? `, ${unread} sin leer` : ''}`,
+    nobodyOnline: 'Nadie conectado todavía',
+    onlineCount: (n: number) => `${n} conectado${n === 1 ? '' : 's'}`,
+    more: (n: number) => `+${n} más`,
+    empty: 'Sin actividad de este tipo por ahora',
+  },
+
+  rail: {
+    aria: 'Próximos lanzamientos y top traders',
+    upcoming: 'Próximos a lanzar',
+    radarClear: 'Radar despejado… publica el próximo launch',
+    topCabal: 'Top del Cabal',
+    noCalls: 'Aún no hay calls con resultado. Publica una con su CA en el Feed.',
+    pointsTitle: 'Puntos Cabal',
+    pointsBody: 'Publica launches y tesis → gana puntos → cámbialos por tokens cuando lancemos $CABAL.',
+    firstLaunch: 'Publicar mi primer launch',
+    legalNav: 'Enlaces legales',
+    terms: 'Términos',
+    privacy: 'Privacidad',
+    credits: 'Créditos',
+    following: 'siguiendo',
+    follow: 'Seguir',
+    callerLine: (pts: number, best: string) => `${pts} pts · mejor ${best}`,
+    followers: (n: string) => `${n} seguidores`,
+  },
+
+  chat: {
+    title: 'Chat del Cabal',
+    placeholder: 'Escribe al Cabal…',
+    empty: 'Sé el primero en escribir',
+    unavailable: 'El chat en vivo no está disponible en este momento',
+    replyingTo: 'Respondiendo a',
+    cancelReply: 'Cancelar respuesta',
+    like: 'Me gusta',
+    reply: 'Responder',
+    replyTo: (name: string) => `Responder a ${name}`,
+    send: 'Enviar mensaje',
+    roomHint: 'Sala del chat',
+    unlike: 'Quitar me gusta',
+    likeMessage: (name: string) => `Me gusta el mensaje de ${name}`,
+  },
+
+  appFooter: {
+    tagline: 'la comunidad que ve los launches antes que nadie',
+    points: (thesis: number, launch: number) =>
+      `Tesis +${thesis} · Launch +${launch} · Se canjean por $CABAL`,
+  },
+
+  notifications: {
+    label: 'Notificaciones',
+    withUnread: (n: number) => `Notificaciones (${n} sin leer)`,
+    chatReplies: 'Chat · Te respondieron',
+    upcoming: 'Radar · Próximos lanzamientos',
+    nothingSoon: 'Nada en las próximas 36h. Revisa el Radar.',
+    private: 'Privado',
+    posted: 'posteado',
+  },
+}
+
+export type Dict = typeof es

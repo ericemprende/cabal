@@ -19,6 +19,7 @@ import { CountdownPill, NetworkBadge, NetworkIcon, SafetyChecks, TickerLabel, To
 import { fmtPct, launchPhase, networkMeta, timeAgo, type LaunchPhase } from '@/lib/cabal'
 import { useHypeToggle, useLaunches, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { useT } from '@/lib/i18n/provider'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
 import { FudButton } from '@/components/cabal/fud-button'
 import { BoostCounter } from '@/components/cabal/ammo'
@@ -30,6 +31,7 @@ const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'tron', 'ro
 
 /** Mini-chip de rol: DEV = lo publicó el propio dev · SCOUT = encontrado por la comunidad */
 function RoleChip({ role }: { role: 'dev' | 'community' }) {
+  const t = useT()
   const dev = role === 'dev'
   return (
     <span
@@ -37,9 +39,9 @@ function RoleChip({ role }: { role: 'dev' | 'community' }) {
         'shrink-0 rounded px-1 py-px text-[9px] font-black uppercase tracking-wider',
         dev ? 'bg-[#8FA83F]/15 text-primary' : 'bg-white/8 text-zinc-400'
       )}
-      title={dev ? 'Publicado por el dev del proyecto' : 'Encontrado por la comunidad'}
+      title={dev ? t.radar.roleDevTitle : t.radar.roleScoutTitle}
     >
-      {dev ? 'DEV' : 'SCOUT'}
+      {dev ? t.radar.roleDev : t.radar.roleScout}
     </span>
   )
 }
@@ -50,13 +52,10 @@ type StatusFilter = 'active' | 'ended' | 'all'
  * "Próximos" incluye lo que se está lanzando ahora (30 min tras la hora) y lo
  * que tenía fecha estimada y todavía no ha salido. Lo demás, a Finalizados.
  */
-const STATUS_TABS: { key: StatusFilter; label: string }[] = [
-  { key: 'active', label: 'Próximos' },
-  { key: 'ended', label: 'Finalizados' },
-  { key: 'all', label: 'Todos' },
-]
+const STATUS_TABS: StatusFilter[] = ['active', 'ended', 'all']
 
 export function RadarTab() {
+  const t = useT()
   const { data: launches, isLoading } = useLaunches()
   const rules = usePointRules()
   const router = useRouter()
@@ -146,7 +145,7 @@ export function RadarTab() {
             >
               {n === 'all' ? (
                 <span className="flex items-center gap-1.5">
-                  <Globe className="h-3.5 w-3.5" aria-hidden /> Todas
+                  <Globe className="h-3.5 w-3.5" aria-hidden /> {t.radar.all}
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5">
@@ -161,19 +160,19 @@ export function RadarTab() {
           {/* Estado: lo que está por salir o ya salió (desplegable para ahorrar una fila) */}
           <DropdownMenu>
             <DropdownMenuTrigger
-              aria-label="Estado de los launches"
+              aria-label={t.radar.statusAria}
               className="flex items-center gap-1.5 rounded-full border border-[#8FA83F]/50 bg-[#8FA83F]/10 px-3 py-1.5 text-xs font-semibold text-primary outline-none"
             >
-              {STATUS_TABS.find((t) => t.key === status)?.label}
+              {t.radar.status[status]}
               <span className="rounded-full bg-[#8FA83F]/20 px-1.5 font-mono text-[10px]">{counts[status]}</span>
               <ChevronDown className="h-3.5 w-3.5" aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-44 border-white/10 bg-popover">
               <DropdownMenuRadioGroup value={status} onValueChange={(v) => setStatus(v as StatusFilter)}>
-                {STATUS_TABS.map((t) => (
-                  <DropdownMenuRadioItem key={t.key} value={t.key} className="justify-between text-[13px]">
-                    {t.label}
-                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">{counts[t.key]}</span>
+                {STATUS_TABS.map((key) => (
+                  <DropdownMenuRadioItem key={key} value={key} className="justify-between text-[13px]">
+                    {t.radar.status[key]}
+                    <span className="ml-auto font-mono text-[10px] text-muted-foreground">{counts[key]}</span>
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
@@ -184,7 +183,7 @@ export function RadarTab() {
             className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'soon' ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground')}
           >
             <span className="flex items-center gap-1.5">
-              <Timer className="h-3.5 w-3.5" aria-hidden /> Por fecha
+              <Timer className="h-3.5 w-3.5" aria-hidden /> {t.radar.byDate}
             </span>
           </button>
           <button
@@ -192,7 +191,7 @@ export function RadarTab() {
             className={cn('rounded-full border px-3 py-1.5 text-xs font-semibold', sort === 'hype' ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground')}
           >
             <span className="flex items-center gap-1.5">
-              <Flame className="h-3.5 w-3.5" aria-hidden /> Más hype
+              <Flame className="h-3.5 w-3.5" aria-hidden /> {t.radar.mostHype}
             </span>
           </button>
           <Button
@@ -200,7 +199,7 @@ export function RadarTab() {
             onClick={() => router.push('/publicar')}
             className="hidden gap-1 px-3 text-xs font-bold md:inline-flex"
           >
-            <Plus className="h-3.5 w-3.5" strokeWidth={3} /> Publicar
+            <Plus className="h-3.5 w-3.5" strokeWidth={3} /> {t.radar.publish}
           </Button>
         </div>
       </div>
@@ -216,11 +215,11 @@ export function RadarTab() {
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/10 py-16 text-center">
           <Rocket className="h-8 w-8 text-muted-foreground" />
           <div>
-            <p className="font-semibold">No hay launches con este filtro</p>
-            <p className="text-sm text-muted-foreground">Sé el primero en avisar a la comunidad (+{rules.points_launch} puntos)</p>
+            <p className="font-semibold">{t.radar.emptyTitle}</p>
+            <p className="text-sm text-muted-foreground">{t.radar.emptyBody(rules.points_launch)}</p>
           </div>
           <Button onClick={() => router.push('/publicar')} className="font-bold">
-            Publicar lanzamiento
+            {t.radar.publishLaunch}
           </Button>
         </div>
       ) : (
@@ -262,6 +261,7 @@ function CardBanner({ src }: { src?: string | null }) {
 }
 
 function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => void }) {
+  const t = useT()
   const hype = useHypeToggle()
   const c = useCountdown(launch.launchAt, launch.dateConfirmed)
   // Solo lo que todavía no ha llegado a su hora puede ser "inminente": antes un
@@ -298,7 +298,7 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md bg-primary px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-primary-foreground">
-              Destacado
+              {t.radar.featured}
             </span>
             <NetworkBadge network={launch.network} />
             <RoleChip role={launch.submitterRole} />
@@ -313,23 +313,30 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
                   ? 'border-[#8FA83F]/50 bg-[#8FA83F]/15 text-primary'
                   : 'border-white/10 text-amber-300 hover:border-[#8FA83F]/40 hover:text-primary'
               )}
-              aria-label="Dar hype"
+              aria-label={t.radar.giveHype}
             >
-              <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-5 w-5" placa /> {launch.hype} hypes
+              <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-5 w-5" placa />{' '}
+              {t.radar.hypes(launch.hype)}
             </button>
             <FudButton launchId={launch.id} fud={launch.fud} fudded={launch.fudded} className="py-0.5" />
           </div>
           <h2 className="font-display mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xl font-bold sm:text-2xl">
             <span className="min-w-0 truncate">{launch.name}</span>
             <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary text-glow" />
-            {launch.verified && <OfficialBadge label title="Launch oficial verificado por Cabal" />}
+            {launch.verified && <OfficialBadge label title={t.radar.officialTitle} />}
           </h2>
           <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{launch.description}</p>
         </div>
         <div className="flex flex-row items-center gap-3 sm:flex-col sm:items-end">
           <div className="text-right">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              {c.live ? 'Lanzando ahora' : c.recent ? 'Ya salió' : c.pending ? 'Fecha estimada' : 'Lanza en'}
+              {c.live
+                ? t.radar.launchingNow
+                : c.recent
+                  ? t.radar.alreadyOut
+                  : c.pending
+                    ? t.radar.estimatedDate
+                    : t.radar.launchesIn}
             </p>
             <p
               className={cn(
@@ -348,6 +355,7 @@ function FeaturedLaunch({ launch, onOpen }: { launch: LaunchDTO; onOpen: () => v
 }
 
 export function LaunchCard({ launch }: { launch: LaunchDTO }) {
+  const t = useT()
   const hype = useHypeToggle()
   const { openLaunch } = useUI()
   const c = useCountdown(launch.launchAt, launch.dateConfirmed)
@@ -374,7 +382,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           <div className="flex min-w-0 items-baseline gap-1.5">
             <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="shrink-0 font-display text-[15px] font-bold text-primary" />
             <span className="min-w-0 truncate text-[13px] font-semibold text-foreground/80">{launch.name}</span>
-            {launch.verified && <OfficialBadge className="self-center" title="Launch oficial verificado por Cabal" />}
+            {launch.verified && <OfficialBadge className="self-center" title={t.radar.officialTitle} />}
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-1.5">
             <NetworkBadge network={launch.network} className="shrink-0" />
@@ -408,7 +416,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
               ? 'border-[#8FA83F]/50 bg-[#8FA83F]/15 text-primary'
               : 'border-white/10 text-muted-foreground hover:border-[#8FA83F]/40 hover:text-primary'
           )}
-          aria-label="Dar hype"
+          aria-label={t.radar.giveHype}
         >
           <Chapa silueta="flame" metal={launch.hyped ? 'oro' : 'acero'} className="h-5 w-5" placa />
           {launch.hype}
@@ -427,16 +435,20 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
               openLaunch(launch.id)
             }}
             className="flex items-center gap-1 rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-all hover:border-[#8FA83F]/40 hover:text-primary active:scale-95"
-            title="Ver gráfico en vivo en el detalle"
-            aria-label="Abrir gráfico en vivo en el detalle"
+            title={t.radar.chartTitle}
+            aria-label={t.radar.chartAria}
           >
             <LineChart className="h-3.5 w-3.5" aria-hidden />
-            Gráfico
+            {t.radar.chart}
           </button>
         )}
         <span className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground">
           {launch.lpLocked ? <Lock className="h-3 w-3 text-primary" /> : <ShieldOff className="h-3 w-3 text-amber-300" />}
-          {launch.createdBy.isDev && launch.createdBy.walletVerified ? 'Dev verificado' : launch.createdBy.isDev ? 'Dev sin verificar' : 'Post de comunidad'}
+          {launch.createdBy.isDev && launch.createdBy.walletVerified
+            ? t.radar.devVerified
+            : launch.createdBy.isDev
+              ? t.radar.devUnverified
+              : t.radar.communityPost}
         </span>
       </div>
     </article>

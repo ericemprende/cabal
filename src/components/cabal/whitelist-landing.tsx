@@ -24,6 +24,10 @@ import { jsonFetch, qk } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import { XLogo } from '@/components/cabal/x-logo'
 import { CABAL_X_HANDLE, CABAL_X_URL } from '@/lib/cabal-x'
+import { LangSwitch } from '@/components/cabal/lang-switch'
+import { useLang } from '@/lib/i18n/provider'
+import { useT } from '@/lib/i18n/provider'
+import type { Dict } from '@/lib/i18n/dictionaries'
 import type { WaitlistStatusDTO } from '@/lib/waitlist'
 
 /**
@@ -33,53 +37,16 @@ import type { WaitlistStatusDTO } from '@/lib/waitlist'
  * decisión al visitante.
  */
 
-const BENEFITS = [
-  {
-    icon: Radar,
-    title: 'Los launches, antes de que salgan',
-    body: 'El radar de Cabal recoge lanzamientos que la comunidad publica con fecha y hora. Llegas al minuto cero, no cuando ya está en todos los grupos.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Historial real de cada dev',
-    body: 'Cada token queda ligado a la wallet que lo lanzó, con métricas on-chain verificadas: máximo histórico, liquidez bloqueada, mint revocado y rugs anteriores.',
-  },
-  {
-    icon: Trophy,
-    title: 'Puntos que se canjean por $CABAL',
-    body: 'Publicas una tesis, aciertas un call, aportas información: sumas puntos Cabal. Los puntos del periodo previo al lanzamiento cuentan doble.',
-  },
-  {
-    icon: Users,
-    title: 'Una comunidad cerrada, no un grupo de señales',
-    body: 'Tesis argumentadas, debate público y reputación acumulada. Quien acierta sube en la tabla; quien inventa, se queda sin credibilidad.',
-  },
-  {
-    icon: Eye,
-    title: 'Transmisiones en vivo del lanzamiento',
-    body: 'Los devs presentan su proyecto en directo desde la ficha del launch. Preguntas en tiempo real antes de poner un solo dólar.',
-  },
-  {
-    icon: Gift,
-    title: 'Ventajas de fundador',
-    body: 'Quien entra por la lista de espera conserva su plaza, su @handle y una insignia de miembro fundador cuando abramos al público.',
-  },
-]
-
-const ERRORS: Record<string, string> = {
-  access_denied: 'Cancelaste la autorización en X',
-  state: 'La sesión expiró, vuelve a intentarlo',
-  token: 'X rechazó el intercambio del código',
-  profile: 'No se pudo leer tu perfil de X',
-  no_config: 'El acceso con X aún no está configurado',
-  server: 'Error inesperado, inténtalo de nuevo',
-}
+/** Los iconos van en el mismo orden que landing.benefits del diccionario. */
+const BENEFIT_ICONS = [Radar, ShieldCheck, Trophy, Users, Eye, Gift]
 
 /**
  * @param refHandle Quién invita. Lo pasa la ruta /r/<handle>; si no viene, se
  *   lee de ?ref=, que es el formato de los enlaces antiguos ya publicados.
  */
 export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = {}) {
+  const t = useT()
+  const [lang] = useLang()
   const status = useQuery<WaitlistStatusDTO>({
     queryKey: qk.waitlistMe,
     queryFn: () => jsonFetch('/api/waitlist/me'),
@@ -102,8 +69,10 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
   })
 
   useEffect(() => {
-    if (params.error) toast.error(ERRORS[params.error] ?? 'No se pudo completar el registro')
-  }, [params])
+    if (!params.error) return
+    const errors = t.landing.errors as Record<string, string>
+    toast.error(errors[params.error] ?? t.landing.errors.generic)
+  }, [params, t])
 
   const data = status.data
   // Quien ya pasó por X vuelve a su paso pendiente en vez de repetir el login
@@ -119,8 +88,11 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
             <Link href="/app" className="transition-opacity hover:opacity-80">
               <CabalWordmark className="h-8" />
             </Link>
-            <span className="ml-auto rounded-full border border-[#8FA83F]/40 bg-[#8FA83F]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-primary">
-              Acceso anticipado
+            {/* El idioma se elige desde la primera pantalla: quien llega en
+                inglés no tiene que adivinar dónde se cambia. */}
+            <LangSwitch className="ml-auto" size="md" />
+            <span className="hidden rounded-full border border-[#8FA83F]/40 bg-[#8FA83F]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-primary sm:inline-flex">
+              {t.landing.earlyAccess}
             </span>
           </header>
 
@@ -131,8 +103,10 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
               configured={data?.configured ?? true}
               refHandle={params.ref}
               pending={pending}
+              t={t}
+              lang={lang}
             />
-            <Mockup />
+            <Mockup t={t} />
           </div>
         </div>
       </div>
@@ -140,35 +114,33 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
       <div className="relative mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
         <section className="mt-10 md:mt-16">
           <h2 className="font-display text-2xl font-bold sm:text-3xl">
-            Por qué merece la pena entrar <span className="text-primary">antes</span>
+            {t.landing.benefitsTitle.before}
+            <span className="text-primary">{t.landing.benefitsTitle.accent}</span>
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Cabal no es otro grupo de señales. Es el registro público de quién lanzó qué, quién lo vio venir y quién se
-            equivocó.
-          </p>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t.landing.benefitsLead}</p>
           <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {BENEFITS.map((b) => (
-              <article
-                key={b.title}
-                className="rounded-2xl border border-white/10 bg-[#121410] p-5 transition-colors hover:border-[#8FA83F]/40"
-              >
-                <b.icon className="h-5 w-5 text-primary" aria-hidden />
-                <h3 className="mt-3 font-display text-[15px] font-bold">{b.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{b.body}</p>
-              </article>
-            ))}
+            {t.landing.benefits.map((b, i) => {
+              const Icon = BENEFIT_ICONS[i] ?? Radar
+              return (
+                <article
+                  key={b.title}
+                  className="rounded-2xl border border-white/10 bg-[#121410] p-5 transition-colors hover:border-[#8FA83F]/40"
+                >
+                  <Icon className="h-5 w-5 text-primary" aria-hidden />
+                  <h3 className="mt-3 font-display text-[15px] font-bold">{b.title}</h3>
+                  <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{b.body}</p>
+                </article>
+              )
+            })}
           </div>
         </section>
 
         <footer className="mt-14 border-t border-white/10 pt-6 text-xs text-muted-foreground">
           <p>
-            <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · cabal.army —
-            la comunidad que ve los launches antes que nadie.
+            <span className="font-machina font-bold uppercase tracking-[0.08em] text-foreground">Cabal</span> · cabal.army —{' '}
+            {t.landing.footer.tagline}
           </p>
-          <p className="mt-1.5">
-            Solo pedimos tu cuenta de X para verificar que eres una persona real y reservar tu @handle. Nada de esto es
-            consejo financiero.
-          </p>
+          <p className="mt-1.5">{t.landing.footer.legal}</p>
           <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
             <a
               href={CABAL_X_URL}
@@ -179,13 +151,13 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
               <XLogo className="h-3 w-3" />@{CABAL_X_HANDLE}
             </a>
             <Link href="/terminos" className="hover:text-foreground">
-              Términos de Servicio
+              {t.landing.footer.terms}
             </Link>
             <Link href="/privacidad" className="hover:text-foreground">
-              Política de Privacidad
+              {t.landing.footer.privacy}
             </Link>
             <Link href="/creditos" className="hover:text-foreground">
-              Créditos
+              {t.landing.footer.credits}
             </Link>
             <a href="mailto:legal@cabal.army" className="hover:text-foreground">
               legal@cabal.army
@@ -291,62 +263,62 @@ function Hero({
   configured,
   refHandle,
   pending,
+  t,
+  lang,
 }: {
   total: number
   loading: boolean
   configured: boolean
   refHandle: string | null
   pending: boolean
+  t: Dict
+  lang: string
 }) {
+  const TRUST_ICONS = [BadgeCheck, Lock, CheckCircle2]
+
   return (
     <div>
       <h1 className="font-machina text-4xl font-bold leading-[1.05] sm:text-5xl md:text-6xl">
-        Entra al radar
+        {t.landing.hero.titleTop}
         <br />
-        <span className="text-primary">antes que el resto</span>
+        <span className="text-primary">{t.landing.hero.titleAccent}</span>
       </h1>
       <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
-        Cabal abre por invitación. Apúntate a la lista de espera con tu cuenta de X, reserva tu plaza y tu @handle, y sé de
-        los primeros en ver los lanzamientos cuando abramos.
+        {t.landing.hero.body}
       </p>
 
       {refHandle && (
         <p className="mt-5 inline-flex rounded-xl border border-[#8FA83F]/30 bg-[#8FA83F]/10 px-3.5 py-2 text-[13px]">
-          Te invitó <span className="ml-1 font-bold text-primary">@{refHandle}</span>
+          {t.landing.hero.invitedBy} <span className="ml-1 font-bold text-primary">@{refHandle}</span>
         </p>
       )}
 
       {/* Llamado a la acción principal */}
       <div className="mt-8">
-        <CtaButton configured={configured} refHandle={refHandle} pending={pending} />
+        <CtaButton configured={configured} refHandle={refHandle} pending={pending} t={t} />
         <p className="mt-3 flex items-center gap-1.5 text-[12px] text-muted-foreground">
           <Zap className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-          Gana 10 puntos Cabal al compartir tu tarjeta después de registrarte
+          {t.landing.hero.sharePoints}
         </p>
-        {!configured && (
-          <p className="mt-1.5 text-[11px] text-muted-foreground">
-            Falta definir X_CLIENT_ID y X_CLIENT_SECRET en el servidor.
-          </p>
-        )}
+        {!configured && <p className="mt-1.5 text-[11px] text-muted-foreground">{t.landing.hero.notConfigured}</p>}
       </div>
 
       <div className="mt-8 flex flex-wrap items-center gap-2.5">
-        <Stat label="Ya en la lista" value={loading ? '—' : total.toLocaleString('es')} highlight />
-        <Stat label="Plazas de la primera tanda" value="500" />
-        <Stat label="Coste" value="Gratis" />
+        <Stat label={t.landing.stats.onList} value={loading ? '—' : total.toLocaleString(lang)} highlight />
+        <Stat label={t.landing.stats.seats} value="500" />
+        <Stat label={t.landing.stats.cost} value={t.common.free} />
       </div>
 
       <ul className="mt-7 space-y-2.5">
-        {[
-          { icon: BadgeCheck, text: 'Verificación con tu cuenta real de X: sin bots, sin cuentas duplicadas.' },
-          { icon: Lock, text: 'No pedimos permiso para publicar ni acceso a tus mensajes.' },
-          { icon: CheckCircle2, text: 'Tu @handle queda reservado hasta el día del lanzamiento.' },
-        ].map((t) => (
-          <li key={t.text} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-            <t.icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-            {t.text}
-          </li>
-        ))}
+        {t.landing.trust.map((text, i) => {
+          const Icon = TRUST_ICONS[i] ?? BadgeCheck
+          return (
+            <li key={text} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+              {text}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -357,10 +329,12 @@ function CtaButton({
   configured,
   refHandle,
   pending,
+  t,
 }: {
   configured: boolean
   refHandle: string | null
   pending: boolean
+  t: Dict
 }) {
   const startHref = `/api/waitlist/x/start${refHandle ? `?ref=${encodeURIComponent(refHandle)}` : ''}`
   const classes =
@@ -372,7 +346,7 @@ function CtaButton({
       <Button asChild className={classes}>
         <Link href="/whitelist">
           <Shine />
-          Continuar mi registro
+          {t.landing.cta.continue}
           <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" aria-hidden />
         </Link>
       </Button>
@@ -382,7 +356,7 @@ function CtaButton({
   if (!configured) {
     return (
       <Button disabled className={cn(classes, 'animate-none opacity-70')}>
-        <XLogo className="h-5 w-5" /> Acceso con X no disponible
+        <XLogo className="h-5 w-5" /> {t.landing.cta.unavailable}
       </Button>
     )
   }
@@ -392,7 +366,7 @@ function CtaButton({
       <a href={startHref}>
         <Shine />
         <XLogo className="h-5 w-5" />
-        Acceso con X
+        {t.landing.cta.login}
         <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </a>
     </Button>
@@ -428,7 +402,7 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
  * detras. El marco va en su propia capa para poder moverlo sin arrastrar al
  * escuadron, que se mantiene quieto y nitido.
  */
-function Mockup() {
+function Mockup({ t }: { t: Dict }) {
   return (
     <div className="relative mx-auto w-full max-w-[560px] lg:mx-0">
       <div
@@ -450,7 +424,7 @@ function Mockup() {
 
         <Image
           src="/home-squad.webp"
-          alt="El escuadron de Cabal: la comunidad que lanza y respalda proyectos."
+          alt={t.landing.mockup.squadAlt}
           fill
           priority
           className="animate-squad-sway relative object-contain drop-shadow-[0_20px_45px_rgba(0,0,0,0.55)]"
@@ -459,8 +433,9 @@ function Mockup() {
       </div>
 
       <p className="relative mt-6 text-center text-[12px] text-muted-foreground">
-        Al registrarte generamos <span className="font-bold text-primary">tu tarjeta</span> con tu foto y tu @usuario,
-        lista para publicar en X.
+        {t.landing.mockup.before}
+        <span className="font-bold text-primary">{t.landing.mockup.card}</span>
+        {t.landing.mockup.after}
       </p>
     </div>
   )

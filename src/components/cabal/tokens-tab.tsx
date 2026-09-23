@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Flame, Globe, MessageSquare, ShieldAlert, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { NetworkBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { BoostCounter } from '@/components/cabal/ammo'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
@@ -11,12 +12,12 @@ import { fmtMc, fmtNum, fmtPct, fmtPrice, networkMeta, timeAgo } from '@/lib/cab
 import { useTokens } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
-const SORTS = [
-  { key: 'trending', label: 'Tendencia', icon: Flame },
-  { key: 'new', label: 'Nuevos', icon: Sparkles },
-  { key: 'winners', label: 'Ganadores', icon: TrendingUp },
-  { key: 'losers', label: 'Perdedores', icon: TrendingDown },
-  { key: 'risk', label: 'Riesgo', icon: ShieldAlert },
+const SORTS: { key: keyof ReturnType<typeof useT>['tokens']['sort']; icon: typeof Flame }[] = [
+  { key: 'trending', icon: Flame },
+  { key: 'new', icon: Sparkles },
+  { key: 'winners', icon: TrendingUp },
+  { key: 'losers', icon: TrendingDown },
+  { key: 'risk', icon: ShieldAlert },
 ] as const
 
 /**
@@ -34,6 +35,8 @@ const GRID = cn(
 const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'robinhood', 'arc', 'tron'] as const
 
 export function TokensTab() {
+  // `t` es cada token dentro de la lista: los textos se leen como `copy`.
+  const copy = useT()
   const [sort, setSort] = useState<string>('trending')
   const [network, setNetwork] = useState<string>('all')
   const { data: tokens, isLoading } = useTokens(sort, network)
@@ -57,7 +60,7 @@ export function TokensTab() {
             )}
           >
             <s.icon className="h-3.5 w-3.5" aria-hidden />
-            {s.label}
+            {copy.tokens.sort[s.key]}
           </button>
         ))}
         <span className="mx-1 h-5 w-px shrink-0 bg-white/10" />
@@ -72,7 +75,7 @@ export function TokensTab() {
           >
             {n === 'all' ? (
               <span className="flex items-center gap-1">
-                <Globe className="h-3 w-3" aria-hidden /> Todas
+                <Globe className="h-3 w-3" aria-hidden /> {copy.radar.all}
               </span>
             ) : (
               networkMeta(n).short
@@ -91,14 +94,14 @@ export function TokensTab() {
             'mb-1.5 hidden px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground @2xl:grid'
           )}
         >
-          <span>Token</span>
-          <span>Red</span>
-          <span className="hidden text-right @[52rem]:block">Precio</span>
-          <span className="text-right">Market Cap</span>
-          <span className="text-right">24h</span>
-          <span className="text-right">Holders</span>
-          <span className="hidden text-right @[52rem]:block">Vol 24h</span>
-          <span className="pl-2">Dev</span>
+          <span>{copy.tokens.col.token}</span>
+          <span>{copy.tokens.col.network}</span>
+          <span className="hidden text-right @[52rem]:block">{copy.tokens.col.price}</span>
+          <span className="text-right">{copy.tokens.col.mc}</span>
+          <span className="text-right">{copy.tokens.col.change}</span>
+          <span className="text-right">{copy.tokens.col.holders}</span>
+          <span className="hidden text-right @[52rem]:block">{copy.tokens.col.volume}</span>
+          <span className="pl-2">{copy.tokens.col.dev}</span>
           <span />
         </div>
 
@@ -129,7 +132,7 @@ export function TokensTab() {
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 truncate text-sm font-bold">
                       {t.ticker}
-                      {t.verified && <OfficialBadge title="Token oficial verificado por Cabal" />}
+                      {t.verified && <OfficialBadge title={copy.tokens.officialTitle} />}
                       {t.isRug && <span className="rounded bg-[#ff4d5e]/15 px-1 py-px text-[9px] font-black text-[#ff8080]">RUG</span>}
                       {t.boost && <BoostCounter boost={t.boost} size="xs" />}
                     </p>
@@ -151,7 +154,7 @@ export function TokensTab() {
                 <p className={cn('text-right text-[13px] font-bold tabular-nums', t.change24h >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
                   {fmtPct(t.change24h)}
                 </p>
-                <p className="hidden text-right text-xs tabular-nums text-muted-foreground @2xl:block" title={t.holders > 0 ? undefined : 'Sin datos de holders todavía'}>
+                <p className="hidden text-right text-xs tabular-nums text-muted-foreground @2xl:block" title={t.holders > 0 ? undefined : copy.tokens.noHolders}>
                   {t.holders > 0 ? fmtNum(t.holders) : '—'}
                 </p>
                 <p className="hidden text-right text-xs tabular-nums text-muted-foreground @[52rem]:block">{fmtMc(t.volume24h)}</p>
@@ -163,8 +166,8 @@ export function TokensTab() {
                     </>
                   ) : (
                     // Lo publicó un scout y nadie lo ha reclamado todavía
-                    <span className="truncate text-[11px] text-muted-foreground/70" title="Dev sin verificar">
-                      Sin verificar
+                    <span className="truncate text-[11px] text-muted-foreground/70" title={copy.tokens.unverifiedDev}>
+                      {copy.tokens.unverified}
                     </span>
                   )}
                 </div>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Crown, MessageCircle, MessageSquare, Radio, Rocket, Timer, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { Button } from '@/components/ui/button'
 import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
@@ -20,21 +21,22 @@ import { fmtMultiple } from '@/lib/call-score'
 
 type ActivityFilter = 'all' | 'launch' | 'post' | 'chat'
 
-const ACTIVITY_FILTERS: { value: ActivityFilter; label: string; icon: typeof Radio }[] = [
-  { value: 'all', label: 'Todo', icon: Radio },
-  { value: 'launch', label: 'Launches', icon: Rocket },
-  { value: 'post', label: 'Tesis', icon: MessageSquare },
-  { value: 'chat', label: 'Chat', icon: MessageCircle },
+const ACTIVITY_FILTERS: { value: ActivityFilter; icon: typeof Radio }[] = [
+  { value: 'all', icon: Radio },
+  { value: 'launch', icon: Rocket },
+  { value: 'post', icon: MessageSquare },
+  { value: 'chat', icon: MessageCircle },
 ]
 
 /** Lista de quién está conectado ahora mismo, para el tooltip del icono del chat. */
 function OnlineTooltipContent() {
+  const t = useT()
   const members = useOnlineMembers()
-  if (members.length === 0) return <p className="text-xs">Nadie conectado todavía</p>
+  if (members.length === 0) return <p className="text-xs">{t.activity.nobodyOnline}</p>
   return (
     <div className="max-w-[220px] space-y-1.5">
       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-        {members.length} conectado{members.length === 1 ? '' : 's'}
+        {t.activity.onlineCount(members.length)}
       </p>
       <div className="space-y-1">
         {members.slice(0, 8).map((m) => (
@@ -44,7 +46,7 @@ function OnlineTooltipContent() {
           </div>
         ))}
         {members.length > 8 && (
-          <p className="text-[10px] text-muted-foreground">+{members.length - 8} más</p>
+          <p className="text-[10px] text-muted-foreground">{t.activity.more(members.length - 8)}</p>
         )}
       </div>
     </div>
@@ -62,6 +64,7 @@ function OnlineTooltipContent() {
  * móvil no, porque allí el Chat tiene su propio botón y repetirlo confunde.
  */
 export function ActivityStream({ withChat = true }: { withChat?: boolean }) {
+  const t = useT()
   const { items: activity, isLoading } = useActivity(30)
   const { openLaunch } = useUI()
   const [filter, setFilter] = useState<ActivityFilter>('all')
@@ -78,8 +81,8 @@ export function ActivityStream({ withChat = true }: { withChat?: boolean }) {
   return (
     <div id="cabal-activity-panel">
       {/* Filtro por tipo de actividad */}
-      <div className="mb-3 flex items-center gap-1 px-1" role="tablist" aria-label="Filtrar actividad">
-        {filters.map(({ value, label, icon: Icon }) =>
+      <div className="mb-3 flex items-center gap-1 px-1" role="tablist" aria-label={t.activity.filter}>
+        {filters.map(({ value, icon: Icon }) =>
           value === 'chat' ? (
             <Tooltip key={value}>
               <TooltipTrigger asChild>
@@ -95,11 +98,11 @@ export function ActivityStream({ withChat = true }: { withChat?: boolean }) {
                   )}
                 >
                   <Icon className="h-3 w-3" aria-hidden />
-                  {label}
+                  {t.activity.filters[value]}
                   {unread > 0 && filter !== 'chat' ? (
                     <span
                       className="ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-400 px-1 text-[9px] font-bold leading-none text-[#0a0b08]"
-                      aria-label={`${unread} sin leer`}
+                      aria-label={t.activity.unread(unreadLabel)}
                     >
                       {unreadLabel}
                     </span>
@@ -126,7 +129,7 @@ export function ActivityStream({ withChat = true }: { withChat?: boolean }) {
               )}
             >
               <Icon className="h-3 w-3" aria-hidden />
-              {label}
+              {t.activity.filters[value]}
             </button>
           )
         )}
@@ -140,7 +143,7 @@ export function ActivityStream({ withChat = true }: { withChat?: boolean }) {
             [...Array(6)].map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-[#121410]" />)}
           {!isLoading && filtered.length === 0 && (
             <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
-              Sin actividad de este tipo por ahora
+              {t.activity.empty}
             </p>
           )}
           {filtered.map((item) =>
@@ -163,6 +166,7 @@ export function ActivityStream({ withChat = true }: { withChat?: boolean }) {
 }
 
 export function LeftFeed() {
+  const t = useT()
   const onlineCount = useOnlineCount()
   const unread = useChatUnread()
   const unreadLabel = unread > 99 ? '99+' : String(unread)
@@ -174,7 +178,7 @@ export function LeftFeed() {
   return (
     <aside
       className={cn('hidden shrink-0 transition-[width] duration-200 lg:block', collapsed ? 'w-11' : 'w-[440px]')}
-      aria-label="Actividad en vivo"
+      aria-label={t.activity.live}
     >
       <div className="sticky top-[72px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1">
         <button
@@ -185,14 +189,14 @@ export function LeftFeed() {
           )}
           aria-expanded={!collapsed}
           aria-controls="cabal-activity-panel"
-          title={collapsed ? 'Mostrar Actividad del Cabal' : 'Ocultar Actividad del Cabal'}
+          title={collapsed ? t.activity.show : t.activity.hide}
         >
           {collapsed ? (
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
           ) : (
             <>
               <Radio className="h-3.5 w-3.5 text-primary live-dot" />
-              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Actividad del Cabal</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.activity.title}</p>
               <ChevronLeft className="ml-auto h-3.5 w-3.5 text-muted-foreground" aria-hidden />
             </>
           )}
@@ -205,7 +209,7 @@ export function LeftFeed() {
               <button
                 onClick={() => setCollapsed(false)}
                 className="relative flex h-9 w-9 items-center justify-center rounded-lg hover:bg-white/5"
-                aria-label={`Chat del Cabal, ${onlineCount} conectados${unread ? `, ${unread} sin leer` : ''}`}
+                aria-label={t.activity.chatAria(onlineCount, unread ? unreadLabel : '')}
               >
                 <MessageCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
                 {unread > 0 ? (
@@ -231,6 +235,7 @@ export function LeftFeed() {
 
 // ---------- Right: next launches + top callers ----------
 export function RightRail() {
+  const t = useT()
   const { data: launches } = useLaunches()
   const { data: leaderboard } = useLeaderboard()
   const follow = useFollowToggle()
@@ -249,13 +254,13 @@ export function RightRail() {
   const top = (leaderboard?.callers ?? []).slice(0, 6)
 
   return (
-    <aside className="hidden w-[290px] shrink-0 xl:block" aria-label="Próximos lanzamientos y top traders">
+    <aside className="hidden w-[290px] shrink-0 xl:block" aria-label={t.rail.aria}>
       <div className="sticky top-[72px] max-h-[calc(100vh-140px)] space-y-4 overflow-y-auto pl-1">
         {/* Next launches */}
         <section>
           <div className="mb-2 flex items-center justify-between px-1">
             <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-              <Timer className="h-3.5 w-3.5" aria-hidden /> Próximos a lanzar
+              <Timer className="h-3.5 w-3.5" aria-hidden /> {t.rail.upcoming}
             </p>
             <button onClick={() => router.push('/publicar')} className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">
               <Zap className="h-3 w-3" aria-hidden /> +{rules.points_launch}
@@ -272,7 +277,7 @@ export function RightRail() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[13px] font-bold">
                     {l.isPrivate || !l.ticker ? (
-                      <span className="text-amber-300/90">Privado</span>
+                      <span className="text-amber-300/90">{t.notifications.private}</span>
                     ) : (
                       l.ticker
                     )}{' '}
@@ -285,7 +290,7 @@ export function RightRail() {
             ))}
             {next.length === 0 && (
               <p className="rounded-xl border border-dashed border-white/10 p-3 text-center text-xs text-muted-foreground">
-                Radar despejado… publica el próximo launch
+                {t.rail.radarClear}
               </p>
             )}
           </div>
@@ -294,7 +299,7 @@ export function RightRail() {
         {/* Top callers */}
         <section>
           <p className="mb-2 flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-            <Crown className="h-3.5 w-3.5 text-amber-300/80" aria-hidden /> Top del Cabal
+            <Crown className="h-3.5 w-3.5 text-amber-300/80" aria-hidden /> {t.rail.topCabal}
           </p>
           <div className="card-surface space-y-0.5 rounded-xl border border-white/10 p-1.5">
             {top.map((c, i) => (
@@ -302,7 +307,7 @@ export function RightRail() {
             ))}
             {top.length === 0 && (
               <p className="px-2 py-3 text-center text-xs text-muted-foreground">
-                Aún no hay calls con resultado. Publica una con su CA en el Feed.
+                {t.rail.noCalls}
               </p>
             )}
           </div>
@@ -311,22 +316,28 @@ export function RightRail() {
         {/* Points CTA */}
         <section className="rounded-xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
           <p className="flex items-center gap-1.5 font-display text-sm font-bold text-primary">
-            <Zap className="h-4 w-4" aria-hidden /> Puntos Cabal
+            <Zap className="h-4 w-4" aria-hidden /> {t.rail.pointsTitle}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">
-            Publica launches y tesis → gana puntos → cámbialos por tokens cuando lancemos $CABAL.
+            {t.rail.pointsBody}
           </p>
           <Button size="sm" onClick={() => router.push('/publicar')} className="mt-2.5 w-full">
-            Publicar mi primer launch
+            {t.rail.firstLaunch}
           </Button>
         </section>
 
         {/* El crédito de las siluetas de las insignias (CC BY) vive en /creditos
             y tiene que estar enlazado desde donde se ven, no solo en la landing. */}
-        <nav className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[11px] text-muted-foreground" aria-label="Enlaces legales">
-          <Link href="/terminos" className="hover:text-foreground">Términos</Link>
-          <Link href="/privacidad" className="hover:text-foreground">Privacidad</Link>
-          <Link href="/creditos" className="hover:text-foreground">Créditos</Link>
+        <nav className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[11px] text-muted-foreground" aria-label={t.rail.legalNav}>
+          <Link href="/terminos" className="hover:text-foreground">
+            {t.rail.terms}
+          </Link>
+          <Link href="/privacidad" className="hover:text-foreground">
+            {t.rail.privacy}
+          </Link>
+          <Link href="/creditos" className="hover:text-foreground">
+            {t.rail.credits}
+          </Link>
         </nav>
       </div>
     </aside>
@@ -342,6 +353,7 @@ function TopCallerRow({
   rank: number
   onFollow: () => void
 }) {
+  const t = useT()
   const online = useIsOnline(caller.user.id)
   return (
     <div className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 transition-colors hover:bg-white/5">
@@ -354,19 +366,19 @@ function TopCallerRow({
           <p className="truncate text-[13px] font-semibold">{caller.user.name}</p>
           <p className="truncate text-[10px] text-muted-foreground">
             {caller.calls
-              ? `${caller.calls.score} pts · mejor ${fmtMultiple(caller.calls.bestMultiple)}`
-              : `${fmtNum(caller.user.followers)} seguidores`}
+              ? t.rail.callerLine(caller.calls.score, fmtMultiple(caller.calls.bestMultiple))
+              : t.rail.followers(fmtNum(caller.user.followers))}
           </p>
         </div>
       </Link>
       {caller.user.isFollowed ? (
-        <span className="text-[10px] font-bold text-muted-foreground">siguiendo</span>
+        <span className="text-[10px] font-bold text-muted-foreground">{t.rail.following}</span>
       ) : (
         <button
           onClick={onFollow}
           className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground transition-opacity hover:opacity-85"
         >
-          Seguir
+          {t.rail.follow}
         </button>
       )}
     </div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { NETWORKS } from '@/lib/cabal'
 import { NetworkIcon, UserAvatar } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
@@ -15,11 +16,12 @@ import type { TokenMeta } from '@/lib/chain-stats'
 import { useUI } from '@/lib/store'
 
 export function FeedTab() {
+  const t = useT()
   const rules = usePointRules()
   const KINDS = [
-    { key: 'thesis', label: 'Tesis', icon: GraduationCap, hint: `+${rules.points_thesis}` },
-    { key: 'call', label: 'Call', icon: Megaphone, hint: '' },
-    { key: 'comment', label: 'Comentario', icon: MessageSquare, hint: `+${rules.points_comment}` },
+    { key: 'thesis' as const, icon: GraduationCap, hint: `+${rules.points_thesis}` },
+    { key: 'call' as const, icon: Megaphone, hint: '' },
+    { key: 'comment' as const, icon: MessageSquare, hint: `+${rules.points_comment}` },
   ]
   const { items: activity, isLoading } = useActivity(60)
   const { openLaunch } = useUI()
@@ -92,9 +94,9 @@ export function FeedTab() {
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Comparte una tesis, un call o tu último movimiento… la comunidad lee antes de comprar."
+              placeholder={t.feed.placeholder}
               className="min-h-[72px] resize-none border-0 bg-transparent p-0 text-base focus-visible:ring-0 sm:text-sm"
-              aria-label="Escribir post"
+              aria-label={t.feed.writeAria}
             />
             {isCall && (
               <div className="mt-2 space-y-1.5">
@@ -103,11 +105,11 @@ export function FeedTab() {
                   <Input
                     value={contract}
                     onChange={(e) => setContract(e.target.value)}
-                    placeholder="CA / contrato del token (obligatorio para una call)"
+                    placeholder={t.feed.contractPlaceholder}
                     autoComplete="off"
                     spellCheck={false}
                     className="h-8 bg-[#0a0b08] font-mono text-base sm:text-xs"
-                    aria-label="Contrato del token"
+                    aria-label={t.feed.contractAria}
                   />
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -129,21 +131,22 @@ export function FeedTab() {
                 </div>
                 {lookup.state === 'loading' && (
                   <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> Verificando contrato…
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> {t.feed.checking}
                   </p>
                 )}
                 {lookup.state === 'found' && (
                   <p className="flex items-center gap-1.5 text-[11px] text-primary">
                     <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden />
-                    {lookup.meta?.symbol ? `$${lookup.meta.symbol}` : 'Token'} detectado en{' '}
+                    {lookup.meta?.symbol ? `$${lookup.meta.symbol}` : t.feed.token} {t.feed.detectedIn}{' '}
                     {lookup.meta?.source === 'pumpfun' ? 'pump.fun' : 'DexScreener'}
-                    {lookup.meta?.image ? ' · con imagen' : ' · sin imagen todavía'} · red {NETWORKS[network]?.short ?? network}
+                    {lookup.meta?.image ? t.feed.withImage : t.feed.withoutImage} · {t.feed.network}{' '}
+                    {NETWORKS[network]?.short ?? network}
                   </p>
                 )}
                 {lookup.state === 'notfound' && (
                   <p className="flex items-center gap-1.5 text-[11px] text-amber-500">
                     <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
-                    No lo encontramos en DexScreener ni pump.fun. Revisa el contrato o la red antes de publicar: puede que no aparezca la imagen ni el resultado en vivo.
+                    {t.feed.notFound}
                   </p>
                 )}
               </div>
@@ -161,7 +164,7 @@ export function FeedTab() {
                   )}
                 >
                   <k.icon className="h-3.5 w-3.5" aria-hidden />
-                  {k.label}
+                  {t.feed.kinds[k.key]}
                   {k.hint && (
                     <span className="flex items-center gap-0.5 text-primary/70">
                       {k.hint}
@@ -176,7 +179,7 @@ export function FeedTab() {
                 disabled={!canSubmit || createPost.isPending}
                 className="ml-auto gap-1.5 px-4 text-xs font-bold"
               >
-                <Zap className="h-3 w-3" /> Publicar
+                <Zap className="h-3 w-3" /> {t.feed.publish}
               </Button>
             </div>
           </div>
@@ -187,7 +190,8 @@ export function FeedTab() {
       <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-gradient-to-r from-[#8FA83F]/8 to-transparent px-3.5 py-2.5">
         <Zap className="h-4 w-4 shrink-0 text-primary" aria-hidden />
         <p className="text-[12px] leading-relaxed text-foreground/80">
-          <span className="font-bold text-primary">Puntos Cabal:</span> tesis +{rules.points_thesis} · launch publicado +{rules.points_launch} · likes recibidos +{rules.points_like_received} · se canjean por tokens del airdrop de $CABAL
+          <span className="font-bold text-primary">{t.feed.pointsStrip}</span>
+          {t.feed.pointsDetail(rules.points_thesis, rules.points_launch, rules.points_like_received)}
         </p>
       </div>
 

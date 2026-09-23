@@ -25,6 +25,8 @@ import { AffiliatesDialog } from '@/components/cabal/affiliates-dialog'
 import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens, useUserSearch } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
+import { LangSwitch } from '@/components/cabal/lang-switch'
 import { Chapa } from '@/components/cabal/chapa'
 import { ContractResult, isContractAddress } from '@/components/cabal/contract-buy'
 import { AmmoBadge } from '@/components/cabal/ammo'
@@ -34,6 +36,7 @@ import { timeAgo } from '@/lib/cabal'
 import { useChatReplies } from '@/lib/chat-replies'
 
 export function Header() {
+  const t = useT()
   const { data: me } = useMe()
   const { data: session } = useSession()
   const { data: launches } = useLaunches()
@@ -60,7 +63,7 @@ export function Header() {
         <button
           className="flex shrink-0 cursor-pointer items-center outline-none transition-opacity hover:opacity-80"
           onClick={() => goToTab('radar')}
-          aria-label="Ir al Radar"
+          aria-label={t.header.goToRadar}
         >
           <CabalWordmark className="h-9 sm:h-10" />
         </button>
@@ -73,10 +76,10 @@ export function Header() {
           <button
             onClick={() => setSearchOpen(true)}
             className="flex h-9 w-full max-w-md items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 text-sm text-muted-foreground transition-colors hover:border-[#8FA83F]/30"
-            aria-label="Buscar tokens, launches, personas o pegar un contrato"
+            aria-label={t.header.searchAria}
           >
             <Search className="h-4 w-4" />
-            <span className="truncate">Busca tokens, personas o pega un contrato…</span>
+            <span className="truncate">{t.header.searchPlaceholder}</span>
             <kbd className="ml-auto shrink-0 rounded border border-white/10 px-1.5 text-[10px] text-muted-foreground">/</kbd>
           </button>
         </div>
@@ -93,8 +96,12 @@ export function Header() {
             className="neon-shadow hidden sm:inline-flex"
           >
             <Plus className="h-4 w-4" strokeWidth={3} />
-            Publicar launch
+            {t.header.publishLaunch}
           </Button>
+
+          {/* El idioma, a mano en la propia barra: no hace falta entrar en
+              ajustes para cambiarlo. */}
+          <LangSwitch className="hidden sm:flex" />
 
           {/* Notifications */}
           <Popover onOpenChange={(open) => open && chatReplies.markSeen()}>
@@ -103,7 +110,7 @@ export function Header() {
                 variant="ghost"
                 size="icon"
                 className="relative h-9 w-9 text-muted-foreground hover:text-primary"
-                aria-label={chatReplies.unread > 0 ? `Notificaciones (${chatReplies.unread} sin leer)` : 'Notificaciones'}
+                aria-label={chatReplies.unread > 0 ? t.notifications.withUnread(chatReplies.unread) : t.notifications.label}
               >
                 {/* La campanita solo se mueve cuando hay algo sin leer de verdad.
                     Antes bastaba con que hubiera un launch proximo para tenerla
@@ -125,7 +132,7 @@ export function Header() {
               {chatReplies.replies.length > 0 && (
                 <div className="mb-1.5 border-b border-white/10 pb-1.5">
                   <p className="flex items-center gap-1.5 px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Chat · Te respondieron
+                    {t.notifications.chatReplies}
                     {chatReplies.unread > 0 && (
                       <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{chatReplies.unread}</span>
                     )}
@@ -152,10 +159,10 @@ export function Header() {
                 </div>
               )}
               <p className="px-2 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Radar · Próximos lanzamientos
+                {t.notifications.upcoming}
               </p>
               {soon.length === 0 && (
-                <p className="px-2 py-3 text-sm text-muted-foreground">Nada en las próximas 36h. Revisa el Radar.</p>
+                <p className="px-2 py-3 text-sm text-muted-foreground">{t.notifications.nothingSoon}</p>
               )}
               {soon.map((l) => (
                 <button
@@ -167,7 +174,7 @@ export function Header() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold">
                       {l.isPrivate || !l.ticker ? (
-                        <span className="text-amber-300/90">Privado</span>
+                        <span className="text-amber-300/90">{t.notifications.private}</span>
                       ) : (
                         l.ticker
                       )}{' '}
@@ -175,7 +182,9 @@ export function Header() {
                     </p>
                     <div className="mt-0.5 flex items-center gap-1.5">
                       <NetworkBadge network={l.network} />
-                      <span className="text-[11px] text-muted-foreground">{timeAgo(l.createdAt)} posteado</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {timeAgo(l.createdAt)} {t.notifications.posted}
+                      </span>
                     </div>
                   </div>
                   <CountdownPill target={l.launchAt} size="sm" estimated={!l.dateConfirmed} />
@@ -190,7 +199,7 @@ export function Header() {
             <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 rounded-full outline-none" aria-label="Menú de usuario">
+                <button className="flex items-center gap-1.5 rounded-full outline-none" aria-label={t.header.userMenu}>
                   <UserAvatar
                     name={me?.name}
                     handle={me?.handle}
@@ -206,38 +215,38 @@ export function Header() {
                 <DropdownMenuLabel className="flex items-center gap-2.5 pb-2">
                   <UserAvatar name={me?.name} handle={me?.handle} src={me?.avatar} size="sm" premium={me?.premium.active} />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{me?.name ?? 'Tú'}</p>
+                    <p className="truncate text-sm font-semibold">{me?.name ?? t.header.you}</p>
                     <p className="truncate text-xs text-muted-foreground">@{me?.handle ?? 'tu'}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
                 {me && (
                   <div className="flex items-center justify-between px-2 py-1.5 text-xs">
-                    <span className="text-muted-foreground">Puntos Cabal</span>
+                    <span className="text-muted-foreground">{t.header.points}</span>
                     <PointsPill points={me.points} />
                   </div>
                 )}
                 <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
                 {me?.handle && (
                   <DropdownMenuItem onClick={() => router.push(`/u/${me.handle}`)} className="gap-2 text-[13px]">
-                    <Eye className="h-4 w-4" /> Ver mi perfil
+                    <Eye className="h-4 w-4" /> {t.header.viewProfile}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem onClick={() => setProfileOpen(true)} className="gap-2 text-[13px]">
-                  <UserRound className="h-4 w-4" /> Mi Cabal (perfil)
+                  <UserRound className="h-4 w-4" /> {t.header.myCabal}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setAffiliatesOpen(true)} className="gap-2 text-[13px]">
-                  <Users className="h-4 w-4" /> Afiliados
+                  <Users className="h-4 w-4" /> {t.header.affiliates}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setPremiumOpen(true)} className="gap-2 text-[13px] text-amber-300 focus:text-amber-300">
-                  <Crown className="h-4 w-4 fill-amber-300" /> {me?.premium.active ? 'Tu plan Premium' : 'Hazte Pro'}
+                  <Crown className="h-4 w-4 fill-amber-300" /> {me?.premium.active ? t.header.premiumOn : t.header.premiumOff}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setSearchOpen(true)} className="gap-2 text-[13px] md:hidden">
-                  <Search className="h-4 w-4" /> Buscar
+                  <Search className="h-4 w-4" /> {t.header.search}
                 </DropdownMenuItem>
                 {me?.isAdmin && (
                   <DropdownMenuItem onClick={() => setAdminOpen(true)} className="gap-2 text-[13px] text-primary focus:text-primary">
-                    <ShieldCheck className="h-4 w-4" /> Dashboard Admin
+                    <ShieldCheck className="h-4 w-4" /> {t.header.admin}
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator className="bg-[#8FA83F]/10" />
@@ -246,7 +255,7 @@ export function Header() {
                   disabled={logout.isPending}
                   className="gap-2 text-[13px] text-[#ff8080] focus:text-[#ff8080]"
                 >
-                  <LogOut className="h-4 w-4" /> {logout.isPending ? 'Cerrando…' : 'Cerrar sesión'}
+                  <LogOut className="h-4 w-4" /> {logout.isPending ? t.header.loggingOut : t.header.logout}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -260,8 +269,8 @@ export function Header() {
                   size="icon"
                   onClick={() => setAdminOpen(true)}
                   className="h-9 w-9 text-muted-foreground hover:text-primary"
-                  aria-label="Dashboard Admin"
-                  title="Dashboard Admin"
+                  aria-label={t.header.admin}
+                  title={t.header.admin}
                 >
                   <ShieldCheck className="h-[18px] w-[18px]" />
                 </Button>
@@ -272,8 +281,8 @@ export function Header() {
                 className="gap-1.5 px-3 text-[13px] font-bold"
               >
                 <LogIn className="h-4 w-4" aria-hidden />
-                <span className="hidden sm:inline">Iniciar sesión</span>
-                <span className="sm:hidden">Entrar</span>
+                <span className="hidden sm:inline">{t.header.login}</span>
+                <span className="sm:hidden">{t.header.loginShort}</span>
               </Button>
             </div>
           )}
@@ -300,6 +309,7 @@ function SearchDialog({
   users: { id: string; name: string; handle: string; avatar: string; points: number }[]
   onOpenLaunch: (id: string) => void
 }) {
+  const t = useT()
   const { searchOpen, setSearchOpen, openToken } = useUI()
   const router = useRouter()
   const [q, setQ] = useState('')
@@ -339,7 +349,7 @@ function SearchDialog({
         )}
         aria-describedby={undefined}
       >
-        <DialogTitle className="sr-only">Buscar</DialogTitle>
+        <DialogTitle className="sr-only">{t.search.title}</DialogTitle>
         <div className="sticky top-0 z-10 border-b border-white/10 bg-[#121410] p-3">
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] px-3">
             <Search className="h-4 w-4 text-muted-foreground" />
@@ -347,9 +357,9 @@ function SearchDialog({
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="SMOL, @cryptonita, o pega un contrato…"
+              placeholder={t.search.placeholder}
               className="h-10 border-0 bg-transparent px-0 text-sm focus-visible:ring-0"
-              aria-label="Buscar en Cabal"
+              aria-label={t.search.aria}
             />
           </div>
         </div>
@@ -357,15 +367,15 @@ function SearchDialog({
           {isCa && (
             <div>
               <p className="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Contrato · Gráfico y compra
+                {t.search.contract}
               </p>
               <ContractResult ca={q.trim()} chartHeight={260} />
             </div>
           )}
           {[
-            { title: 'Lanzamientos · Radar', kind: 'launch' as const, items: fLaunches.map((l) => ({ id: l.id, src: l.image, handle: '', ticker: l.ticker ?? l.name, main: `${l.ticker && !l.isPrivate ? `$${l.ticker} · ` : ''}${l.name}${l.isPrivate ? ' · Privado' : ''}`, sub: l.network, onClick: () => onOpenLaunch(l.id), badge: <NetworkBadge network={l.network} /> })) },
-            { title: 'Tokens en vivo', kind: 'launch' as const, items: fTokens.map((t) => ({ id: t.id, src: t.image, handle: '', ticker: t.ticker, main: `${t.ticker} · ${t.name}`, sub: `$${t.mc >= 1e6 ? `${(t.mc / 1e6).toFixed(1)}M` : `${Math.round(t.mc / 1e3)}K`} MC`, onClick: () => openToken(t.id), badge: <NetworkBadge network={t.network} /> })) },
-            { title: ql ? 'Personas' : 'Traders', kind: 'user' as const, items: fUsers.map((u) => ({ id: u.id, src: u.avatar, handle: u.handle, ticker: u.name, main: u.name, sub: `@${u.handle}`, onClick: () => openProfile(u.handle), badge: <PointsPill points={u.points} /> })) },
+            { title: t.search.launches, kind: 'launch' as const, items: fLaunches.map((l) => ({ id: l.id, src: l.image, handle: '', ticker: l.ticker ?? l.name, main: `${l.ticker && !l.isPrivate ? `$${l.ticker} · ` : ''}${l.name}${l.isPrivate ? ` · ${t.search.private}` : ''}`, sub: l.network, onClick: () => onOpenLaunch(l.id), badge: <NetworkBadge network={l.network} /> })) },
+            { title: t.search.liveTokens, kind: 'launch' as const, items: fTokens.map((t) => ({ id: t.id, src: t.image, handle: '', ticker: t.ticker, main: `${t.ticker} · ${t.name}`, sub: `$${t.mc >= 1e6 ? `${(t.mc / 1e6).toFixed(1)}M` : `${Math.round(t.mc / 1e3)}K`} MC`, onClick: () => openToken(t.id), badge: <NetworkBadge network={t.network} /> })) },
+            { title: ql ? t.search.people : t.search.traders, kind: 'user' as const, items: fUsers.map((u) => ({ id: u.id, src: u.avatar, handle: u.handle, ticker: u.name, main: u.name, sub: `@${u.handle}`, onClick: () => openProfile(u.handle), badge: <PointsPill points={u.points} /> })) },
           ].map(
             (group) =>
               group.items.length > 0 && (
@@ -400,7 +410,7 @@ function SearchDialog({
           {ql && !isCa && fLaunches.length === 0 && fTokens.length === 0 && fUsers.length === 0 && (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
               <Sparkles className="h-6 w-6 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Sin resultados para “{q}”</p>
+              <p className="text-sm text-muted-foreground">{t.search.noResults(q)}</p>
             </div>
           )}
         </div>
