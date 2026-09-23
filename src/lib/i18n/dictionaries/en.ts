@@ -847,6 +847,25 @@ export const en: Dict = {
     profileOf: (handle: string) => `@${handle}'s profile`,
   },
 
+  risk: {
+    safe: 'Safe',
+    mid: 'Medium',
+    risky: 'Casino',
+  },
+
+  ammo: {
+    label: 'AMMO',
+    balance: (n: number) => `Ammo: ${n} bullets`,
+    get: 'Get ammo',
+  },
+
+  launchActivity: {
+    update: 'Update',
+    launch: 'Launch',
+    posted: 'Posted a new launch',
+    seeInRadar: 'see in radar →',
+  },
+
   chat: {
     title: 'Cabal chat',
     placeholder: 'Say something to the Cabal…',

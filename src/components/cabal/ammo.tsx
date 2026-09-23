@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Chapa } from '@/components/cabal/chapa'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { useAmmoInfo } from '@/lib/api-client'
 import { useUI, type AmmoTarget } from '@/lib/store'
 import { UserAvatar, useNow } from '@/components/cabal/shared'
@@ -123,6 +124,7 @@ export function BoostCounter({
  * de munición y pega un culatazo cada vez que el saldo cambia.
  */
 export function AmmoBadge({ className }: { className?: string }) {
+  const t = useT()
   const { openAmmo } = useUI()
   const { data } = useAmmoInfo()
   const balance = data?.balance ?? 0
@@ -140,7 +142,7 @@ export function AmmoBadge({ className }: { className?: string }) {
   return (
     <button
       onClick={() => openAmmo()}
-      aria-label={balance > 0 ? `Munición: ${balance} balas` : 'Conseguir munición'}
+      aria-label={balance > 0 ? t.ammo.balance(balance) : t.ammo.get}
       title={
         balance > 0
           ? `${balance.toLocaleString('es')} balas · ${bulletsAsTime(balance)} de proyecto destacado`
@@ -159,7 +161,7 @@ export function AmmoBadge({ className }: { className?: string }) {
         onAnimationEnd={() => setRecoil(false)}
       >
         <Chapa silueta="heavy-bullets" metal="oro" className="h-5 w-5" placa />
-        {balance > 0 ? fmtBullets(balance) : 'MUNICIÓN'}
+        {balance > 0 ? fmtBullets(balance) : t.ammo.label}
       </span>
     </button>
   )

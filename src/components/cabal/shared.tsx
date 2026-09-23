@@ -799,7 +799,7 @@ export function SafetyChecks({
           s.level === 'risky' && 'bg-[#ff4d5e]/12 text-[#ff8080]'
         )}
       >
-        {s.label} · {s.score}
+        {t.risk[s.level]} · {s.score}
       </span>
     </div>
   )

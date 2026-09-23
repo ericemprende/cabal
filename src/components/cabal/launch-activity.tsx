@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import Link from 'next/link'
 import { PencilLine, Rocket } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { CountdownPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { useFeed, useLaunches } from '@/lib/api-client'
 import { timeAgo } from '@/lib/cabal'
@@ -51,6 +52,7 @@ export function LaunchActivityCard({
   /** 'updated' = se editó el launch (fecha, descripción…): cambia el texto y la marca de tiempo. */
   kind?: 'created' | 'updated'
 }) {
+  const t = useT()
   const u = l.createdBy
   const updated = kind === 'updated'
   return (
@@ -78,13 +80,13 @@ export function LaunchActivityCard({
                 )}
               >
                 {updated ? <PencilLine className="h-2.5 w-2.5" aria-hidden /> : <Rocket className="h-2.5 w-2.5" aria-hidden />}
-                {updated ? 'Actualización' : 'Launch'}
+                {updated ? t.launchActivity.update : t.launchActivity.launch}
               </span>
               <span className="text-[11px] text-muted-foreground">{timeAgo(updated ? l.lastEditedAt! : l.createdAt)}</span>
             </span>
           </div>
           <p className={cn('mt-1.5 text-foreground/90', compact ? 'text-[13px]' : 'text-sm')}>
-            {updated ? l.lastChangeNote : 'Publicó un nuevo lanzamiento'}
+            {updated ? l.lastChangeNote : t.launchActivity.posted}
           </p>
           <button
             onClick={onOpen}
@@ -92,13 +94,15 @@ export function LaunchActivityCard({
           >
             <TokenGlyph src={l.image} ticker={l.ticker ?? l.name} size={compact ? 'xs' : 'sm'} />
             <span className="min-w-0 flex-1 truncate text-xs font-semibold">
-              {l.isPrivate || !l.ticker ? <span className="text-amber-300/90">Privado</span> : l.ticker}{' '}
+              {l.isPrivate || !l.ticker ? <span className="text-amber-300/90">{t.shared.private}</span> : l.ticker}{' '}
               <span className="font-normal text-muted-foreground">· {l.name}</span>
             </span>
             {l.status === 'upcoming' ? (
               <CountdownPill target={l.launchAt} size="xs" compact estimated={!l.dateConfirmed} />
             ) : (
-              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-primary">ver en radar →</span>
+              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-primary">
+                {t.launchActivity.seeInRadar}
+              </span>
             )}
           </button>
         </div>

@@ -846,6 +846,25 @@ export const es = {
     profileOf: (handle: string) => `Perfil de @${handle}`,
   },
 
+  risk: {
+    safe: 'Seguro',
+    mid: 'Medio',
+    risky: 'Casino',
+  },
+
+  ammo: {
+    label: 'MUNICIÓN',
+    balance: (n: number) => `Munición: ${n} balas`,
+    get: 'Conseguir munición',
+  },
+
+  launchActivity: {
+    update: 'Actualización',
+    launch: 'Launch',
+    posted: 'Publicó un nuevo lanzamiento',
+    seeInRadar: 'ver en radar →',
+  },
+
   chat: {
     title: 'Chat del Cabal',
     placeholder: 'Escribe al Cabal…',

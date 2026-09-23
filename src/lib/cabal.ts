@@ -162,7 +162,6 @@ export function countdownParts(target: string | Date, dateConfirmed = true): {
 
 export function safetyCheck(l: { lpLocked: boolean; mintRevoked: boolean; top10Pct: number }): {
   score: number
-  label: string
   level: 'safe' | 'mid' | 'risky'
 } {
   let score = 0
@@ -171,9 +170,10 @@ export function safetyCheck(l: { lpLocked: boolean; mintRevoked: boolean; top10P
   if (l.top10Pct <= 15) score += 25
   else if (l.top10Pct <= 25) score += 15
   else score += 5
+  // El nivel es lo que se guarda; el texto ("Seguro" / "Safe"…) lo pone quien
+  // lo pinta, que es el único que sabe en qué idioma está mirando.
   const level = score >= 75 ? 'safe' : score >= 45 ? 'mid' : 'risky'
-  const label = score >= 75 ? 'Seguro' : score >= 45 ? 'Medio' : 'Casino'
-  return { score, label, level }
+  return { score, level }
 }
 
 export function shortWallet(w?: string | null): string {
