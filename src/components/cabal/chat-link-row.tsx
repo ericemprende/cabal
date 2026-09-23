@@ -8,6 +8,7 @@ import { useDeleteChat, useMyReminders, useUpdateChat, useUpdateReminderLeads } 
 
 import { REMINDER_LEADS, leadLabel, toggleLead, type ChatLinkDTO } from '@/lib/notify-types'
 import { MAX_TOKEN_FILTER, normalizeFilterEntry, toggleFilterEntry } from '@/lib/token-filter'
+import { useT } from '@/lib/i18n/provider'
 
 /**
  * Un chat vinculado (Telegram o Discord) con sus avisos e idioma. Es el mismo
@@ -15,23 +16,23 @@ import { MAX_TOKEN_FILTER, normalizeFilterEntry, toggleFilterEntry } from '@/lib
  * tipo de chat (un "grupo" de Telegram es un "canal" de servidor en Discord).
  */
 
-const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'notifyBoosts' | 'onlyFollowing'; label: string }[] = [
-  { key: 'notifyLaunches', label: 'Lanzamientos nuevos' },
-  { key: 'notifyReminders', label: 'Aviso antes de cada launch' },
-  { key: 'notifyCalls', label: 'Calls nuevas de Cabal' },
-  { key: 'notifyTheses', label: 'Tesis nuevas' },
-  { key: 'notifyBoosts', label: 'Munición fuerte en un proyecto' },
-  { key: 'onlyFollowing', label: 'Solo de gente que sigo' },
+const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'notifyBoosts' | 'onlyFollowing' }[] = [
+  { key: 'notifyLaunches' },
+  { key: 'notifyReminders' },
+  { key: 'notifyCalls' },
+  { key: 'notifyTheses' },
+  { key: 'notifyBoosts' },
+  { key: 'onlyFollowing' },
 ]
 
 export const BRAND = { telegram: '#229ED9', discord: '#5865F2' } as const
 /** Tono claro del color de marca, para texto sobre fondo oscuro. */
 const BRAND_TEXT = { telegram: '#5cc0f0', discord: '#98a2fa' } as const
 
-function typeLabel(chat: ChatLinkDTO): string {
-  if (chat.chatType === 'private') return 'privado'
-  if (chat.provider === 'discord') return chat.chatType === 'channel' ? 'anuncios' : 'canal'
-  return chat.chatType === 'channel' ? 'canal' : 'grupo'
+function typeKey(chat: ChatLinkDTO): 'private' | 'announcements' | 'channel' | 'group' {
+  if (chat.chatType === 'private') return 'private'
+  if (chat.provider === 'discord') return chat.chatType === 'channel' ? 'announcements' : 'channel'
+  return chat.chatType === 'channel' ? 'channel' : 'group'
 }
 
 /**
@@ -43,6 +44,7 @@ function typeLabel(chat: ChatLinkDTO): string {
  * que saber esa diferencia.
  */
 function LeadPicker({ chat, brand, text }: { chat: ChatLinkDTO; brand: string; text: string }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const isPrivate = chat.chatType === 'private'
   const mine = useMyReminders()
@@ -66,7 +68,7 @@ function LeadPicker({ chat, brand, text }: { chat: ChatLinkDTO; brand: string; t
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 text-[12px]"
       >
-        <span className="text-foreground/85">Avisar antes del lanzamiento</span>
+        <span className="text-foreground/85">{t.chatLink.leadTitle}</span>
         <span className="flex items-center gap-1 font-bold" style={{ color: text }}>
           {value.map(leadLabel).join(' · ')}
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
@@ -74,7 +76,7 @@ function LeadPicker({ chat, brand, text }: { chat: ChatLinkDTO; brand: string; t
       </button>
       {open && (
         <div className="mt-1.5 space-y-1 rounded-lg border border-white/10 p-2">
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Antelación del aviso">
+          <div className="flex flex-wrap gap-1" role="group" aria-label={t.chatLink.leadAria}>
             {REMINDER_LEADS.map((m) => {
               const active = value.includes(m)
               return (
@@ -110,6 +112,7 @@ function LeadPicker({ chat, brand, text }: { chat: ChatLinkDTO; brand: string; t
  * solo le llegan las calls, tesis, lanzamientos y avisos de esos tokens.
  */
 function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
+  const t = useT()
   const update = useUpdateChat()
   const [open, setOpen] = useState(chat.tokenFilter.length > 0)
   const [draft, setDraft] = useState('')
@@ -120,7 +123,7 @@ function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) 
   const save = (next: string[]) => update.mutate({ id: chat.id, tokenFilter: next })
   const add = () => {
     const entry = normalizeFilterEntry(draft)
-    if (!entry) return setError('Pega un contrato (CA) o escribe un $TICKER')
+    if (!entry) return setError(t.chatLink.filterError)
     if (chat.tokenFilter.some((f) => f.toLowerCase() === entry.toLowerCase())) return setDraft('')
     setError(null)
     setDraft('')
@@ -135,9 +138,9 @@ function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) 
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 text-[12px]"
       >
-        <span className="text-foreground/85">Solo avisos de ciertos tokens</span>
+        <span className="text-foreground/85">{t.chatLink.filterTitle}</span>
         <span className="flex items-center gap-1 font-bold" style={{ color: text }}>
-          {chat.tokenFilter.length ? `${chat.tokenFilter.length} token${chat.tokenFilter.length > 1 ? 's' : ''}` : 'Todos'}
+          {chat.tokenFilter.length ? t.chatLink.filterCount(chat.tokenFilter.length) : t.chatLink.filterAll}
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
         </span>
       </button>
@@ -153,7 +156,7 @@ function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) 
                     disabled={busy}
                     onClick={() => save(chat.tokenFilter.filter((x) => x !== f))}
                     className="text-muted-foreground hover:text-[#ff8080]"
-                    aria-label={`Quitar ${f} del filtro`}
+                    aria-label={t.chatLink.removeFilter(f)}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -177,8 +180,8 @@ function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) 
                   setError(null)
                 }}
                 disabled={busy || full}
-                placeholder={full ? `Máximo ${MAX_TOKEN_FILTER} tokens` : 'Contrato o $TICKER'}
-                aria-label="Añadir token al filtro"
+                placeholder={full ? t.chatLink.filterFull(MAX_TOKEN_FILTER) : t.chatLink.filterPlaceholder}
+                aria-label={t.chatLink.filterAdd}
                 className="h-7 min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -194,8 +197,8 @@ function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) 
           {error && <p className="text-[10px] text-[#ff8080]">{error}</p>}
           <p className="text-[10px] text-muted-foreground">
             {chat.tokenFilter.length
-              ? 'A este chat solo le llegan calls, tesis, lanzamientos y avisos de estos tokens.'
-              : 'Sin filtro: llegan avisos de todos los tokens. El contrato es lo más fiable; el $TICKER puede coincidir con otros tokens.'}
+              ? t.chatLink.filterOn
+              : t.chatLink.filterOff}
           </p>
         </div>
       )}
@@ -213,6 +216,7 @@ function TokenFilterPicker({ chat, text }: { chat: ChatLinkDTO; text: string }) 
  * permiso para invitar, o un grupo privado sin enlace público.
  */
 function InvitePicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
+  const t = useT()
   const update = useUpdateChat()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(chat.inviteUrl ?? '')
@@ -228,9 +232,9 @@ function InvitePicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 text-[12px]"
       >
-        <span className="text-foreground/85">Enlace para unirse al clan</span>
+        <span className="text-foreground/85">{t.chatLink.inviteTitle}</span>
         <span className="flex items-center gap-1 font-bold" style={{ color: text }}>
-          {chat.inviteUrl ? 'El tuyo' : 'Automático'}
+          {chat.inviteUrl ? t.chatLink.inviteMine : t.chatLink.inviteAuto}
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-180')} aria-hidden />
         </span>
       </button>
@@ -250,7 +254,7 @@ function InvitePicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
                 onChange={(e) => setDraft(e.target.value)}
                 disabled={busy}
                 placeholder={example}
-                aria-label="Enlace de invitación al clan"
+                aria-label={t.chatLink.inviteAria}
                 className="h-7 min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -260,15 +264,15 @@ function InvitePicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
               className="rounded-md border border-white/10 px-2 text-[11px] font-bold disabled:opacity-50"
               style={{ color: text }}
             >
-              {draft.trim() ? 'Guardar' : 'Quitar'}
+              {draft.trim() ? t.chatLink.save : t.chatLink.remove}
             </button>
           </form>
           <p className="text-[10px] text-muted-foreground">
             {chat.inviteUrl
-              ? 'Es el que aparece en el botón "Unirme" de tu clan. Déjalo vacío y guarda para volver al automático.'
+              ? t.chatLink.inviteOwn
               : chat.provider === 'discord'
-                ? 'El bot intenta crear la invitación él mismo. Si tu clan sale sin botón "Unirme", pega aquí una invitación permanente de tu servidor.'
-                : 'El bot usa el enlace público del grupo. Pega uno aquí solo si quieres otro.'}
+                ? t.chatLink.inviteDiscord
+                : t.chatLink.inviteTelegram}
           </p>
         </div>
       )}
@@ -277,6 +281,7 @@ function InvitePicker({ chat, text }: { chat: ChatLinkDTO; text: string }) {
 }
 
 export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
+  const t = useT()
   const update = useUpdateChat()
   const remove = useDeleteChat()
   const isPrivate = chat.chatType === 'private'
@@ -291,7 +296,7 @@ export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
         <Icon className="h-4 w-4 shrink-0" style={{ color: text }} aria-hidden />
         <p className="min-w-0 flex-1 truncate text-[13px] font-semibold">
           {isPrivate ? self : chat.title ?? 'Chat sin nombre'}
-          <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">{typeLabel(chat)}</span>
+          <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">{t.chatLink.types[typeKey(chat)]}</span>
         </p>
         <button
           type="button"
@@ -339,7 +344,7 @@ export function ChatLinkRow({ chat }: { chat: ChatLinkDTO }) {
       <div className="mt-2 space-y-1.5">
         {PREFS.map((p) => (
           <label key={p.key} className="flex items-center justify-between gap-2 text-[12px]">
-            <span className="text-foreground/85">{p.label}</span>
+            <span className="text-foreground/85">{t.chatLink.kinds[p.key]}</span>
             <Switch
               checked={chat[p.key]}
               disabled={update.isPending || !chat.active}

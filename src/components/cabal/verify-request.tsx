@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { OfficialBadge } from '@/components/cabal/shared'
 import { useMe, useMyVerifyRequests, useRequestVerification } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { useT } from '@/lib/i18n/provider'
 
 /**
  * Pedir la insignia de verificado para el perfil o para un launch propio.
@@ -22,6 +23,7 @@ export function VerifyRequestRow({
   launchId?: string
   verified: boolean
 }) {
+  const t = useT()
   const { data: me } = useMe()
   const { setPremiumOpen } = useUI()
   const premium = Boolean(me?.premium.active)
@@ -35,9 +37,9 @@ export function VerifyRequestRow({
   const what = kind === 'user' ? 'tu perfil' : 'este launch'
 
   let detail: string
-  if (verified) detail = kind === 'user' ? 'Tu perfil lleva la insignia oficial de Cabal' : 'Launch oficial: destaca frente a clones'
-  else if (pending) detail = 'Solicitud en revisión: te avisamos al aprobarla'
-  else if (last?.status === 'rejected') detail = 'La última solicitud se rechazó; puedes volver a pedirla con más pruebas'
+  if (verified) detail = kind === 'user' ? t.verify.userVerified : t.verify.launchVerified
+  else if (pending) detail = t.verify.pending
+  else if (last?.status === 'rejected') detail = t.verify.rejected
   else if (premium) detail = `Pide la insignia de verificado para ${what}; la revisamos a mano`
   else detail = `Insignia de verificado para ${what} · incluida en Premium`
 
@@ -46,7 +48,7 @@ export function VerifyRequestRow({
       <div className="flex items-center gap-3">
         <OfficialBadge />
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold">{verified ? 'Verificado' : 'Verificación oficial'}</p>
+          <p className="text-[13px] font-semibold">{verified ? t.verify.verified : t.verify.official}</p>
           <p className="text-[11px] text-muted-foreground">{detail}</p>
         </div>
         {!verified && !pending && !open && (
@@ -86,12 +88,12 @@ export function VerifyRequestRow({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
-            placeholder={kind === 'user' ? 'Pruebas: tu X, web, proyecto…' : 'Pruebas: web oficial, X del proyecto, CA…'}
+            placeholder={kind === 'user' ? t.verify.userPlaceholder : t.verify.launchPlaceholder}
             className="h-8 bg-[#0a0b08] text-base sm:text-[12px]"
-            aria-label="Pruebas para la verificación"
+            aria-label={t.verify.aria}
           />
           <Button type="submit" size="sm" className="shrink-0 text-[12px]" disabled={request.isPending}>
-            {request.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Enviar'}
+            {request.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t.verify.send}
           </Button>
         </form>
       )}

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { useBuildBuy, useBuildBuyEvm, useConfirmSwap, useConfirmSwapEvm, useSwapConfig, useSwapConfigEvm } from '@/lib/api-client'
 import { connectEvmWallet, ensureEvmChain, EVM_EXPLORER, evmProvider, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
 
@@ -58,6 +59,7 @@ export function QuickBuyButton({
   /** Solo el rayo, sin el texto "Comprar" — para espacios chicos (p. ej. Actividad del Cabal). */
   iconOnly?: boolean
 }) {
+  const t = useT()
   const isEvm = isEvmNetwork(network)
   const { data: solConfig } = useSwapConfig()
   const { data: evmConfig } = useSwapConfigEvm(isEvm ? network : 'solana')
@@ -80,7 +82,7 @@ export function QuickBuyButton({
     if (isEvm) {
       let pk = pubkey
       if (!evmProvider()) {
-        toast.error('Instala MetaMask para comprar desde Cabal', { description: 'metamask.io' })
+        toast.error(t.buy.needMetamask, { description: 'metamask.io' })
         return
       }
       if (!pk) {
@@ -101,16 +103,16 @@ export function QuickBuyButton({
         })
         if (res.intentId) confirmEvm.mutate({ intentId: res.intentId, network, txHash })
 
-        toast.success('Compra enviada', {
+        toast.success(t.buy.sent, {
           description: `$${usd} en $${ticker}`,
-          action: { label: 'Ver ↗', onClick: () => window.open(`${EVM_EXPLORER[network as EvmNetwork]}/tx/${txHash}`, '_blank') },
+          action: { label: t.buy.see, onClick: () => window.open(`${EVM_EXPLORER[network as EvmNetwork]}/tx/${txHash}`, '_blank') },
         })
         setOpen(false)
         setAmount('')
       } catch (e) {
         const msg = (e as Error)?.message ?? ''
         if (!/user rejected/i.test(msg)) {
-          toast.error('No se pudo completar la compra', { description: msg.slice(0, 140) || 'Inténtalo de nuevo' })
+          toast.error(t.buy.failed, { description: msg.slice(0, 140) || t.buy.tryAgain })
         }
       } finally {
         setBusy(false)
@@ -121,7 +123,7 @@ export function QuickBuyButton({
     let pk = pubkey
     const p = phantomProvider()
     if (!p) {
-      toast.error('Instala Phantom para comprar desde Cabal', { description: 'phantom.app' })
+      toast.error(t.buy.needPhantom, { description: 'phantom.app' })
       return
     }
     if (!pk) {
@@ -147,16 +149,16 @@ export function QuickBuyButton({
       const { signature } = await p.signAndSendTransaction(swapTx)
       if (res.intentId) confirm.mutate({ intentId: res.intentId, signature })
 
-      toast.success('Compra enviada', {
+      toast.success(t.buy.sent, {
         description: `$${usd} en $${ticker}`,
-        action: { label: 'Ver ↗', onClick: () => window.open(`https://solscan.io/tx/${signature}`, '_blank') },
+        action: { label: t.buy.see, onClick: () => window.open(`https://solscan.io/tx/${signature}`, '_blank') },
       })
       setOpen(false)
       setAmount('')
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
       if (!/user rejected/i.test(msg)) {
-        toast.error('No se pudo completar la compra', { description: msg.slice(0, 140) || 'Inténtalo de nuevo' })
+        toast.error(t.buy.failed, { description: msg.slice(0, 140) || t.buy.tryAgain })
       }
     } finally {
       setBusy(false)
@@ -168,7 +170,7 @@ export function QuickBuyButton({
       <PopoverTrigger asChild>
         <button
           onClick={(e) => e.stopPropagation()}
-          aria-label={`Comprar $${ticker}`}
+          aria-label={t.buy.buyAria(ticker)}
           style={{ backgroundColor: BUY_GREEN }}
           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN_HOVER)}
           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = BUY_GREEN)}
@@ -179,7 +181,7 @@ export function QuickBuyButton({
           )}
         >
           <Zap className="h-3 w-3" aria-hidden />
-          {!iconOnly && 'Comprar'}
+          {!iconOnly && t.buy.buy}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -196,7 +198,7 @@ export function QuickBuyButton({
             value={amount}
             onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
             placeholder="0"
-            aria-label={`Monto en dólares a comprar de ${ticker}`}
+            aria-label={t.buy.amountAria(ticker)}
             className="w-full bg-transparent text-lg font-bold text-foreground outline-none"
           />
         </div>
@@ -233,7 +235,7 @@ export function QuickBuyButton({
           className="mt-2.5 w-full gap-1.5 text-xs font-bold text-black"
         >
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <Zap className="h-3.5 w-3.5" aria-hidden />}
-          {pubkey ? `Comprar $${ticker}` : 'Conectar y comprar'}
+          {pubkey ? t.buy.buyAria(ticker) : t.buy.connectAndBuy}
         </Button>
         {config.fee?.note && <p className="mt-2 text-center text-[10px] leading-relaxed text-muted-foreground/80">{config.fee.note}</p>}
       </PopoverContent>

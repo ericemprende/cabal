@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ChatLinkRow } from '@/components/cabal/chat-link-row'
 import { useCreateChatLinkCode, useMyChats } from '@/lib/notify-client'
 import type { TelegramLinkCodeDTO } from '@/lib/notify-types'
+import { useT } from '@/lib/i18n/provider'
 
 /**
  * Sección del perfil: conectar el Telegram propio (para la campanita) y
@@ -94,35 +95,36 @@ export function TelegramConnect() {
 }
 
 function GroupInstructions({ code }: { code: TelegramLinkCodeDTO }) {
+  const t = useT()
   const command = `/link ${code.code}`
   const expires = new Date(code.expiresAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
   return (
     <div className="space-y-2 rounded-xl border border-[#229ED9]/25 bg-[#229ED9]/5 p-3 text-[12px] leading-relaxed">
-      <p className="font-semibold">Para un grupo:</p>
+      <p className="font-semibold">{t.connect.tgGroup}</p>
       <p className="text-muted-foreground">
         <a href={code.links.group} target="_blank" rel="noreferrer" className="font-semibold text-[#5cc0f0] hover:underline">
-          Añade el bot a tu grupo
-        </a>{' '}
-        (hazlo administrador). Se conectará solo con tu código.
+          {t.connect.tgGroupAdd}
+        </a>
+        {t.connect.tgGroupBody}
       </p>
-      <p className="font-semibold">Para un canal (o si el grupo no se conectó):</p>
+      <p className="font-semibold">{t.connect.tgChannel}</p>
       <p className="text-muted-foreground">
         <a href={code.links.channel} target="_blank" rel="noreferrer" className="font-semibold text-[#5cc0f0] hover:underline">
-          Añade el bot como administrador
-        </a>{' '}
-        y publica este mensaje en el chat:
+          {t.connect.tgChannelAdd}
+        </a>
+        {t.connect.tgChannelBody}
       </p>
       <button
         type="button"
         onClick={() => {
-          navigator.clipboard.writeText(command).then(() => toast.success('Copiado'))
+          navigator.clipboard.writeText(command).then(() => toast.success(t.connect.copied))
         }}
         className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2 font-mono text-[13px] font-bold text-primary"
       >
         {command}
         <Copy className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
       </button>
-      <p className="text-[10px] text-muted-foreground">El código sirve una vez y caduca a las {expires}.</p>
+      <p className="text-[10px] text-muted-foreground">{t.connect.codeOnce(expires)}</p>
     </div>
   )
 }

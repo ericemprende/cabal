@@ -3,6 +3,7 @@
 import { Chapa } from '@/components/cabal/chapa'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { useUI } from '@/lib/store'
 import { LoginRequiredError, useMyReminders, useToggleReminder } from '@/lib/notify-client'
 import { leadLabel } from '@/lib/notify-types'
@@ -22,6 +23,7 @@ export function ReminderBell({
   size?: 'sm' | 'md'
   className?: string
 }) {
+  const t = useT()
   const { data } = useMyReminders()
   const toggle = useToggleReminder()
   const { openAuth, setProfileOpen } = useUI()
@@ -37,26 +39,26 @@ export function ReminderBell({
     e.stopPropagation()
     toggle.mutate(launchId, {
       onSuccess: ({ reminded, channels }) => {
-        if (!reminded) return toast('Aviso desactivado')
+        if (!reminded) return toast(t.reminder.off)
         const chat = channels.telegram ? 'Telegram' : channels.discord ? 'Discord' : null
-        if (chat) return toast.success(`Te avisaremos por ${chat} ${leadText} antes`)
+        if (chat) return toast.success(t.reminder.onChat(chat, leadText))
         if (channels.email) {
-          return toast.success(`Te avisaremos por correo ${leadText} antes`, {
-            action: { label: 'Añadir Telegram o Discord', onClick: () => setProfileOpen(true) },
+          return toast.success(t.reminder.onEmail(leadText), {
+            action: { label: t.reminder.addChat, onClick: () => setProfileOpen(true) },
           })
         }
-        toast(`Aviso activado, pero aún no tienes dónde recibirlo`, {
-          description: 'Conecta tu Telegram o tu Discord, o verifica tu correo desde tu perfil.',
-          action: { label: 'Conectar', onClick: () => setProfileOpen(true) },
+        toast(t.reminder.noChannel, {
+          description: t.reminder.noChannelBody,
+          action: { label: t.reminder.connect, onClick: () => setProfileOpen(true) },
           duration: 8000,
         })
       },
       onError: (err) => {
         if (err instanceof LoginRequiredError) {
-          toast('Inicia sesión para recibir el aviso')
+          toast(t.reminder.loginNeeded)
           openAuth('login')
         } else {
-          toast.error(err.message || 'No se pudo activar el aviso')
+          toast.error(err.message || t.reminder.failed)
         }
       },
     })
@@ -67,8 +69,8 @@ export function ReminderBell({
       type="button"
       onClick={onClick}
       aria-pressed={on}
-      aria-label={on ? 'Quitar aviso del lanzamiento' : `Avisarme ${leadText} antes del lanzamiento`}
-      title={on ? 'Aviso activado · toca para quitarlo' : `Avisarme ${leadText} antes`}
+      aria-label={on ? t.reminder.removeAria : t.reminder.setAria(leadText)}
+      title={on ? t.reminder.onTitle : t.reminder.offTitle(leadText)}
       className={cn(
         // Sin placa ni fondo: a este tamaño el octogono tapaba el reloj y en el
         // pie oscuro de la tarjeta no se distinguia nada.

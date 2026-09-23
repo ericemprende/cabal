@@ -2,6 +2,7 @@
 
 import { Bomb, Crosshair, LineChart } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { useUI } from '@/lib/store'
 import { useBoostedItems, type BoostedItem } from '@/lib/use-boosted'
 import { BoostButton, BoostCounter, Magazine, fmtBullets } from '@/components/cabal/ammo'
@@ -17,6 +18,7 @@ import { fmtMc, fmtPct } from '@/lib/cabal'
  * cada pocos segundos lo dejaría recargando sin parar.
  */
 export function BoostHero({ item }: { item: BoostedItem }) {
+  const t = useT()
   const { openLaunch, openToken } = useUI()
   const open = () => (item.kind === 'launch' ? openLaunch(item.id) : openToken(item.id))
   const golden = item.boost.golden
@@ -31,7 +33,7 @@ export function BoostHero({ item }: { item: BoostedItem }) {
           ? 'border-amber-300/60 shadow-[0_0_28px_rgba(255,176,32,0.12)]'
           : 'border-amber-400/35 shadow-[0_0_18px_rgba(255,176,32,0.06)]'
       )}
-      aria-label={`Proyecto destacado con munición: ${item.label}`}
+      aria-label={t.boostHero.aria(item.label)}
     >
       <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-amber-400/12 blur-3xl" />
       {golden && (
@@ -49,7 +51,7 @@ export function BoostHero({ item }: { item: BoostedItem }) {
               )}
             >
               <Bomb className="h-3 w-3" strokeWidth={3} aria-hidden />
-              {golden ? 'Cargador dorado' : 'Destacado con munición'}
+              {golden ? t.boostHero.golden : t.boostHero.featured}
             </span>
             <NetworkBadge network={item.network} />
             <BoostCounter boost={item.boost} />
@@ -65,7 +67,7 @@ export function BoostHero({ item }: { item: BoostedItem }) {
               <span className="text-primary text-glow">{item.label}</span>
               <span className="min-w-0 truncate text-foreground/85">{item.name}</span>
               {(launch?.verified || token?.verified) && (
-                <OfficialBadge label title="Proyecto oficial verificado por Cabal" />
+                <OfficialBadge label title={t.boostHero.officialTitle} />
               )}
             </h2>
             {launch?.description && (
@@ -95,7 +97,7 @@ export function BoostHero({ item }: { item: BoostedItem }) {
               className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 active:scale-95"
             >
               <LineChart className="h-3.5 w-3.5" aria-hidden />
-              {item.contract ? 'Ver gráfico y comprar' : 'Ver proyecto'}
+              {item.contract ? t.boostHero.chartAndBuy : t.boostHero.seeProject}
             </button>
             <BoostButton
               target={{ type: item.kind, id: item.id, name: item.label, image: item.image }}

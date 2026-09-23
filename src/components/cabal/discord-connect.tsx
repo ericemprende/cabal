@@ -8,6 +8,7 @@ import { ChatLinkRow } from '@/components/cabal/chat-link-row'
 import { DiscordLogo } from '@/components/cabal/discord-logo'
 import { useCreateChatLinkCode, useMyChats } from '@/lib/notify-client'
 import type { DiscordLinkCodeDTO } from '@/lib/notify-types'
+import { useT } from '@/lib/i18n/provider'
 
 /**
  * Sección del perfil: conectar el Discord propio (para la campanita) y añadir
@@ -89,34 +90,35 @@ export function DiscordConnect() {
 }
 
 function Instructions({ code, mode }: { code: DiscordLinkCodeDTO; mode: 'private' | 'server' }) {
+  const t = useT()
   const command = `/link ${code.code}`
   const expires = new Date(code.expiresAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
   return (
     <div className="space-y-2 rounded-xl border border-[#5865F2]/25 bg-[#5865F2]/5 p-3 text-[12px] leading-relaxed">
       {mode === 'private' ? (
         <>
-          <p className="font-semibold">Para recibir los avisos por privado:</p>
+          <p className="font-semibold">{t.connect.dcPrivate}</p>
           <p className="text-muted-foreground">
-            Abre un mensaje directo con{' '}
-            <span className="font-semibold text-[#98a2fa]">{code.botUsername ?? 'el bot de Cabal'}</span> y escríbele
-            este comando:
+            {t.connect.dcPrivateBody1}
+            <span className="font-semibold text-[#98a2fa]">{code.botUsername ?? t.connect.dcBot}</span>
+            {t.connect.dcPrivateBody2}
           </p>
         </>
       ) : (
         <>
-          <p className="font-semibold">Para recibir los avisos en tu servidor:</p>
+          <p className="font-semibold">{t.connect.dcServer}</p>
           <p className="text-muted-foreground">
             <a href={code.invite} target="_blank" rel="noreferrer" className="font-semibold text-[#98a2fa] hover:underline">
-              Añade el bot a tu servidor
-            </a>{' '}
-            y, en el canal donde quieras los avisos, escribe este comando (hace falta permiso de «Gestionar servidor»):
+              {t.connect.dcServerAdd}
+            </a>
+            {t.connect.dcServerBody}
           </p>
         </>
       )}
       <button
         type="button"
         onClick={() => {
-          navigator.clipboard.writeText(command).then(() => toast.success('Copiado'))
+          navigator.clipboard.writeText(command).then(() => toast.success(t.connect.copied))
         }}
         className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2 font-mono text-[13px] font-bold text-primary"
       >
