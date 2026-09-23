@@ -50,8 +50,11 @@ const DEFAULTS = {
   hours: 24,
 }
 
+/** Donde se guarda qué usuario es la cuenta oficial de Cabal. */
+export const OFFICIAL_ACCOUNT_KEY = K.userId
+
 /** Handles con los que se intenta crear la cuenta oficial, en orden. */
-const SYSTEM_HANDLES = ['cabal', 'cabal_oficial', 'cabal_army', 'cabal_bot']
+export const SYSTEM_HANDLES = ['cabal', 'cabal_oficial', 'cabal_army', 'cabal_bot']
 
 const clampHours = (n: number) => Math.min(720, Math.max(1, Math.round(n)))
 

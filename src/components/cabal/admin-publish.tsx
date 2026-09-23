@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BadgeCheck, Coins, Loader2, Rocket, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -127,6 +128,8 @@ export function AdminPublish() {
         Publica un proyecto con la cuenta oficial de Cabal. Sale ya verificado, con el sello de proyecto
         oficial, y no suma puntos a nadie. Cabal lo avala pero no figura como su dev.
       </p>
+
+      <OfficialAccountCard />
 
       <div className="grid gap-2 sm:grid-cols-2">
         {(
@@ -318,6 +321,76 @@ export function AdminPublish() {
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+type OfficialAccountDTO = { user: { id: string; handle: string; name: string; avatar: string } | null }
+
+/** Qué cuenta firma como Cabal, y cambiarla por una con la que se pueda entrar. */
+function OfficialAccountCard() {
+  const qc = useQueryClient()
+  const [handle, setHandle] = useState('')
+  const q = useQuery<OfficialAccountDTO>({
+    queryKey: ['admin', 'official-account'],
+    queryFn: () => jsonFetch('/api/admin/official-account'),
+  })
+  const save = useMutation({
+    mutationFn: (h: string) =>
+      jsonFetch<OfficialAccountDTO & { merged: string | null }>('/api/admin/official-account', {
+        method: 'POST',
+        body: JSON.stringify({ handle: h }),
+      }),
+    onSuccess: (res) => {
+      qc.invalidateQueries()
+      setHandle('')
+      toast.success(
+        res.merged
+          ? `@${res.user?.handle} es la cuenta oficial. Todo lo de @${res.merged} pasó a ella y @${res.merged} se borró.`
+          : `@${res.user?.handle} es la cuenta oficial de Cabal`
+      )
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const current = q.data?.user
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-[#0a0b08] p-3">
+      <p className="min-w-0 flex-1 text-[12px] text-muted-foreground">
+        Cuenta oficial:{' '}
+        {q.isLoading ? (
+          '…'
+        ) : current ? (
+          <b className="text-foreground">
+            {current.name} @{current.handle}
+          </b>
+        ) : (
+          'se creará sola al publicar'
+        )}
+      </p>
+      <Input
+        value={handle}
+        onChange={(e) => setHandle(e.target.value)}
+        placeholder="@usuario"
+        autoComplete="off"
+        spellCheck={false}
+        className="h-8 w-40 bg-[#121410] text-[13px]"
+      />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={save.isPending || !handle.trim()}
+        onClick={() => {
+          const h = handle.trim().replace(/^@/, '')
+          if (confirm(`@${h} pasará a ser la cuenta oficial de Cabal. Si la actual se creó sola, todo lo suyo pasa a @${h} y se borra. ¿Seguir?`)) {
+            save.mutate(h)
+          }
+        }}
+        className="gap-1.5 text-xs"
+      >
+        {save.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+        Usar esta cuenta
+      </Button>
     </div>
   )
 }
