@@ -14,6 +14,7 @@ import { useUI } from '@/lib/store'
 import type { ChatMessageDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { RichText } from '@/components/cabal/rich-text'
+import { Flag } from '@/components/cabal/flag'
 import { useLang, useT } from '@/lib/i18n/provider'
 
 /**
@@ -329,7 +330,7 @@ function RoomTabs({ room, onChange }: { room: ChatRoom; onChange: (r: ChatRoom) 
               active ? 'bg-[#8FA83F]/20 text-primary' : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <span aria-hidden>{meta.flag}</span>
+            <Flag lang={r} className="h-3 w-[18px]" />
             {meta.short}
           </button>
         )

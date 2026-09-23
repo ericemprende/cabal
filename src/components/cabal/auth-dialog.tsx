@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { CabalWordmark } from '@/components/cabal/shared'
 import { OAuthConsentDialog, XLogo, GoogleG } from '@/components/cabal/oauth-consent-dialog'
 import { useAuthStatus, useLogin, useRegister } from '@/lib/api-client'
@@ -24,6 +25,7 @@ const REF_KEY = 'cabal_ref'
  * Al entrar, toda la app cambia a esa cuenta (puntos, hypes, perfil).
  */
 export function AuthDialog() {
+  const t = useT()
   const { authOpen, setAuthOpen, authMode, setAuthMode } = useUI()
   const login = useLogin()
   const register = useRegister()
@@ -114,11 +116,9 @@ export function AuthDialog() {
         <div className="p-6">
           <div className="flex flex-col items-center gap-1.5 text-center">
             <CabalWordmark size="lg" />
-            <DialogTitle className="sr-only">{isLogin ? 'Iniciar sesión' : 'Crear cuenta'}</DialogTitle>
+            <DialogTitle className="sr-only">{isLogin ? t.auth.login : t.auth.register}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              {isLogin
-                ? 'Entra para guardar tus puntos, hypes y launches'
-                : 'Crea tu cuenta del Cabal y empieza a acumular puntos para el airdrop'}
+              {isLogin ? t.auth.loginLead : t.auth.registerLead}
             </DialogDescription>
           </div>
 
@@ -126,8 +126,8 @@ export function AuthDialog() {
           <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-[#0a0b08] p-1">
             {(
               [
-                { key: 'login' as const, label: 'Iniciar sesión', icon: LogIn },
-                { key: 'register' as const, label: 'Crear cuenta', icon: UserPlus },
+                { key: 'login' as const, label: t.auth.login, icon: LogIn },
+                { key: 'register' as const, label: t.auth.register, icon: UserPlus },
               ]
             ).map((t) => (
               <button
@@ -176,9 +176,11 @@ export function AuthDialog() {
                 )}
               </div>
 
-              <div className="my-4 flex items-center gap-3" role="separator" aria-label="o con tus credenciales">
+              <div className="my-4 flex items-center gap-3" role="separator" aria-label={t.auth.orCredentials}>
                 <span className="h-px flex-1 bg-white/8" />
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">o con tu usuario</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {t.auth.orUser}
+                </span>
                 <span className="h-px flex-1 bg-white/8" />
               </div>
             </>
@@ -187,17 +189,17 @@ export function AuthDialog() {
           <form
             onSubmit={submit}
             className={cn('space-y-3.5', socialProviders.length === 0 && 'mt-4')}
-            aria-label={isLogin ? 'Iniciar sesión' : 'Crear cuenta'}
+            aria-label={isLogin ? t.auth.login : t.auth.register}
           >
             <div className="space-y-1.5">
-              <Label htmlFor="auth-handle" className="text-xs text-muted-foreground">Usuario</Label>
+              <Label htmlFor="auth-handle" className="text-xs text-muted-foreground">{t.auth.user}</Label>
               <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] pl-3 focus-within:border-[#8FA83F]/40">
                 <AtSign className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 <Input
                   id="auth-handle"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                  placeholder="tunombre"
+                  placeholder={t.auth.userPlaceholder}
                   autoComplete="username"
                   className="h-10 border-0 bg-transparent px-0 font-mono text-base focus-visible:ring-0 sm:text-sm"
                   required
@@ -207,12 +209,12 @@ export function AuthDialog() {
 
             {!isLogin && (
               <div className="space-y-1.5">
-                <Label htmlFor="auth-name" className="text-xs text-muted-foreground">Nombre (opcional)</Label>
+                <Label htmlFor="auth-name" className="text-xs text-muted-foreground">{t.auth.name}</Label>
                 <Input
                   id="auth-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Cómo te ven en el Cabal"
+                  placeholder={t.auth.namePlaceholder}
                   autoComplete="name"
                   className="h-10 border-white/10 bg-[#0a0b08] text-base sm:text-sm"
                 />
@@ -221,7 +223,7 @@ export function AuthDialog() {
 
             {!isLogin && (
               <div className="space-y-1.5">
-                <Label htmlFor="auth-email" className="text-xs text-muted-foreground">Correo</Label>
+                <Label htmlFor="auth-email" className="text-xs text-muted-foreground">{t.auth.email}</Label>
                 <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] pl-3 focus-within:border-[#8FA83F]/40">
                   <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
                   <Input
@@ -229,7 +231,7 @@ export function AuthDialog() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tucorreo@ejemplo.com"
+                    placeholder={t.auth.emailPlaceholder}
                     autoComplete="email"
                     className="h-10 border-0 bg-transparent px-0 text-base focus-visible:ring-0 sm:text-sm"
                     required
@@ -241,7 +243,7 @@ export function AuthDialog() {
             {!isLogin && (
               <div className="space-y-1.5">
                 <Label htmlFor="auth-referral" className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Gift className="h-3.5 w-3.5" aria-hidden /> Código de invitación (opcional)
+                  <Gift className="h-3.5 w-3.5" aria-hidden /> {t.auth.referral}
                 </Label>
                 <Input
                   id="auth-referral"
@@ -250,12 +252,12 @@ export function AuthDialog() {
                   placeholder="CABAL-XXXXXX"
                   className="h-10 border-white/10 bg-[#0a0b08] font-mono text-base uppercase tracking-wider sm:text-sm"
                 />
-                <p className="text-[10px] text-muted-foreground/70">Quien te invitó gana puntos por tu actividad.</p>
+                <p className="text-[10px] text-muted-foreground/70">{t.auth.referralHint}</p>
               </div>
             )}
 
             <div className="space-y-1.5">
-              <Label htmlFor="auth-password" className="text-xs text-muted-foreground">Contraseña</Label>
+              <Label htmlFor="auth-password" className="text-xs text-muted-foreground">{t.auth.password}</Label>
               <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0b08] pl-3 focus-within:border-[#8FA83F]/40">
                 <KeyRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
                 <Input
@@ -271,7 +273,7 @@ export function AuthDialog() {
                 />
               </div>
               {!isLogin && (
-                <p className="text-[10px] text-muted-foreground/70">Mínimo 6 caracteres.</p>
+                <p className="text-[10px] text-muted-foreground/70">{t.auth.passwordHint}</p>
               )}
             </div>
 
@@ -280,23 +282,23 @@ export function AuthDialog() {
               disabled={pending || !handle.trim() || !password || (!isLogin && !email.trim())}
               className="w-full gap-2 text-sm font-bold"
             >
-              {pending ? 'Conectando…' : isLogin ? 'Iniciar sesión' : 'Crear mi cuenta'}
+              {pending ? t.auth.connecting : isLogin ? t.auth.login : t.auth.createAccount}
             </Button>
           </form>
 
           <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/70">
             {isLogin ? (
               <>
-                ¿Sin cuenta?{' '}
+                {t.auth.noAccount}{' '}
                 <button type="button" onClick={() => setAuthMode('register')} className="font-semibold text-primary hover:underline">
-                  Regístrate gratis
+                  {t.auth.registerFree}
                 </button>
               </>
             ) : (
               <>
-                ¿Ya tienes cuenta?{' '}
+                {t.auth.haveAccount}{' '}
                 <button type="button" onClick={() => setAuthMode('login')} className="font-semibold text-primary hover:underline">
-                  Inicia sesión
+                  {t.auth.signIn}
                 </button>
               </>
             )}

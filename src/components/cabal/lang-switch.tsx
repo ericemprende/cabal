@@ -2,6 +2,7 @@
 
 import { LANGS, LANG_META, type Lang } from '@/lib/i18n/config'
 import { useLang } from '@/lib/i18n/provider'
+import { Flag } from '@/components/cabal/flag'
 import { cn } from '@/lib/utils'
 
 /**
@@ -52,7 +53,7 @@ function LangButton({
         active ? 'bg-[#8FA83F]/20 text-primary' : 'text-muted-foreground hover:text-foreground'
       )}
     >
-      <span aria-hidden>{meta.flag}</span>
+      <Flag lang={lang} className={size === 'sm' ? 'h-3 w-[18px]' : 'h-3.5 w-[21px]'} />
       {meta.short}
     </button>
   )

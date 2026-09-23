@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check, Copy, CornerUpLeft, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RichText } from '@/components/cabal/rich-text'
+import { useT } from '@/lib/i18n/provider'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { Button } from '@/components/ui/button'
@@ -55,6 +56,7 @@ function CallBuyButton({ post, compact }: { post: PostDTO; compact?: boolean }) 
 
 /** Estado de la call en una sola línea: monto compacto, sin envolver a varias filas. */
 function CallResultBadge({ post }: { post: PostDTO }) {
+  const t = useT()
   const { data } = useCallResult(post.id, post.kind === 'call' && !!post.contract)
   if (!data?.found) return null
   // Algunas redes (p. ej. Robinhood) no tienen fuente de velas históricas:
@@ -76,11 +78,11 @@ function CallResultBadge({ post }: { post: PostDTO }) {
     return (
       <span
         className="flex min-w-0 shrink items-center gap-1 truncate text-primary"
-        title="Máximo alcanzado desde que se publicó la call"
+        title={t.post.peakTitle}
       >
         <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate text-[12px] font-extrabold">llegó a {fmtX(data.peakMultiple!)}</span>
-        <span className="shrink-0 text-[11px] font-normal opacity-80">· ahora {fmtPct(data.pctChange)}</span>
+        <span className="truncate text-[12px] font-extrabold">{t.post.reached(fmtX(data.peakMultiple!))}</span>
+        <span className="shrink-0 text-[11px] font-normal opacity-80">{t.post.nowPct(fmtPct(data.pctChange))}</span>
       </span>
     )
   }
@@ -88,7 +90,7 @@ function CallResultBadge({ post }: { post: PostDTO }) {
   return (
     <span
       className={cn('flex min-w-0 shrink items-center gap-1 truncate text-[11px] font-bold', up ? 'text-primary' : 'text-red-400')}
-      title="Cambio de precio desde que se publicó la call"
+      title={t.post.changeTitle}
     >
       <TrendingUp className={cn('h-3 w-3 shrink-0', !up && 'rotate-180')} />
       <span className="truncate">
@@ -108,6 +110,7 @@ function CallResultBadge({ post }: { post: PostDTO }) {
  */
 function ParentQuote({ post, parent, compact }: { post: PostDTO; parent: PostParentDTO; compact?: boolean }) {
   const { openLaunch, openToken } = useUI()
+  const t = useT()
 
   // El mismo post puede estar en el feed y en la barra de actividad a la vez,
   // así que primero se busca al hermano de esta misma lista y solo después en
@@ -126,7 +129,7 @@ function ParentQuote({ post, parent, compact }: { post: PostDTO; parent: PostPar
     else if (post.launch) openLaunch(post.launch.id)
   }
 
-  const label = parent.kind === 'call' ? 'la call de' : parent.kind === 'thesis' ? 'la tesis de' : ''
+  const label = parent.kind === 'call' ? t.post.toTheCallOf : parent.kind === 'thesis' ? t.post.toTheThesisOf : ''
 
   return (
     <button
@@ -136,12 +139,12 @@ function ParentQuote({ post, parent, compact }: { post: PostDTO; parent: PostPar
         jump(e.currentTarget)
       }}
       className="mt-1 flex w-full items-start gap-1.5 rounded-r-md border-l-2 border-[#8FA83F]/50 bg-white/[0.03] py-1 pl-2 pr-2 text-left transition-colors hover:bg-white/[0.06]"
-      title="Ver el mensaje original"
+      title={t.post.seeOriginal}
     >
       <CornerUpLeft className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-x-1 text-[11px] text-muted-foreground">
-          En respuesta a {label} <span className="font-bold text-foreground/80">@{parent.user.handle}</span>
+          {t.post.inReplyTo} {label} <span className="font-bold text-foreground/80">@{parent.user.handle}</span>
           {parent.ticker ? (
             <span className="flex items-center gap-1">
               <TokenGlyph src={parent.image} ticker={parent.ticker} size="xs" />
@@ -173,6 +176,7 @@ export function CallShareDialog({
   onOpenChange: (v: boolean) => void
 }) {
   const { data } = useCallResult(postId, open)
+  const t = useT()
   const cardPath = `/api/posts/${postId}/card`
 
   // Capacidades del navegador: se leen tras montar, igual que en el flujo de
@@ -247,11 +251,11 @@ export function CallShareDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[92dvh] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
-        <DialogTitle className="sr-only">Compartir el resultado de la call</DialogTitle>
+        <DialogTitle className="sr-only">{t.post.shareCallTitle}</DialogTitle>
         <img
           key={cardPath}
           src={cardPath}
-          alt={`Resultado de la call, ${symbol}`}
+          alt={t.post.callResultAlt(symbol)}
           width={1200}
           height={675}
           className="w-full border-b border-white/10"
@@ -261,7 +265,7 @@ export function CallShareDialog({
               copiarla o descargarla y pegarla a mano en el compositor. */}
           {!nativeShare && (
             <p className="mb-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground">
-              Para que la imagen salga en el post:
+              {t.post.forImage}
               {copyable && (
                 <>
                   <button
@@ -271,7 +275,7 @@ export function CallShareDialog({
                     className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
                   >
                     {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                    {copied ? 'Copiada' : 'Copiar'}
+                    {copied ? t.post.copied : t.post.copy}
                   </button>
                   <span aria-hidden>·</span>
                 </>
@@ -283,20 +287,20 @@ export function CallShareDialog({
                 className="inline-flex items-center gap-1 font-semibold text-primary hover:underline disabled:opacity-50"
               >
                 <Download className="h-3 w-3" />
-                Descargar
+                {t.post.download}
               </button>
-              {copyable && <span className="w-full basis-full text-[10.5px] opacity-80">y pégala con Ctrl+V (⌘V en Mac) en el compositor de X.</span>}
+              {copyable && <span className="w-full basis-full text-[10.5px] opacity-80">{t.post.pasteHint}</span>}
             </p>
           )}
 
           {nativeShare && cardFile ? (
             <Button onClick={shareFromDevice} className="w-full gap-2 text-[14px] font-bold">
-              <Send className="h-4 w-4" /> Compartir en X
+              <Send className="h-4 w-4" /> {t.post.shareOnX}
             </Button>
           ) : (
             <Button asChild className="w-full gap-2 text-[14px] font-bold">
               <a href={intentUrl} target="_blank" rel="noopener noreferrer">
-                <Send className="h-4 w-4" /> Compartir en X
+                <Send className="h-4 w-4" /> {t.post.shareOnX}
               </a>
             </Button>
           )}
@@ -313,6 +317,7 @@ export function PostCard({
   post: PostDTO
   compact?: boolean
 }) {
+  const t = useT()
   const like = useLikeToggle()
   const follow = useFollowToggle()
   const createPost = useCreatePost()
@@ -345,7 +350,7 @@ export function PostCard({
       )}
     >
       <div className="flex items-start gap-2.5">
-        <Link href={`/u/${post.user.handle}`} className="shrink-0" aria-label={`Perfil de @${post.user.handle}`}>
+        <Link href={`/u/${post.user.handle}`} className="shrink-0" aria-label={t.post.profileOf(post.user.handle)}>
           <UserAvatar name={post.user.name} handle={post.user.handle} src={post.user.avatar} size={compact ? 'sm' : 'md'} verified={post.user.walletVerified} official={post.user.verified} />
         </Link>
         <div className="min-w-0 flex-1">
@@ -386,8 +391,8 @@ export function PostCard({
           {post.kind === 'fud' && (
             <p className="mt-1 text-[11px] font-semibold text-amber-200/70">
               {post.retracted
-                ? 'Se retractó: este voto en contra ya no cuenta'
-                : 'Motivo de su voto en contra · respóndele si crees que se equivoca'}
+                ? t.post.retracted
+                : t.post.fudReason}
             </p>
           )}
 
@@ -405,8 +410,8 @@ export function PostCard({
                     setShareOpen(true)
                   }}
                   className="text-muted-foreground hover:text-primary"
-                  title="Ver la tarjeta y compartirla en X"
-                  aria-label="Ver imagen para compartir"
+                  title={t.post.cardTitle}
+                  aria-label={t.post.cardAria}
                 >
                   <ImageDown className="h-3.5 w-3.5" />
                 </button>
@@ -424,13 +429,13 @@ export function PostCard({
               <TokenGlyph src={post.launch.image} ticker={post.launch.ticker ?? post.launch.name} size="xs" />
               <span className="text-xs font-semibold">
                 {post.launch.isPrivate || !post.launch.ticker ? (
-                  <span className="text-amber-300/90">Privado</span>
+                  <span className="text-amber-300/90">{t.notifications.private}</span>
                 ) : (
                   post.launch.ticker
                 )}{' '}
-                <span className="font-normal text-muted-foreground">launch</span>
+                <span className="font-normal text-muted-foreground">{t.post.launch}</span>
               </span>
-              <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-primary">ver en radar →</span>
+              <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-primary">{t.post.seeInRadar}</span>
             </button>
           )}
           {post.token && (
@@ -442,7 +447,7 @@ export function PostCard({
               <span className="text-xs font-semibold">
                 {post.token.ticker} <span className="font-normal text-muted-foreground">{fmtMc(post.token.mc)} MC</span>
               </span>
-              <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-primary">ver token →</span>
+              <span className="ml-auto text-[10px] font-bold uppercase tracking-wide text-primary">{t.post.seeToken}</span>
             </button>
           )}
 
@@ -453,7 +458,7 @@ export function PostCard({
                 'flex items-center gap-1 text-xs transition-colors',
                 post.liked ? 'text-primary' : 'text-muted-foreground hover:text-primary'
               )}
-              aria-label="Me gusta"
+              aria-label={t.post.like}
             >
               <Heart className={cn('h-3.5 w-3.5', post.liked && 'fill-primary')} />
               {post.likes}
@@ -464,15 +469,15 @@ export function PostCard({
                 'flex items-center gap-1 text-xs transition-colors',
                 replyOpen ? 'text-primary' : 'text-muted-foreground hover:text-primary'
               )}
-              aria-label="Responder"
+              aria-label={t.post.reply}
               aria-expanded={replyOpen}
             >
               <MessageCircle className="h-3.5 w-3.5" />
-              Responder
+              {t.post.reply}
             </button>
             {typeof post.pnl === 'number' && post.pnl > 0 && (
               <span className="ml-auto flex items-center gap-1 rounded-md bg-[#8FA83F]/10 px-1.5 py-0.5 text-[11px] font-bold text-primary">
-                <TrendingUp className="h-3 w-3" /> +${post.pnl.toLocaleString('es')}
+                <TrendingUp className="h-3 w-3" /> +${post.pnl.toLocaleString()}
               </span>
             )}
           </div>
@@ -482,9 +487,9 @@ export function PostCard({
               <Textarea
                 value={reply}
                 onChange={(e) => setReply(e.target.value)}
-                placeholder={`Responder a @${post.user.handle}…`}
+                placeholder={t.post.replyPlaceholder(post.user.handle)}
                 className="min-h-[42px] flex-1 resize-none rounded-lg border-white/10 bg-white/5 p-2 text-base sm:text-xs"
-                aria-label="Escribir respuesta"
+                aria-label={t.post.replyAria}
                 autoFocus
               />
               <Button
@@ -493,7 +498,7 @@ export function PostCard({
                 disabled={!reply.trim() || createPost.isPending}
                 className="shrink-0 gap-1 px-3 text-[11px] font-bold"
               >
-                <Send className="h-3 w-3" /> Enviar
+                <Send className="h-3 w-3" /> {t.post.send}
               </Button>
             </div>
           )}

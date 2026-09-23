@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { RichText } from '@/components/cabal/rich-text'
+import { useT } from '@/lib/i18n/provider'
 import { displayImageUrl } from '@/lib/remote-image'
 import { TrustBadge } from '@/components/cabal/reputation'
 import { CopyCA, CountdownPill, EstimatedDateBadge, NetworkBadge, PremiumLockedRow, SafetyChecks, TickerLabel, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
@@ -27,6 +28,7 @@ import { XLogo } from '@/components/cabal/x-logo'
 import { TelegramLogo } from '@/components/cabal/telegram-logo'
 
 export function LaunchDetailDialog() {
+  const t = useT()
   const { launchDetailId, openLaunch, setPremiumOpen } = useUI()
   const { data: launch, isLoading } = useLaunch(launchDetailId)
   const hype = useHypeToggle()
@@ -57,14 +59,14 @@ export function LaunchDetailDialog() {
       >
         <button
           onClick={() => setExpanded((v) => !v)}
-          aria-label={expanded ? 'Achicar' : 'Ampliar'}
+          aria-label={expanded ? t.launchDetail.shrink : t.launchDetail.expand}
           className="absolute right-12 top-4 z-10 hidden rounded-xs sm:block text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-foreground"
         >
           {expanded ? <Minimize2 className="h-4 w-4" aria-hidden /> : <Maximize2 className="h-4 w-4" aria-hidden />}
         </button>
         {isLoading || !launch ? (
           <div className="space-y-3 p-6">
-            <DialogTitle className="sr-only">Detalle del lanzamiento</DialogTitle>
+            <DialogTitle className="sr-only">{t.launchDetail.title}</DialogTitle>
             <Skeleton className="h-8 w-2/3" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-32 w-full" />
@@ -82,7 +84,7 @@ export function LaunchDetailDialog() {
                       <span className="min-w-0 truncate">{launch.name}</span>
                       <TickerLabel ticker={launch.ticker} isPrivate={launch.isPrivate} className="text-primary" />
                     </h2>
-                    {launch.verified && <OfficialBadge label title="Launch oficial verificado por Cabal" />}
+                    {launch.verified && <OfficialBadge label title={t.radar.officialTitle} />}
                     <NetworkBadge network={launch.network} />
                   </div>
                   {launch.isPrivate && !launch.ticker && (
@@ -121,7 +123,9 @@ export function LaunchDetailDialog() {
                         <Wallet className="h-3.5 w-3.5" aria-hidden />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Wallet del dev</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {t.launchDetail.devWallet}
+                        </p>
                         <CopyCA contract={launch.devWallet} className="border-0 bg-transparent p-0 text-[13px]" />
                       </div>
                     </div>
@@ -132,7 +136,9 @@ export function LaunchDetailDialog() {
                         <Rocket className="h-3.5 w-3.5" aria-hidden />
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Launchpad</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          {t.launchDetail.launchpad}
+                        </p>
                         <p className="text-[13px] font-semibold">{launch.launchpad}</p>
                       </div>
                     </div>
@@ -140,7 +146,7 @@ export function LaunchDetailDialog() {
                   {launch.lockedFields.includes('devWallet') && (
                     <PremiumLockedRow
                       icon={<Wallet className="h-3.5 w-3.5" aria-hidden />}
-                      label="Wallet del dev"
+                      label={t.launchDetail.devWallet}
                       fakeValue="7xKXt••••••••••••••••••••••JosgAsU"
                       onUnlock={() => setPremiumOpen(true)}
                     />
@@ -148,7 +154,7 @@ export function LaunchDetailDialog() {
                   {launch.lockedFields.includes('launchpad') && (
                     <PremiumLockedRow
                       icon={<Rocket className="h-3.5 w-3.5" aria-hidden />}
-                      label="Launchpad"
+                      label={t.launchDetail.launchpad}
                       fakeValue="████████"
                       onUnlock={() => setPremiumOpen(true)}
                     />
@@ -161,7 +167,7 @@ export function LaunchDetailDialog() {
                   <Link
                     href={`/u/${launch.createdBy.handle}`}
                     onClick={() => openLaunch(null)}
-                    aria-label={`Perfil de @${launch.createdBy.handle}`}
+                    aria-label={t.post.profileOf(launch.createdBy.handle)}
                   >
                     <UserAvatar name={launch.createdBy.name} handle={launch.createdBy.handle} src={launch.createdBy.avatar} size="sm" verified={launch.createdBy.walletVerified} official={launch.createdBy.verified} />
                   </Link>
@@ -196,7 +202,7 @@ export function LaunchDetailDialog() {
                     onClick={() => openLaunch(null)}
                     className="ml-auto flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-[#8FA83F]/50 hover:text-primary"
                   >
-                    <Pencil className="h-3.5 w-3.5" aria-hidden /> Editar
+                    <Pencil className="h-3.5 w-3.5" aria-hidden /> {t.launchDetail.edit}
                   </Link>
                 )}
                 <button
@@ -236,14 +242,14 @@ export function LaunchDetailDialog() {
                     <span className="inline-flex items-center rounded-full bg-[#8FA83F]/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-primary">
                       DEV
                     </span>
-                    <span className="text-[11px] text-muted-foreground">Dev del proyecto</span>
+                    <span className="text-[11px] text-muted-foreground">{t.launchDetail.devOfProject}</span>
                   </>
                 ) : (
                   <>
                     <span className="inline-flex items-center rounded-full bg-white/8 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-zinc-400">
                       SCOUT
                     </span>
-                    <span className="text-[11px] text-muted-foreground">Encontrado por la comunidad</span>
+                    <span className="text-[11px] text-muted-foreground">{t.launchDetail.foundByCommunity}</span>
                   </>
                 )}
               </div>
@@ -251,14 +257,14 @@ export function LaunchDetailDialog() {
 
             {/* Transmisión en vivo (el admin/dev marcó el launch como live y pegó el link del stream) */}
             {launch.isLive && launch.liveUrl && (
-              <section className="border-b border-white/10 p-4" aria-label="Transmisión en vivo del lanzamiento">
+              <section className="border-b border-white/10 p-4" aria-label={t.launchDetail.liveSection}>
                 <div className="mb-2.5 flex items-center gap-2">
                   <span className="relative flex h-2 w-2" aria-hidden>
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff4d5e] opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-[#ff4d5e]" />
                   </span>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    En vivo ahora
+                    {t.launchDetail.liveNow}
                   </p>
                   <a
                     href={launch.liveUrl}
@@ -266,18 +272,20 @@ export function LaunchDetailDialog() {
                     rel="noreferrer"
                     className="ml-auto text-[11px] font-semibold text-muted-foreground transition-colors hover:text-primary"
                   >
-                    Abrir en la plataforma original ↗
+                    {t.launchDetail.openOriginal}
                   </a>
                 </div>
-                <LiveEmbed url={launch.liveUrl} title={`Transmisión en vivo de ${launch.name}`} />
+                <LiveEmbed url={launch.liveUrl} title={t.launchDetail.liveStreamOf(launch.name)} />
               </section>
             )}
 
             {/* Gráfico en vivo + panel de compra (solo si el launch tiene CA del token desplegado) */}
             {launch.contract ? (
-              <section className="border-b border-white/10 p-4" aria-label="Gráfico en vivo y compra del token">
+              <section className="border-b border-white/10 p-4" aria-label={t.launchDetail.chartSection}>
                 <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gráfico en vivo</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t.launchDetail.liveChart}
+                  </p>
                   <CopyCA contract={launch.contract} className="min-w-0 max-w-full text-[10px] sm:max-w-[60%]" />
                 </div>
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
@@ -295,20 +303,20 @@ export function LaunchDetailDialog() {
               </section>
             ) : launch.lockedFields.includes('contract') ? (
               // El contrato ya existe (el launch aún no ha salido) pero es dato Premium
-              <section className="border-b border-white/10 p-4" aria-label="Contrato bloqueado">
-                <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gráfico en vivo</p>
+              <section className="border-b border-white/10 p-4" aria-label={t.launchDetail.lockedSection}>
+                <p className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t.launchDetail.liveChart}
+                </p>
                 <button
                   type="button"
                   onClick={() => setPremiumOpen(true)}
                   className="group flex w-full flex-col items-center gap-2 rounded-xl border border-amber-400/25 bg-amber-400/[0.05] py-8 text-center transition-colors hover:border-amber-400/45"
                 >
                   <Lock className="h-6 w-6 text-amber-300" aria-hidden />
-                  <span className="text-sm font-bold text-amber-200">El contrato ya existe</span>
-                  <span className="max-w-xs text-[12px] text-muted-foreground">
-                    Los suscriptores Premium lo ven antes del lanzamiento, junto al gráfico en vivo en cuanto salga
-                  </span>
+                  <span className="text-sm font-bold text-amber-200">{t.launchDetail.contractExists}</span>
+                  <span className="max-w-xs text-[12px] text-muted-foreground">{t.launchDetail.contractExistsBody}</span>
                   <span className="mt-1 flex items-center gap-1 rounded-full bg-amber-400 px-3 py-1.5 text-xs font-bold text-[#171200] transition-colors group-hover:bg-amber-300">
-                    <Crown className="h-3.5 w-3.5 fill-[#171200]" aria-hidden /> Hazte Pro
+                    <Crown className="h-3.5 w-3.5 fill-[#171200]" aria-hidden /> {t.launchDetail.goPro}
                   </span>
                 </button>
               </section>
@@ -317,19 +325,19 @@ export function LaunchDetailDialog() {
             {/* Comments / tesis */}
             <div className="p-4">
               <p className="pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Tesis y comentarios de la comunidad · {launch.posts.length}
+                {t.launchDetail.thesesTitle(launch.posts.length)}
               </p>
               <div className="mb-3 rounded-xl border border-white/10 bg-[#0a0b08] p-2.5">
                 <Textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder={`¿Por qué este launch va a ser grande? Escribir tesis = +${rules.points_thesis} puntos`}
+                  placeholder={t.launchDetail.commentPlaceholder(rules.points_thesis)}
                   className="min-h-[64px] resize-none border-0 bg-transparent text-sm focus-visible:ring-0"
-                  aria-label="Escribir comentario"
+                  aria-label={t.launchDetail.commentAria}
                 />
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1 text-[11px] font-semibold text-primary/80">
-                    <Zap className="h-3 w-3" aria-hidden /> Tesis +{rules.points_thesis} · Comentario +{rules.points_comment}
+                    <Zap className="h-3 w-3" aria-hidden /> {t.launchDetail.pointsHint(rules.points_thesis, rules.points_comment)}
                   </span>
                   <Button
                     size="sm"
@@ -342,13 +350,13 @@ export function LaunchDetailDialog() {
                     }}
                     className="px-4 text-xs font-bold"
                   >
-                    Publicar
+                    {t.launchDetail.publish}
                   </Button>
                 </div>
               </div>
               <div className="space-y-2.5 sm:max-h-[40dvh] sm:overflow-y-auto sm:pr-1">
                 {launch.posts.length === 0 && (
-                  <p className="py-6 text-center text-sm text-muted-foreground">Sé el primero en dar tu tesis</p>
+                  <p className="py-6 text-center text-sm text-muted-foreground">{t.launchDetail.beFirst}</p>
                 )}
                 {launch.posts.map((p) => (
                   <PostCard key={p.id} post={p} />
@@ -408,6 +416,7 @@ export function toEmbedUrl(raw: string): string | null {
  * (YouTube/Vimeo/Twitch) o tarjeta con botón para abrir el link en una pestaña nueva.
  */
 function LiveEmbed({ url, title }: { url: string; title: string }) {
+  const t = useT()
   const embed = useMemo(() => toEmbedUrl(url), [url])
   if (!embed) {
     return (
@@ -418,8 +427,8 @@ function LiveEmbed({ url, title }: { url: string; title: string }) {
         className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-[#0a0b08] text-center transition-colors hover:border-[#8FA83F]/40"
       >
         <MonitorPlay className="h-8 w-8 text-primary" aria-hidden />
-        <span className="text-sm font-bold">Ver transmisión en vivo</span>
-        <span className="text-[11px] text-muted-foreground">Se abre en una pestaña nueva ↗</span>
+        <span className="text-sm font-bold">{t.launchDetail.watchLive}</span>
+        <span className="text-[11px] text-muted-foreground">{t.launchDetail.opensNewTab}</span>
       </a>
     )
   }
