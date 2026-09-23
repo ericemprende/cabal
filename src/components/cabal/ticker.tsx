@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { useTokens } from '@/lib/api-client'
 import { fmtMc, fmtPct, networkMeta } from '@/lib/cabal'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { TokenGlyph } from '@/components/cabal/shared'
 import { BoostCounter } from '@/components/cabal/ammo'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -61,11 +62,11 @@ export function TickerStrip({
 
 export type TickerLogo = 'full' | 'icon' | 'text' | 'badge'
 
-const LOGO_OPTIONS: { value: TickerLogo; label: string }[] = [
-  { value: 'full', label: 'Logo + nombre' },
-  { value: 'badge', label: 'Con web' },
-  { value: 'icon', label: 'Solo logo' },
-  { value: 'text', label: 'Solo nombre' },
+const LOGO_OPTIONS: { value: TickerLogo }[] = [
+  { value: 'full' },
+  { value: 'badge' },
+  { value: 'icon' },
+  { value: 'text' },
 ]
 
 /** Marca fija al inicio de la barra incrustada: promociona Cabal en los streams. */
@@ -101,6 +102,7 @@ export function EmbedBar({ tokens, speed, logo }: { tokens: TokenDTO[]; speed: T
 }
 
 export function Ticker() {
+  const t = useT()
   const { data: tokens } = useTokens('trending', 'all')
   const [embedOpen, setEmbedOpen] = useState(false)
   const items = (tokens ?? []).slice(0, 10)
@@ -112,9 +114,9 @@ export function Ticker() {
         <button
           onClick={() => setEmbedOpen(true)}
           className="absolute inset-y-0 right-0 flex items-center gap-1 border-l border-white/10 bg-[#0d0e0a] px-2.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:text-primary"
-          title="Incrustar en OBS o en tu web"
+          title={t.ticker.embedHint}
         >
-          <Code2 className="h-3.5 w-3.5" aria-hidden /> Embed
+          <Code2 className="h-3.5 w-3.5" aria-hidden /> {t.ticker.embed}
         </button>
       </div>
       <TickerEmbedDialog open={embedOpen} onOpenChange={setEmbedOpen} tokens={tokens ?? []} />
@@ -131,6 +133,7 @@ function TickerEmbedDialog({
   onOpenChange: (v: boolean) => void
   tokens: TokenDTO[]
 }) {
+  const t = useT()
   // Vacío = todos los tokens (y los que se añadan después también salen).
   const [selected, setSelected] = useState<string[]>([])
   const [speed, setSpeed] = useState<TickerSpeed>('normal')
@@ -158,10 +161,10 @@ function TickerEmbedDialog({
     try {
       await navigator.clipboard.writeText(text)
       setCopied(which)
-      toast.success('Copiado al portapapeles')
+      toast.success(t.ticker.copied)
       setTimeout(() => setCopied(null), 1800)
     } catch {
-      toast.error('No se pudo copiar')
+      toast.error(t.ticker.copyFailed)
     }
   }
 
@@ -172,10 +175,10 @@ function TickerEmbedDialog({
       <DialogContent className="max-h-[90dvh] overflow-y-auto border-white/10 bg-[#0d0e0a] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Code2 className="h-4 w-4 text-primary" /> Incrustar la barra de tokens
+            <Code2 className="h-4 w-4 text-primary" /> {t.ticker.embedTitle}
           </DialogTitle>
           <DialogDescription>
-            Elige qué tokens mostrar y copia el enlace para OBS o el código para tu web. Los precios se actualizan solos.
+            {t.ticker.embedLead}
           </DialogDescription>
         </DialogHeader>
 
@@ -183,17 +186,17 @@ function TickerEmbedDialog({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-              Tokens · {selected.length ? `${selected.length} elegidos` : `todos (${tokens.length})`}
+              Tokens · {selected.length ? t.ticker.tokensChosen(selected.length) : t.ticker.tokensAll(tokens.length)}
             </p>
             <div className="flex gap-1.5 text-[11px] font-semibold">
               <button onClick={() => setSelected([])} className="rounded-md px-2 py-0.5 text-primary hover:bg-white/5">
-                Todos
+                {t.ticker.all}
               </button>
               <button
                 onClick={() => setSelected(tokens.map((t) => t.id))}
                 className="rounded-md px-2 py-0.5 text-muted-foreground hover:bg-white/5 hover:text-foreground"
               >
-                Elegir uno a uno
+                {t.ticker.oneByOne}
               </button>
             </div>
           </div>
@@ -221,14 +224,14 @@ function TickerEmbedDialog({
             })}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Sin ninguno elegido se muestran todos, incluidos los que se añadan más adelante.
+            {t.ticker.noneChosen}
           </p>
         </div>
 
         {/* Opciones */}
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-muted-foreground">Logo</span>
+            <span className="text-muted-foreground">{t.ticker.logo}</span>
             {LOGO_OPTIONS.map((o) => (
               <button
                 key={o.value}
@@ -238,12 +241,12 @@ function TickerEmbedDialog({
                   logo === o.value ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
                 )}
               >
-                {o.label}
+                {t.ticker.logoOptions[o.value as keyof typeof t.ticker.logoOptions]}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground">Velocidad</span>
+            <span className="text-muted-foreground">{t.ticker.speed}</span>
             {(['slow', 'normal', 'fast'] as const).map((s) => (
               <button
                 key={s}
@@ -253,13 +256,13 @@ function TickerEmbedDialog({
                   speed === s ? 'border-[#8FA83F]/50 bg-[#8FA83F]/10 text-primary' : 'border-white/10 text-muted-foreground'
                 )}
               >
-                {s === 'slow' ? 'Lenta' : s === 'normal' ? 'Normal' : 'Rápida'}
+                {t.ticker.speeds[s]}
               </button>
             ))}
           </div>
           <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground">
             <input type="checkbox" checked={transparent} onChange={(e) => setTransparent(e.target.checked)} className="accent-[#8FA83F]" />
-            Fondo transparente
+            {t.ticker.transparent}
           </label>
         </div>
 
@@ -271,13 +274,13 @@ function TickerEmbedDialog({
         {/* Códigos */}
         <div className="space-y-3">
           <CodeRow
-            label="Enlace para OBS (Fuente → Navegador, ancho 1920, alto 48)"
+            label={t.ticker.obsLink}
             value={url}
             copied={copied === 'url'}
             onCopy={() => copy(url, 'url')}
           />
           <CodeRow
-            label="Código para incrustar en una web"
+            label={t.ticker.htmlCode}
             value={iframe}
             copied={copied === 'iframe'}
             onCopy={() => copy(iframe, 'iframe')}

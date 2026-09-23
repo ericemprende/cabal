@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Check, ChevronRight, Radio, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { jsonFetch, useMe } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { useGoToTab } from '@/lib/use-go-to-tab'
@@ -54,6 +55,7 @@ function write(key: string, value: string) {
 type View = 'home' | 'sections' | 'missions' | 'squad'
 
 export function GuideAssistant() {
+  const t = useT()
   const { data } = useQuery<GuideFeed>({
     queryKey: ['guide'],
     queryFn: () => jsonFetch('/api/guide'),
@@ -141,7 +143,7 @@ export function GuideAssistant() {
       {!guideOpen && (
         <button
           onClick={open}
-          aria-label={`Abrir Radio Cabal, te atiende ${character.name}`}
+          aria-label={t.guide.open(character.name)}
           className={cn(
             'fixed right-3 z-40 flex items-center gap-2 rounded-full border border-[#8FA83F]/40 bg-[#121410]/95 py-1.5 pl-1.5 pr-3.5 shadow-lg backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95 md:right-4',
             'bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-11'
@@ -149,9 +151,9 @@ export function GuideAssistant() {
         >
           <CharacterAvatar character={character} size={40} />
           <span className="flex flex-col items-start leading-tight">
-            <span className="text-[12px] font-bold text-primary">Radio Cabal</span>
+            <span className="text-[12px] font-bold text-primary">{t.guide.title}</span>
             <span className="text-[10px] text-muted-foreground">
-              {progress.done < progress.total ? `${progress.done}/${progress.total} misiones` : '¿Dudas?'}
+              {progress.done < progress.total ? t.guide.missions(progress.done, progress.total) : t.guide.questions}
             </span>
           </span>
           {progress.done < progress.total && (
@@ -163,7 +165,7 @@ export function GuideAssistant() {
       {guideOpen && (
         <div
           role="dialog"
-          aria-label="Radio Cabal"
+          aria-label={t.guide.title}
           className={cn(
             'fixed right-3 z-40 flex w-[min(24rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-[#8FA83F]/30 bg-[#121410]/98 shadow-2xl backdrop-blur-md md:right-4',
             'bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-11',
@@ -179,7 +181,7 @@ export function GuideAssistant() {
                   setOpenSection(null)
                 }}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-                aria-label="Volver"
+                aria-label={t.guide.back}
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
@@ -189,7 +191,7 @@ export function GuideAssistant() {
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 truncate text-[13px] font-bold">
                 <Radio className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                Radio Cabal
+                {t.guide.title}
               </p>
               <p className="truncate text-[11px] text-muted-foreground">
                 {character.name} · {character.role}
@@ -198,7 +200,7 @@ export function GuideAssistant() {
             <button
               onClick={close}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-              aria-label="Cerrar"
+              aria-label={t.guide.close}
             >
               <X className="h-4 w-4" />
             </button>
@@ -270,6 +272,7 @@ function Home({
   progress: { done: number; total: number }
   onView: (v: View) => void
 }) {
+  const t = useT()
   const pending = progress.total - progress.done
   return (
     <div className="p-3">
@@ -277,7 +280,7 @@ function Home({
         <CharacterAvatar character={character} size={44} />
         <div className="min-w-0">
           <p className="text-[13px] leading-relaxed text-foreground/90">
-            {firstTime ? character.greeting : '¿Por dónde quieres que empecemos?'}
+            {firstTime ? character.greeting : t.guide.whereToStart}
           </p>
         </div>
       </div>
@@ -285,21 +288,21 @@ function Home({
       <div className="mt-3 space-y-1.5">
         <MenuRow
           icon={<Radio className="h-4 w-4 text-primary" aria-hidden />}
-          title="Qué hay en cada sección"
-          sub="Radar, Tokens, Feed, Líderes y el resto"
+          title={t.guide.sections}
+          sub={t.guide.sectionsSub}
           onClick={() => onView('sections')}
         />
         <MenuRow
           icon={<Check className="h-4 w-4 text-primary" aria-hidden />}
-          title="Tus misiones"
-          sub={pending > 0 ? `Te faltan ${pending} de ${progress.total}` : 'Las tienes todas hechas'}
+          title={t.guide.yourMissions}
+          sub={pending > 0 ? t.guide.missionsLeft(pending, progress.total) : t.guide.allDone}
           onClick={() => onView('missions')}
           badge={pending > 0 ? String(pending) : undefined}
         />
         <MenuRow
           icon={<Users className="h-4 w-4 text-primary" aria-hidden />}
-          title="Cambiar de guía"
-          sub="Elige quién del escuadrón te atiende"
+          title={t.guide.changeGuide}
+          sub={t.guide.changeGuideSub}
           onClick={() => onView('squad')}
         />
       </div>
@@ -372,6 +375,7 @@ function SectionDetail({
   onClose: () => void
   onBack: () => void
 }) {
+  const t = useT()
   const goToTab = useGoToTab()
   const router = useRouter()
 
@@ -384,20 +388,20 @@ function SectionDetail({
   return (
     <div className="p-3">
       <button onClick={onBack} className="mb-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground">
-        ← Todas las secciones
+        {t.guide.allSections}
       </button>
       <h3 className="font-display text-[15px] font-bold">{section.title}</h3>
       <p className="mt-0.5 text-[12px] text-primary">{section.summary}</p>
       <p className="mt-2.5 text-[13px] leading-relaxed text-foreground/85">{section.body}</p>
       <p className="mt-3 rounded-xl border border-[#8FA83F]/25 bg-[#8FA83F]/[0.07] p-3 text-[12.5px] leading-relaxed text-foreground/90">
-        <span className="font-bold text-primary">El truco:</span> {section.tip}
+        <span className="font-bold text-primary">{t.guide.theTrick}</span> {section.tip}
       </p>
       {(section.tab || section.href) && (
         <Button
           onClick={go}
           className="mt-3 w-full text-[13px] font-bold"
         >
-          Llévame ahí
+          {t.guide.takeMeThere}
         </Button>
       )}
     </div>
@@ -482,10 +486,11 @@ function SquadList({
   currentId: string
   onPick: (id: string) => void
 }) {
+  const t = useT()
   return (
     <div className="space-y-1.5 p-3">
       <p className="px-1 pb-1 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-        El escuadrón
+        {t.guide.squad}
       </p>
       {characters.map((c) => (
         <button

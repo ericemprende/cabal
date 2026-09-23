@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useUI } from '@/lib/store'
 import { jsonFetch } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/provider'
 import { fmtUsd, type DonateConfigDTO } from '@/lib/donate'
 
 /**
@@ -60,6 +61,7 @@ function markSeen() {
  * sacudida cada pocos segundos para que se note sin gritar.
  */
 export function DonateButton({ className }: { className?: string }) {
+  const t = useT()
   const setDonateOpen = useUI((s) => s.setDonateOpen)
   return (
     <Button
@@ -69,12 +71,12 @@ export function DonateButton({ className }: { className?: string }) {
         markSeen()
         setDonateOpen(true)
       }}
-      title="Donar a Cabal"
+      title={t.donate.title}
       className={cn('animate-donate-glow gap-1.5 px-2.5 text-[13px] sm:px-3', className)}
     >
       <HandHeart className="animate-donate-wiggle h-4 w-4" aria-hidden />
-      <span className="hidden sm:inline">Donar</span>
-      <span className="sr-only sm:hidden">Donar</span>
+      <span className="hidden sm:inline">{t.donate.button}</span>
+      <span className="sr-only sm:hidden">{t.donate.button}</span>
     </Button>
   )
 }
@@ -85,6 +87,7 @@ export function DonateButton({ className }: { className?: string }) {
  * haya otro diálogo abierto.
  */
 export function DonateDialog() {
+  const t = useT()
   const { donateOpen, setDonateOpen } = useUI()
 
   useEffect(() => {
@@ -134,10 +137,11 @@ export function DonateDialog() {
               <HandHeart className="h-4.5 w-4.5 text-white" aria-hidden />
             </span>
             <div className="min-w-0">
-              <DialogTitle className="font-display text-lg font-bold">Apoya a Cabal</DialogTitle>
+              <DialogTitle className="font-display text-lg font-bold">{t.donate.title}</DialogTitle>
               <DialogDescription className="text-xs leading-snug text-muted-foreground">
-                Gratis, sin anuncios y sin vender tus datos: esto lo sostiene la comunidad.
-                Con <span className="font-bold text-white">$1 en SOL</span> ya estás aportando.
+                {t.donate.leadBefore}
+                <span className="font-bold text-white">{t.donate.leadAmount}</span>
+                {t.donate.leadAfter}
               </DialogDescription>
             </div>
           </div>
@@ -148,7 +152,7 @@ export function DonateDialog() {
         <div className="flex flex-col gap-1.5 border-t border-white/10 px-4 py-3">
           <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden />
-            Pagos por NOWPayments · Gracias de verdad por sostener esto 🫡
+            {t.donate.footer}
           </p>
           <Button
             variant="ghost"
@@ -159,7 +163,7 @@ export function DonateDialog() {
               setDonateOpen(false)
             }}
           >
-            Ahora no
+            {t.donate.notNow}
           </Button>
         </div>
       </DialogContent>
@@ -185,6 +189,7 @@ function DonateBody({ open }: { open: boolean }) {
 
 /** Aviso de la última donación que dejó algo a medias: confirmarse o compartirse. */
 function PendingDonation({ last }: { last: NonNullable<DonateConfigDTO['last']> }) {
+  const t = useT()
   const setDonateThanksId = useUI((s) => s.setDonateThanksId)
   const setDonateOpen = useUI((s) => s.setDonateOpen)
   if (last.shared) return null
@@ -195,13 +200,11 @@ function PendingDonation({ last }: { last: NonNullable<DonateConfigDTO['last']> 
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-bold text-primary">
           {last.confirmed
-            ? `Tu donación de ${fmtUsd(last.amountUsd)} ya está confirmada`
-            : `Tu donación de ${fmtUsd(last.amountUsd)} se está confirmando`}
+            ? t.donate.confirmed(fmtUsd(last.amountUsd))
+            : t.donate.confirming(fmtUsd(last.amountUsd))}
         </p>
         <p className="mt-0.5 text-[12.5px] leading-relaxed text-muted-foreground">
-          {last.confirmed
-            ? `Te quedan +${last.shareBonus} puntos por publicar tu tarjeta en X.`
-            : 'En cuanto la red confirme, se abonan tus puntos.'}
+          {last.confirmed ? t.donate.sharePending(last.shareBonus) : t.donate.willCredit}
         </p>
         <Button
           size="sm"
@@ -212,7 +215,7 @@ function PendingDonation({ last }: { last: NonNullable<DonateConfigDTO['last']> 
           className="mt-2 gap-1.5 text-[12.5px] font-bold"
         >
           <Send className="h-3.5 w-3.5" aria-hidden />
-          {last.confirmed ? `Compartir +${last.shareBonus}` : 'Ver estado'}
+          {last.confirmed ? t.donate.share(last.shareBonus) : t.donate.seeStatus}
         </Button>
       </div>
     </div>
@@ -235,23 +238,25 @@ function PendingDonation({ last }: { last: NonNullable<DonateConfigDTO['last']> 
  * pantalla es más estrecha que el embed, se desplaza de lado y ya está.
  */
 function DonationWidget() {
+  const t = useT()
   return (
     <div className="w-full">
       <p className="mb-2 rounded-xl border border-primary/25 bg-primary/[0.07] px-3 py-2 text-[12px] leading-snug text-foreground/90">
-        <span className="font-bold text-primary">Ojo:</span> despliega{' '}
-        <span className="font-bold text-primary">«Choose asset»</span> y elige moneda (SOL, USDC)
-        antes de pulsar «Continue», o el botón no avanza.
+        <span className="font-bold text-primary">{t.donate.heads}</span>
+        {t.donate.widgetHintBefore}
+        <span className="font-bold text-primary">{t.donate.widgetHintAsset}</span>
+        {t.donate.widgetHintAfter}
       </p>
       <div className="w-full overflow-x-auto">
         <iframe
           src={WIDGET_URL}
-          title="Donar a Cabal con cripto"
+          title={t.donate.widgetTitle}
           width={WIDGET_W}
           height={WIDGET_H}
           loading="lazy"
           className="mx-auto block rounded-xl border-0"
         >
-          No se pudo cargar el widget de donaciones.
+          {t.donate.widgetFallback}
         </iframe>
       </div>
       <a
@@ -261,7 +266,7 @@ function DonationWidget() {
         className="mt-2 flex items-center justify-center gap-1.5 text-center text-[11.5px] text-muted-foreground/80 underline-offset-2 hover:text-primary hover:underline"
       >
         <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        ¿Se te queda atascado? Abre la donación en una pestaña
+        {t.donate.stuck}
       </a>
     </div>
   )
