@@ -371,6 +371,13 @@ export const en: Dict = {
   },
 
   launchDetail: {
+    share: 'Share',
+    shareText: (name: string) => `Check out the ${name} launch on Cabal`,
+    linkCopied: 'Link copied',
+    history: 'Change history',
+    historyTitle: (n: number) => `Change history (${n})`,
+    historyCreated: 'Published the launch',
+    historyAdmin: 'Admin team',
     title: 'Launch details',
     expand: 'Expand',
     shrink: 'Shrink',

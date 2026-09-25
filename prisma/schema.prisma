@@ -86,6 +86,7 @@ model User {
   lastSeenAt        DateTime?
   posts             Post[]
   launches          Launch[]
+  launchChanges     LaunchChange[]        @relation("launchChanges")
   tokens            Token[]
   votes             Vote[]
   followersRel      Follow[]              @relation("followTarget")
@@ -192,10 +193,25 @@ model Launch {
   members        LaunchMember[]
   reminders      LaunchReminder[]
   verifyRequests VerificationRequest[]
+  changes        LaunchChange[]
 
   @@index([status, launchAt])
   @@index([createdById])
   @@index([contract])
+}
+
+// Historial de ediciones de un launch (fecha, redes, descripción…): una fila
+// por guardado con cambios de verdad. userId null = panel de admin.
+model LaunchChange {
+  id        String   @id @default(cuid())
+  launchId  String
+  launch    Launch   @relation(fields: [launchId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation("launchChanges", fields: [userId], references: [id], onDelete: SetNull)
+  note      String
+  createdAt DateTime @default(now())
+
+  @@index([launchId, createdAt])
 }
 
 // Equipo de un launch: el dev invita a otros usuarios con un rol (Programador,
@@ -456,15 +472,15 @@ model Post {
 }
 
 model Vote {
-  id       String @id @default(cuid())
-  userId   String
-  user     User   @relation(fields: [userId], references: [id])
-  target   String // "launch" | "post"
-  targetId String
+  id           String  @id @default(cuid())
+  userId       String
+  user         User    @relation(fields: [userId], references: [id])
+  target       String // "launch" | "post"
+  targetId     String
   // "hype" (a favor) | "fud" (en contra). El unique de abajo ya impedía dos
   // votos del mismo usuario sobre lo mismo, así que hype y fud son
   // excluyentes: dar uno retira el otro.
-  kind     String @default("hype")
+  kind         String  @default("hype")
   // Comentario que justifica el fud: obligatorio para votar en contra, vive en
   // el hilo del proyecto para que le puedan responder. Al retractarse el voto
   // desaparece y ese post queda marcado como retractado (Post.retracted).

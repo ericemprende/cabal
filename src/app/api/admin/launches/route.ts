@@ -213,6 +213,7 @@ export async function PATCH(req: Request) {
     }
 
     const updated = await db.launch.update({ where: { id }, data })
+    if (note) await db.launchChange.create({ data: { launchId: id, note } })
     // La lista del Radar está cacheada: sin esto el cambio tardaría hasta un minuto
     await invalidate('launches:*')
     return NextResponse.json({ ok: true, launch: { id: updated.id, hidden: updated.hidden } })

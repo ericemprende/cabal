@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Crown, Flame, Globe, Lock, Maximize2, Minimize2, MonitorPlay, Pencil, Rocket, Wallet, Zap } from 'lucide-react'
+import { ChevronDown, Crown, Flame, Globe, History, Lock, Maximize2, Minimize2, MonitorPlay, Pencil, Rocket, Share2, Wallet, Zap } from 'lucide-react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,7 +17,9 @@ import { CopyCA, CountdownPill, EstimatedDateBadge, NetworkBadge, PremiumLockedR
 import { PostCard } from '@/components/cabal/post-card'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { TradePanel } from '@/components/cabal/trade-panel'
+import { toast } from 'sonner'
 import { timeAgo } from '@/lib/cabal'
+import type { LaunchChangeDTO } from '@/lib/types'
 import { useCreatePost, useFollowToggle, useHypeToggle, useLaunch, useMe, usePointRules } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { ReminderBell } from '@/components/cabal/reminder-bell'
@@ -226,6 +228,7 @@ export function LaunchDetailDialog() {
                   target={{ type: 'launch', id: launch.id, name: launch.ticker ?? launch.name, image: launch.image }}
                   boost={launch.boost}
                 />
+                <ShareLaunchButton id={launch.id} name={launch.ticker ? `$${launch.ticker}` : launch.name} />
               </div>
 
               {/* Quien lo publicó puede pedir la insignia de launch oficial (perk Premium) */}
@@ -254,6 +257,8 @@ export function LaunchDetailDialog() {
                 )}
               </div>
             </div>
+
+            <LaunchHistory changes={launch.changes} createdAt={launch.createdAt} createdBy={launch.createdBy} />
 
             {/* Transmisión en vivo (el admin/dev marcó el launch como live y pegó el link del stream) */}
             {launch.isLive && launch.liveUrl && (
@@ -443,6 +448,98 @@ function LiveEmbed({ url, title }: { url: string; title: string }) {
         referrerPolicy="strict-origin-when-cross-origin"
       />
     </div>
+  )
+}
+
+/**
+ * Comparte el enlace directo al launch (/app?launch=<id>), p. ej. para
+ * mandárselo al dueño del proyecto y que lo reclame. Usa el menú de compartir
+ * del sistema si existe; si no, copia el enlace.
+ */
+function ShareLaunchButton({ id, name }: { id: string; name: string }) {
+  const t = useT()
+  const share = async () => {
+    const url = `${window.location.origin}/app?launch=${encodeURIComponent(id)}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: name, text: t.launchDetail.shareText(name), url })
+        return
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success(t.launchDetail.linkCopied)
+    } catch {
+      window.prompt(t.launchDetail.share, url)
+    }
+  }
+  return (
+    <button
+      onClick={share}
+      aria-label={t.launchDetail.share}
+      title={t.launchDetail.share}
+      className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:border-[#8FA83F]/50 hover:text-primary"
+    >
+      <Share2 className="h-4 w-4" aria-hidden />
+      <span className="hidden sm:inline">{t.launchDetail.share}</span>
+    </button>
+  )
+}
+
+/** Historial de cambios del launch (desplegable): cada edición y la publicación. */
+function LaunchHistory({
+  changes,
+  createdAt,
+  createdBy,
+}: {
+  changes: LaunchChangeDTO[]
+  createdAt: string
+  createdBy: { name: string; handle: string }
+}) {
+  const t = useT()
+  const { openLaunch } = useUI()
+  const [open, setOpen] = useState(false)
+  const items = [...changes, { id: 'created', note: t.launchDetail.historyCreated, createdAt, by: createdBy }]
+  return (
+    <section className="border-b border-white/10" aria-label={t.launchDetail.history}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <History className="h-3.5 w-3.5" aria-hidden />
+        {t.launchDetail.historyTitle(changes.length)}
+        <ChevronDown className={cn('ml-auto h-4 w-4 transition-transform', open && 'rotate-180')} aria-hidden />
+      </button>
+      {open && (
+        <ol className="relative mx-4 mb-4 space-y-3 border-l border-white/10 pl-4">
+          {items.map((c) => (
+            <li key={c.id} className="relative">
+              <span
+                className={cn(
+                  'absolute -left-[21px] top-1.5 h-2 w-2 rounded-full',
+                  c.id === 'created' ? 'bg-primary' : 'bg-amber-300'
+                )}
+                aria-hidden
+              />
+              <p className="text-[13px] text-foreground/90">{c.note}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {c.by ? (
+                  <Link href={`/u/${c.by.handle}`} onClick={() => openLaunch(null)} className="hover:underline">
+                    @{c.by.handle}
+                  </Link>
+                ) : (
+                  t.launchDetail.historyAdmin
+                )}{' '}
+                · {new Date(c.createdAt).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   )
 }
 

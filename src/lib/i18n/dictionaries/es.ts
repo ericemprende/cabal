@@ -370,6 +370,13 @@ export const es = {
   },
 
   launchDetail: {
+    share: 'Compartir',
+    shareText: (name: string) => `Mira el launch de ${name} en Cabal`,
+    linkCopied: 'Enlace copiado',
+    history: 'Historial de cambios',
+    historyTitle: (n: number) => `Historial de cambios (${n})`,
+    historyCreated: 'Publicó el launch',
+    historyAdmin: 'Administración',
     title: 'Detalle del lanzamiento',
     expand: 'Ampliar',
     shrink: 'Achicar',

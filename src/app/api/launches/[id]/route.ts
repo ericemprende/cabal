@@ -46,7 +46,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'Launch no encontrado' }, { status: 404 })
     }
 
-    const [posts, votes, follows, members, managers, viewer, settings] = await Promise.all([
+    const [posts, votes, follows, members, managers, viewer, settings, changes] = await Promise.all([
       db.post.findMany({
         where: { launchId: launch.id },
         include: { user: true },
@@ -62,6 +62,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       teamManagerIds(launch),
       getViewer(req),
       getPremiumSettings(),
+      db.launchChange.findMany({
+        where: { launchId: launch.id },
+        include: { user: { select: { name: true, handle: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
     ])
     // Quien puede editar necesita ver el ticker aunque el launch sea privado: si
     // no, el formulario lo cargaría vacío y al guardar lo borraría.
@@ -124,6 +130,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       canManageTeam,
       myInvite: myInvite ? toMemberDTO(myInvite) : null,
       isTeamMember,
+      changes: changes.map((c) => ({
+        id: c.id,
+        note: c.note,
+        createdAt: c.createdAt.toISOString(),
+        by: c.user ? { name: c.user.name, handle: c.user.handle } : null,
+      })),
       posts: (await Promise.all(
         posts.map((p) => toPostDTO(p, likedIds.has(p.id), undefined, postRefs))
       )) as PostDTO[],
@@ -172,6 +184,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const updated = await db.launch.update({ where: { id }, data: updateData })
+    if (note) {
+      await db.launchChange.create({
+        data: { launchId: id, note, userId: isAdminRequest(req) ? null : await sessionUserIdFromCookies() },
+      })
+    }
     await invalidate('launches:*')
     // Si ha cambiado alguna imagen de IPFS, se copia ya (ver lib/ipfs-cache)
     for (const cid of [ipfsCid(updated.image), ipfsCid(updated.banner)]) {

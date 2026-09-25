@@ -273,8 +273,19 @@ export interface AffiliatePlatformDTO {
   order: number
 }
 
+export interface LaunchChangeDTO {
+  id: string
+  /** Qué cambió, en texto corto ("Cambió la fecha de lanzamiento, actualizó los enlaces"). */
+  note: string
+  createdAt: string
+  /** Quién lo cambió; null = la administración. */
+  by: { name: string; handle: string } | null
+}
+
 export interface LaunchDetailDTO extends LaunchDTO {
   posts: PostDTO[]
+  /** Historial de ediciones, de la más nueva a la más vieja. */
+  changes: LaunchChangeDTO[]
   /** Si quien lo mira puede editarlo: quien lo publicó o un administrador. */
   canEdit: boolean
   /** Equipo del proyecto: invitaciones aceptadas. */
