@@ -136,7 +136,8 @@ export function ActivityStream({ withChat = true }: { withChat?: boolean }) {
       </div>
 
       {filter === 'chat' ? (
-        <LiveChat />
+        // Ocupa el alto del costado (pantalla menos header y filtros)
+        <LiveChat className="h-[calc(100vh-190px)] min-h-[420px]" />
       ) : (
         <div className="space-y-2">
           {isLoading &&
@@ -177,7 +178,7 @@ export function LeftFeed() {
 
   return (
     <aside
-      className={cn('hidden shrink-0 transition-[width] duration-200 lg:block', collapsed ? 'w-11' : 'w-[440px]')}
+      className={cn('hidden shrink-0 transition-[width] duration-200 lg:block', collapsed ? 'w-11' : 'w-[440px] 2xl:w-[500px]')}
       aria-label={t.activity.live}
     >
       <div className="sticky top-[72px] max-h-[calc(100vh-100px)] overflow-y-auto pr-1">

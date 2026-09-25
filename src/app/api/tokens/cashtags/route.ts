@@ -14,6 +14,8 @@ import { cached } from '@/lib/cache'
  * que la gente quiere decir cuando escribe el símbolo a secas.
  */
 export type CashtagDTO = {
+  /** token = ya cotiza (chip con precio) · launch = aún en el Radar (abre el launch) */
+  kind?: 'token' | 'launch'
   id: string
   ticker: string
   name: string
@@ -34,7 +36,20 @@ export async function GET() {
       const byTicker = new Map<string, CashtagDTO>()
       for (const t of rows) {
         const key = t.ticker.trim().toUpperCase()
-        if (key && !byTicker.has(key)) byTicker.set(key, { ...t, ticker: key })
+        if (key && !byTicker.has(key)) byTicker.set(key, { ...t, ticker: key, kind: 'token' })
+      }
+      // Tickers de launches que aún no son token: el más hypeado gana. Los
+      // privados y los ocultos no, que su ticker no es público.
+      const launches = await db.launch.findMany({
+        where: { hidden: false, isPrivate: false, ticker: { not: null }, token: null },
+        select: { id: true, ticker: true, name: true, image: true, network: true },
+        orderBy: { hype: 'desc' },
+      })
+      for (const l of launches) {
+        const key = (l.ticker ?? '').trim().replace(/^\$/, '').toUpperCase()
+        if (key && !byTicker.has(key)) {
+          byTicker.set(key, { ...l, ticker: key, kind: 'launch', price: 0, change24h: 0, mc: 0 })
+        }
       }
       return Object.fromEntries(byTicker)
     })

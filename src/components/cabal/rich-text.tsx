@@ -31,7 +31,26 @@ export function useCashtags() {
 
 /** Chip de una moneda: ticker + precio + variación de 24h. Abre su ficha. */
 export function Cashtag({ token, className }: { token: CashtagDTO; className?: string }) {
-  const { openToken } = useUI()
+  const { openToken, openLaunch } = useUI()
+  if (token.kind === 'launch') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          openLaunch(token.id)
+        }}
+        title={`${token.name} · Radar`}
+        className={cn(
+          'mx-px inline-flex max-w-full items-baseline gap-1 rounded-md border border-[#8FA83F]/25 bg-[#8FA83F]/10 px-1.5 py-px align-baseline font-semibold text-primary transition-colors hover:border-[#8FA83F]/50 hover:bg-[#8FA83F]/20',
+          className
+        )}
+      >
+        <span>${token.ticker}</span>
+        <span className="text-[0.8em]" aria-hidden>🚀</span>
+      </button>
+    )
+  }
   const up = token.change24h >= 0
   return (
     <button
@@ -55,33 +74,69 @@ export function Cashtag({ token, className }: { token: CashtagDTO; className?: s
   )
 }
 
+/** Enlaces http(s) y "dominio.tld/…" con www. */
+const URL_RE = /(?:https?:\/\/|www\.)[^\s<>"']+/gi
+
+type Part = string | CashtagDTO | { href: string; label: string }
+
+/** Parte un trozo de texto en texto y enlaces (sin la puntuación final pegada). */
+function splitLinks(text: string): Part[] {
+  const out: Part[] = []
+  let last = 0
+  for (const m of text.matchAll(URL_RE)) {
+    let raw = m[0]
+    const trail = raw.match(/[.,;:!?)\]]+$/)
+    if (trail) raw = raw.slice(0, -trail[0].length)
+    out.push(text.slice(last, m.index))
+    out.push({ href: raw.startsWith('www.') ? `https://${raw}` : raw, label: raw })
+    last = m.index + raw.length
+  }
+  out.push(text.slice(last))
+  return out
+}
+
 export function RichText({ text, className }: { text: string; className?: string }) {
   const { data: tokens } = useCashtags()
 
   const parts = useMemo(() => {
-    if (!tokens) return null
-    const out: (string | CashtagDTO)[] = []
-    let last = 0
-    for (const m of text.matchAll(CASHTAG)) {
-      const token = tokens[m[2].toUpperCase()]
-      if (!token) continue
-      const start = m.index + m[1].length
-      out.push(text.slice(last, start), token)
-      last = start + m[2].length + 1
+    const out: Part[] = []
+    for (const chunk of splitLinks(text)) {
+      if (typeof chunk !== 'string' || !tokens) {
+        out.push(chunk)
+        continue
+      }
+      let last = 0
+      for (const m of chunk.matchAll(CASHTAG)) {
+        const token = tokens[m[2].toUpperCase()]
+        if (!token) continue
+        const start = m.index + m[1].length
+        out.push(chunk.slice(last, start), token)
+        last = start + m[2].length + 1
+      }
+      out.push(chunk.slice(last))
     }
-    if (!out.length) return null
-    out.push(text.slice(last))
     return out
   }, [text, tokens])
-
-  // Mientras no hay tabla de precios (o no hay ningún ticker conocido) se pinta
-  // el texto tal cual: nunca se queda en blanco esperando a la red.
-  if (!parts) return <span className={className}>{text}</span>
 
   return (
     <span className={className}>
       {parts.map((p, i) =>
-        typeof p === 'string' ? <Fragment key={i}>{p}</Fragment> : <Cashtag key={i} token={p} />
+        typeof p === 'string' ? (
+          <Fragment key={i}>{p}</Fragment>
+        ) : 'href' in p ? (
+          <a
+            key={i}
+            href={p.href}
+            target="_blank"
+            rel="noopener noreferrer nofollow ugc"
+            onClick={(e) => e.stopPropagation()}
+            className="break-all text-primary underline-offset-2 hover:underline"
+          >
+            {p.label}
+          </a>
+        ) : (
+          <Cashtag key={i} token={p} />
+        )
       )}
     </span>
   )
