@@ -179,6 +179,16 @@ ${list}
 <code>/filter X</code> añade o quita un token · <code>/filter off</code> lo quita todo.`,
   filterBad: 'Eso no parece un contrato ni un ticker. Prueba con <code>/filter CONTRATO</code> o <code>/filter $TICKER</code>.',
   filterFull: (max: number) => `Máximo ${max} tokens en el filtro. Quita alguno antes con <code>/filter X</code>.`,
+  // ---- Estadísticas del caller ----
+  statsTitle: '📊 <b>Sus últimos 30 días</b>',
+  statsRank: 'Ranking',
+  statsCalls: (n: number) => `${n} ${n === 1 ? 'call' : 'calls'}`,
+  statsHitRate: 'Aciertos',
+  statsAvgPeak: 'Pico medio',
+  statsBest: 'Mejor call',
+  statsProfile: '👤 Ver su analítica',
+  stats7d: '🔥 Top 7 días',
+  stats24h: '⚡ Top 24 h',
 }
 
 type Dict = typeof es
@@ -298,6 +308,15 @@ ${list}
 <code>/filter X</code> adds or removes a token · <code>/filter off</code> clears it.`,
   filterBad: "That doesn't look like a contract or a ticker. Try <code>/filter CONTRACT</code> or <code>/filter $TICKER</code>.",
   filterFull: (max: number) => `Up to ${max} tokens in the filter. Remove one first with <code>/filter X</code>.`,
+  statsTitle: '📊 <b>Their last 30 days</b>',
+  statsRank: 'Rank',
+  statsCalls: (n: number) => `${n} ${n === 1 ? 'call' : 'calls'}`,
+  statsHitRate: 'Hit rate',
+  statsAvgPeak: 'Avg peak',
+  statsBest: 'Best call',
+  statsProfile: '👤 See their analytics',
+  stats7d: '🔥 Top 7 days',
+  stats24h: '⚡ Top 24 h',
 }
 
 const DICTS: Record<Lang, Dict> = { es, en }

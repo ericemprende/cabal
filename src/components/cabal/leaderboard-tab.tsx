@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Crown, Info, Send, Shield, ShieldCheck, Target, Users, Wrench, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -57,6 +57,14 @@ export function LeaderboardTab() {
   const [period, setPeriod] = useState<CallPeriod>('7d')
   // null = todo Cabal; una clave = solo las calls nacidas en ese grupo/servidor
   const [community, setCommunity] = useState<string | null>(null)
+  // Los botones de los bots enlazan con ?period=24h y ?community=...
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const p = q.get('period')
+    if (p && CALL_PERIODS.some((c) => c.key === p)) setPeriod(p as CallPeriod)
+    const c = q.get('community')
+    if (c) setCommunity(c)
+  }, [])
   const { data, isLoading } = useLeaderboard(period, community)
   const [board, setBoard] = useState<Board>('callers')
 

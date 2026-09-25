@@ -7,7 +7,7 @@ import { siteUrl } from '@/lib/waitlist'
 import { fetchCallSnapshot, isValidContract } from '@/lib/chain-stats'
 import { liveCallResult } from '@/lib/call-results'
 import { parseAffiliateLinks, platformLinkFor } from '@/lib/affiliate'
-import { userLink } from '@/lib/notifications'
+import { callerStatsBlock, callerStatsButtons, userLink } from '@/lib/notifications'
 import { chatLinkIdsOf, communityKeyOf } from '@/lib/bot-community'
 import { esc, type BotButton, type BotMessage, type BotProvider } from '@/lib/bot-message'
 import { t, type Lang } from '@/lib/bot-i18n'
@@ -143,17 +143,19 @@ export async function handleContractFromBot(input: {
   await awardPoints(user.id, 'comment', 'Call publicada desde el bot')
   await invalidate('feed:*')
 
+  const stats = await callerStatsBlock(user.id, input.lang)
+  const card = await tokenCard(token, input.lang, {
+    head: tx.callHead(userLink(user.handle)),
+    note: input.note.trim(),
+    footer: stats ? `${tx.callEntrySaved}\n\n${stats}` : tx.callEntrySaved,
+    postId: post.id,
+  })
   return {
     created: true,
     broadcast: true,
     message: {
-      // La misma tarjeta que se ve en Cabal para esa call
-      ...(await tokenCard(token, input.lang, {
-        head: tx.callHead(userLink(user.handle)),
-        note: input.note.trim(),
-        footer: tx.callEntrySaved,
-        postId: post.id,
-      })),
+      ...card,
+      buttons: [...(card.buttons ?? []), ...callerStatsButtons(user.handle, input.lang)],
       image: callCardUrl(post.id),
     },
   }

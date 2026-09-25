@@ -12,7 +12,7 @@ import { DEFAULT_REMINDER_LEAD } from '@/lib/notify-types'
 import { matchesTokenFilter, type FilterSubject } from '@/lib/token-filter'
 import { pushBroadcast, pushConfigured, pushToUsers } from '@/lib/push'
 import { postChatAnnouncement } from '@/lib/chat-announce'
-import { fmtMultiple, summarizeCalls, type CallPeriod } from '@/lib/call-score'
+import { fmtMultiple } from '@/lib/call-score'
 import { rankCallers } from '@/lib/call-results'
 
 /**
@@ -638,19 +638,19 @@ async function callMessage(
 ): Promise<BotMessage> {
   const tx = t(lang)
   const symbol = c.resultSymbol ? `$${esc(c.resultSymbol)}` : esc((c.contract ?? '').slice(0, 8))
-  const lines = [tx.callHead(userLink(c.user.handle))]
-
-  const statsLine = await userStatsLine(c.userId, lang)
-  if (statsLine) lines.push(statsLine)
-
-  lines.push('', `<b>${symbol}</b>`)
+  const lines = [tx.callHead(userLink(c.user.handle)), '', `<b>${symbol}</b>`]
   if (c.entryMc !== null) lines.push(`${tx.callEntryAt} ${fmtMcShort(c.entryMc)}`)
   if (c.content) lines.push('', esc(c.content.slice(0, 400)))
+  const stats = await callerStatsBlock(c.userId, lang)
+  if (stats) lines.push('', stats)
 
   return {
     text: lines.join('\n'),
     image: `${siteUrl()}/api/posts/${encodeURIComponent(c.id)}/card`,
-    buttons: [[{ text: tx.viewCallOnCabal, url: `${siteUrl()}/app?post=${encodeURIComponent(c.id)}` }]],
+    buttons: [
+      [{ text: tx.viewCallOnCabal, url: `${siteUrl()}/app?post=${encodeURIComponent(c.id)}` }],
+      ...callerStatsButtons(c.user.handle, lang),
+    ],
   }
 }
 
@@ -772,62 +772,33 @@ function boostMessage(
 
 // ---------- Estadísticas del caller ----------
 
-/** Estadísticas de un usuario en los últimos 30 días. */
-type UserStats30d = {
-  score: number
-  calls: number
-  wins: number
-  winRate: number
-  bestMultiple: number | null
-  avgPeak: number | null
-  ranking: number | null
-}
-
-async function getUserStats30d(userId: string): Promise<UserStats30d | null> {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-
-  const posts = await db.post.findMany({
-    where: {
-      kind: 'call',
-      userId,
-      peakMultiple: { not: null },
-      createdAt: { gte: thirtyDaysAgo },
-    },
-    select: { peakMultiple: true, currentMultiple: true },
-  })
-
-  if (posts.length === 0) return null
-
-  const summary = summarizeCalls(posts as any)
-
+/**
+ * Bloque "últimos 30 días" de quien da la call, en el idioma del chat. Sin
+ * calls evaluadas en ese periodo devuelve null y el mensaje sale sin él.
+ */
+export async function callerStatsBlock(userId: string, lang: Lang): Promise<string | null> {
   const ranking = await rankCallers('30d')
-  const userRank = ranking.findIndex((r) => r.userId === userId)
-  const position = userRank !== -1 ? userRank + 1 : null
-
-  return {
-    score: summary.score,
-    calls: summary.calls,
-    wins: summary.wins,
-    winRate: summary.winRate,
-    bestMultiple: summary.bestMultiple,
-    avgPeak: summary.avgPeak,
-    ranking: position,
-  }
+  const idx = ranking.findIndex((r) => r.userId === userId)
+  if (idx === -1 || ranking[idx].summary.calls === 0) return null
+  const s = ranking[idx].summary
+  const tx = t(lang)
+  return [
+    tx.statsTitle,
+    `🏆 ${tx.statsRank} <b>#${idx + 1}</b> · 📞 ${tx.statsCalls(s.calls)}`,
+    `✅ <b>${tx.statsHitRate}: ${s.winRate}%</b>`,
+    `📈 ${tx.statsAvgPeak} ${fmtMultiple(s.avgPeak)} · 🎯 ${tx.statsBest} <b>${fmtMultiple(s.bestMultiple)}</b>`,
+  ].join('\n')
 }
 
-/** Línea de estadísticas con iconos para mostrar en el mensaje de la call. */
-async function userStatsLine(userId: string, lang: Lang): Promise<string | null> {
-  const stats = await getUserStats30d(userId)
-  if (!stats || stats.calls === 0) return null
-
+/** Botones que llevan a Cabal: la analítica del caller y los tops de 7 días y 24 h. */
+export function callerStatsButtons(handle: string, lang: Lang): { text: string; url: string }[][] {
   const tx = t(lang)
-  const parts: string[] = []
-
-  if (stats.ranking) parts.push(`🏆 #${stats.ranking}`)
-  parts.push(`📊 ${stats.calls} call${stats.calls !== 1 ? 's' : ''}`)
-  parts.push(`✅ <b>${stats.winRate}%</b>`)
-  parts.push(`📈 ${fmtMultiple(stats.avgPeak)}`)
-  parts.push(`🎯 ${fmtMultiple(stats.bestMultiple)}`)
-
-  return parts.join(' · ')
+  const lb = (p: string) => `${siteUrl()}/app?tab=leaderboard&period=${p}`
+  return [
+    [{ text: tx.statsProfile, url: profileUrl(handle) }],
+    [
+      { text: tx.stats7d, url: lb('7d') },
+      { text: tx.stats24h, url: lb('24h') },
+    ],
+  ]
 }

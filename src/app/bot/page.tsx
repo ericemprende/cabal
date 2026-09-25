@@ -9,7 +9,7 @@ import { MAX_TOKEN_FILTER } from '@/lib/token-filter'
  * del bot enlazan aquí. Cada cambio en los bots (comandos, avisos, ajustes)
  * debe reflejarse en esta página y en UPDATED_AT.
  */
-const UPDATED_AT = '20 de septiembre de 2026'
+const UPDATED_AT = '24 de septiembre de 2026'
 
 export const metadata: Metadata = {
   title: 'Bot de Cabal — Manual de Telegram y Discord',
@@ -59,7 +59,7 @@ const COMMANDS: Command[] = [
   {
     name: 'call',
     usage: '/call CONTRATO [tu tesis]',
-    what: 'Publica una call de ese token en Cabal a tu nombre. Se guarda el precio y el market cap del momento exacto: el resultado de la call (pico y X actual) se mide desde ahí.',
+    what: 'Publica una call de ese token en Cabal a tu nombre. Se guarda el precio y el market cap del momento exacto: el resultado de la call (pico y X actual) se mide desde ahí. El mensaje enseña además tus números de los últimos 30 días (ranking, calls, % de aciertos, pico medio y mejor call) con botones a tu analítica y a los tops de 7 días y 24 h.',
     who: 'Quien tenga su cuenta conectada al bot por privado',
     aliases: '/llamada',
   },
