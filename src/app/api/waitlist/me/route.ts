@@ -24,8 +24,20 @@ export async function GET() {
   const locale = localeFromHeader((await headers()).get('accept-language'))
   const entryId = readWaitlistCookie(store.get(WAITLIST_COOKIE)?.value)
   const entry = entryId ? await db.waitlistEntry.findUnique({ where: { id: entryId } }) : null
-  // Solo cuentan los registros terminados: los que se quedaron en el paso 2 no
-  const total = await db.waitlistEntry.count({ where: { completed: true } })
+  // Miembros reales de Cabal: cuentas con alguna forma de entrar (contraseña,
+  // X, Google o wallet). Así no cuentan las cuentas demo ni la de invitado.
+  // Cuando se vuelva a cerrar el registro, aquí se puede volver a contar la
+  // whitelist (waitlistEntry con completed: true).
+  const total = await db.user.count({
+    where: {
+      OR: [
+        { passwordHash: { not: null } },
+        { xVerified: true },
+        { googleVerified: true },
+        { walletVerified: true },
+      ],
+    },
+  })
 
   const payload: WaitlistStatusDTO = {
     step: !entry ? 'login' : entry.completed ? 'done' : 'form',
