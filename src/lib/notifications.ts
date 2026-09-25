@@ -12,6 +12,8 @@ import { DEFAULT_REMINDER_LEAD } from '@/lib/notify-types'
 import { matchesTokenFilter, type FilterSubject } from '@/lib/token-filter'
 import { pushBroadcast, pushConfigured, pushToUsers } from '@/lib/push'
 import { postChatAnnouncement } from '@/lib/chat-announce'
+import { fmtMultiple, summarizeCalls, type CallPeriod } from '@/lib/call-score'
+import { rankCallers } from '@/lib/call-results'
 
 /**
  * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
@@ -177,7 +179,19 @@ async function announceNewCalls(senders: Senders, r: TickResult) {
     },
     orderBy: { createdAt: 'asc' },
     take: 20,
-    include: { user: { select: { handle: true } }, token: { select: { ticker: true, contract: true } } },
+    select: {
+      id: true,
+      userId: true,
+      content: true,
+      contract: true,
+      network: true,
+      entryMc: true,
+      resultSymbol: true,
+      chatLinkId: true,
+      createdAt: true,
+      user: { select: { handle: true } },
+      token: { select: { ticker: true, contract: true } },
+    },
   })
   const pending = await notDispatched(calls.map((c) => `call:${c.id}`))
   for (const c of calls) {
@@ -452,7 +466,7 @@ function launchSubject(l: { contract: string | null; ticker: string | null; crea
 async function broadcast(
   senders: Senders,
   chats: ChatLink[],
-  render: (lang: Lang) => BotMessage,
+  render: (lang: Lang) => BotMessage | Promise<BotMessage>,
   publishedAt?: Date
 ): Promise<number> {
   let ok = 0
@@ -462,7 +476,7 @@ async function broadcast(
     if (!sender) continue
     if (publishedAt && sender.since > publishedAt) continue
     const lang: Lang = chat.lang === 'en' ? 'en' : 'es'
-    if (!byLang.has(lang)) byLang.set(lang, render(lang))
+    if (!byLang.has(lang)) byLang.set(lang, await render(lang))
     try {
       const { migratedTo } = await sender.send(chat.chatId, byLang.get(lang)!)
       if (migratedTo) {
@@ -607,9 +621,9 @@ export function launchMessage(l: LaunchForMessage, kind: 'new' | 'soon' | 'bell'
 /**
  * Una call para difundir. Lleva la misma tarjeta que se ve en Cabal
  * (/api/posts/[id]/card): es la imagen del resultado, que al publicarla marca
- * 1.0X y luego cuenta la historia sola.
+ * 1.0X y luego cuenta la historia sola. Incluye las estadísticas del caller.
  */
-function callMessage(
+async function callMessage(
   c: {
     id: string
     content: string
@@ -617,15 +631,22 @@ function callMessage(
     network: string | null
     entryMc: number | null
     resultSymbol: string | null
+    userId: string
     user: { handle: string }
   },
   lang: Lang
-): BotMessage {
+): Promise<BotMessage> {
   const tx = t(lang)
   const symbol = c.resultSymbol ? `$${esc(c.resultSymbol)}` : esc((c.contract ?? '').slice(0, 8))
-  const lines = [tx.callHead(userLink(c.user.handle)), '', `<b>${symbol}</b>`]
+  const lines = [tx.callHead(userLink(c.user.handle))]
+
+  const statsLine = await userStatsLine(c.userId, lang)
+  if (statsLine) lines.push(statsLine)
+
+  lines.push('', `<b>${symbol}</b>`)
   if (c.entryMc !== null) lines.push(`${tx.callEntryAt} ${fmtMcShort(c.entryMc)}`)
   if (c.content) lines.push('', esc(c.content.slice(0, 400)))
+
   return {
     text: lines.join('\n'),
     image: `${siteUrl()}/api/posts/${encodeURIComponent(c.id)}/card`,
@@ -747,4 +768,66 @@ function boostMessage(
     ].join('\n'),
     buttons: [[{ text: tx.viewOnCabal, url }]],
   }
+}
+
+// ---------- Estadísticas del caller ----------
+
+/** Estadísticas de un usuario en los últimos 30 días. */
+type UserStats30d = {
+  score: number
+  calls: number
+  wins: number
+  winRate: number
+  bestMultiple: number | null
+  avgPeak: number | null
+  ranking: number | null
+}
+
+async function getUserStats30d(userId: string): Promise<UserStats30d | null> {
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+
+  const posts = await db.post.findMany({
+    where: {
+      kind: 'call',
+      userId,
+      peakMultiple: { not: null },
+      createdAt: { gte: thirtyDaysAgo },
+    },
+    select: { peakMultiple: true, currentMultiple: true },
+  })
+
+  if (posts.length === 0) return null
+
+  const summary = summarizeCalls(posts as any)
+
+  const ranking = await rankCallers('30d')
+  const userRank = ranking.findIndex((r) => r.userId === userId)
+  const position = userRank !== -1 ? userRank + 1 : null
+
+  return {
+    score: summary.score,
+    calls: summary.calls,
+    wins: summary.wins,
+    winRate: summary.winRate,
+    bestMultiple: summary.bestMultiple,
+    avgPeak: summary.avgPeak,
+    ranking: position,
+  }
+}
+
+/** Línea de estadísticas con iconos para mostrar en el mensaje de la call. */
+async function userStatsLine(userId: string, lang: Lang): Promise<string | null> {
+  const stats = await getUserStats30d(userId)
+  if (!stats || stats.calls === 0) return null
+
+  const tx = t(lang)
+  const parts: string[] = []
+
+  if (stats.ranking) parts.push(`🏆 #${stats.ranking}`)
+  parts.push(`📊 ${stats.calls} call${stats.calls !== 1 ? 's' : ''}`)
+  parts.push(`✅ <b>${stats.winRate}%</b>`)
+  parts.push(`📈 ${fmtMultiple(stats.avgPeak)}`)
+  parts.push(`🎯 ${fmtMultiple(stats.bestMultiple)}`)
+
+  return parts.join(' · ')
 }
