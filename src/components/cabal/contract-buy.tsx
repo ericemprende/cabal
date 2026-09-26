@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Loader2, Search, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { NetworkBadge, TokenGlyph } from '@/components/cabal/shared'
-import { QuickBuyButton } from '@/components/cabal/quick-buy'
+import { TradePanel } from '@/components/cabal/trade-panel'
 import { ExternalLinksRow, LiveChart } from '@/components/cabal/live-chart'
 import { networkMeta } from '@/lib/cabal'
 
@@ -21,7 +21,7 @@ export function isContractAddress(value: string): boolean {
 }
 
 /**
- * Pegar un contrato y comprarlo aunque el token no esté publicado en Cabal.
+ * Pegar un contrato y comprarlo o venderlo aunque el token no esté publicado en Cabal.
  * La red la detecta DexScreener/pump.fun; si un 0x no cotiza en ningún lado,
  * se elige la red a mano.
  */
@@ -38,7 +38,7 @@ export function ContractBuy() {
         <input
           value={ca}
           onChange={(e) => setCa(e.target.value)}
-          placeholder="Pega un contrato (CA) para ver su gráfico y comprarlo"
+          placeholder="Pega un contrato (CA) para ver su gráfico, comprarlo o venderlo"
           aria-label="Contrato del token"
           spellCheck={false}
           autoComplete="off"
@@ -59,7 +59,7 @@ export function ContractBuy() {
 }
 
 /**
- * Ficha de un token a partir de su contrato: nombre, red, botón de compra y el
+ * Ficha de un token a partir de su contrato: nombre, red, compra/venta y el
  * gráfico en vivo. Sirve tanto para un token que no está en el Radar como para
  * uno que sí: es el mismo gráfico que se ve en el detalle.
  */
@@ -133,15 +133,25 @@ export function ContractResult({ ca, chartHeight = 320 }: { ca: string; chartHei
         ) : (
           <NetworkBadge network={network} />
         )}
-        <QuickBuyButton key={`${clean}-${network}`} contract={clean} network={network} ticker={ticker} />
       </div>
 
-      {showChart && (
-        <>
-          <LiveChart network={network} contract={clean} height={chartHeight} />
-          <ExternalLinksRow network={network} contract={clean} ticker={ticker} />
-        </>
-      )}
+      {/* Compra y venta: sirve también para vender un token comprado fuera de Cabal */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-start">
+        {showChart && (
+          <div className="min-w-0 flex-1 space-y-2">
+            <LiveChart network={network} contract={clean} height={chartHeight} />
+            <ExternalLinksRow network={network} contract={clean} ticker={ticker} />
+          </div>
+        )}
+        <TradePanel
+          key={`${clean}-${network}`}
+          contract={clean}
+          network={network}
+          ticker={ticker}
+          autoFocus={false}
+          className={showChart ? 'md:w-[300px]' : undefined}
+        />
+      </div>
     </div>
   )
 }

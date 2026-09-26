@@ -55,11 +55,14 @@ export function TradePanel({
   network,
   ticker,
   className,
+  autoFocus = true,
 }: {
   contract: string
   network: string
   ticker: string
   className?: string
+  /** false donde el panel aparece mientras se escribe en otro campo (p. ej. el buscador) */
+  autoFocus?: boolean
 }) {
   const isEvm = isEvmNetwork(network)
   const { data: solConfig } = useSwapConfig()
@@ -225,7 +228,7 @@ export function TradePanel({
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 py-2.5">
             <span className="text-lg font-bold text-muted-foreground">$</span>
             <input
-              autoFocus
+              autoFocus={autoFocus}
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
@@ -279,7 +282,7 @@ export function TradePanel({
           )}
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 py-2.5">
             <input
-              autoFocus
+              autoFocus={autoFocus}
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, '').slice(0, 3))}
