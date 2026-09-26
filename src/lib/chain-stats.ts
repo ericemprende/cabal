@@ -268,6 +268,15 @@ const MINUTE_SPAN_MS = 990 * MINUTE_MS
  * puede superar el máximo histórico del token. Devuelve ese techo para que
  * quien guarda el resultado pueda tirar también un pico corrupto ya guardado.
  */
+/** Último aviso por token: el mismo descarte se repite en cada revisión y llenaba el log. */
+const peakWarnedAt = new Map<string, number>()
+function warnPeakOnce(tokenAddress: string, msg: string) {
+  const last = peakWarnedAt.get(tokenAddress) ?? 0
+  if (Date.now() - last < 6 * HOUR_MS) return
+  peakWarnedAt.set(tokenAddress, Date.now())
+  console.warn(msg)
+}
+
 async function fetchPeakSince(
   network: string,
   pairAddress: string,
@@ -312,7 +321,7 @@ async function fetchPeakSince(
   // Validación de escala contra DexScreener
   const newest = all.reduce((a, b) => (b[0] > a[0] ? b : a))
   if (anchors.currentPriceUsd && now - newest[0] < 2 * HOUR_MS && !samePriceScale(newest[4], anchors.currentPriceUsd)) {
-    console.warn(`[peak] velas descartadas ${tokenAddress}: último cierre ${newest[4]} vs actual ${anchors.currentPriceUsd}`)
+    warnPeakOnce(tokenAddress, `[peak] velas descartadas ${tokenAddress}: último cierre ${newest[4]} vs actual ${anchors.currentPriceUsd}`)
     return none
   }
   let correctedEntry: number | null = null
@@ -323,7 +332,7 @@ async function fetchPeakSince(
     // reconstruyó con velas de otro token): se corrige. Entre 5x y 20x puede ser
     // volatilidad real del primer minuto, así que se descarta el pico.
     if (samePriceScale(atCall[4], anchors.entryPriceUsd, ENTRY_CORRUPT_RATIO)) {
-      console.warn(`[peak] velas descartadas ${tokenAddress}: cierre en la call ${atCall[4]} vs entrada ${anchors.entryPriceUsd}`)
+      warnPeakOnce(tokenAddress, `[peak] velas descartadas ${tokenAddress}: cierre en la call ${atCall[4]} vs entrada ${anchors.entryPriceUsd}`)
       return none
     }
     console.warn(`[peak] entrada corregida ${tokenAddress}: ${anchors.entryPriceUsd} → ${atCall[4]}`)
