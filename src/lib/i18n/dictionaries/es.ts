@@ -116,6 +116,8 @@ export const es = {
   },
 
   header: {
+    onlineNow: (n: number) => `${n} en vivo en Cabal ahora mismo`,
+    onlineLocked: 'Usuarios en vivo: función Premium',
     goToRadar: 'Ir al Radar',
     searchPlaceholder: 'Busca tokens, personas o pega un contrato…',
     searchAria: 'Buscar tokens, launches, personas o pegar un contrato',
@@ -638,6 +640,7 @@ export const es = {
       'El contrato, si ya existe antes del lanzamiento',
       'Insignia de verificado para tu perfil y tus launches, frente a clones',
       'Valorar a otras personas (confío / no confío) y dejar reseñas públicas',
+      'Ver cuántos usuarios hay en vivo en Cabal en cada momento',
     ],
     loginNeeded: 'Inicia sesión para suscribirte a Premium.',
     login: 'Iniciar sesión',

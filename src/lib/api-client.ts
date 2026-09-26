@@ -1323,6 +1323,21 @@ export function useRateUser(handle: string) {
 
 // ---------- Premium ----------
 
+/**
+ * Latido de presencia (cada 60 s, solo con la pestaña visible) y, si quien
+ * mira es Premium, cuántos usuarios hay en vivo ahora mismo en Cabal.
+ */
+export function useOnlineNow(enabled: boolean) {
+  return useQuery<{ premium: boolean; online: number | null }>({
+    queryKey: ['online-now'],
+    queryFn: () => jsonFetch('/api/online', { method: 'POST' }),
+    enabled,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    staleTime: 55_000,
+  })
+}
+
 /** Planes a la venta, pasarelas disponibles y el estado premium de quien pregunta. */
 export function usePremiumInfo(enabled = true) {
   return useQuery<PremiumInfoDTO>({

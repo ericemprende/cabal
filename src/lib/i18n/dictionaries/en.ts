@@ -117,6 +117,8 @@ export const en: Dict = {
   },
 
   header: {
+    onlineNow: (n: number) => `${n} live on Cabal right now`,
+    onlineLocked: 'Live users: a Premium feature',
     goToRadar: 'Go to the Radar',
     searchPlaceholder: 'Search tokens, people or paste a contract…',
     searchAria: 'Search tokens, launches, people or paste a contract',
@@ -639,6 +641,7 @@ export const en: Dict = {
       'The contract, if it already exists before the launch',
       'A verified badge for your profile and your launches, against clones',
       'Rating other people (trust / no trust) and leaving public reviews',
+      'See how many users are live on Cabal at any moment',
     ],
     loginNeeded: 'Sign in to subscribe to Premium.',
     login: 'Sign in',

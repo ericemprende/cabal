@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { CabalWordmark, CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from '@/components/cabal/shared'
 import { AuthDialog } from '@/components/cabal/auth-dialog'
 import { AffiliatesDialog } from '@/components/cabal/affiliates-dialog'
-import { useLaunches, useLeaderboard, useLogout, useMe, useSession, useTokens, useUserSearch } from '@/lib/api-client'
+import { useLaunches, useLeaderboard, useLogout, useMe, useOnlineNow, useSession, useTokens, useUserSearch } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/provider'
@@ -47,6 +47,7 @@ export function Header() {
   const goToTab = useGoToTab()
   const loggedIn = !!session?.loggedIn
   const chatReplies = useChatReplies(loggedIn ? me?.id : undefined)
+  const { data: presence } = useOnlineNow(loggedIn)
 
   const soon = useMemo(() => {
     if (!launches) return []
@@ -87,6 +88,26 @@ export function Header() {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {/* Munición: la granada con el saldo de balas, arriba a la derecha */}
           <AmmoBadge />
+
+          {/* Usuarios en vivo: el número solo lo ve Premium; al resto se le
+              enseña el candado, que abre el plan. */}
+          {loggedIn && presence && (
+            <button
+              onClick={() => !presence.premium && setPremiumOpen(true)}
+              title={presence.premium && presence.online !== null ? t.header.onlineNow(presence.online) : t.header.onlineLocked}
+              aria-label={presence.premium && presence.online !== null ? t.header.onlineNow(presence.online) : t.header.onlineLocked}
+              className={cn(
+                'inline-flex h-8 items-center gap-1.5 rounded-full border border-white/10 bg-[#121410] px-2.5 text-xs font-semibold tabular-nums',
+                presence.premium ? 'cursor-default text-foreground' : 'cursor-pointer text-muted-foreground hover:border-amber-300/40'
+              )}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#8FA83F] opacity-60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#8FA83F]" />
+              </span>
+              {presence.premium && presence.online !== null ? presence.online.toLocaleString() : <Crown className="h-3.5 w-3.5 text-amber-300" />}
+            </button>
+          )}
 
           {me && <PointsPill points={me.points} className="hidden sm:inline-flex" />}
 
