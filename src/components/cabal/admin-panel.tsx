@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { Chapa } from '@/components/cabal/chapa'
 import { Tooltip as HelpTip, TooltipContent as HelpTipContent, TooltipTrigger as HelpTipTrigger } from '@/components/ui/tooltip'
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
@@ -142,6 +143,9 @@ const RULE_LABELS: Record<string, string> = {
   points_per_usd_donated: 'Donaciones: puntos por cada $1 donado',
   points_share_donation: 'Compartir la tarjeta de la donación',
 }
+
+/** Reglas cuyo valor es un porcentaje, no una cantidad de puntos. */
+const PERCENT_RULES = new Set(['points_trade_cashback_pct', 'points_swap_referral_pct', 'points_referral_percent'])
 
 /**
  * Las reglas de puntos agrupadas por tipo de actividad, con la explicación
@@ -502,7 +506,12 @@ export function AdminPanel({
                           className="h-9 w-20 border-white/10 bg-[#121410] text-center font-mono font-bold text-primary"
                           aria-label={label}
                         />
-                        <Zap className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                        {/* % = porcentaje; la chapa de oro = puntos, la misma insignia que en el resto de la app */}
+                        {PERCENT_RULES.has(key) ? (
+                          <Percent className="h-[18px] w-[18px] shrink-0 text-amber-300" aria-label="porcentaje" />
+                        ) : (
+                          <Chapa silueta="star-medal" metal="oro" className="h-[18px] w-[18px] shrink-0" placa />
+                        )}
                       </div>
                     )
                   })}
