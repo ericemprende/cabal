@@ -674,6 +674,8 @@ export interface SwapFeeEarningsDTO {
   last30d: SwapFeeTotalsDTO
   last7d: SwapFeeTotalsDTO
   last24h: SwapFeeTotalsDTO
+  /** El periodo consultado (from/to incluidos). Red, tipo, serie, últimas y pendientes son de este periodo. */
+  range: SwapFeeTotalsDTO & { from: string; to: string }
   /** Swaps firmados que nunca confirmaron: parte se cobró, parte no. */
   pending: SwapFeeTotalsDTO
   byNetwork: (SwapFeeTotalsDTO & { network: string })[]

@@ -27,6 +27,26 @@ const totals = (a: Agg): SwapFeeTotalsDTO => ({
  * la cuenta de referido de Jupiter / la feeWallet de EVM: ignora impacto de
  * precio y slippage. Sirve para seguir el negocio, no como contabilidad.
  */
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Periodo consultado (?from=yyyy-mm-dd&to=yyyy-mm-dd, ambos incluidos, en
+ * UTC). Sin fechas válidas: los últimos 30 días. Como mucho un año.
+ */
+function parseRange(url: URL, now: number): { from: Date; to: Date } {
+  const f = url.searchParams.get('from') ?? ''
+  const t = url.searchParams.get('to') ?? ''
+  let from = ISO_DAY.test(f) ? new Date(`${f}T00:00:00.000Z`) : new Date(now - 29 * DAY)
+  let to = ISO_DAY.test(t) ? new Date(`${t}T00:00:00.000Z`) : new Date(now)
+  if (Number.isNaN(from.getTime())) from = new Date(now - 29 * DAY)
+  if (Number.isNaN(to.getTime())) to = new Date(now)
+  from = new Date(from.toISOString().slice(0, 10) + 'T00:00:00.000Z')
+  to = new Date(to.toISOString().slice(0, 10) + 'T00:00:00.000Z')
+  if (to < from) [from, to] = [to, from]
+  if (to.getTime() - from.getTime() > 366 * DAY) from = new Date(to.getTime() - 366 * DAY)
+  return { from, to }
+}
+
 export async function GET(req: Request) {
   try {
     await requireAdmin(req)
@@ -35,36 +55,40 @@ export async function GET(req: Request) {
     const sum = (where: object) =>
       db.swapIntent.aggregate({ where, _sum: { feeUsd: true, amountUsd: true }, _count: { _all: true } })
 
+    const { from, to } = parseRange(new URL(req.url), now)
+    const inRange = { createdAt: { gte: from, lt: new Date(to.getTime() + DAY) } }
     const done = { consumed: true }
-    const [all, d30, d7, d1, pending, byNetwork, byKind, recent, series] = await Promise.all([
+    const doneInRange = { ...done, ...inRange }
+    const [all, d30, d7, d1, range, pending, byNetwork, byKind, recent, series] = await Promise.all([
       sum(done),
       sum({ ...done, createdAt: { gte: since(30) } }),
       sum({ ...done, createdAt: { gte: since(7) } }),
       sum({ ...done, createdAt: { gte: since(1) } }),
-      sum({ consumed: false }),
+      sum(doneInRange),
+      sum({ consumed: false, ...inRange }),
       db.swapIntent.groupBy({
         by: ['network'],
-        where: done,
+        where: doneInRange,
         _sum: { feeUsd: true, amountUsd: true },
         _count: { _all: true },
       }),
       db.swapIntent.groupBy({
         by: ['kind'],
-        where: done,
+        where: doneInRange,
         _sum: { feeUsd: true, amountUsd: true },
         _count: { _all: true },
       }),
-      db.swapIntent.findMany({ where: done, orderBy: { createdAt: 'desc' }, take: 15 }),
+      db.swapIntent.findMany({ where: doneInRange, orderBy: { createdAt: 'desc' }, take: 50 }),
       db.swapIntent.findMany({
-        where: { ...done, createdAt: { gte: since(29) } },
+        where: doneInRange,
         select: { createdAt: true, feeUsd: true },
       }),
     ])
 
-    // Serie diaria de los últimos 30 días, con los días vacíos en 0 para que
-    // el gráfico no invente una línea recta entre dos días con actividad.
+    // Serie diaria del periodo, con los días vacíos en 0 para que el gráfico
+    // no invente una línea recta entre dos días con actividad.
     const buckets = new Map<string, number>()
-    for (let i = 29; i >= 0; i--) buckets.set(new Date(now - i * DAY).toISOString().slice(0, 10), 0)
+    for (let d = from.getTime(); d <= to.getTime(); d += DAY) buckets.set(new Date(d).toISOString().slice(0, 10), 0)
     for (const row of series) {
       const key = row.createdAt.toISOString().slice(0, 10)
       if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + row.feeUsd)
@@ -75,6 +99,7 @@ export async function GET(req: Request) {
       last30d: totals(d30),
       last7d: totals(d7),
       last24h: totals(d1),
+      range: { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10), ...totals(range) },
       pending: totals(pending),
       byNetwork: byNetwork
         .map((r) => ({ network: r.network, ...totals(r) }))

@@ -643,12 +643,14 @@ export function useAdminSwapFees(enabled: boolean) {
 }
 
 /** Cuánto llevan generado esas comisiones (estimado, sobre swaps confirmados). */
-export function useAdminSwapEarnings(enabled: boolean) {
+export function useAdminSwapEarnings(enabled: boolean, range?: { from: string; to: string }) {
+  const qs = range ? `?from=${range.from}&to=${range.to}` : ''
   return useQuery<SwapFeeEarningsDTO>({
-    queryKey: qk.adminSwapEarnings,
-    queryFn: () => jsonFetch('/api/admin/swap-fees/earnings'),
+    queryKey: [...qk.adminSwapEarnings, range?.from ?? '', range?.to ?? ''],
+    queryFn: () => jsonFetch(`/api/admin/swap-fees/earnings${qs}`),
     enabled,
     staleTime: 60_000,
+    placeholderData: (prev) => prev,
   })
 }
 

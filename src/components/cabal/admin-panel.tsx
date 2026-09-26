@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
+import { Tooltip as HelpTip, TooltipContent as HelpTipContent, TooltipTrigger as HelpTipTrigger } from '@/components/ui/tooltip'
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   Activity,
@@ -34,6 +35,7 @@ import {
   Users,
   XCircle,
   Zap,
+  Info,
 } from 'lucide-react'
 import { AdminHealth } from '@/components/cabal/admin-health'
 import { Input } from '@/components/ui/input'
@@ -140,6 +142,54 @@ const RULE_LABELS: Record<string, string> = {
   points_per_usd_donated: 'Donaciones: puntos por cada $1 donado',
   points_share_donation: 'Compartir la tarjeta de la donación',
 }
+
+/**
+ * Las reglas de puntos agrupadas por tipo de actividad, con la explicación
+ * exacta de qué hay que hacer para ganarlos (la burbuja de ayuda del panel).
+ */
+const RULE_GROUPS: { title: string; lead: string; rules: { key: string; help: string }[] }[] = [
+  {
+    title: 'Actividad en la plataforma',
+    lead: 'Se ganan cada vez que se hace la acción.',
+    rules: [
+      { key: 'points_thesis', help: 'Cada vez que alguien publica una tesis (un post con su análisis de un token o launch) en el feed.' },
+      { key: 'points_comment', help: 'Cada vez que alguien responde o comenta un post del feed.' },
+      { key: 'points_launch', help: 'Cada vez que alguien publica un launch nuevo en el Radar (botón "Publicar launch").' },
+      { key: 'points_like_received', help: 'Para el autor del post: cada vez que otra persona le da like a uno de sus posts.' },
+      { key: 'points_hype_received', help: 'Para quien publicó el launch: cada vez que otra persona le da Hype a ese launch.' },
+      { key: 'points_daily_visit', help: 'Pensado para dar puntos por entrar a Cabal una vez al día. Ojo: hoy ninguna parte de la app los otorga, así que cambiar este valor no tiene efecto.' },
+      { key: 'points_per_usd_donated', help: 'Por cada dólar donado a Cabal con el botón de donar, cada vez que se confirma una donación. Ejemplo: con 10, donar $5 da 50 puntos.' },
+    ],
+  },
+  {
+    title: 'Requisitos (una sola vez)',
+    lead: 'Se ganan solo la primera vez que se cumplen; repetirlo no da más puntos.',
+    rules: [
+      { key: 'points_share_x', help: 'Una sola vez por cuenta: al publicar en X su tarjeta de bienvenida (la que se genera al registrarse).' },
+      { key: 'points_follow_x', help: 'Una sola vez por cuenta: al seguir a @Cabal_app en X durante la campaña (hasta la fecha de cierre de abajo).' },
+      { key: 'points_share_follow_x', help: 'Una sola vez por cuenta: al publicar en X la tarjeta de "sigo a Cabal" durante la campaña.' },
+      { key: 'points_verify_discord', help: 'Una sola vez por cuenta: al conectar y verificar su cuenta de Discord en el perfil.' },
+      { key: 'points_verify_telegram', help: 'Una sola vez por cuenta: al conectar su Telegram con el bot de Cabal.' },
+      { key: 'points_share_donation', help: 'Una vez por cada donación: al publicar en X la tarjeta de agradecimiento de esa donación.' },
+    ],
+  },
+  {
+    title: 'Trading y comisiones',
+    lead: 'Salen de la comisión que Cabal cobra en cada compra/venta confirmada on-chain. Para Cabal queda el 100 % menos el cashback y la parte de referidos.',
+    rules: [
+      { key: 'points_trade_cashback_pct', help: 'Porcentaje de la comisión de cada compra/venta hecha desde Cabal que vuelve en puntos al propio trader (necesita la wallet vinculada a su cuenta). Ejemplo: con 40, de una comisión de $1 recibe el equivalente a $0.40 en puntos.' },
+      { key: 'points_swap_referral_pct', help: 'Porcentaje de la comisión de cada compra/venta de un invitado que recibe en puntos quien lo invitó.' },
+      { key: 'points_per_usd_fee', help: 'La paridad: cuántos puntos vale $1 de comisión. Con ella se convierten a puntos el cashback y la parte de referidos. Ejemplo: con 250, 250 puntos = $1.' },
+    ],
+  },
+  {
+    title: 'Referidos',
+    lead: 'Bonus para quien invita a otros.',
+    rules: [
+      { key: 'points_referral_percent', help: 'Cada vez que un invitado gana puntos por cualquier actividad (no por trading), quien lo invitó recibe este porcentaje extra. Ejemplo: con 10, si el invitado gana 25 puntos por una tesis, quien lo invitó gana 2.' },
+    ],
+  },
+]
 
 /**
  * Motivos cuyos puntos no salen de una regla fija y por tanto no se editan
@@ -422,23 +472,43 @@ export function AdminPanel({
             <p className="text-xs text-muted-foreground">
               Define cuántos puntos gana cada acción. Se aplica de inmediato para toda la comunidad.
             </p>
-            <div className="grid gap-2.5 sm:grid-cols-2">
-              {Object.entries(RULE_LABELS).map(([key, label]) => (
-                <div key={key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
-                  <span className="flex-1 text-[13px] font-semibold">{label}</span>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={10000}
-                    value={ruleValue(key)}
-                    onChange={(e) => setRule(key, Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                    className="h-9 w-20 border-white/10 bg-[#121410] text-center font-mono font-bold text-primary"
-                    aria-label={label}
-                  />
-                  <Zap className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            {RULE_GROUPS.map((group) => (
+              <div key={group.title} className="space-y-2">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{group.title}</p>
+                  <p className="text-[11px] text-muted-foreground">{group.lead}</p>
                 </div>
-              ))}
-            </div>
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  {group.rules.map(({ key, help }) => {
+                    const label = RULE_LABELS[key] ?? key
+                    return (
+                      <div key={key} className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
+                        {/* Burbuja de ayuda: qué hay que hacer exactamente para ganar estos puntos */}
+                        <HelpTip>
+                          <HelpTipTrigger asChild>
+                            <span tabIndex={0} className="flex flex-1 cursor-help items-center gap-1.5 text-[13px] font-semibold">
+                              {label}
+                              <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                            </span>
+                          </HelpTipTrigger>
+                          <HelpTipContent className="max-w-[280px] text-left text-xs leading-relaxed">{help}</HelpTipContent>
+                        </HelpTip>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={10000}
+                          value={ruleValue(key)}
+                          onChange={(e) => setRule(key, Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                          className="h-9 w-20 border-white/10 bg-[#121410] text-center font-mono font-bold text-primary"
+                          aria-label={label}
+                        />
+                        <Zap className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
             {/* Cierre de la campaña de X. No es un número de puntos, pero se
                 guarda con el mismo botón: quien mueve los 15 puntos suele
                 querer mover también hasta cuándo se dan. */}
@@ -1520,8 +1590,31 @@ function SwapFeeTreasury() {
   )
 }
 
+/** yyyy-mm-dd en UTC, que es como agrupa el servidor. */
+const isoDay = (d: Date) => d.toISOString().slice(0, 10)
+
+/** Primer y último día (UTC) del mes "yyyy-mm". */
+function monthRange(ym: string): { from: string; to: string } {
+  const [y, m] = ym.split('-').map(Number)
+  return { from: isoDay(new Date(Date.UTC(y, m - 1, 1))), to: isoDay(new Date(Date.UTC(y, m, 0))) }
+}
+
 function SwapFeeEarnings({ enabled }: { enabled: boolean }) {
-  const q = useAdminSwapEarnings(enabled)
+  // Por defecto, el mes en curso: es lo que se revisa para cerrar cuentas.
+  const [range, setRange] = useState(() => monthRange(isoDay(new Date()).slice(0, 7)))
+  const q = useAdminSwapEarnings(enabled, range)
+  const thisMonth = isoDay(new Date()).slice(0, 7)
+  const lastMonthDate = new Date()
+  lastMonthDate.setUTCDate(1)
+  lastMonthDate.setUTCMonth(lastMonthDate.getUTCMonth() - 1)
+  const lastMonth = isoDay(lastMonthDate).slice(0, 7)
+  const presets: [string, { from: string; to: string }][] = [
+    ['Este mes', monthRange(thisMonth)],
+    ['Mes pasado', monthRange(lastMonth)],
+    ['Ultimos 30 dias', { from: isoDay(new Date(Date.now() - 29 * 86_400_000)), to: isoDay(new Date()) }],
+    ['Ultimos 7 dias', { from: isoDay(new Date(Date.now() - 6 * 86_400_000)), to: isoDay(new Date()) }],
+  ]
+  const monthValue = range.from.slice(0, 7) === range.to.slice(0, 7) && monthRange(range.from.slice(0, 7)).from === range.from && monthRange(range.from.slice(0, 7)).to === range.to ? range.from.slice(0, 7) : ''
   if (q.isLoading) return <Skeleton className="h-64 w-full" />
   if (q.isError)
     return (
@@ -1541,6 +1634,74 @@ function SwapFeeEarnings({ enabled }: { enabled: boolean }) {
           <TrendingUp className="h-3.5 w-3.5 text-primary" aria-hidden /> Comisiones generadas
         </p>
         <span className="text-[10px] text-muted-foreground">{d.all.trades} operaciones confirmadas</span>
+      </div>
+
+      {/* Filtro de periodo: un mes completo de un clic, o un rango a mano */}
+      <div className="space-y-2 rounded-xl border border-white/10 bg-[#121410] p-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {presets.map(([label, r]) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setRange(r)}
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                range.from === r.from && range.to === r.to
+                  ? 'border-[#8FA83F]/50 bg-[#8FA83F]/15 text-primary'
+                  : 'border-white/10 text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-end gap-2 text-[11px]">
+          <label className="flex flex-col gap-1 text-muted-foreground">
+            Mes completo
+            <input
+              type="month"
+              value={monthValue}
+              max={thisMonth}
+              onChange={(e) => e.target.value && setRange(monthRange(e.target.value))}
+              className="h-8 rounded-lg border border-white/10 bg-[#0a0b08] px-2 text-xs text-foreground [color-scheme:dark]"
+            />
+          </label>
+          <span className="pb-2 text-muted-foreground">o</span>
+          <label className="flex flex-col gap-1 text-muted-foreground">
+            Desde
+            <input
+              type="date"
+              value={range.from}
+              max={range.to}
+              onChange={(e) => e.target.value && setRange((r) => ({ ...r, from: e.target.value }))}
+              className="h-8 rounded-lg border border-white/10 bg-[#0a0b08] px-2 text-xs text-foreground [color-scheme:dark]"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-muted-foreground">
+            Hasta
+            <input
+              type="date"
+              value={range.to}
+              min={range.from}
+              onChange={(e) => e.target.value && setRange((r) => ({ ...r, to: e.target.value }))}
+              className="h-8 rounded-lg border border-white/10 bg-[#0a0b08] px-2 text-xs text-foreground [color-scheme:dark]"
+            />
+          </label>
+          {q.isFetching && <span className="pb-2 text-muted-foreground">Cargando…</span>}
+        </div>
+        <div className="rounded-lg border border-[#8FA83F]/25 bg-[#8FA83F]/5 px-3.5 py-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            Periodo {d.range.from} &rarr; {d.range.to}
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-primary">{fmtUsd(d.range.feeUsd)}</p>
+          <p className="text-[10px] tabular-nums text-muted-foreground">
+            {fmtUsd(d.range.volumeUsd)} movidos &middot; {d.range.trades} ops confirmadas
+          </p>
+        </div>
+        <p className="text-[10px] text-muted-foreground">
+          El grafico, las redes, compras/ventas, sin confirmar y las ultimas operaciones de abajo son de este periodo.
+          Fechas en hora UTC.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
@@ -1596,7 +1757,7 @@ function SwapFeeEarnings({ enabled }: { enabled: boolean }) {
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/5">
                 <div
                   className="h-full rounded-full bg-primary"
-                  style={{ width: `${d.all.feeUsd > 0 ? (n.feeUsd / d.all.feeUsd) * 100 : 0}%` }}
+                  style={{ width: `${d.range.feeUsd > 0 ? (n.feeUsd / d.range.feeUsd) * 100 : 0}%` }}
                 />
               </div>
               <span className="w-20 shrink-0 text-right font-semibold tabular-nums text-primary">{fmtUsd(n.feeUsd)}</span>
