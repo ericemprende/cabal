@@ -59,7 +59,7 @@ const COMMANDS: Command[] = [
   {
     name: 'call',
     usage: '/call CONTRATO [tu tesis]',
-    what: 'Publica una call de ese token en Cabal a tu nombre. Se guarda el precio y el market cap del momento exacto: el resultado de la call (pico y X actual) se mide desde ahí. El mensaje enseña además tus números de los últimos 30 días (ranking, calls, % de aciertos, pico medio y mejor call) con botones a tu analítica y a los tops de 7 días y 24 h.',
+    what: 'Publica una call de ese token en Cabal a tu nombre. Se guarda el precio y el market cap del momento exacto: el resultado de la call (pico y X actual) se mide desde ahí. El mensaje enseña además tus números de los últimos 30 días (ranking, calls, % de aciertos, pico medio y mejor call) con botones a tu analítica y a los tops de 7 días y 24 h. Justo encima del contrato va una línea de siglas (GMGN • AXI • PHO…) que abre el token en cada terminal.',
     who: 'Quien tenga su cuenta conectada al bot por privado',
     aliases: '/llamada',
   },

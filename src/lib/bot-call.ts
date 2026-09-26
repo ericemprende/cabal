@@ -225,28 +225,53 @@ async function tokenCard(
   if (facts.length) lines.push(facts.join(' · '))
 
   if (extra.note) lines.push('', esc(extra.note.slice(0, 600)))
-  lines.push('', `<code>${esc(token.contract)}</code>`)
+
+  // Terminales con nuestro enlace de afiliado, en una línea de siglas
+  // (GMGN • AXI • PHO…) como hacen los bots de calls: cada sigla abre el token
+  // en esa terminal y la comisión de quien opere desde ahí es para Cabal.
+  const terminals = await affiliateLinks(token)
+  lines.push('')
+  if (terminals.length) lines.push(terminals.map((p) => `<a href="${esc(p.url)}">${esc(p.short)}</a>`).join(' • '))
+  lines.push(`<code>${esc(token.contract)}</code>`)
   if (extra.footer) lines.push('', extra.footer)
 
-  return { text: lines.join('\n'), buttons: await tokenButtons(token, lang, extra.postId) }
+  return { text: lines.join('\n'), buttons: tokenButtons(terminals, lang, extra.postId) }
 }
 
-/** Botones de compra de las plataformas afiliadas + ver la call en Cabal. */
-async function tokenButtons(token: TokenInfo, lang: Lang, postId?: string): Promise<BotButton[][]> {
-  const tx = t(lang)
+/** Siglas de cada terminal en la línea de enlaces; si no está aquí, las 4 primeras letras del nombre. */
+const TERMINAL_SHORT: Record<string, string> = {
+  gmgn: 'GMGN',
+  axiom: 'AXI',
+  photon: 'PHO',
+  bullx: 'BLX',
+  birdeye: 'BIRD',
+  dexscreener: 'DEX',
+}
+
+/** Enlaces de afiliado de las plataformas activas para este token, en el orden del panel. */
+async function affiliateLinks(token: TokenInfo): Promise<{ name: string; short: string; url: string }[]> {
   const platforms = await db.affiliatePlatform
     .findMany({
       where: { active: true, OR: [{ url: { not: '' } }, { links: { not: '{}' } }] },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     })
     .catch(() => [])
-
-  const buys: BotButton[] = []
+  const out: { name: string; short: string; url: string }[] = []
   for (const p of platforms) {
     const url = platformLinkFor({ url: p.url, links: parseAffiliateLinks(p.links) }, token.network, token.contract)
-    // Máximo 6 plataformas: más botones que eso tapan el mensaje
-    if (url && buys.length < 6) buys.push({ text: p.name, url })
+    if (!url) continue
+    const short = TERMINAL_SHORT[p.slug] ?? p.name.replace(/[^A-Za-z0-9]/g, '').slice(0, 4).toUpperCase()
+    out.push({ name: p.name, short: short || p.name, url })
   }
+  return out
+}
+
+/** Botones de compra de las plataformas afiliadas + ver la call en Cabal. */
+function tokenButtons(platforms: { name: string; url: string }[], lang: Lang, postId?: string): BotButton[][] {
+  const tx = t(lang)
+  // Máximo 6 plataformas en botones: más que eso tapan el mensaje (en la
+  // línea de siglas del texto salen todas)
+  const buys: BotButton[] = platforms.slice(0, 6).map((p) => ({ text: p.name, url: p.url }))
 
   const rows: BotButton[][] = []
   for (let i = 0; i < buys.length; i += 2) rows.push(buys.slice(i, i + 2))
