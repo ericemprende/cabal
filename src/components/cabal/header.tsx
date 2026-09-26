@@ -365,8 +365,9 @@ function SearchDialog({
     <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
       <DialogContent
         className={cn(
-          'max-h-[80dvh] overflow-y-auto border-white/10 bg-[#121410] p-0',
-          isCa ? 'sm:max-w-2xl' : 'sm:max-w-lg'
+          'overflow-y-auto border-white/10 bg-[#121410] p-0',
+          // Con un contrato pegado se abre casi a pantalla completa para que el gráfico se lea bien
+          isCa ? 'max-h-[94dvh] sm:max-w-[min(1400px,95vw)]' : 'max-h-[80dvh] sm:max-w-lg'
         )}
         aria-describedby={undefined}
       >
@@ -390,7 +391,7 @@ function SearchDialog({
               <p className="px-1 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {t.search.contract}
               </p>
-              <ContractResult ca={q.trim()} chartHeight={260} />
+              <ContractResult ca={q.trim()} chartHeight={560} />
             </div>
           )}
           {[
