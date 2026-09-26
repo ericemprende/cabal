@@ -162,7 +162,7 @@ function ProfileHeader({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start gap-3">
             <div className="min-w-0">
-              <h1 className="font-display flex items-center gap-1.5 text-2xl font-bold">
+              <h1 className="font-display flex flex-wrap items-center gap-1.5 text-2xl font-bold">
                 <span className="truncate">{user.name}</span>
                 {user.verified && <OfficialBadge label />}
                 {user.isDev && (
@@ -171,6 +171,8 @@ function ProfileHeader({
                   </span>
                 )}
                 {profile.premium && <PremiumPill />}
+                {/* Emblemas junto al nombre, para no gastar una fila entera */}
+                <BadgesRow badges={profile.badges} />
               </h1>
               {/* Confianza de la comunidad, arriba del todo: es lo primero que
                   se mira antes de entrar a un launch de esta persona. */}
@@ -225,7 +227,21 @@ function ProfileHeader({
               )}
             </div>
             {/* Confío / No confío justo debajo de seguir; la reseña va en el pop-up */}
-            <ReputationActions handle={user.handle} name={user.name} open={repOpen} onOpenChange={setRepOpen} />
+            {/* Confío / No confío / Reseñas, y a su lado la cuenta de X verificada */}
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              <ReputationActions handle={user.handle} name={user.name} open={repOpen} onOpenChange={setRepOpen} />
+              {user.xHandle && (
+                <a
+                  href={`https://x.com/${user.xHandle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold hover:border-white/25"
+                >
+                  <XLogo className="h-3 w-3" /> @{user.xHandle}
+                  {user.xVerified && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label={t.profileView.xVerified} />}
+                </a>
+              )}
+            </div>
             </div>
           </div>
 
@@ -233,17 +249,6 @@ function ProfileHeader({
 
           {/* Verificaciones y redes */}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {user.xHandle && (
-              <a
-                href={`https://x.com/${user.xHandle}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-1 text-xs font-semibold hover:border-white/25"
-              >
-                <XLogo className="h-3 w-3" /> @{user.xHandle}
-                {user.xVerified && <BadgeCheck className="h-3.5 w-3.5 text-primary" aria-label={t.profileView.xVerified} />}
-              </a>
-            )}
             {user.tgHandle && (
               <a
                 href={`https://t.me/${user.tgHandle.replace(/^@+/, '')}`}
@@ -261,8 +266,6 @@ function ProfileHeader({
             </span>
           </div>
 
-          {/* Emblemas: fundador, actividad… pasa el mouse para leer cada uno */}
-          <BadgesRow badges={profile.badges} className="mt-3" />
         </div>
       </div>
     </section>

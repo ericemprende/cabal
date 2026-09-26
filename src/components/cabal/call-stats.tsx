@@ -115,9 +115,10 @@ export function CallStats({ handle }: { handle: string }) {
               </button>
             ))}
           </div>
-          <CallShareDialog postId={shareId ?? ''} handle={handle} open={!!shareId} onOpenChange={(v) => !v && setShareId(null)} />
         </div>
       )}
+      {/* La tarjeta del resultado: se abre tanto desde "Mejores calls" como desde el historial */}
+      <CallShareDialog postId={shareId ?? ''} handle={handle} open={!!shareId} onOpenChange={(v) => !v && setShareId(null)} />
 
       {/* Historial */}
       <div>
@@ -152,7 +153,7 @@ export function CallStats({ handle }: { handle: string }) {
         ) : (
           <div className="space-y-1.5">
             {visible.map((c) => (
-              <CallRow key={c.id} call={c} />
+              <CallRow key={c.id} call={c} onOpen={() => setShareId(c.id)} />
             ))}
             {history.length > 10 && (
               <button
@@ -222,11 +223,16 @@ function callHeadline(c: { peakMultiple: number | null; currentMultiple: number 
   }
 }
 
-function CallRow({ call }: { call: CallRowDTO }) {
+function CallRow({ call, onOpen }: { call: CallRowDTO; onOpen: () => void }) {
   const evaluated = call.peakMultiple !== null
   const h = callHeadline(call)
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-[#0a0b08] p-2.5">
+    <button
+      type="button"
+      onClick={onOpen}
+      title="Ver la tarjeta del resultado y compartirla"
+      className="flex w-full items-center gap-2.5 rounded-xl border border-white/8 bg-[#0a0b08] p-2.5 text-left transition-colors hover:border-[#8FA83F]/40"
+    >
       <TokenGlyph src={call.image} ticker={call.symbol ?? '?'} size="md" />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -255,6 +261,6 @@ function CallRow({ call }: { call: CallRowDTO }) {
       ) : (
         <span className="shrink-0 text-[11px] text-muted-foreground">calculando…</span>
       )}
-    </div>
+    </button>
   )
 }
