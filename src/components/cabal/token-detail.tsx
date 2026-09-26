@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { BadgeCheck, ChartLine, History, Maximize2, Minimize2, Zap } from 'lucide-react'
+import { BadgeCheck, ChartLine, History, Maximize2, Minimize2, Share2, Zap } from 'lucide-react'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -46,6 +47,30 @@ export function TokenDetailDialog() {
     [token]
   )
 
+  // Enlace público al token: abre /app con este detalle y el panel de compra,
+  // así que quien lo reciba puede comprar sin estar registrado (la comisión
+  // del swap entra igual).
+  const share = async () => {
+    if (!token) return
+    const url = `${window.location.origin}/app?token=${encodeURIComponent(token.id)}`
+    const text = t.tokenDetail.shareText(token.ticker)
+    if (navigator.share && window.matchMedia('(pointer: coarse)').matches) {
+      try {
+        await navigator.share({ title: `${token.name} $${token.ticker}`, text, url })
+        return
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${text}
+${url}`)
+      toast.success(t.tokenDetail.shareCopied)
+    } catch {
+      toast.error(url)
+    }
+  }
+
   return (
     <Dialog
       open={!!tokenDetailId}
@@ -66,6 +91,16 @@ export function TokenDetailDialog() {
         )}
         aria-describedby={undefined}
       >
+        {token && (
+          <button
+            onClick={share}
+            aria-label={t.tokenDetail.share}
+            title={t.tokenDetail.share}
+            className="absolute right-12 top-4 z-10 rounded-xs text-muted-foreground opacity-70 transition-opacity hover:opacity-100 hover:text-primary sm:right-20"
+          >
+            <Share2 className="h-4 w-4" aria-hidden />
+          </button>
+        )}
         <button
           onClick={() => setExpanded((v) => !v)}
           aria-label={expanded ? t.launchDetail.shrink : t.launchDetail.expand}

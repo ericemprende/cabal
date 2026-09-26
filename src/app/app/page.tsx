@@ -78,6 +78,18 @@ export default function Home() {
     openLaunch(launchId)
   }, [openLaunch])
 
+  // Enlace compartido de un token: /app?token=<id> abre su detalle (con compra)
+  const openToken = useUI((s) => s.openToken)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tokenId = params.get('token')
+    if (!tokenId) return
+    params.delete('token')
+    const rest = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (rest ? `?${rest}` : ''))
+    openToken(tokenId)
+  }, [openToken])
+
   // Deep link del panel admin: /app?admin=1
   useEffect(() => {
     if (!wantsAdmin) return

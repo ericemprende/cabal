@@ -467,6 +467,9 @@ export const en: Dict = {
 
   tokenDetail: {
     title: 'Token details',
+    share: 'Share token',
+    shareCopied: 'Link copied: anyone who opens it can buy the token right on Cabal',
+    shareText: (ticker: string) => `Buy $${ticker} right on Cabal`,
     officialTitle: 'Official token verified by Cabal',
     chartMode: 'Chart mode',
     marketCap: 'Market cap',

@@ -466,6 +466,9 @@ export const es = {
 
   tokenDetail: {
     title: 'Detalle del token',
+    share: 'Compartir token',
+    shareCopied: 'Enlace copiado: quien lo abra puede comprar el token directo en Cabal',
+    shareText: (ticker: string) => `Compra $${ticker} directo en Cabal`,
     officialTitle: 'Token oficial verificado por Cabal',
     chartMode: 'Modo del gráfico',
     marketCap: 'Market Cap',
