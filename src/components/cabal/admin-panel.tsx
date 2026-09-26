@@ -748,6 +748,12 @@ function AdminUserRow({
     )
   }
 
+  // Enlaces a sus redes: el @ lleva a X si la cuenta de X está verificada
+  const xName = user.xHandle?.replace(/^@/, '').trim() || ''
+  const xUrl = user.xVerified && xName ? `https://x.com/${xName}` : null
+  const tgName = user.tgHandle?.replace(/^@/, '').trim() || ''
+  const tgUrl = tgName ? `https://t.me/${tgName}` : null
+
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3">
       <div className="flex flex-wrap items-center gap-2.5">
@@ -757,11 +763,25 @@ function AdminUserRow({
           <p className="truncate text-sm font-bold">
             {user.name}
             {user.isAdmin && <span className="ml-1.5 rounded bg-[#8FA83F]/12 px-1 py-px text-[9px] font-black text-primary">ADMIN</span>}
-            {user.xVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">X</span>}
-            {user.googleVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">G</span>}
+            {xUrl ? (
+              <a href={xUrl} target="_blank" rel="noopener noreferrer" title={`@${xName} en X`} className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300 hover:bg-white/15 hover:text-foreground">X</a>
+            ) : (
+              user.xVerified && <span className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">X</span>
+            )}
+            {tgUrl && (
+              <a href={tgUrl} target="_blank" rel="noopener noreferrer" title={`@${tgName} en Telegram`} className="ml-1 rounded bg-[#229ED9]/15 px-1 py-px text-[9px] font-black text-[#229ED9] hover:bg-[#229ED9]/25">TG</a>
+            )}
+            {user.discordVerified && (
+              <span title={user.discordName ? `Discord: ${user.discordName}` : 'Discord verificado'} className="ml-1 rounded bg-[#5865F2]/15 px-1 py-px text-[9px] font-black text-[#8b95ff]">DC</span>
+            )}
+            {user.googleVerified && <span title={user.googleEmail ?? 'Google verificado'} className="ml-1 rounded bg-white/8 px-1 py-px text-[9px] font-black text-zinc-300">G</span>}
           </p>
           <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-            @{user.handle} · {user.contactEmail ?? 'sin correo'}{user.shared ? ' · compartió' : ''} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
+            {xUrl ? (
+              <a href={xUrl} target="_blank" rel="noopener noreferrer" title={`Abrir @${xName} en X`} className="text-primary hover:underline">@{user.handle}</a>
+            ) : (
+              <>@{user.handle}</>
+            )} · {user.contactEmail ?? 'sin correo'}{user.shared ? ' · compartió' : ''} · {user.postsCount} posts · {user.launchesCount} launches · {user.likesReceived}
             <Heart className="h-3 w-3" aria-hidden />
           </p>
           <p className="truncate text-[11px] text-muted-foreground">
