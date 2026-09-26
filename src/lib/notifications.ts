@@ -14,6 +14,7 @@ import { pushBroadcast, pushConfigured, pushToUsers } from '@/lib/push'
 import { postChatAnnouncement } from '@/lib/chat-announce'
 import { fmtMultiple } from '@/lib/call-score'
 import { rankCallers } from '@/lib/call-results'
+import { affiliateTerminalsLine } from '@/lib/bot-call'
 
 /**
  * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
@@ -641,6 +642,11 @@ async function callMessage(
   const lines = [tx.callHead(userLink(c.user.handle)), '', `<b>${symbol}</b>`]
   if (c.entryMc !== null) lines.push(`${tx.callEntryAt} ${fmtMcShort(c.entryMc)}`)
   if (c.content) lines.push('', esc(c.content.slice(0, 400)))
+  // Terminales con enlace de afiliado (GMGN • AXI • PHO…), igual que en la ficha del bot
+  if (c.contract && c.network) {
+    const terminals = await affiliateTerminalsLine(c.network, c.contract)
+    if (terminals) lines.push('', terminals, `<code>${esc(c.contract)}</code>`)
+  }
   const stats = await callerStatsBlock(c.userId, lang)
   if (stats) lines.push('', stats)
 

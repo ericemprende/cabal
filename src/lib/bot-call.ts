@@ -231,7 +231,7 @@ async function tokenCard(
   // en esa terminal y la comisión de quien opere desde ahí es para Cabal.
   const terminals = await affiliateLinks(token)
   lines.push('')
-  if (terminals.length) lines.push(terminals.map((p) => `<a href="${esc(p.url)}">${esc(p.short)}</a>`).join(' • '))
+  if (terminals.length) lines.push(terminalsLine(terminals))
   lines.push(`<code>${esc(token.contract)}</code>`)
   if (extra.footer) lines.push('', extra.footer)
 
@@ -248,8 +248,17 @@ const TERMINAL_SHORT: Record<string, string> = {
   dexscreener: 'DEX',
 }
 
+function terminalsLine(terminals: { short: string; url: string }[]): string {
+  return terminals.map((p) => `<a href="${esc(p.url)}">${esc(p.short)}</a>`).join(' • ')
+}
+
+/** La línea de siglas de terminales para un token; '' si no hay plataformas. La usa también la call difundida. */
+export async function affiliateTerminalsLine(network: string, contract: string): Promise<string> {
+  return terminalsLine(await affiliateLinks({ network, contract }))
+}
+
 /** Enlaces de afiliado de las plataformas activas para este token, en el orden del panel. */
-async function affiliateLinks(token: TokenInfo): Promise<{ name: string; short: string; url: string }[]> {
+async function affiliateLinks(token: Pick<TokenInfo, 'network' | 'contract'>): Promise<{ name: string; short: string; url: string }[]> {
   const platforms = await db.affiliatePlatform
     .findMany({
       where: { active: true, OR: [{ url: { not: '' } }, { links: { not: '{}' } }] },
