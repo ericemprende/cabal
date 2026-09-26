@@ -35,6 +35,7 @@ import type {
   SwapConfigDTO,
   SwapFeeConfigDTO,
   SwapFeeEarningsDTO,
+  TrackRecordDTO,
   SwapTreasuryDTO,
   TokenBalanceDTO,
   TokenDTO,
@@ -362,6 +363,17 @@ export function useUserCallStats(handle: string, period: CallPeriod) {
   return useQuery<UserCallStatsDTO>({
     queryKey: ['user-calls', handle.toLowerCase(), period],
     queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/calls?period=${period}`),
+    enabled: Boolean(handle),
+    placeholderData: (prev) => prev,
+  })
+}
+
+/** Track record de trading (desde Cabal) de un usuario, con filtro de fechas y de wallet. */
+export function useTrackRecord(handle: string, filter: { from: string; to: string; wallet: string }) {
+  const qs = new URLSearchParams(Object.entries(filter).filter(([, v]) => v)).toString()
+  return useQuery<TrackRecordDTO>({
+    queryKey: ['track-record', handle.toLowerCase(), filter.from, filter.to, filter.wallet],
+    queryFn: () => jsonFetch(`/api/users/${encodeURIComponent(handle)}/track-record${qs ? `?${qs}` : ''}`),
     enabled: Boolean(handle),
     placeholderData: (prev) => prev,
   })

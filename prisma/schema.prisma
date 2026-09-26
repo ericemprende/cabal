@@ -74,6 +74,9 @@ model User {
   // el usuario lo puede apagar. Sin correo verificado o sin Premium no llega
   // nada de todos modos (ver lib/launch-alerts.ts).
   notifyEmail       Boolean               @default(true)
+  // Track record de trading en el perfil (operaciones hechas desde Cabal con
+  // sus wallets vinculadas): público solo si el usuario lo activa.
+  showTrackRecord   Boolean               @default(false)
   // Verificación oficial de Cabal (insignia + destello en el avatar). "admin" =
   // la dio el admin y es permanente; "premium" = aprobada a partir de una
   // solicitud Premium: el worker la apaga si deja de pagar y la vuelve a

@@ -759,6 +759,9 @@ export const es = {
     emailAlerts: 'Avisos de lanzamientos por correo',
     emailAlertsBody: '10 y 5 minutos antes, de los launches a los que diste hype o cuyo dev sigues',
     emailAlertsNeedsPremium: ' · necesita Premium y correo verificado',
+    trackRecord: 'Track record público',
+    trackRecordBody:
+      'Muestra en tu perfil las compras y ventas que haces desde Cabal con tus wallets vinculadas, con sus estadísticas. Desactivado, nadie más lo ve.',
     posts: 'Posts',
     launches: 'Launches',
     hypes: 'Hypes',

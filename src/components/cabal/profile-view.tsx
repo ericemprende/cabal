@@ -12,6 +12,7 @@ import { fmtMc, timeAgo } from '@/lib/cabal'
 import { BadgesRow, NetworkBadge, PremiumPill, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { PostCard } from '@/components/cabal/post-card'
 import { CallStats } from '@/components/cabal/call-stats'
+import { TrackRecord } from '@/components/cabal/track-record'
 import { ReputationActions, TrustBadge } from '@/components/cabal/reputation'
 import { XLogo } from '@/components/cabal/x-logo'
 import { Header } from '@/components/cabal/header'
@@ -99,6 +100,9 @@ function ProfileContent({ profile }: { profile: PublicProfileDTO }) {
 
       {/* Estadísticas de calls: públicas, con filtro de periodo */}
       <CallStats handle={user.handle} />
+
+      {/* Track record de trading desde Cabal: solo si el usuario lo hizo público */}
+      <TrackRecord handle={user.handle} />
 
       <div className="grid grid-cols-2 gap-2.5">
         <Stat icon={Rocket} label={t.profileView.launches} value={String(counts.launches)} />

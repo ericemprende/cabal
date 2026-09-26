@@ -760,6 +760,9 @@ export const en: Dict = {
     emailAlerts: 'Launch alerts by email',
     emailAlertsBody: '10 and 5 minutes before, for launches you hyped or whose dev you follow',
     emailAlertsNeedsPremium: ' · needs Premium and a verified email',
+    trackRecord: 'Public track record',
+    trackRecordBody:
+      'Show on your profile the buys and sells you make on Cabal with your linked wallets, with their stats. Turned off, nobody else sees it.',
     posts: 'Posts',
     launches: 'Launches',
     hypes: 'Hypes',

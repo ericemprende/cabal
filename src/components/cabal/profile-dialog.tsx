@@ -30,8 +30,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
-  Zap,
-} from 'lucide-react'
+  Zap, LineChart } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -230,6 +229,20 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
               checked={me?.notifyEmail ?? true}
               disabled={!(me?.premium.active && me?.emailVerified) || updateMe.isPending}
               onCheckedChange={(v) => updateMe.mutate({ notifyEmail: v })}
+            />
+          </div>
+
+          {/* Track record público: las operaciones hechas desde Cabal con sus wallets */}
+          <div className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
+            <LineChart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold">{t.profile.trackRecord}</p>
+              <p className="text-[11px] text-muted-foreground">{t.profile.trackRecordBody}</p>
+            </div>
+            <Switch
+              checked={me?.showTrackRecord ?? false}
+              disabled={updateMe.isPending}
+              onCheckedChange={(v) => updateMe.mutate({ showTrackRecord: v })}
             />
           </div>
         </div>

@@ -91,6 +91,7 @@ export interface UserDTO extends PublicUserDTO {
   twoFactorEnabled: boolean
   /** Avisos Premium de lanzamientos por correo (10 y 5 min antes). */
   notifyEmail: boolean
+  showTrackRecord: boolean
 }
 
 export interface LaunchRefDTO {
@@ -1076,6 +1077,50 @@ export interface AdminAmmoDTO {
     bullets: number
     bulletsLeft: number
     endsAt: string
+    createdAt: string
+  }[]
+}
+
+/** Track record de trading de un usuario (operaciones hechas desde Cabal). */
+export interface TrackRecordDTO {
+  /** false = el usuario no lo hizo público y quien mira no es él. */
+  visible: boolean
+  isMe: boolean
+  /** Si el dueño lo tiene activado como público. */
+  public: boolean
+  wallets: { network: string; address: string; label: string; trades: number; volumeUsd: number; netUsd: number }[]
+  summary: {
+    trades: number
+    buys: number
+    sells: number
+    buyUsd: number
+    sellUsd: number
+    volumeUsd: number
+    /** Ventas − compras en el periodo; no cuenta lo que siga en cartera. */
+    netUsd: number
+    tokens: number
+    avgTradeUsd: number
+    largestTradeUsd: number
+  }
+  tokens: {
+    network: string
+    mint: string
+    symbol: string
+    buyUsd: number
+    sellUsd: number
+    netUsd: number
+    trades: number
+    lastAt: string
+  }[]
+  series: { date: string; buyUsd: number; sellUsd: number }[]
+  recent: {
+    id: string
+    network: string
+    kind: string
+    wallet: string
+    mint: string
+    symbol: string
+    amountUsd: number
     createdAt: string
   }[]
 }

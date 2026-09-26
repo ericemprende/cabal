@@ -876,6 +876,8 @@ export async function fetchCallResult(
 
 /** Datos de mercado de un token para la pestaña Tokens. */
 export type MarketSnapshot = {
+  /** Ticker del token según DexScreener (vacío si no lo da). */
+  symbol: string
   priceUsd: number
   marketCap: number
   volume24h: number
@@ -900,6 +902,7 @@ export async function fetchMarketBatch(contracts: string[]): Promise<Map<string,
       const pair = pickPair(json?.pairs ?? [], ca)
       if (!pair) continue
       out.set(ca, {
+        symbol: pair.baseToken?.symbol ?? '',
         priceUsd: pair.priceUsd ? Number(pair.priceUsd) || 0 : 0,
         // marketCap cuando DexScreener lo da; si no, el FDV es la mejor aproximación
         marketCap: pair.marketCap ?? pair.fdv ?? 0,
