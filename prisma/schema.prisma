@@ -677,6 +677,13 @@ model SwapIntent {
   amountUsd     Float
   feeUsd        Float
   consumed      Boolean  @default(false)
+  // Cuenta que tiene que recibir la comisión en la transacción: la cuenta de
+  // cobro de Júpiter para ese mint (Solana) o la feeWallet (EVM). Al confirmar
+  // se exige que de verdad haya recibido algo.
+  feeAccount    String?
+  // Firma/hash de la transacción con que se confirmó. Única: una misma
+  // transacción no puede confirmar dos intenciones.
+  txSignature   String?  @unique
   createdAt     DateTime @default(now())
 
   @@index([walletAddress, createdAt])

@@ -1,7 +1,7 @@
 import { ethers } from 'ethers'
 import { cached } from '@/lib/cache'
 import { db } from '@/lib/db'
-import { awardReferralPointsForIntent, effectiveFeeBps, swapFeeConfig } from '@/lib/swap'
+import { awardReferralPointsForIntent, intentExpired, effectiveFeeBps, swapFeeConfig } from '@/lib/swap'
 
 /**
  * Comprar el token sin salir de Cabal en redes EVM (Ethereum, Base, BNB
@@ -261,6 +261,7 @@ export async function buildBuyTransactionEvm(opts: {
             mint: opts.outputToken,
             amountUsd: opts.amountUsd,
             feeUsd,
+            feeAccount: fee?.feeWallet ?? null,
           },
         })
       : null
@@ -289,6 +290,8 @@ export async function confirmSwapIntentEvm(opts: { intentId: string; network: Ev
   if (!intent) throw new InvalidConfirmEvmError('Esa intención de compra no existe')
   if (intent.network !== opts.network) throw new InvalidConfirmEvmError('La red no coincide con la intención')
   if (intent.consumed) return { pointsAwarded: 0 } // ya se contó una vez, no se duplica
+  if (intentExpired(intent.createdAt)) throw new InvalidConfirmEvmError('Esa intención de compra caducó')
+  if (!intent.feeAccount) throw new InvalidConfirmEvmError('Esa intención no lleva comisión de Cabal')
 
   const provider = evmProvider(opts.network)
   let receipt: ethers.TransactionReceipt | null = null
@@ -301,5 +304,24 @@ export async function confirmSwapIntentEvm(opts: { intentId: string; network: Ev
     throw new InvalidConfirmEvmError('La transacción no es de esa wallet')
   }
 
-  return awardReferralPointsForIntent(intent)
+  // La comisión tuvo que llegar de verdad a la feeWallet: un Transfer del
+  // token comprado hacia ella dentro de esta misma transacción.
+  const TRANSFER = ethers.id('Transfer(address,address,uint256)')
+  const feeTopic = ethers.zeroPadValue(intent.feeAccount.toLowerCase(), 32).toLowerCase()
+  const paidFee = receipt.logs.some(
+    (l) =>
+      l.address.toLowerCase() === intent.mint.toLowerCase() &&
+      l.topics[0] === TRANSFER &&
+      l.topics[2]?.toLowerCase() === feeTopic &&
+      BigInt(l.data) > BigInt(0)
+  )
+  if (!paidFee) throw new InvalidConfirmEvmError('Esa transacción no es una compra de Cabal')
+
+  // Y el tamaño: lo que de verdad se pagó en nativo, al menos la mitad de lo declarado.
+  const sent = await provider.getTransaction(opts.txHash).catch(() => null)
+  const spentUsd = sent ? (Number(sent.value) / 1e18) * (await nativePriceUsd(opts.network)) : 0
+  if (spentUsd < intent.amountUsd * 0.5) throw new InvalidConfirmEvmError('El monto de la transacción no coincide')
+  const feeUsd = Math.min(intent.feeUsd, (spentUsd * intent.feeUsd) / intent.amountUsd)
+
+  return awardReferralPointsForIntent({ ...intent, feeUsd }, opts.txHash.toLowerCase())
 }

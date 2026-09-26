@@ -248,6 +248,7 @@ async function buildSwapTransactions(opts: {
             mint: opts.tradedMint,
             amountUsd: opts.amountUsd,
             feeUsd,
+            feeAccount: feeAccount ?? null,
           },
         })
       : null
@@ -365,6 +366,8 @@ export async function confirmSwapIntent(opts: { intentId: string; signature: str
   const intent = await db.swapIntent.findUnique({ where: { id: opts.intentId } })
   if (!intent) throw new InvalidConfirmError('Esa intención de compra/venta no existe')
   if (intent.consumed) return { pointsAwarded: 0 } // ya se contó una vez, no se duplica
+  if (intentExpired(intent.createdAt)) throw new InvalidConfirmError('Esa intención de compra/venta caducó')
+  if (!intent.feeAccount) throw new InvalidConfirmError('Esa intención no lleva comisión de Cabal')
 
   // La transacción tiene que existir en la red, haber corrido sin error, y
   // ser justo la wallet que pidió esta intención la que la firmó — si no,
@@ -382,7 +385,39 @@ export async function confirmSwapIntent(opts: { intentId: string; signature: str
   const signer = tx.transaction.message.staticAccountKeys?.[0]?.toBase58()
   if (signer !== intent.walletAddress) throw new InvalidConfirmError('La transacción no es de esa wallet')
 
-  return awardReferralPointsForIntent(intent)
+  // La comisión tuvo que caer de verdad en la cuenta de cobro de Cabal. Sin
+  // esto, cualquier transacción de esa wallet (mandarse 0.001 SOL a sí misma)
+  // valía para confirmar una intención de $10,000 que nunca se firmó.
+  const keys = tx.transaction.message.getAccountKeys({ accountKeysFromLookups: tx.meta?.loadedAddresses })
+  let feeIndex = -1
+  for (let i = 0; i < keys.length; i++) {
+    if (keys.get(i)?.toBase58() === intent.feeAccount) feeIndex = i
+  }
+  const rawAt = (list: { accountIndex: number; uiTokenAmount: { amount: string } }[] | null | undefined) =>
+    BigInt(list?.find((b) => b.accountIndex === feeIndex)?.uiTokenAmount.amount ?? '0')
+  const feeRaw = feeIndex < 0 ? BigInt(0) : rawAt(tx.meta?.postTokenBalances) - rawAt(tx.meta?.preTokenBalances)
+  if (feeRaw <= BigInt(0)) throw new InvalidConfirmError('Esa transacción no es un swap de Cabal')
+
+  let feeUsd = intent.feeUsd
+  if (intent.kind === 'sell') {
+    // Al vender la comisión cae en SOL: se sabe exactamente cuánto se cobró.
+    feeUsd = Math.min(feeUsd, (Number(feeRaw) / 1e9) * (await solPriceUsd()))
+  } else {
+    // Al comprar cae en el token comprado; se comprueba el tamaño por el SOL
+    // que de verdad salió de la wallet (al menos la mitad de lo declarado).
+    const spentSol = ((tx.meta?.preBalances[0] ?? 0) - (tx.meta?.postBalances[0] ?? 0)) / 1e9
+    const spentUsd = spentSol * (await solPriceUsd())
+    if (spentUsd < intent.amountUsd * 0.5) throw new InvalidConfirmError('El monto de la transacción no coincide')
+    feeUsd = Math.min(feeUsd, (spentUsd * intent.feeUsd) / intent.amountUsd)
+  }
+
+  return awardReferralPointsForIntent({ ...intent, feeUsd }, opts.signature)
+}
+
+/** Las intenciones valen 10 minutos: después ya no se pueden confirmar. */
+export const SWAP_INTENT_TTL_MS = 10 * 60 * 1000
+export function intentExpired(createdAt: Date): boolean {
+  return Date.now() - createdAt.getTime() > SWAP_INTENT_TTL_MS
 }
 
 /**
@@ -399,8 +434,19 @@ export async function awardReferralPointsForIntent(intent: {
   walletAddress: string
   kind: string
   feeUsd: number
-}): Promise<{ pointsAwarded: number }> {
-  await db.swapIntent.update({ where: { id: intent.id }, data: { consumed: true } })
+}, txSignature: string): Promise<{ pointsAwarded: number }> {
+  // Se marca consumida y se guarda la firma en un solo paso atómico: si otra
+  // petición ya la consumió, o esa firma ya confirmó otra intención (índice
+  // único), no se dan puntos dos veces.
+  try {
+    const { count } = await db.swapIntent.updateMany({
+      where: { id: intent.id, consumed: false },
+      data: { consumed: true, txSignature },
+    })
+    if (count === 0) return { pointsAwarded: 0 }
+  } catch {
+    throw new InvalidConfirmError('Esa transacción ya se usó para confirmar otra compra/venta')
+  }
 
   const wallet = await db.walletLink.findFirst({ where: { network: intent.network, address: intent.walletAddress } })
   const trader = wallet ? await db.user.findUnique({ where: { id: wallet.userId }, select: { id: true, referredById: true } }) : null
