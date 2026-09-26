@@ -807,6 +807,7 @@ export const en: Dict = {
       share_follow_x: 'You shared that you follow Cabal',
       donation: 'Donation to Cabal',
       share_donation: 'You shared your donation on X',
+      trade_cashback: 'Cashback for your trade on Cabal',
     },
   },
 

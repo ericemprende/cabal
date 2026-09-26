@@ -8,6 +8,7 @@ const RULE_DEFAULTS: Record<string, number> = {
   points_referral_percent: 10,
   points_swap_referral_pct: 25,
   points_per_usd_fee: 100,
+  points_trade_cashback_pct: 40,
 }
 
 export async function GET(req: Request) {

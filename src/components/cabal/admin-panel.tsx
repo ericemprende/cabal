@@ -130,7 +130,8 @@ const RULE_LABELS: Record<string, string> = {
   points_daily_visit: 'Visita diaria',
   points_referral_percent: 'Referidos (% del equipo)',
   points_swap_referral_pct: 'Referidos por compra/venta (% de la comisión)',
-  points_per_usd_fee: 'Puntos por cada $1 de esa comisión',
+  points_per_usd_fee: 'Puntos por cada $1 de comisión (paridad)',
+  points_trade_cashback_pct: 'Cashback al trader por compra/venta (% de la comisión)',
   points_share_x: 'Compartir tarjeta en X',
   points_follow_x: 'Seguir a @Cabal_app en X',
   points_share_follow_x: 'Compartir la tarjeta de "sigo a Cabal"',
@@ -149,6 +150,7 @@ const EXTRA_REASON_LABELS: Record<string, string> = {
   donation: 'Donaciones',
   referral: 'Referidos',
   swap_referral: 'Referidos por compra/venta',
+  trade_cashback: 'Cashback de trading',
 }
 
 type AdminAnalyticsDTO =

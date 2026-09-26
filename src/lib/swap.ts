@@ -2,7 +2,7 @@ import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js'
 import { ReferralProvider } from '@jup-ag/referral-sdk'
 import { cached } from '@/lib/cache'
 import { db } from '@/lib/db'
-import { awardPoints, swapReferralPointsFor } from '@/lib/api-helpers'
+import { awardPoints, swapReferralPointsFor, tradeCashbackPointsFor } from '@/lib/api-helpers'
 
 /**
  * Comprar el token sin salir de Cabal (Solana, vía la API de Jupiter).
@@ -404,7 +404,15 @@ export async function awardReferralPointsForIntent(intent: {
 
   const wallet = await db.walletLink.findFirst({ where: { network: intent.network, address: intent.walletAddress } })
   const trader = wallet ? await db.user.findUnique({ where: { id: wallet.userId }, select: { id: true, referredById: true } }) : null
-  if (!trader?.referredById) return { pointsAwarded: 0 } // wallet sin cuenta vinculada, o sin quien la invitó
+  if (!trader) return { pointsAwarded: 0 } // wallet sin cuenta vinculada
+
+  // Cashback: una parte de la comisión vuelve en puntos al propio trader.
+  const cashback = await tradeCashbackPointsFor(intent.feeUsd)
+  if (cashback > 0) {
+    await awardPoints(trader.id, 'trade_cashback', `${intent.kind === 'buy' ? 'Compra' : 'Venta'} en Cabal`, cashback)
+  }
+
+  if (!trader.referredById) return { pointsAwarded: 0 } // nadie lo invitó
 
   const points = await swapReferralPointsFor(intent.feeUsd)
   if (points <= 0) return { pointsAwarded: 0 }

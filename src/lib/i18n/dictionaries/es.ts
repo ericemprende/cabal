@@ -806,6 +806,7 @@ export const es = {
       share_follow_x: 'Compartiste que sigues a Cabal',
       donation: 'Donación a Cabal',
       share_donation: 'Compartiste tu donación en X',
+      trade_cashback: 'Cashback por tu compra/venta en Cabal',
     },
   },
 

@@ -21,6 +21,7 @@ export const POINT_RULE_KEYS = [
   'points_verify_telegram',
   'points_swap_referral_pct',
   'points_per_usd_fee',
+  'points_trade_cashback_pct',
   'points_per_usd_donated',
   'points_share_donation',
 ] as const
@@ -44,6 +45,7 @@ export type PointReason =
   | 'follow_x'
   | 'share_follow_x'
   | 'swap_referral'
+  | 'trade_cashback'
   | 'donation'
   | 'share_donation'
 
@@ -82,6 +84,8 @@ const POINT_RULE_DEFAULTS: Record<string, number> = {
   // Puntos por cada dólar donado, y bonus por compartir la donación en X.
   points_per_usd_donated: 10,
   points_share_donation: 15,
+  // Comisión de compra/venta que vuelve al trader en puntos (% de la fee).
+  points_trade_cashback_pct: 40,
 }
 
 export async function getPointRules(): Promise<Record<string, number>> {
@@ -130,7 +134,9 @@ export async function awardPoints(
   await invalidate('leaderboard:*')
 
   // ── Referidos: el que invitó gana el % configurado ──
-  if (reason !== 'referral' && amount > 0) {
+  // El cashback de trading no suma aquí: quien invitó ya cobra su parte de esa
+  // misma comisión con 'swap_referral', y pagarla dos veces saldría de tu margen.
+  if (reason !== 'referral' && reason !== 'trade_cashback' && amount > 0) {
     try {
       const earner = await db.user.findUnique({ where: { id: userId }, select: { referredById: true } })
       if (earner?.referredById) {
@@ -158,6 +164,19 @@ export async function awardPoints(
 export async function swapReferralPointsFor(feeUsd: number): Promise<number> {
   const rules = await getPointRules()
   const pct = rules.points_swap_referral_pct ?? 25
+  const perUsd = rules.points_per_usd_fee ?? 100
+  return Math.floor(feeUsd * (pct / 100) * perUsd)
+}
+
+/**
+ * Cashback de trading: el points_trade_cashback_pct% de la comisión cobrada
+ * vuelve al propio trader en puntos (con points_per_usd_fee). Va atado a la
+ * fee y no al volumen, así nunca se regala más de lo que se cobra y hacer
+ * trades en bucle cuesta siempre más de lo que devuelve.
+ */
+export async function tradeCashbackPointsFor(feeUsd: number): Promise<number> {
+  const rules = await getPointRules()
+  const pct = rules.points_trade_cashback_pct ?? 40
   const perUsd = rules.points_per_usd_fee ?? 100
   return Math.floor(feeUsd * (pct / 100) * perUsd)
 }
