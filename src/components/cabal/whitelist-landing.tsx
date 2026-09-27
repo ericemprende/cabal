@@ -26,6 +26,7 @@ import { XLogo } from '@/components/cabal/x-logo'
 import { CABAL_X_HANDLE, CABAL_X_URL } from '@/lib/cabal-x'
 import { LangSwitch } from '@/components/cabal/lang-switch'
 import { BotComparison } from '@/components/cabal/bot-comparison'
+import { PlatformComparison } from '@/components/cabal/platform-comparison'
 import { useLang } from '@/lib/i18n/provider'
 import { useT } from '@/lib/i18n/provider'
 import type { Dict } from '@/lib/i18n/dictionaries'
@@ -133,6 +134,22 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
                 </article>
               )
             })}
+          </div>
+        </section>
+
+        {/* Cabal frente a las plataformas de trading y de gráficos */}
+        <section className="mt-14">
+          <h2 className="font-display text-2xl font-bold sm:text-3xl">
+            {lang === 'en' ? 'Cabal vs ' : 'Cabal frente a '}
+            <span className="text-primary">{lang === 'en' ? 'the platforms' : 'las plataformas'}</span>
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {lang === 'en'
+              ? 'fomo, GigaX, DEX Screener, DEXTools, Axiom and GMGN each do one part. This is what Cabal brings together, what is being built, and what we still lack.'
+              : 'fomo, GigaX, DEX Screener, DEXTools, Axiom y GMGN hacen cada una una parte. Esto es lo que Cabal junta, lo que se está construyendo y lo que aún nos falta.'}
+          </p>
+          <div className="mt-7">
+            <PlatformComparison lang={lang === 'en' ? 'en' : 'es'} />
           </div>
         </section>
 
