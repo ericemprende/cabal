@@ -173,7 +173,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
                   <span className="rounded-full bg-[#8FA83F]/12 px-2 py-0.5 text-[11px] font-bold text-primary">ADMIN</span>
                 )}
               </div>
-              {me && <BadgesRow badges={me.badges} className="mt-2.5" />}
+              {me && <BadgesRow badges={me.badges} next={me.nextBadges} className="mt-2.5" />}
             </div>
           </div>
 

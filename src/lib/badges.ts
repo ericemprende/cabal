@@ -33,6 +33,8 @@ export type BadgeContext = {
     postsCount: number
     likesReceived: number
     hypesGiven: number
+    /** Dólares operados con el botón de compra/venta de Cabal (trades confirmados). */
+    tradeVolumeUsd?: number
   }
   /** Resultados de sus calls. Ver lib/call-score. */
   calls: {
@@ -124,6 +126,16 @@ const FAMILIAS: Familia[] = [
     ],
   },
   {
+    id: 'volume',
+    silueta: 'candles',
+    rangos: [
+      { cumple: (c) => (c.stats.tradeVolumeUsd ?? 0) >= 1_000, metal: 'bronce', label: 'Escaramuza', description: 'Operó $1.000 o más desde Cabal' },
+      { cumple: (c) => (c.stats.tradeVolumeUsd ?? 0) >= 25_000, metal: 'acero', label: 'Asalto', description: 'Operó $25.000 o más desde Cabal' },
+      { cumple: (c) => (c.stats.tradeVolumeUsd ?? 0) >= 250_000, metal: 'oro', label: 'Ofensiva', description: 'Operó $250.000 o más desde Cabal' },
+      { cumple: (c) => (c.stats.tradeVolumeUsd ?? 0) >= 2_500_000, metal: 'obsidiana', label: 'Guerra total', description: 'Operó $2.500.000 o más desde Cabal' },
+    ],
+  },
+  {
     id: 'trust',
     silueta: 'checked-shield',
     rangos: [
@@ -187,6 +199,46 @@ export function computeBadges(ctx: BadgeContext): BadgeDTO[] {
   // Obsidiana primero, bronce al final; Fundador siempre abre
   const peso: Record<BadgeMetal, number> = { obsidiana: 4, oro: 3, acero: 2, bronce: 1, verde: 0, fundador: 5 }
   return out.sort((a, b) => peso[b.metal] - peso[a.metal])
+}
+
+/**
+ * Volumen operado desde Cabal: la suma en USD de los swaps confirmados de sus
+ * wallets vinculadas, valorados al ejecutarse. Cacheado 5 minutos.
+ */
+export async function tradeVolumeUsd(userId: string): Promise<number> {
+  return cached(`badges:volume:${userId}`, 300, async () => {
+    const links = await db.walletLink.findMany({ where: { userId }, select: { network: true, address: true } })
+    if (links.length === 0) return 0
+    const agg = await db.swapIntent.aggregate({
+      where: { consumed: true, OR: links.map((l) => ({ network: l.network, walletAddress: l.address })) },
+      _sum: { amountUsd: true },
+    })
+    return agg._sum.amountUsd ?? 0
+  })
+}
+
+/**
+ * El siguiente rango de cada familia que aún no tiene: lo que le falta para
+ * subir. Se enseña en la vitrina como objetivo apagado, para que siempre haya
+ * algo a la vista por lo que volver.
+ */
+export function computeNextBadges(ctx: BadgeContext): BadgeDTO[] {
+  const out: BadgeDTO[] = []
+  for (const fam of FAMILIAS) {
+    const i = fam.rangos.findIndex((r) => !r.cumple(ctx))
+    if (i === -1) continue
+    const r = fam.rangos[i]
+    out.push({
+      id: `${fam.id}-${i + 1}`,
+      label: r.label,
+      description: r.description,
+      icon: fam.silueta,
+      silueta: fam.silueta,
+      metal: r.metal,
+      rango: i + 1,
+    })
+  }
+  return out
 }
 
 /**

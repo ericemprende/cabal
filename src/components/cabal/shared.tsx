@@ -26,6 +26,7 @@ import type { BadgeDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/provider'
 import { Chapa, type Metal } from '@/components/cabal/chapa'
+import { BadgesDialog, useBadgesText } from '@/components/cabal/badges-ui'
 import { SILUETAS, type Silueta } from '@/lib/siluetas'
 import { displayImageUrl } from '@/lib/remote-image'
 import { countdownParts, networkMeta, safetyCheck, shortWallet } from '@/lib/cabal'
@@ -291,22 +292,40 @@ export function PremiumPill({ className }: { className?: string }) {
 // ---------- Emblemas del perfil (fundador, actividad…) ----------
 // La silueta, el metal y el rango los decide lib/badges.ts: aquí solo se pintan.
 
-export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className?: string }) {
-  if (badges.length === 0) return null
+export function BadgesRow({
+  badges,
+  next,
+  max = 6,
+  className,
+}: {
+  badges: BadgeDTO[]
+  /** Objetivos siguientes (solo en el perfil propio): salen en la vitrina completa. */
+  next?: BadgeDTO[]
+  /** Cuántas se enseñan en fila; las demás van a la vitrina completa. */
+  max?: number
+  className?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const txt = useBadgesText()
+  if (badges.length === 0 && !next?.length) return null
+  const visibles = badges.slice(0, max)
+  const resto = badges.length - visibles.length
   return (
-    <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
-      {badges.map((b) => {
+    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      {visibles.map((b) => {
         const silueta = (b.silueta ?? b.icon) as Silueta
         if (!(silueta in SILUETAS)) return null
         return (
           <Tooltip key={b.id}>
             <TooltipTrigger asChild>
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/12 bg-[#171a13] transition-colors hover:border-[#8FA83F]/60"
+              <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-[#171a13] transition-colors hover:border-[#8FA83F]/60"
                 aria-label={`${b.label}: ${b.description}`}
               >
-                <Chapa silueta={silueta} metal={(b.metal ?? 'acero') as Metal} className="h-5 w-5" placa />
-              </span>
+                <Chapa silueta={silueta} metal={(b.metal ?? 'acero') as Metal} className="h-[26px] w-[26px]" placa />
+              </button>
             </TooltipTrigger>
             <TooltipContent className="max-w-[220px] text-center">
               <p className="font-bold">{b.label}</p>
@@ -315,6 +334,16 @@ export function BadgesRow({ badges, className }: { badges: BadgeDTO[]; className
           </Tooltip>
         )
       })}
+      {(resto > 0 || !!next?.length) && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex h-9 items-center justify-center rounded-full border border-white/12 bg-[#171a13] px-3 text-[12px] font-bold text-muted-foreground transition-colors hover:border-[#8FA83F]/60 hover:text-foreground"
+        >
+          {resto > 0 ? `+${resto}` : txt.all}
+        </button>
+      )}
+      <BadgesDialog open={open} onOpenChange={setOpen} badges={badges} next={next} />
     </div>
   )
 }

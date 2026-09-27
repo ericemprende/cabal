@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import { XLogo } from '@/components/cabal/x-logo'
 import { CABAL_X_HANDLE, CABAL_X_URL } from '@/lib/cabal-x'
 import { LangSwitch } from '@/components/cabal/lang-switch'
+import { BotComparison } from '@/components/cabal/bot-comparison'
 import { useLang } from '@/lib/i18n/provider'
 import { useT } from '@/lib/i18n/provider'
 import type { Dict } from '@/lib/i18n/dictionaries'
@@ -133,6 +134,25 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
               )
             })}
           </div>
+        </section>
+
+        {/* Cabal frente a Phanes: la misma tabla que el manual del bot (/bot) */}
+        <section className="mt-14">
+          <h2 className="font-display text-2xl font-bold sm:text-3xl">
+            {lang === 'en' ? 'Cabal vs ' : 'Cabal frente a '}
+            <span className="text-primary">Phanes</span>
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {lang === 'en'
+              ? 'What the Cabal bot does compared to Phanes, the most used calls bot on Telegram — including what we do not have yet.'
+              : 'Lo que hace el bot de Cabal comparado con Phanes, el bot de calls más usado en Telegram. Lo que aún no tenemos también está en la tabla.'}
+          </p>
+          <div className="mt-7">
+            <BotComparison />
+          </div>
+          <Link href="/bot" className="mt-4 inline-block text-sm font-semibold text-primary hover:underline">
+            {lang === 'en' ? 'See the bot manual →' : 'Ver el manual del bot →'}
+          </Link>
         </section>
 
         <footer className="mt-14 border-t border-white/10 pt-6 text-xs text-muted-foreground">

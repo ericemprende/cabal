@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { getCurrentUser, getPointRules } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
 import { premiumStatus } from '@/lib/premium'
-import { computeBadges, isFounder } from '@/lib/badges'
+import { computeBadges, computeNextBadges, isFounder, tradeVolumeUsd } from '@/lib/badges'
 import type { DevClaimStats, MeDTO } from '@/lib/types'
 
 export async function GET() {
@@ -45,7 +45,7 @@ export async function GET() {
       where: { userId: me.id, kind: 'call' },
       _max: { peakMultiple: true },
     })
-    const badges = computeBadges({
+    const badgeCtx = {
       createdAt: me.createdAt,
       isDev: me.isDev,
       walletVerified: me.walletVerified,
@@ -56,10 +56,13 @@ export async function GET() {
         postsCount: postCount,
         likesReceived: likesReceived._sum.likes ?? 0,
         hypesGiven: hypes,
+        tradeVolumeUsd: await tradeVolumeUsd(me.id),
       },
       calls: { won: me.callsWon, total: me.callsTotal, best: mejorCall._max.peakMultiple },
       rep: { score: me.repScore, votes: me.repUp + me.repDown },
-    })
+    }
+    const badges = computeBadges(badgeCtx)
+    const nextBadges = computeNextBadges(badgeCtx)
 
     // rank by points
     const pointsRank = (await db.user.count({ where: { points: { gt: me.points } } })) + 1
@@ -106,6 +109,7 @@ export async function GET() {
       })),
       premium,
       badges,
+      nextBadges,
     }
     return NextResponse.json(dto)
   } catch (e) {

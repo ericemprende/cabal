@@ -497,6 +497,8 @@ export interface MeDTO extends UserDTO {
   twoFactorEnabled: boolean
   premium: PremiumStatusDTO
   badges: BadgeDTO[]
+  /** El siguiente rango de cada familia que aún no tiene: sus objetivos. */
+  nextBadges?: BadgeDTO[]
 }
 
 export interface WalletLinkDTO {
