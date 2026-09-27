@@ -15,6 +15,7 @@ import { postChatAnnouncement } from '@/lib/chat-announce'
 import { fmtMultiple } from '@/lib/call-score'
 import { rankCallers } from '@/lib/call-results'
 import { affiliateTerminalsLine } from '@/lib/bot-call'
+import { dexPaidAt } from '@/lib/chain-stats'
 
 /**
  * Avisos a Telegram y Discord (y correo para la campanita). Una pasada
@@ -68,6 +69,8 @@ export type TickResult = {
   push: number
   /** Avisos de munición fuerte difundidos a los chats. */
   boosts: number
+  /** Avisos de resultado de calls ("hizo 5x", "DEX pagado") en su chat. */
+  milestones: number
 }
 
 /** Un bot listo para enviar. `since` es desde cuándo difunde ese proveedor. */
@@ -106,7 +109,7 @@ async function activeSenders(): Promise<Senders> {
 const providersOf = (s: Senders) => Object.keys(s) as BotProvider[]
 
 export async function runNotificationTick(): Promise<TickResult> {
-  const result: TickResult = { launches: 0, calls: 0, theses: 0, reminders: 0, messages: 0, emails: 0, push: 0, boosts: 0 }
+  const result: TickResult = { launches: 0, calls: 0, theses: 0, reminders: 0, messages: 0, emails: 0, push: 0, boosts: 0, milestones: 0 }
   const senders = await activeSenders()
 
   // Los tres primeros avisos también salen por push, así que la pasada se hace
@@ -118,7 +121,11 @@ export async function runNotificationTick(): Promise<TickResult> {
     await sendChatReplies(senders, result)
     // Los avisos de munición solo salen por los bots (no por push): son para
     // mover al grupo, no para interrumpir a alguien en su móvil.
-    if (providersOf(senders).length > 0) await announceBigBoosts(senders, result)
+    if (providersOf(senders).length > 0) {
+      await announceBigBoosts(senders, result)
+      await announceCallMilestones(senders, result)
+      await announceDexPaid(senders, result)
+    }
   }
   await sendReminders(senders, result)
   // Aviso recurrente del chat en vivo (donaciones): no depende de los bots.
@@ -807,4 +814,137 @@ export function callerStatsButtons(handle: string, lang: Lang): { text: string; 
       { text: tx.stats24h, url: lb('24h') },
     ],
   ]
+}
+
+// ---------- 7. Resultados de las calls del chat ----------
+
+/**
+ * Cuando una call nacida en un grupo cruza 2x, 3x, 5x… se avisa en ESE grupo
+ * (no en los demás: es la prueba de que alguien de allí lo vio antes). El pico
+ * lo guarda lib/call-results; aquí solo se mira si cruzó un escalón nuevo.
+ * Solo se avisa del escalón más alto alcanzado: si saltó de 1,5x a 6x sale un
+ * único "5x", no tres mensajes seguidos.
+ */
+const MILESTONES = [2, 3, 5, 10, 20, 50, 100]
+/** Calls más viejas ya no avisan: el grupo ni se acuerda. */
+const MILESTONE_WINDOW_MS = 3 * 24 * 3600_000
+/** Tope por chat y pasada, para que un día muy verde no llene el grupo de golpe. */
+const MILESTONES_PER_CHAT = 3
+
+function milestoneOf(peak: number | null): number | null {
+  if (peak === null) return null
+  let hit: number | null = null
+  for (const m of MILESTONES) if (peak >= m) hit = m
+  return hit
+}
+
+async function announceCallMilestones(senders: Senders, r: TickResult) {
+  const calls = await db.post.findMany({
+    where: {
+      kind: 'call',
+      peakMultiple: { gte: MILESTONES[0] },
+      createdAt: { gte: new Date(Date.now() - MILESTONE_WINDOW_MS) },
+      chatLink: { is: { active: true, notifyMilestones: true, provider: { in: providersOf(senders) } } },
+    },
+    orderBy: { peakMultiple: 'desc' },
+    take: 60,
+    select: {
+      id: true,
+      peakMultiple: true,
+      entryMc: true,
+      resultSymbol: true,
+      contract: true,
+      chatLink: true,
+      user: { select: { handle: true } },
+    },
+  })
+  const keyOf = (c: (typeof calls)[number]) => `call-x:${c.id}:${milestoneOf(c.peakMultiple)}`
+  const pending = await notDispatched(calls.map(keyOf))
+  const perChat = new Map<string, number>()
+  for (const c of calls) {
+    const x = milestoneOf(c.peakMultiple)
+    const chat = c.chatLink
+    if (!x || !chat || !pending.has(keyOf(c))) continue
+    if ((perChat.get(chat.id) ?? 0) >= MILESTONES_PER_CHAT) continue
+    if (!(await reserve(keyOf(c)))) continue
+    perChat.set(chat.id, (perChat.get(chat.id) ?? 0) + 1)
+    const sent = await broadcast(senders, [chat], (lang) => milestoneMessage(c, x, lang))
+    await markSent(keyOf(c), sent)
+    r.milestones++
+    r.messages += sent
+  }
+}
+
+function callSymbol(c: { resultSymbol: string | null; contract: string | null }): string {
+  return c.resultSymbol ? `$${esc(c.resultSymbol)}` : esc((c.contract ?? '').slice(0, 8))
+}
+
+function milestoneMessage(
+  c: { id: string; peakMultiple: number | null; entryMc: number | null; resultSymbol: string | null; contract: string | null; user: { handle: string } },
+  x: number,
+  lang: Lang
+): BotMessage {
+  const tx = t(lang)
+  const lines = [tx.milestoneHead(`${x}x`, callSymbol(c)), tx.milestoneBy(userLink(c.user.handle))]
+  if (c.entryMc !== null && c.peakMultiple !== null) {
+    lines.push(tx.milestoneMc(fmtMcShort(c.entryMc), fmtMcShort(c.entryMc * c.peakMultiple)))
+  }
+  return {
+    text: lines.join('\n'),
+    image: `${siteUrl()}/api/posts/${encodeURIComponent(c.id)}/card`,
+    buttons: [[{ text: tx.viewCallOnCabal, url: `${siteUrl()}/app?post=${encodeURIComponent(c.id)}` }]],
+  }
+}
+
+/**
+ * "DEX pagado": el equipo del token pagó su ficha en DexScreener, señal que
+ * los grupos siguen de cerca. Se mira para las calls recientes nacidas en un
+ * grupo y se avisa allí si el pago llegó DESPUÉS de la call. Si ya estaba
+ * pagado al llamarlo, se marca como visto para no volver a preguntar.
+ */
+const DEX_PAID_WINDOW_MS = 48 * 3600_000
+
+async function announceDexPaid(senders: Senders, r: TickResult) {
+  const calls = await db.post.findMany({
+    where: {
+      kind: 'call',
+      contract: { not: null },
+      network: { not: null },
+      createdAt: { gte: new Date(Date.now() - DEX_PAID_WINDOW_MS) },
+      chatLink: { is: { active: true, notifyMilestones: true, provider: { in: providersOf(senders) } } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 40,
+    select: {
+      id: true,
+      contract: true,
+      network: true,
+      createdAt: true,
+      resultSymbol: true,
+      chatLink: true,
+      user: { select: { handle: true } },
+    },
+  })
+  const pending = await notDispatched(calls.map((c) => `dexpaid:${c.id}`))
+  for (const c of calls) {
+    const key = `dexpaid:${c.id}`
+    if (!pending.has(key) || !c.chatLink) continue
+    const paidAt = await dexPaidAt(c.network!, c.contract!)
+    if (paidAt === null) continue
+    if (!(await reserve(key))) continue
+    if (paidAt < c.createdAt.getTime()) {
+      await markSent(key, 0)
+      continue
+    }
+    const sent = await broadcast(senders, [c.chatLink], (lang) => {
+      const tx = t(lang)
+      return {
+        text: [tx.dexPaidHead(callSymbol(c)), tx.dexPaidBy(userLink(c.user.handle))].join('\n'),
+        buttons: [[{ text: tx.viewCallOnCabal, url: `${siteUrl()}/app?post=${encodeURIComponent(c.id)}` }]],
+      }
+    })
+    await markSent(key, sent)
+    r.milestones++
+    r.messages += sent
+  }
 }

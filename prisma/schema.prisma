@@ -765,6 +765,10 @@ model ChatLink {
   notifyTheses    Boolean  @default(false) // tesis nuevas del feed
   // Munición: solo los disparos gordos (ver ammo_notify_at), no cada bala
   notifyBoosts    Boolean  @default(true)
+  // Resultados de las calls nacidas en este chat: "hizo 2x/5x/10x…" y "DEX pagado"
+  notifyMilestones Boolean @default(true)
+  // Responder a los enlaces de X con uno que Telegram/Discord sí previsualizan
+  fixLinks        Boolean  @default(true)
   // Solo avisos de estos tokens (contratos o "$TICKER"). Vacío = todos.
   tokenFilter     String[] @default([])
   // Solo calls, tesis y lanzamientos de gente a la que sigue quien vinculó el chat

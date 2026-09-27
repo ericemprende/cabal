@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { dcSend, discordConfig, type DiscordConfig } from '@/lib/discord'
 import { handleContractFromBot, looksLikeContract } from '@/lib/bot-call'
 import { isLang, langFromLocale, type Lang } from '@/lib/bot-i18n'
+import { fixedXLinks } from '@/lib/fix-links'
 
 /**
  * Conexión permanente con Discord (gateway), solo para una cosa: enterarse de
@@ -227,12 +228,19 @@ async function onMessage(cfg: DiscordConfig, msg: GatewayMessage) {
   try {
     if (!msg.content || !msg.channel_id || msg.author?.bot) return
     const contract = findContract(msg.content)
-    if (!contract) return
+    const links = fixedXLinks(msg.content)
+    if (!contract && links.length === 0) return
 
     const chat = await db.chatLink.findUnique({
       where: { provider_chatId: { provider: 'discord', chatId: msg.channel_id } },
     })
     if (!chat?.active) return
+
+    // Enlaces de X: Discord ya no los previsualiza, fixupx sí (lib/fix-links)
+    if (chat.fixLinks && links.length > 0) {
+      await dcSend(cfg.token, msg.channel_id, { text: links.join('\n') })
+    }
+    if (!contract) return
 
     const lang: Lang = isLang(chat.lang) ? chat.lang : langFromLocale(null)
     const { message } = await handleContractFromBot({

@@ -16,12 +16,14 @@ import { useT } from '@/lib/i18n/provider'
  * tipo de chat (un "grupo" de Telegram es un "canal" de servidor en Discord).
  */
 
-const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'notifyBoosts' | 'onlyFollowing' }[] = [
+const PREFS: { key: 'notifyLaunches' | 'notifyReminders' | 'notifyTheses' | 'notifyCalls' | 'notifyBoosts' | 'notifyMilestones' | 'fixLinks' | 'onlyFollowing' }[] = [
   { key: 'notifyLaunches' },
   { key: 'notifyReminders' },
   { key: 'notifyCalls' },
   { key: 'notifyTheses' },
   { key: 'notifyBoosts' },
+  { key: 'notifyMilestones' },
+  { key: 'fixLinks' },
   { key: 'onlyFollowing' },
 ]
 

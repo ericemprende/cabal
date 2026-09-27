@@ -8,6 +8,7 @@ import { leaderboardMessage } from '@/lib/bot-leaderboard'
 import { esc, tgCall, tgSend, type InlineButton, type TelegramConfig, type TgMessage } from '@/lib/telegram'
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
 import { isReminderLead, toggleLead } from '@/lib/notify-types'
+import { fixedXLinks } from '@/lib/fix-links'
 
 /**
  * Qué hace el bot con cada update que llega al webhook. Los comandos son en
@@ -95,7 +96,10 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
   const text = msg.text?.trim()
   if (!text) return
   // Un contrato pegado suelto vale como call: ver onPastedContract
-  if (!text.startsWith('/')) return onPastedContract(tg, msg, text)
+  if (!text.startsWith('/')) {
+    await onXLinks(tg, msg, text)
+    return onPastedContract(tg, msg, text)
+  }
   const [rawCmd, ...args] = text.split(/\s+/)
   const [name, mention] = rawCmd.slice(1).toLowerCase().split('@')
   // En grupos, un comando dirigido a otro bot no es para nosotros
@@ -317,6 +321,24 @@ async function onPastedContract(tg: TelegramConfig, msg: TgMsg, text: string) {
     mode: 'pasted',
   })
   if (message) await tgSend(tg.token, String(msg.chat.id), message)
+}
+
+/**
+ * Enlaces de X pegados en un chat vinculado: se responde con cada post por
+ * fixupx, que Telegram sí previsualiza (ver lib/fix-links). Uno por mensaje,
+ * porque Telegram solo previsualiza el primer enlace de cada uno.
+ */
+async function onXLinks(tg: TelegramConfig, msg: TgMsg, text: string) {
+  if (msg.from?.is_bot) return
+  const links = fixedXLinks(text)
+  if (links.length === 0) return
+  const chat = await findChat(msg.chat.id)
+  if (!chat?.active || !chat.fixLinks) return
+  for (const link of links) {
+    await tgSend(tg.token, String(msg.chat.id), { text: link, preview: true }).catch((e) =>
+      console.error('[telegram-bot] fix link:', (e as Error).message)
+    )
+  }
 }
 
 /**

@@ -31,6 +31,12 @@ export type BotMessage = {
    * mensaje normal, así que un texto con imagen conviene que sea corto.
    */
   image?: string
+  /**
+   * Dejar que Telegram previsualice el primer enlace. Por defecto va apagado
+   * (los avisos llevan varios enlaces y la vista previa tapa el texto); solo lo
+   * encienden los mensajes cuyo único sentido es esa vista previa.
+   */
+  preview?: boolean
 }
 
 /** Escapa texto para el HTML de los mensajes. */

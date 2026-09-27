@@ -1038,6 +1038,8 @@ export const es = {
       notifyCalls: 'Calls nuevas de Cabal',
       notifyTheses: 'Tesis nuevas',
       notifyBoosts: 'Munición fuerte en un proyecto',
+      notifyMilestones: 'Resultados de las calls del grupo (2x, DEX pagado…)',
+      fixLinks: 'Arreglar enlaces de X',
       onlyFollowing: 'Solo de gente que sigo',
     },
     types: { private: 'privado', announcements: 'anuncios', channel: 'canal', group: 'grupo' },

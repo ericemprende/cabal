@@ -58,6 +58,10 @@ export type ChatLinkDTO = {
   notifyCalls: boolean
   /** Avisar cuando alguien mete munición fuerte en un proyecto. */
   notifyBoosts: boolean
+  /** Avisar en el chat cuando sus calls hacen 2x, 5x… o pagan DEX. */
+  notifyMilestones: boolean
+  /** Responder a los enlaces de X con una versión que se previsualiza. */
+  fixLinks: boolean
   /** Solo avisos de estos tokens (contratos o "$TICKER"). Vacío = todos. */
   tokenFilter: string[]
   /** Solo calls, tesis y lanzamientos de cuentas que sigue el dueño del chat. */

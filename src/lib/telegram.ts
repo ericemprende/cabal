@@ -168,7 +168,7 @@ export async function tgSend(
     chat_id: id,
     ...(msg.image
       ? { photo: msg.image, caption: msg.text.slice(0, 1024) }
-      : { text: msg.text, link_preview_options: { is_disabled: true } }),
+      : { text: msg.text, link_preview_options: { is_disabled: !msg.preview } }),
     parse_mode: 'HTML',
     ...(msg.buttons ? { reply_markup: { inline_keyboard: msg.buttons } } : {}),
   })

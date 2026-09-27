@@ -159,7 +159,7 @@ export function sanitizeInviteUrl(provider: string, raw: string): string | null 
   return ok ? `https://${host}${path}` : null
 }
 
-export const CHAT_PREFS = ['notifyLaunches', 'notifyReminders', 'notifyTheses', 'notifyCalls', 'notifyBoosts', 'onlyFollowing'] as const
+export const CHAT_PREFS = ['notifyLaunches', 'notifyReminders', 'notifyTheses', 'notifyCalls', 'notifyBoosts', 'notifyMilestones', 'fixLinks', 'onlyFollowing'] as const
 export type ChatPref = (typeof CHAT_PREFS)[number]
 
 export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
@@ -175,6 +175,8 @@ export function toChatLinkDTO(c: ChatLink): ChatLinkDTO {
     reminderLeads: c.reminderLeads,
     notifyCalls: c.notifyCalls,
     notifyBoosts: c.notifyBoosts,
+    notifyMilestones: c.notifyMilestones,
+    fixLinks: c.fixLinks,
     tokenFilter: c.tokenFilter,
     onlyFollowing: c.onlyFollowing,
     inviteUrl: c.inviteUrl,

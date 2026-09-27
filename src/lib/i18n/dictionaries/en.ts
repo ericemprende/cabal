@@ -1039,6 +1039,8 @@ export const en: Dict = {
       notifyCalls: 'New Cabal calls',
       notifyTheses: 'New theses',
       notifyBoosts: 'Heavy ammo on a project',
+      notifyMilestones: 'Group call results (2x, DEX paid…)',
+      fixLinks: 'Fix X links',
       onlyFollowing: 'Only from people I follow',
     },
     types: { private: 'DM', announcements: 'announcements', channel: 'channel', group: 'group' },

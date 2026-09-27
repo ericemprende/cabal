@@ -1,3 +1,5 @@
+import { cached } from '@/lib/cache'
+
 /**
  * Datos on-chain reales para la verificación de devs.
  * - DexScreener → par principal (precio, FDV, liquidez, volumen, edad).
@@ -53,6 +55,38 @@ const DEX_CHAIN: Record<string, string> = {
   tron: 'tron',
   robinhood: 'robinhood',
   arc: 'arc',
+}
+
+/**
+ * Momento (ms) en que el token pagó su ficha de DexScreener ("DEX paid"), o
+ * null si no la ha pagado. Se cachea 5 minutos: lo consulta el aviso de
+ * resultados de las calls en cada pasada.
+ */
+export async function dexPaidAt(network: string, contract: string): Promise<number | null> {
+  const chain = DEX_CHAIN[network]
+  if (!chain) return null
+  return cached(`dexpaid:${chain}:${contract}`, 300, async () => {
+    try {
+      const res = await fetch(
+        `https://api.dexscreener.com/orders/v1/${chain}/${encodeURIComponent(contract)}`,
+        { signal: AbortSignal.timeout(8000) }
+      )
+      if (!res.ok) return null
+      const data = (await res.json()) as unknown
+      // La respuesta ha sido un array de órdenes y luego { orders: [...] }
+      const list = (Array.isArray(data) ? data : ((data as { orders?: unknown[] })?.orders ?? [])) as {
+        type?: string
+        status?: string
+        paymentTimestamp?: number
+      }[]
+      const paid = list.filter((o) => o?.type === 'tokenProfile' && o?.status === 'approved')
+      if (paid.length === 0) return null
+      const times = paid.map((o) => Number(o.paymentTimestamp)).filter((n) => n > 0)
+      return times.length ? Math.min(...times) : Date.now()
+    } catch {
+      return null
+    }
+  })
 }
 
 // network id de GeckoTerminal para el OHLCV del ATH. "robinhood" SÍ es un id

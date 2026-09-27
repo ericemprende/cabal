@@ -3,13 +3,14 @@ import { LegalPage, LegalSection } from '@/components/cabal/legal-page'
 import { siteUrl } from '@/lib/waitlist'
 import { REMINDER_LEADS, leadLabel } from '@/lib/notify-types'
 import { MAX_TOKEN_FILTER } from '@/lib/token-filter'
+import { BotComparison } from '@/components/cabal/bot-comparison'
 
 /**
  * Manual público del bot de Cabal (Telegram y Discord). El panel y el /help
  * del bot enlazan aquí. Cada cambio en los bots (comandos, avisos, ajustes)
  * debe reflejarse en esta página y en UPDATED_AT.
  */
-const UPDATED_AT = '24 de septiembre de 2026'
+const UPDATED_AT = '27 de septiembre de 2026'
 
 export const metadata: Metadata = {
   title: 'Bot de Cabal — Manual de Telegram y Discord',
@@ -125,6 +126,16 @@ const ALERTS: { name: string; what: string; def: string }[] = [
     def: 'Activado',
   },
   {
+    name: 'Resultados de las calls del grupo',
+    what: 'Cuando una call dada en este chat cruza 2x, 3x, 5x, 10x… (se avisa solo del escalón más alto, en los 3 días siguientes a la call) y cuando el token paga su ficha de DexScreener («DEX pagado») en las 48 h siguientes. Solo llega al chat donde se dio la call.',
+    def: 'Activado',
+  },
+  {
+    name: 'Arreglar enlaces de X',
+    what: 'Si alguien pega un post de X, el bot responde con el mismo post por fixupx.com, que sí enseña el texto y la imagen en Telegram y Discord. Hasta tres enlaces por mensaje.',
+    def: 'Activado',
+  },
+  {
     name: 'Solo de gente que sigo',
     what: 'Filtra los avisos anteriores: solo llegan los de cuentas que sigue quien conectó el chat (y los suyos propios).',
     def: 'Desactivado',
@@ -140,6 +151,14 @@ export default function BotManualPage() {
         <strong>Discord</strong>: lanzamientos, recordatorios de la 🔔 campanita, calls y tesis de la comunidad. También
         puedes dar calls, ver cómo van y consultar el ranking sin salir del chat. Los comandos son los mismos en los dos.
       </p>
+
+      <LegalSection title="Cabal frente a Phanes">
+        <p>
+          Lo que hace el bot de Cabal comparado con Phanes, el bot de calls más usado en Telegram. Lo que no tenemos
+          aún también está en la tabla.
+        </p>
+        <BotComparison />
+      </LegalSection>
 
       <LegalSection title="1. Conectar el bot">
         <p>
