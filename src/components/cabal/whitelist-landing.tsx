@@ -140,12 +140,12 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
         <section className="mt-14">
           <h2 className="font-display text-2xl font-bold sm:text-3xl">
             {lang === 'en' ? 'Cabal vs ' : 'Cabal frente a '}
-            <span className="text-primary">Phanes</span>
+            <span className="text-primary">{lang === 'en' ? 'the other bots' : 'los demás bots'}</span>
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             {lang === 'en'
-              ? 'What the Cabal bot does compared to Phanes, the most used calls bot on Telegram — including what we do not have yet.'
-              : 'Lo que hace el bot de Cabal comparado con Phanes, el bot de calls más usado en Telegram. Lo que aún no tenemos también está en la tabla.'}
+              ? 'What the Cabal bot does compared to Phanes, Rick, TTF, CryptoWhale and Proficy — including what we do not have yet.'
+              : 'Lo que hace el bot de Cabal comparado con Phanes, Rick, TTF, CryptoWhale y Proficy. Lo que aún no tenemos también está en la tabla.'}
           </p>
           <div className="mt-7">
             <BotComparison lang={lang === 'en' ? 'en' : 'es'} />
