@@ -148,7 +148,7 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
               : 'Lo que hace el bot de Cabal comparado con Phanes, el bot de calls más usado en Telegram. Lo que aún no tenemos también está en la tabla.'}
           </p>
           <div className="mt-7">
-            <BotComparison />
+            <BotComparison lang={lang === 'en' ? 'en' : 'es'} />
           </div>
           <Link href="/bot" className="mt-4 inline-block text-sm font-semibold text-primary hover:underline">
             {lang === 'en' ? 'See the bot manual →' : 'Ver el manual del bot →'}
