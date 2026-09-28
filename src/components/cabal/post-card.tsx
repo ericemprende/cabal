@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Check, Copy, CornerUpLeft, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
+import { CandlestickChart, Check, Copy, CornerUpLeft, Download, Heart, ImageDown, MessageCircle, Send, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RichText } from '@/components/cabal/rich-text'
 import { useT } from '@/lib/i18n/provider'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
+import { LiveChart } from '@/components/cabal/live-chart'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -160,6 +161,45 @@ function ParentQuote({ post, parent, compact }: { post: PostDTO; parent: PostPar
         </span>
       </span>
     </button>
+  )
+}
+
+/** Popup con el gráfico en vivo de un token (calls del feed e historial del perfil). */
+export function TokenChartDialog({
+  contract,
+  network,
+  ticker,
+  open,
+  onOpenChange,
+}: {
+  contract: string
+  network: string
+  ticker?: string | null
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const t = useT()
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[96dvh] overflow-y-auto border-white/10 bg-[#121410] p-3 sm:max-w-[96vw] lg:max-w-[1200px]" aria-describedby={undefined}>
+        <DialogTitle className="text-sm font-bold">{ticker ? `$${ticker}` : t.post.chartTitle}</DialogTitle>
+        {open && <LiveChart network={network} contract={contract} height={600} />}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function CallChartDialog({ post, open, onOpenChange }: { post: PostDTO; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { data } = useCallResult(post.id, open && post.kind === 'call' && !!post.contract && !post.token)
+  if (!post.contract || !post.network) return null
+  return (
+    <TokenChartDialog
+      contract={post.contract}
+      network={post.network}
+      ticker={post.token?.ticker ?? data?.symbol}
+      open={open}
+      onOpenChange={onOpenChange}
+    />
   )
 }
 
@@ -323,6 +363,7 @@ export function PostCard({
   const createPost = useCreatePost()
   const { openLaunch, openToken } = useUI()
   const [shareOpen, setShareOpen] = useState(false)
+  const [chartOpen, setChartOpen] = useState(false)
   const [replyOpen, setReplyOpen] = useState(false)
   const [reply, setReply] = useState('')
 
@@ -402,6 +443,20 @@ export function PostCard({
               <CopyCA contract={post.contract} className="min-w-0 shrink text-[11px]" />
               <CallResultBadge post={post} />
               <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                {post.network && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setChartOpen(true)
+                    }}
+                    className="text-muted-foreground hover:text-primary"
+                    title={t.post.chartTitle}
+                    aria-label={t.post.chartTitle}
+                  >
+                    <CandlestickChart className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <CallBuyButton post={post} compact={compact} />
                 <button
                   type="button"
@@ -416,6 +471,7 @@ export function PostCard({
                   <ImageDown className="h-3.5 w-3.5" />
                 </button>
               </span>
+              <CallChartDialog post={post} open={chartOpen} onOpenChange={setChartOpen} />
               <CallShareDialog postId={post.id} handle={post.user.handle} open={shareOpen} onOpenChange={setShareOpen} />
             </div>
           )}

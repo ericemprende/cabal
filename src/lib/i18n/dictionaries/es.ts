@@ -358,6 +358,7 @@ export const es = {
     shareOnX: 'Compartir en X',
     retracted: 'Se retractó: este voto en contra ya no cuenta',
     fudReason: 'Motivo de su voto en contra · respóndele si crees que se equivoca',
+    chartTitle: 'Ver el gráfico del token',
     cardTitle: 'Ver la tarjeta y compartirla en X',
     cardAria: 'Ver imagen para compartir',
     launch: 'launch',

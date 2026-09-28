@@ -359,6 +359,7 @@ export const en: Dict = {
     shareOnX: 'Share on X',
     retracted: 'Retracted: this downvote no longer counts',
     fudReason: 'Why they voted against it · reply if you think they are wrong',
+    chartTitle: 'See the token chart',
     cardTitle: 'See the card and share it on X',
     cardAria: 'See the image to share',
     launch: 'launch',

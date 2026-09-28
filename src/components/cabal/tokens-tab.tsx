@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Flame, Globe, MessageSquare, ShieldAlert, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Flame, Globe, MessageSquare, ShieldAlert, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/provider'
 import { NetworkBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
@@ -32,6 +32,8 @@ const GRID = cn(
   '@[52rem]:grid-cols-[minmax(0,1fr)_60px_76px_92px_64px_64px_72px_100px_132px]'
 )
 
+type ColKey = 'price' | 'mc' | 'change24h' | 'holders' | 'volume24h'
+
 const NETWORK_FILTERS = ['all', 'solana', 'base', 'ethereum', 'bsc', 'robinhood', 'arc', 'tron'] as const
 
 export function TokensTab() {
@@ -43,6 +45,36 @@ export function TokensTab() {
   const { openToken } = useUI()
 
   const maxMc = useMemo(() => Math.max(...(tokens ?? []).map((t) => t.mc), 1), [tokens])
+
+  // Orden por columna sobre la lista ya cargada: 1er clic de mayor a menor,
+  // 2º de menor a mayor, 3º vuelve al orden de la pestaña.
+  const [colSort, setColSort] = useState<{ key: ColKey; dir: 'desc' | 'asc' } | null>(null)
+  const rows = useMemo(() => {
+    const list = tokens ?? []
+    if (!colSort) return list
+    const m = colSort.dir === 'desc' ? -1 : 1
+    return [...list].sort((a, b) => ((Number(a[colSort.key]) || 0) - (Number(b[colSort.key]) || 0)) * m)
+  }, [tokens, colSort])
+  const toggleCol = (key: ColKey) =>
+    setColSort((c) => (c?.key !== key ? { key, dir: 'desc' } : c.dir === 'desc' ? { key, dir: 'asc' } : null))
+  const SortHead = ({ k, label, className }: { k: ColKey; label: string; className?: string }) => {
+    const active = colSort?.key === k
+    const Icon = !active ? ArrowUpDown : colSort.dir === 'desc' ? ArrowDown : ArrowUp
+    return (
+      <button
+        type="button"
+        onClick={() => toggleCol(k)}
+        className={cn(
+          'flex items-center justify-end gap-0.5 uppercase tracking-wider transition-colors hover:text-foreground',
+          active && 'text-primary',
+          className
+        )}
+      >
+        {label}
+        <Icon className={cn('h-3 w-3 shrink-0', !active && 'opacity-50')} aria-hidden />
+      </button>
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -96,11 +128,11 @@ export function TokensTab() {
         >
           <span>{copy.tokens.col.token}</span>
           <span>{copy.tokens.col.network}</span>
-          <span className="hidden text-right @[52rem]:block">{copy.tokens.col.price}</span>
-          <span className="text-right">{copy.tokens.col.mc}</span>
-          <span className="text-right">{copy.tokens.col.change}</span>
-          <span className="text-right">{copy.tokens.col.holders}</span>
-          <span className="hidden text-right @[52rem]:block">{copy.tokens.col.volume}</span>
+          <SortHead k="price" label={copy.tokens.col.price} className="hidden @[52rem]:flex" />
+          <SortHead k="mc" label={copy.tokens.col.mc} />
+          <SortHead k="change24h" label={copy.tokens.col.change} />
+          <SortHead k="holders" label={copy.tokens.col.holders} />
+          <SortHead k="volume24h" label={copy.tokens.col.volume} className="hidden @[52rem]:flex" />
           <span className="pl-2">{copy.tokens.col.dev}</span>
           <span />
         </div>
@@ -113,7 +145,7 @@ export function TokensTab() {
           </div>
         ) : (
           <div className="space-y-1.5">
-            {(tokens ?? []).map((t) => (
+            {rows.map((t) => (
               <button
                 key={t.id}
                 onClick={() => openToken(t.id)}

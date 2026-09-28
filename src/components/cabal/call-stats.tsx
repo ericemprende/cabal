@@ -1,12 +1,13 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Award, Clock, Crosshair, LineChart, Medal, Target, Trophy } from 'lucide-react'
+import { Award, CandlestickChart, Clock, Crosshair, ImageDown, LineChart, Medal, Target, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { CALL_PERIODS, WIN_MULTIPLE, fmtMultiple, type CallPeriod } from '@/lib/call-score'
 import { NetworkBadge, TokenGlyph } from '@/components/cabal/shared'
-import { CallShareDialog } from '@/components/cabal/post-card'
+import { CallShareDialog, TokenChartDialog } from '@/components/cabal/post-card'
+import { QuickBuyButton } from '@/components/cabal/quick-buy'
 import { useUserCallStats } from '@/lib/api-client'
 import type { CallRowDTO } from '@/lib/types'
 
@@ -226,12 +227,21 @@ function callHeadline(c: { peakMultiple: number | null; currentMultiple: number 
 function CallRow({ call, onOpen }: { call: CallRowDTO; onOpen: () => void }) {
   const evaluated = call.peakMultiple !== null
   const h = callHeadline(call)
+  const [chartOpen, setChartOpen] = useState(false)
+  // La fila entera abre la tarjeta; es un div porque dentro van otros botones.
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
       title="Ver la tarjeta del resultado y compartirla"
-      className="flex w-full items-center gap-2.5 rounded-xl border border-white/8 bg-[#0a0b08] p-2.5 text-left transition-colors hover:border-[#8FA83F]/40"
+      className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl border border-white/8 bg-[#0a0b08] p-2.5 text-left transition-colors hover:border-[#8FA83F]/40"
     >
       <TokenGlyph src={call.image} ticker={call.symbol ?? '?'} size="md" />
       <div className="min-w-0 flex-1">
@@ -261,6 +271,36 @@ function CallRow({ call, onOpen }: { call: CallRowDTO; onOpen: () => void }) {
       ) : (
         <span className="shrink-0 text-[11px] text-muted-foreground">calculando…</span>
       )}
-    </button>
+      <div className="flex shrink-0 items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={() => setChartOpen(true)}
+          className="rounded-md p-1 text-muted-foreground hover:text-primary"
+          title="Ver el gráfico del token"
+          aria-label="Ver el gráfico del token"
+        >
+          <CandlestickChart className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="rounded-md p-1 text-muted-foreground hover:text-primary"
+          title="Ver la tarjeta y compartirla en X"
+          aria-label="Ver la tarjeta y compartirla en X"
+        >
+          <ImageDown className="h-4 w-4" />
+        </button>
+        <QuickBuyButton contract={call.contract} network={call.network} ticker={call.symbol ?? ''} className="shrink-0" iconOnly />
+        {/* Dentro del div que corta la propagación: el portal del popup sigue
+            burbujeando por el árbol de React y abriría la tarjeta. */}
+        <TokenChartDialog
+          contract={call.contract}
+          network={call.network}
+          ticker={call.symbol}
+          open={chartOpen}
+          onOpenChange={setChartOpen}
+        />
+      </div>
+    </div>
   )
 }
