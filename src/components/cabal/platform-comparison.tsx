@@ -19,8 +19,8 @@ const PLATFORMS = [
   { id: 'gigax', name: 'GigaX', logo: '/bots/gigax.png', color: '#7c5cff' },
   { id: 'dexscreener', name: 'DEX Screener', logo: '/bots/dexscreener.png', color: '#e5e7eb' },
   { id: 'dextools', name: 'DEXTools', logo: '/bots/dextools.png', color: '#05a3c9' },
-  { id: 'axiom', name: 'Axiom', color: '#f5f5f5' },
-  { id: 'gmgn', name: 'GMGN', color: '#9be15d' },
+  { id: 'axiom', name: 'Axiom', logo: '/bots/axiom.png', color: '#f5f5f5' },
+  { id: 'gmgn', name: 'GMGN', logo: '/bots/gmgn.png', color: '#9be15d' },
 ] as const
 
 type Row = {
