@@ -14,13 +14,13 @@ import { Check, Hammer, Minus, X } from 'lucide-react'
 type Cell = 'yes' | 'partial' | 'no' | 'dev'
 
 const PLATFORMS = [
-  { id: 'cabal', name: 'Cabal', logo: '/bots/cabal.png', color: '#8FA83F' },
-  { id: 'fomo', name: 'fomo', logo: '/bots/fomo.png', color: '#ff5a1f' },
-  { id: 'gigax', name: 'GigaX', logo: '/bots/gigax.png', color: '#7c5cff' },
-  { id: 'dexscreener', name: 'DEX Screener', logo: '/bots/dexscreener.png', color: '#e5e7eb' },
-  { id: 'dextools', name: 'DEXTools', logo: '/bots/dextools.png', color: '#05a3c9' },
-  { id: 'axiom', name: 'Axiom', logo: '/bots/axiom.png', color: '#f5f5f5' },
-  { id: 'gmgn', name: 'GMGN', logo: '/bots/gmgn.png', color: '#9be15d' },
+  { id: 'cabal', name: 'Cabal', logo: '/bots/cabal.png' },
+  { id: 'fomo', name: 'fomo', logo: '/bots/fomo.png' },
+  { id: 'gigax', name: 'GigaX', logo: '/bots/gigax.png' },
+  { id: 'dexscreener', name: 'DEX Screener', logo: '/bots/dexscreener.png' },
+  { id: 'dextools', name: 'DEXTools', logo: '/bots/dextools.png' },
+  { id: 'axiom', name: 'Axiom', logo: '/bots/axiom.png' },
+  { id: 'gmgn', name: 'GMGN', logo: '/bots/gmgn.png' },
 ] as const
 
 type Row = {
@@ -159,18 +159,8 @@ export function PlatformComparison({ lang = 'es' }: { lang?: Lang } = {}) {
                     i === 0 ? 'border-x border-primary/40 bg-primary/10' : 'font-semibold text-foreground/70'
                   }`}
                 >
-                  {'logo' in p ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.logo} alt="" className="mx-auto h-9 w-9 rounded-lg object-cover" loading="lazy" />
-                  ) : (
-                    <span
-                      aria-hidden
-                      className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 font-display text-[15px] font-black"
-                      style={{ color: p.color }}
-                    >
-                      {p.name[0].toUpperCase()}
-                    </span>
-                  )}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.logo} alt="" className="mx-auto h-9 w-9 rounded-lg object-cover" loading="lazy" />
                   <span className={`mt-2 block whitespace-nowrap ${i === 0 ? 'font-bold text-primary' : ''}`}>{p.name}</span>
                 </th>
               ))}
