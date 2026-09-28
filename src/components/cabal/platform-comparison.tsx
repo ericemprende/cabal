@@ -82,7 +82,7 @@ function Mark({ value, strong, lang }: { value: Cell; strong?: boolean; lang: La
         className={`inline-flex h-6 w-6 items-center justify-center rounded-full ${
           strong ? 'bg-primary/25 text-primary ring-2 ring-primary/50' : 'bg-white/10 text-foreground/70'
         }`}
-        aria-label={t.yes}
+        role="img" aria-label={t.yes}
       >
         <Check className="h-4 w-4" />
       </span>
@@ -97,13 +97,13 @@ function Mark({ value, strong, lang }: { value: Cell; strong?: boolean; lang: La
   }
   if (value === 'partial') {
     return (
-      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-amber-400" aria-label={t.partial}>
+      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/10 text-amber-400" role="img" aria-label={t.partial}>
         <Minus className="h-4 w-4" />
       </span>
     )
   }
   return (
-    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-foreground/40" aria-label={t.no}>
+    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/5 text-foreground/40" role="img" aria-label={t.no}>
       <X className="h-4 w-4" />
     </span>
   )

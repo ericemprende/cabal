@@ -16,6 +16,9 @@ import { shareCardUrl, shareRefUrl, siteUrl, type Locale } from '@/lib/waitlist'
 const TITLE = 'Cabal — Entra al radar antes que el resto'
 const DESCRIPTION =
   'Lista de espera de Cabal: el radar donde la comunidad descubre los memecoins ANTES de que salgan. Regístrate con tu cuenta de X y reserva tu plaza.'
+const TITLE_EN = 'Cabal — Get on the radar before everyone else'
+const DESCRIPTION_EN =
+  'Cabal waitlist: the radar where the community spots memecoins BEFORE they launch. Sign up with your X account and reserve your spot.'
 
 /** Un @usuario de X válido (1-15 caracteres de letras, cifras o `_`), o null. */
 export function parseHandle(raw: string | string[] | undefined | null): string | null {
@@ -34,24 +37,29 @@ export function buildShareMetadata(handle: string | null, locale: Locale): Metad
       }
     : { url: '/og-cabal.png', width: 1200, height: 630, alt: 'Cabal' }
 
+  // El título repite el H1 de la landing en su idioma: título y H1 alineados
+  // para que buscadores y asistentes identifiquen de qué va la página.
+  const title = locale === 'en' ? TITLE_EN : TITLE
+  const description = locale === 'en' ? DESCRIPTION_EN : DESCRIPTION
+
   const ogTitle = handle
     ? locale === 'en'
       ? `@${handle} is part of Cabal.army`
       : `@${handle} ya es parte de Cabal.army`
-    : TITLE
+    : title
   const ogDescription = handle
     ? locale === 'en'
       ? `@${handle} invites you to the Cabal waitlist: the radar where the community spots memecoins BEFORE they launch.`
       : `@${handle} te invita a la lista de espera de Cabal: el radar donde la comunidad ve los memecoins ANTES de que salgan.`
-    : DESCRIPTION
+    : description
 
   // Cada invitación es canónica de sí misma, nunca de la home: X guarda la
   // tarjeta de la home de cuando era la app, sin imagen válida.
   const url = shareRefUrl(handle, locale)
 
   return {
-    title: TITLE,
-    description: DESCRIPTION,
+    title,
+    description,
     metadataBase: new URL(siteUrl()),
     alternates: { canonical: handle ? url : '/' },
     openGraph: {

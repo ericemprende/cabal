@@ -82,7 +82,7 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
   const pending = Boolean(data && data.step !== 'login')
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0a0b08] text-foreground">
+    <main className="min-h-screen overflow-x-hidden bg-[#0a0b08] text-foreground">
       <div className="relative">
         <RadarBackdrop />
 
@@ -205,7 +205,7 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
           </p>
         </footer>
       </div>
-    </div>
+    </main>
   )
 }
 
@@ -319,7 +319,7 @@ function Hero({
   return (
     <div>
       <h1 className="font-machina text-4xl font-bold leading-[1.05] sm:text-5xl md:text-6xl">
-        {t.landing.hero.titleTop}
+        {t.landing.hero.titleTop}{' '}
         <br />
         <span className="text-primary">{t.landing.hero.titleAccent}</span>
       </h1>

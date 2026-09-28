@@ -1,0 +1,24 @@
+# Cabal
+
+> Cabal (cabal.army) is a social radar for Solana memecoins: the community posts upcoming launches with a date and time, so members see them before they go live. It is currently in early access with a waitlist; you sign up with your X account.
+
+## What it offers
+
+- Launch radar: launches posted by the community before they go live.
+- Dev track records: each dev's real history.
+- Points redeemable for $CABAL.
+- Live streams on launch day.
+- A Telegram/Discord bot with launch alerts.
+
+## Key pages
+
+- [Home and waitlist](https://cabal.army/)
+- [Bot manual](https://cabal.army/bot)
+- [Terms](https://cabal.army/terminos)
+- [Privacy](https://cabal.army/privacidad)
+- [Credits](https://cabal.army/creditos)
+
+## Contact
+
+- X: https://x.com/Cabal_app
+- Email: legal@cabal.army
