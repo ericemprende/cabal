@@ -1,6 +1,9 @@
 import { Check, Hammer, Minus, X } from 'lucide-react'
 
 /**
+ * GigaX es prácticamente un clon de fomo (mismo modelo de app social), así
+ * que su columna repite la de fomo.
+ *
  * Tabla "Cabal frente a las plataformas" de la landing: fomo, GigaX, DEX
  * Screener, DEXTools, Axiom y GMGN. Sale de sus webs, fichas de tienda y
  * reseñas públicas (septiembre 2026). Lo que en Cabal aún se está
@@ -12,10 +15,10 @@ type Cell = 'yes' | 'partial' | 'no' | 'dev'
 
 const PLATFORMS = [
   { id: 'cabal', name: 'Cabal', logo: '/bots/cabal.png', color: '#8FA83F' },
-  { id: 'fomo', name: 'fomo', color: '#ff5a1f' },
-  { id: 'gigax', name: 'GigaX', color: '#7c5cff' },
-  { id: 'dexscreener', name: 'DEX Screener', color: '#e5e7eb' },
-  { id: 'dextools', name: 'DEXTools', color: '#05a3c9' },
+  { id: 'fomo', name: 'fomo', logo: '/bots/fomo.png', color: '#ff5a1f' },
+  { id: 'gigax', name: 'GigaX', logo: '/bots/gigax.png', color: '#7c5cff' },
+  { id: 'dexscreener', name: 'DEX Screener', logo: '/bots/dexscreener.png', color: '#e5e7eb' },
+  { id: 'dextools', name: 'DEXTools', logo: '/bots/dextools.png', color: '#05a3c9' },
   { id: 'axiom', name: 'Axiom', color: '#f5f5f5' },
   { id: 'gmgn', name: 'GMGN', color: '#9be15d' },
 ] as const
@@ -29,11 +32,11 @@ type Row = {
 
 const ONLY_CABAL: Row[] = [
   { es: ['Calendario de lanzamientos', 'Radar de lo que sale, con aviso antes'], en: ['Launch calendar', 'Radar of upcoming launches, with a reminder'], v: ['yes', 'no', 'no', 'no', 'no', 'no', 'no'] },
-  { es: ['Calls con resultado medido', 'Cada call guarda su pico y suma a tu reputación'], en: ['Calls with measured results', 'Every call records its peak and builds your reputation'], v: ['yes', 'partial', 'no', 'no', 'no', 'no', 'partial'] },
-  { es: ['Tesis y feed social', 'Análisis, comentarios y seguir a callers'], en: ['Theses and social feed', 'Analysis, comments and following callers'], v: ['yes', 'partial', 'no', 'no', 'partial', 'no', 'no'] },
+  { es: ['Calls con resultado medido', 'Cada call guarda su pico y suma a tu reputación'], en: ['Calls with measured results', 'Every call records its peak and builds your reputation'], v: ['yes', 'partial', 'partial', 'no', 'no', 'no', 'partial'] },
+  { es: ['Tesis y feed social', 'Análisis, comentarios y seguir a callers'], en: ['Theses and social feed', 'Analysis, comments and following callers'], v: ['yes', 'partial', 'partial', 'no', 'partial', 'no', 'no'] },
   { es: ['Devs y proyectos verificados', 'El dev reclama su proyecto y recibe sello'], en: ['Verified devs and projects', 'Devs claim their project and get a badge'], v: ['yes', 'no', 'no', 'partial', 'partial', 'no', 'no'] },
   { es: ['Bot en Telegram y Discord', 'Calls, ranking y avisos dentro del grupo'], en: ['Telegram and Discord bot', 'Calls, leaderboard and alerts inside the group'], v: ['yes', 'no', 'no', 'partial', 'no', 'no', 'partial'] },
-  { es: ['Insignias y puntos', 'Rangos por actividad, acierto y volumen'], en: ['Badges and points', 'Ranks for activity, accuracy and volume'], v: ['yes', 'partial', 'no', 'no', 'no', 'no', 'no'] },
+  { es: ['Insignias y puntos', 'Rangos por actividad, acierto y volumen'], en: ['Badges and points', 'Ranks for activity, accuracy and volume'], v: ['yes', 'partial', 'partial', 'no', 'no', 'no', 'no'] },
 ]
 
 const SHARED: Row[] = [
@@ -46,14 +49,14 @@ const SHARED: Row[] = [
 ]
 
 const TO_IMPROVE: Row[] = [
-  { es: ['Terminal de trading', 'Pantalla pro para operar rápido'], en: ['Trading terminal', 'Pro screen for fast execution'], v: ['dev', 'no', 'partial', 'no', 'partial', 'yes', 'yes'] },
+  { es: ['Terminal de trading', 'Pantalla pro para operar rápido'], en: ['Trading terminal', 'Pro screen for fast execution'], v: ['dev', 'no', 'no', 'no', 'partial', 'yes', 'yes'] },
   { es: ['Bots de sniping', 'Entrar en el primer bloque o en la migración'], en: ['Sniping bots', 'Buy on the first block or on migration'], v: ['dev', 'no', 'no', 'no', 'no', 'yes', 'yes'] },
-  { es: ['Copy trading', 'Copiar las operaciones de otra wallet'], en: ['Copy trading', 'Mirror another wallet’s trades'], v: ['dev', 'partial', 'no', 'no', 'no', 'partial', 'yes'] },
+  { es: ['Copy trading automático', 'Copia sola las operaciones de otra wallet'], en: ['Automatic copy trading', 'Mirrors another wallet’s trades on its own'], v: ['dev', 'partial', 'partial', 'no', 'no', 'partial', 'yes'] },
   { es: ['Órdenes límite', 'Comprar o vender a un precio fijado'], en: ['Limit orders', 'Buy or sell at a set price'], v: ['dev', 'no', 'no', 'no', 'no', 'yes', 'yes'] },
-  { es: ['Alertas de precio', 'Aviso cuando un token cruza un precio'], en: ['Price alerts', 'Notify when a token crosses a price'], v: ['no', 'no', 'no', 'yes', 'yes', 'partial', 'yes'] },
-  { es: ['Perpetuos con apalancamiento', 'Futuros sobre memecoins'], en: ['Leveraged perps', 'Futures on memecoins'], v: ['no', 'yes', 'no', 'no', 'no', 'yes', 'no'] },
-  { es: ['Comprar con tarjeta o Apple Pay', 'Entrar sin tener cripto antes'], en: ['Buy with card or Apple Pay', 'Get in without owning crypto first'], v: ['no', 'yes', 'no', 'no', 'no', 'no', 'no'] },
-  { es: ['App nativa iOS y Android', 'En las tiendas; Cabal hoy es app web instalable'], en: ['Native iOS and Android app', 'In the stores; Cabal is an installable web app today'], v: ['partial', 'yes', 'yes', 'yes', 'yes', 'no', 'yes'] },
+  { es: ['Alertas de precio', 'Aviso cuando un token cruza un precio'], en: ['Price alerts', 'Notify when a token crosses a price'], v: ['dev', 'no', 'no', 'yes', 'yes', 'partial', 'yes'] },
+  { es: ['Perpetuos con apalancamiento', 'Futuros sobre memecoins'], en: ['Leveraged perps', 'Futures on memecoins'], v: ['no', 'yes', 'yes', 'no', 'no', 'yes', 'no'] },
+  { es: ['Comprar con tarjeta o Apple Pay', 'Entrar sin tener cripto antes'], en: ['Buy with card or Apple Pay', 'Get in without owning crypto first'], v: ['dev', 'yes', 'yes', 'no', 'no', 'no', 'no'] },
+  { es: ['App nativa iOS y Android', 'En construcción; hoy ya se instala como app web'], en: ['Native iOS and Android app', 'In the works; installable as a web app today'], v: ['dev', 'yes', 'yes', 'yes', 'yes', 'no', 'yes'] },
 ]
 
 type Lang = 'es' | 'en'

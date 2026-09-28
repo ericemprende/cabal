@@ -27,6 +27,7 @@ import { CABAL_X_HANDLE, CABAL_X_URL } from '@/lib/cabal-x'
 import { LangSwitch } from '@/components/cabal/lang-switch'
 import { BotComparison } from '@/components/cabal/bot-comparison'
 import { PlatformComparison } from '@/components/cabal/platform-comparison'
+import { AllInOne } from '@/components/cabal/all-in-one'
 import { useLang } from '@/lib/i18n/provider'
 import { useT } from '@/lib/i18n/provider'
 import type { Dict } from '@/lib/i18n/dictionaries'
@@ -136,6 +137,8 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
             })}
           </div>
         </section>
+
+        <AllInOne lang={lang === 'en' ? 'en' : 'es'} />
 
         {/* Cabal frente a las plataformas de trading y de gráficos */}
         <section className="mt-14">
