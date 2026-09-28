@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Award, CandlestickChart, Clock, Crosshair, ImageDown, LineChart, Medal, Target, Trophy } from 'lucide-react'
+import { Award, CandlestickChart, TrendingDown, TrendingUp, Clock, Crosshair, ImageDown, LineChart, Medal, Target, Trophy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fmtMc, fmtPct, timeAgo } from '@/lib/cabal'
 import { CALL_PERIODS, WIN_MULTIPLE, fmtMultiple, type CallPeriod } from '@/lib/call-score'
@@ -31,6 +31,23 @@ export function CallStats({ handle }: { handle: string }) {
   }, [data?.calls, sort])
   const visible = showAll ? history : history.slice(0, 10)
   const s = data?.summary
+
+  // X ganadas: lo que subieron (pico − 1) las calls que llegaron a acierto.
+  // X perdidas: lo que cae ahora (1 − actual) cada call que nunca llegó a
+  // acierto y va en negativo; como mucho 1X por call (se va a cero).
+  const xTotals = useMemo(() => {
+    let won = 0, wonCount = 0, lost = 0, lostCount = 0
+    for (const c of data?.calls ?? []) {
+      if (c.peakMultiple !== null && c.peakMultiple >= WIN_MULTIPLE) {
+        won += c.peakMultiple - 1
+        wonCount++
+      } else if (c.currentMultiple !== null && c.currentMultiple < 1) {
+        lost += Math.min(1, 1 - c.currentMultiple)
+        lostCount++
+      }
+    }
+    return { won, wonCount, lost, lostCount, net: won - lost }
+  }, [data?.calls])
 
   return (
     <section className="card-surface space-y-4 rounded-2xl border border-white/10 p-4 sm:p-5" aria-label="Estadísticas de calls">
@@ -73,6 +90,34 @@ export function CallStats({ handle }: { handle: string }) {
         />
         <Tile icon={LineChart} label="Pico promedio" value={fmtMultiple(s?.avgPeak)} loading={isPending} />
         <Tile icon={Trophy} label="Mejor call" value={fmtMultiple(s?.bestMultiple)} accent loading={isPending} />
+      </div>
+
+      {/* Balance en X: cuánto sumaron las calls buenas y cuánto restaron las malas */}
+      <div className="grid grid-cols-3 gap-2">
+        <Tile
+          icon={TrendingUp}
+          label="X ganadas"
+          value={`+${xTotals.won.toFixed(2)}X`}
+          hint={`${xTotals.wonCount} calls ≥${WIN_MULTIPLE}X · pico`}
+          tone="text-primary"
+          loading={isPending}
+        />
+        <Tile
+          icon={TrendingDown}
+          label="X perdidas"
+          value={`-${xTotals.lost.toFixed(2)}X`}
+          hint={`${xTotals.lostCount} calls en negativo`}
+          tone="text-[#ff8080]"
+          loading={isPending}
+        />
+        <Tile
+          icon={LineChart}
+          label="Balance"
+          value={`${xTotals.net >= 0 ? '+' : ''}${xTotals.net.toFixed(2)}X`}
+          hint="ganadas − perdidas"
+          tone={xTotals.net >= 0 ? 'text-primary' : 'text-[#ff8080]'}
+          loading={isPending}
+        />
       </div>
 
       {/* Mejores calls */}
@@ -177,6 +222,7 @@ function Tile({
   value,
   hint,
   accent,
+  tone,
   loading,
 }: {
   icon: typeof Trophy
@@ -184,6 +230,7 @@ function Tile({
   value: string
   hint?: string
   accent?: boolean
+  tone?: string
   loading?: boolean
 }) {
   return (
@@ -194,7 +241,7 @@ function Tile({
       {loading ? (
         <div className="mt-1.5 h-6 w-14 animate-pulse rounded bg-white/5" />
       ) : (
-        <p className={cn('mt-1 truncate text-lg font-bold tabular-nums', accent && 'text-amber-300')}>{value}</p>
+        <p className={cn('mt-1 truncate text-lg font-bold tabular-nums', accent && 'text-amber-300', tone)}>{value}</p>
       )}
       {hint && !loading && <p className="truncate text-[10px] text-muted-foreground">{hint}</p>}
     </div>
