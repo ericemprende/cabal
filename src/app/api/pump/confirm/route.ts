@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
-import { awardPoints } from '@/lib/api-helpers'
-import { invalidate } from '@/lib/cache'
 import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { coinExistsOnChain, sendCreateTxs } from '@/lib/pump-launch'
-import { createTokenForLaunch } from '@/lib/tokens-sync'
+import { markLaunched } from '@/lib/pump-schedule'
 
 export const runtime = 'nodejs'
 
 /**
- * POST /api/pump/confirm — recibe la transacción firmada (creador + mint), la
- * manda a la red y, cuando el token existe en pump.fun, lo publica en el
- * Radar como launch del creador. Body: { mint, tx }.
+ * POST /api/pump/confirm — lanzamiento al momento: recibe las transacciones
+ * firmadas (creador + mint), las manda a la red y, cuando el token existe en
+ * pump.fun, lo publica en el Radar como launch del creador. Body: { mint, txs }.
  */
 export async function POST(req: Request) {
   const userId = await sessionUserIdFromCookies()
@@ -25,7 +23,8 @@ export async function POST(req: Request) {
 
   const coin = await db.pumpCoin.findUnique({ where: { mint } })
   if (!coin || coin.userId !== userId) return NextResponse.json({ error: 'Token no encontrado' }, { status: 404 })
-  if (coin.launchedAt) return NextResponse.json({ ok: true, mint, launchId: coin.launchId })
+  if (coin.status === 'launched') return NextResponse.json({ ok: true, mint, launchId: coin.launchId })
+  if (coin.status !== 'draft') return NextResponse.json({ error: 'Este token está programado' }, { status: 409 })
 
   let signature: string | null = null
   let buyError: string | null = null
@@ -42,30 +41,6 @@ export async function POST(req: Request) {
     }
   }
 
-  const now = new Date()
-  const launch = await db.launch.create({
-    data: {
-      name: coin.name,
-      ticker: coin.symbol,
-      image: coin.image,
-      submitterRole: 'dev',
-      contract: mint,
-      devWallet: coin.creatorWallet,
-      launchpad: 'pump.fun',
-      network: 'solana',
-      launchAt: now,
-      dateConfirmed: true,
-      description: coin.description || `${coin.name} ($${coin.symbol}), lanzado en pump.fun desde Cabal.`,
-      website: coin.website,
-      twitter: coin.twitter,
-      telegram: coin.telegram,
-      createdById: userId,
-    },
-  })
-  await db.pumpCoin.update({ where: { mint }, data: { launchedAt: now, signature, launchId: launch.id } })
-  const pointsEarned = await awardPoints(userId, 'launch', `Lanzaste ${coin.name} ($${coin.symbol}) en pump.fun`)
-  await createTokenForLaunch(launch).catch((e) => console.error('[pump/confirm] token', e))
-  await invalidate('launches:*')
-
-  return NextResponse.json({ ok: true, mint, signature, buyError, launchId: launch.id, pointsEarned })
+  const launchId = await markLaunched(coin, signature)
+  return NextResponse.json({ ok: true, mint, signature, buyError, launchId })
 }

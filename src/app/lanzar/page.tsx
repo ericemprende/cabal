@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink, Loader2, Rocket } from 'lucide-react'
+import { ArrowLeft, CalendarClock, ExternalLink, Loader2, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
 import { Keypair, VersionedTransaction } from '@solana/web3.js'
 import { Button } from '@/components/ui/button'
@@ -13,16 +13,23 @@ import { CabalWordmark } from '@/components/cabal/shared'
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { useConnectedAddress, useWalletPicker } from '@/components/cabal/wallet-picker'
 import { uploadImage } from '@/lib/api-client'
-import { isUserRejection, solanaSignTransactions } from '@/lib/wallets'
+import { isUserRejection, solanaSignAndSend, solanaSignTransactions } from '@/lib/wallets'
 import { useLang } from '@/lib/i18n/provider'
+import { cn } from '@/lib/utils'
 
 /**
- * /lanzar — crear un token en pump.fun sin salir de Cabal (SDK oficial).
+ * /lanzar — crear un token en pump.fun sin salir de Cabal (SDK oficial), al
+ * momento o programado para una hora exacta.
  *
- * 1. El navegador genera la clave del token nuevo (nunca sale de aquí).
- * 2. /api/pump/prepare guarda el metadata y arma la transacción.
- * 3. Firma la wallet del creador y después la clave del token.
- * 4. /api/pump/confirm la manda a la red y publica el launch en el Radar.
+ * Al momento:
+ *   1. El navegador genera la clave del token nuevo (nunca sale de aquí).
+ *   2. /api/pump/prepare guarda el metadata y arma las transacciones.
+ *   3. Firma la wallet del creador y después la clave del token.
+ *   4. /api/pump/confirm las manda a la red y publica el launch en el Radar.
+ *
+ * Programado (/api/pump/schedule): dos firmas. La primera crea los nonces
+ * duraderos y paga la comisión; la segunda deja firmado el lanzamiento, que
+ * el servidor manda a la hora elegida.
  */
 
 const TXT = {
@@ -30,6 +37,12 @@ const TXT = {
     back: 'Volver',
     title: 'Lanza tu token en pump.fun',
     lead: 'Se crea en pump.fun con tu wallet y sale publicado en el Radar de Cabal como launch tuyo. Tú firmas: Cabal nunca ve tus claves.',
+    now: 'Lanzar ahora',
+    schedule: 'Programar',
+    when: 'Fecha y hora del lanzamiento',
+    whenHint: 'En tu hora local. Entre 3 minutos y 7 días desde ahora.',
+    scheduleInfo:
+      'Firmas dos veces: la primera paga la comisión y reserva ~0,0015 SOL por transacción (te lo devolvemos si cancelas); la segunda deja firmado el lanzamiento. A la hora exacta Cabal lo manda a la red. Mantén en tu wallet el SOL de la compra inicial y de las tarifas de pump.fun hasta entonces. La dirección del token no se publica hasta que sale.',
     image: 'Imagen del token',
     imageHint: 'Cuadrada, PNG, JPG, WebP o GIF',
     name: 'Nombre',
@@ -40,25 +53,51 @@ const TXT = {
     website: 'Web',
     optional: 'opcional',
     buy: 'Compra inicial (SOL)',
-    buyHint: 'Lo que compras tú al crearlo, en la misma transacción. 0 = no compras.',
+    buyHint: 'Lo que compras tú al crearlo, justo después de la creación. 0 = no compras.',
     costs: 'pump.fun cobra su tarifa de creación y la red una pequeña comisión; tu wallet te muestra el total antes de firmar.',
+    fee: (sol: number) => `Comisión de Cabal: ${sol} SOL.`,
+    feeScheduled: 'Se cobra al programar y no se devuelve si cancelas.',
     launch: 'Lanzar token',
-    connect: 'Conectar wallet y lanzar',
+    scheduleBtn: 'Programar lanzamiento',
+    connect: 'Conectar wallet',
     preparing: 'Preparando…',
     signing: 'Firma en tu wallet…',
+    signing1: 'Firma 1 de 2 en tu wallet…',
+    signing2: 'Firma 2 de 2 en tu wallet…',
     sending: 'Publicando en la red…',
     missing: 'Completa imagen, nombre y ticker',
+    missingWhen: 'Elige la fecha y la hora',
     imageUp: 'Imagen subida',
     done: '¡Token lanzado!',
+    scheduled: '¡Lanzamiento programado!',
+    scheduledFor: (d: string) => `Sale el ${d}. Ya aparece en el Radar como próximo lanzamiento.`,
     viewPump: 'Ver en pump.fun',
     viewRadar: 'Ver en el Radar',
     another: 'Lanzar otro',
-    fee: (sol: number) => `Incluye ${sol} SOL de comisión de Cabal.`,
+    mine: 'Tus lanzamientos',
+    cancel: 'Cancelar',
+    refund: 'Recuperar SOL reservado',
+    cancelled: 'Cancelado. Firmaste la devolución del SOL reservado.',
+    refunded: 'SOL reservado devuelto a tu wallet',
+    status: {
+      scheduled: 'Programado',
+      sending: 'Lanzando…',
+      launched: 'Lanzado',
+      failed: 'Falló',
+      cancelled: 'Cancelado',
+      draft: 'Sin terminar',
+    } as Record<string, string>,
   },
   en: {
     back: 'Back',
     title: 'Launch your token on pump.fun',
     lead: 'It is created on pump.fun with your wallet and published on the Cabal Radar as your launch. You sign: Cabal never sees your keys.',
+    now: 'Launch now',
+    schedule: 'Schedule',
+    when: 'Launch date and time',
+    whenHint: 'In your local time. Between 3 minutes and 7 days from now.',
+    scheduleInfo:
+      'You sign twice: the first pays the fee and reserves ~0.0015 SOL per transaction (refunded if you cancel); the second pre-signs the launch. At the exact time Cabal sends it on-chain. Keep the SOL for the initial buy and pump.fun fees in your wallet until then. The token address is not published until it goes live.',
     image: 'Token image',
     imageHint: 'Square, PNG, JPG, WebP or GIF',
     name: 'Name',
@@ -69,26 +108,60 @@ const TXT = {
     website: 'Website',
     optional: 'optional',
     buy: 'Initial buy (SOL)',
-    buyHint: 'What you buy when creating it, in the same transaction. 0 = no buy.',
+    buyHint: 'What you buy right after it is created. 0 = no buy.',
     costs: 'pump.fun charges its creation fee and the network a small fee; your wallet shows the total before you sign.',
+    fee: (sol: number) => `Cabal fee: ${sol} SOL.`,
+    feeScheduled: 'Charged when scheduling and not refunded if you cancel.',
     launch: 'Launch token',
-    connect: 'Connect wallet and launch',
+    scheduleBtn: 'Schedule launch',
+    connect: 'Connect wallet',
     preparing: 'Preparing…',
     signing: 'Sign in your wallet…',
+    signing1: 'Signature 1 of 2 in your wallet…',
+    signing2: 'Signature 2 of 2 in your wallet…',
     sending: 'Publishing on-chain…',
     missing: 'Fill in image, name and ticker',
+    missingWhen: 'Pick the date and time',
     imageUp: 'Image uploaded',
     done: 'Token launched!',
+    scheduled: 'Launch scheduled!',
+    scheduledFor: (d: string) => `It goes live on ${d}. It already shows on the Radar as an upcoming launch.`,
     viewPump: 'View on pump.fun',
     viewRadar: 'View on the Radar',
     another: 'Launch another',
-    fee: (sol: number) => `Includes a ${sol} SOL Cabal fee.`,
+    mine: 'Your launches',
+    cancel: 'Cancel',
+    refund: 'Recover reserved SOL',
+    cancelled: 'Cancelled. You signed the refund of the reserved SOL.',
+    refunded: 'Reserved SOL returned to your wallet',
+    status: {
+      scheduled: 'Scheduled',
+      sending: 'Launching…',
+      launched: 'Launched',
+      failed: 'Failed',
+      cancelled: 'Cancelled',
+      draft: 'Unfinished',
+    } as Record<string, string>,
   },
 }
 
-const EMPTY = { name: '', symbol: '', description: '', image: '', twitter: '', telegram: '', website: '', buy: '0' }
+const EMPTY = { name: '', symbol: '', description: '', image: '', twitter: '', telegram: '', website: '', buy: '0', when: '' }
 
-type Step = 'idle' | 'preparing' | 'signing' | 'sending'
+type Step = 'idle' | 'preparing' | 'signing' | 'signing1' | 'signing2' | 'sending'
+type Mode = 'now' | 'schedule'
+type Done = { mint: string | null; scheduledAt: string | null }
+type MyCoin = {
+  key: string
+  mint: string | null
+  name: string
+  symbol: string
+  image: string
+  status: string
+  scheduledAt: string | null
+  launchedAt: string | null
+  error: string | null
+  hasNonces: boolean
+}
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -97,15 +170,27 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return data as T
 }
 
+const fromB64 = (b: string) => VersionedTransaction.deserialize(Buffer.from(b, 'base64'))
+const toB64 = (tx: VersionedTransaction) => Buffer.from(tx.serialize()).toString('base64')
+
 export default function LanzarPage() {
   const [lang] = useLang()
   const t = TXT[lang] ?? TXT.es
   const [form, setForm] = useState(EMPTY)
+  const [mode, setMode] = useState<Mode>('now')
   const [step, setStep] = useState<Step>('idle')
   const [feeSol, setFeeSol] = useState(0)
-  const [launched, setLaunched] = useState<{ mint: string } | null>(null)
+  const [done, setDone] = useState<Done | null>(null)
+  const [mine, setMine] = useState<MyCoin[]>([])
   const pubkey = useConnectedAddress('solana')
   const { requestWallet, picker } = useWalletPicker('solana')
+
+  const loadMine = useCallback(() => {
+    fetch('/api/pump/schedule')
+      .then((r) => r.json())
+      .then((d: MyCoin[]) => setMine(Array.isArray(d) ? d : []))
+      .catch(() => {})
+  }, [])
 
   // La comisión se enseña antes de firmar, no solo en la wallet
   useEffect(() => {
@@ -113,7 +198,15 @@ export default function LanzarPage() {
       .then((r) => r.json())
       .then((d: { sol?: number }) => setFeeSol(d.sol ?? 0))
       .catch(() => {})
-  }, [])
+    loadMine()
+  }, [loadMine])
+
+  // Un programado cambia de estado solo: se refresca mientras haya alguno pendiente
+  useEffect(() => {
+    if (!mine.some((c) => c.status === 'scheduled' || c.status === 'sending')) return
+    const id = setInterval(loadMine, 15_000)
+    return () => clearInterval(id)
+  }, [mine, loadMine])
 
   const set = (k: keyof typeof EMPTY, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -128,46 +221,84 @@ export default function LanzarPage() {
     }
   }
 
-  const launch = async () => {
+  const payload = (mint: string, creator: string) => ({
+    mint,
+    creator,
+    name: form.name,
+    symbol: form.symbol,
+    description: form.description,
+    image: form.image,
+    twitter: form.twitter,
+    telegram: form.telegram,
+    website: form.website,
+    initialBuySol: Number(form.buy.replace(',', '.')) || 0,
+  })
+
+  const launchNow = async (creator: string) => {
+    const mintKp = Keypair.generate()
+    const mint = mintKp.publicKey.toBase58()
+    setStep('preparing')
+    const prep = await postJson<{ txs: string[] }>('/api/pump/prepare', payload(mint, creator))
+
+    setStep('signing')
+    // La wallet firma primero (todas de una vez); la clave del token, después
+    // y solo la creación
+    const signed = await solanaSignTransactions(prep.txs.map(fromB64))
+    signed[0].sign([mintKp])
+
+    setStep('sending')
+    const res = await postJson<{ buyError: string | null }>('/api/pump/confirm', { mint, txs: signed.map(toB64) })
+    setDone({ mint, scheduledAt: null })
+    toast.success(t.done)
+    if (res.buyError) toast.warning(res.buyError)
+  }
+
+  const launchScheduled = async (creator: string) => {
+    const mintKp = Keypair.generate()
+    const mint = mintKp.publicKey.toBase58()
+    const buy = Number(form.buy.replace(',', '.')) || 0
+    // Un nonce por transacción del lanzamiento: crear y, si hay, comprar
+    const nonceKps = Array.from({ length: buy > 0 ? 2 : 1 }, () => Keypair.generate())
+
+    setStep('preparing')
+    const setup = await postJson<{ tx: string }>('/api/pump/schedule', {
+      step: 'setup',
+      ...payload(mint, creator),
+      scheduledAt: new Date(form.when).toISOString(),
+      nonceAccounts: nonceKps.map((k) => k.publicKey.toBase58()),
+    })
+
+    setStep('signing1')
+    const [setupSigned] = await solanaSignTransactions([fromB64(setup.tx)])
+    setupSigned.sign(nonceKps)
+
+    setStep('sending')
+    const commit = await postJson<{ txs: string[] }>('/api/pump/schedule', { step: 'commit', mint, tx: toB64(setupSigned) })
+
+    setStep('signing2')
+    const signed = await solanaSignTransactions(commit.txs.map(fromB64))
+    signed[0].sign([mintKp])
+
+    setStep('sending')
+    const fin = await postJson<{ scheduledAt: string }>('/api/pump/schedule', { step: 'finalize', mint, txs: signed.map(toB64) })
+    setDone({ mint: null, scheduledAt: fin.scheduledAt })
+    toast.success(t.scheduled)
+    loadMine()
+  }
+
+  const submit = async () => {
     if (!form.image || form.image === 'uploading' || !form.name.trim() || !form.symbol.trim()) {
       toast.error(t.missing)
       return
     }
+    if (mode === 'schedule' && !form.when) {
+      toast.error(t.missingWhen)
+      return
+    }
     const creator = await requestWallet()
     if (!creator) return
-
-    const mintKp = Keypair.generate()
-    const mint = mintKp.publicKey.toBase58()
     try {
-      setStep('preparing')
-      const prep = await postJson<{ txs: string[]; feeSol: number }>('/api/pump/prepare', {
-        mint,
-        creator,
-        name: form.name,
-        symbol: form.symbol,
-        description: form.description,
-        image: form.image,
-        twitter: form.twitter,
-        telegram: form.telegram,
-        website: form.website,
-        initialBuySol: Number(form.buy.replace(',', '.')) || 0,
-      })
-      setFeeSol(prep.feeSol)
-
-      setStep('signing')
-      // La wallet firma primero (todas de una vez); la clave del token, después
-      // y solo la creación
-      const signed = await solanaSignTransactions(prep.txs.map((b) => VersionedTransaction.deserialize(Buffer.from(b, 'base64'))))
-      signed[0].sign([mintKp])
-
-      setStep('sending')
-      const res = await postJson<{ buyError: string | null }>('/api/pump/confirm', {
-        mint,
-        txs: signed.map((tx) => Buffer.from(tx.serialize()).toString('base64')),
-      })
-      setLaunched({ mint })
-      toast.success(t.done)
-      if (res.buyError) toast.warning(res.buyError)
+      await (mode === 'now' ? launchNow(creator) : launchScheduled(creator))
     } catch (e) {
       if (!isUserRejection(e)) toast.error((e as Error).message)
     } finally {
@@ -175,8 +306,25 @@ export default function LanzarPage() {
     }
   }
 
+  // Cancelar un programado (o, ya lanzado, recuperar el SOL de sus nonces):
+  // la wallet firma la retirada del alquiler, que invalida lo guardado
+  const cancelOrRefund = async (c: MyCoin) => {
+    if (!(await requestWallet())) return
+    try {
+      const res = await postJson<{ tx: string }>('/api/pump/schedule', { step: 'cancel', mint: c.key })
+      await solanaSignAndSend(fromB64(res.tx))
+      toast.success(c.status === 'launched' ? t.refunded : t.cancelled)
+    } catch (e) {
+      if (!isUserRejection(e)) toast.error((e as Error).message)
+    } finally {
+      loadMine()
+    }
+  }
+
   const busy = step !== 'idle'
-  const label = step === 'preparing' ? t.preparing : step === 'signing' ? t.signing : step === 'sending' ? t.sending : pubkey ? t.launch : t.connect
+  const idleLabel = !pubkey ? t.connect : mode === 'now' ? t.launch : t.scheduleBtn
+  const label = step === 'idle' ? idleLabel : t[step]
+  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === 'en' ? 'en' : 'es', { dateStyle: 'medium', timeStyle: 'short' })
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -200,23 +348,29 @@ export default function LanzarPage() {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">{t.lead}</p>
 
-        {launched ? (
+        {done ? (
           <div className="mt-8 rounded-2xl border border-primary/40 bg-primary/10 p-6">
-            <p className="font-display text-lg font-bold text-primary">{t.done}</p>
-            <p className="mt-2 break-all font-mono text-xs text-muted-foreground">{launched.mint}</p>
+            <p className="font-display text-lg font-bold text-primary">{done.mint ? t.done : t.scheduled}</p>
+            {done.mint ? (
+              <p className="mt-2 break-all font-mono text-xs text-muted-foreground">{done.mint}</p>
+            ) : (
+              done.scheduledAt && <p className="mt-2 text-sm text-muted-foreground">{t.scheduledFor(fmt(done.scheduledAt))}</p>
+            )}
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button asChild>
-                <a href={`https://pump.fun/coin/${launched.mint}`} target="_blank" rel="noopener noreferrer">
-                  {t.viewPump} <ExternalLink className="ml-1 h-4 w-4" aria-hidden />
-                </a>
-              </Button>
+              {done.mint && (
+                <Button asChild>
+                  <a href={`https://pump.fun/coin/${done.mint}`} target="_blank" rel="noopener noreferrer">
+                    {t.viewPump} <ExternalLink className="ml-1 h-4 w-4" aria-hidden />
+                  </a>
+                </Button>
+              )}
               <Button asChild variant="secondary">
                 <Link href="/app">{t.viewRadar}</Link>
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setLaunched(null)
+                  setDone(null)
                   setForm(EMPTY)
                 }}
               >
@@ -229,9 +383,29 @@ export default function LanzarPage() {
             className="mt-8 space-y-5"
             onSubmit={(e) => {
               e.preventDefault()
-              void launch()
+              void submit()
             }}
           >
+            <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1" role="tablist">
+              {(['now', 'schedule'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === m}
+                  disabled={busy}
+                  onClick={() => setMode(m)}
+                  className={cn(
+                    'flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-colors',
+                    mode === m ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {m === 'now' ? <Rocket className="h-4 w-4" aria-hidden /> : <CalendarClock className="h-4 w-4" aria-hidden />}
+                  {m === 'now' ? t.now : t.schedule}
+                </button>
+              ))}
+            </div>
+
             <div className="max-w-[220px]">
               <ImageDrop
                 url={form.image === 'uploading' ? '' : form.image}
@@ -294,15 +468,79 @@ export default function LanzarPage() {
               <p className="text-xs text-muted-foreground">{t.buyHint}</p>
             </div>
 
+            {mode === 'schedule' && (
+              <div className="space-y-1.5 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <Label htmlFor="pf-when">{t.when}</Label>
+                <Input
+                  id="pf-when"
+                  type="datetime-local"
+                  className="max-w-[240px]"
+                  value={form.when}
+                  onChange={(e) => set('when', e.target.value)}
+                  disabled={busy}
+                />
+                <p className="text-xs text-muted-foreground">{t.whenHint}</p>
+                <p className="pt-2 text-xs leading-relaxed text-muted-foreground">{t.scheduleInfo}</p>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground">
-              {t.costs} {feeSol > 0 && t.fee(feeSol)}
+              {t.costs} {feeSol > 0 && t.fee(feeSol)} {feeSol > 0 && mode === 'schedule' && t.feeScheduled}
             </p>
 
             <Button type="submit" size="lg" disabled={busy} className="w-full sm:w-auto">
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <Rocket className="mr-2 h-4 w-4" aria-hidden />}
+              {busy ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+              ) : mode === 'now' ? (
+                <Rocket className="mr-2 h-4 w-4" aria-hidden />
+              ) : (
+                <CalendarClock className="mr-2 h-4 w-4" aria-hidden />
+              )}
               {label}
             </Button>
           </form>
+        )}
+
+        {mine.length > 0 && (
+          <section className="mt-12">
+            <h2 className="font-display text-lg font-bold">{t.mine}</h2>
+            <ul className="mt-3 space-y-2">
+              {mine.map((c) => (
+                <li key={c.key} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.image} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {c.name} <span className="text-muted-foreground">${c.symbol}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.status[c.status] ?? c.status}
+                      {c.status === 'scheduled' && c.scheduledAt && ` · ${fmt(c.scheduledAt)}`}
+                      {c.status === 'launched' && c.launchedAt && ` · ${fmt(c.launchedAt)}`}
+                    </p>
+                    {c.error && <p className="mt-0.5 text-xs text-amber-400">{c.error}</p>}
+                  </div>
+                  {c.mint && (
+                    <Button asChild size="sm" variant="secondary">
+                      <a href={`https://pump.fun/coin/${c.mint}`} target="_blank" rel="noopener noreferrer">
+                        pump.fun <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden />
+                      </a>
+                    </Button>
+                  )}
+                  {(c.status === 'scheduled' || c.status === 'failed') && (
+                    <Button size="sm" variant="ghost" onClick={() => void cancelOrRefund(c)}>
+                      {t.cancel}
+                    </Button>
+                  )}
+                  {(c.status === 'launched' || c.status === 'cancelled') && c.hasNonces && (
+                    <Button size="sm" variant="ghost" onClick={() => void cancelOrRefund(c)}>
+                      {t.refund}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
       </main>
       {picker}

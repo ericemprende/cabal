@@ -899,9 +899,19 @@ model PumpCoin {
   signature     String? // firma de la transacción de creación, cuando se confirma
   launchedAt    DateTime? // null = preparado pero aún no confirmado en la red
   launchId      String?   @unique // launch del Radar creado al confirmarse
+  // Lanzamiento programado: el creador firma hoy con nonces duraderos y el
+  // servidor manda signedTxs a la hora exacta (ver lib/pump-schedule.ts).
+  // draft | scheduled | sending | launched | failed | cancelled
+  status        String    @default("draft")
+  scheduledAt   DateTime?
+  nonceAccounts String[]  @default([])
+  signedTxs     String[]  @default([])
+  feeSignature  String? // cobro de la comisión, al programar
+  error         String?
   userId        String
   user          User      @relation(fields: [userId], references: [id])
   createdAt     DateTime  @default(now())
 
   @@index([userId, createdAt])
+  @@index([status, scheduledAt])
 }

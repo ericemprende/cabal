@@ -10,6 +10,9 @@ export async function register() {
   const { startMetricsCollector } = await import('@/lib/metrics-collector')
   startMetricsCollector()
   if (process.env.NOTIFY_WORKER === 'off') return
+  // Lanzamientos programados en pump.fun: salen a su hora desde aquí
+  const { startPumpScheduler } = await import('@/lib/pump-schedule')
+  startPumpScheduler()
   const { startNotifyWorker } = await import('@/lib/notify-worker')
   startNotifyWorker()
 }
