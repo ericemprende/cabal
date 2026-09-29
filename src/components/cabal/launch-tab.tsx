@@ -85,7 +85,7 @@ const TXT = {
     claim: (sol: string) => `Reclamar ${sol} SOL`,
     claimed: 'Comisiones enviadas a tu wallet',
     nothingToClaim: 'Sin comisiones por reclamar',
-    cabalHint: 'Tu launchpad: te llevas el 70 % de las comisiones de cada operación.',
+    cabalHint: 'Launchpad de Cabal: ganas casi el doble por operación que en pump.fun.',
     cancelled: 'Cancelado. Firmaste la devolución del SOL reservado.',
     refunded: 'SOL reservado devuelto a tu wallet',
     status: {
@@ -147,7 +147,7 @@ const TXT = {
     claim: (sol: string) => `Claim ${sol} SOL`,
     claimed: 'Fees sent to your wallet',
     nothingToClaim: 'No fees to claim',
-    cabalHint: 'Our launchpad: you keep 70% of the fees on every trade.',
+    cabalHint: "Cabal's launchpad: you earn almost double per trade than on pump.fun.",
     cancelled: 'Cancelled. You signed the refund of the reserved SOL.',
     refunded: 'Reserved SOL returned to your wallet',
     status: {

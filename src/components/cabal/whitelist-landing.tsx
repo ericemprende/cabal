@@ -149,8 +149,8 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             {lang === 'en'
-              ? 'Our own launchpad on Meteora: you keep 70% of the fees on every trade, the token shows up on the Radar by itself and you can schedule it for the exact time.'
-              : 'Nuestro propio launchpad sobre Meteora: te llevas el 70 % de las comisiones de cada operación, el token sale solo en el Radar y puedes programarlo a la hora exacta.'}
+              ? 'Our own launchpad: you earn almost double per trade than on pump.fun, the token shows up on the Radar by itself and you can schedule it for the exact time.'
+              : 'Nuestro propio launchpad: ganas casi el doble por operación que en pump.fun, el token sale solo en el Radar y puedes programarlo a la hora exacta.'}
           </p>
           <div className="mt-7">
             <LaunchComparison lang={lang === 'en' ? 'en' : 'es'} />

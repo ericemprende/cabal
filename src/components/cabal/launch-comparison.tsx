@@ -2,9 +2,10 @@
  * Landing: pump.fun frente a Cabal Launch, para quien va a lanzar un token.
  *
  * Las cifras de pump.fun son las de su programa en la red (septiembre de 2026:
- * 1,25 % por operación, 0,95 % para pump.fun y 0,30 % para el creador). Las de
- * Cabal Launch son su configuración en Meteora (lib/cabal-launch.ts): 1 %, del
- * que Meteora se queda el 20 % y el resto se reparte 70/30 dev/Cabal.
+ * 1,25 % por operación, 0,30 % para el creador). Las de Cabal Launch salen de
+ * su configuración (lib/cabal-launch.ts): 1 % por operación y 0,56 % para el
+ * dev. A propósito, la tabla solo habla de lo que le importa a quien lanza: no
+ * enseña la infraestructura ni cuánto se queda Cabal.
  */
 
 type Lang = 'es' | 'en'
@@ -23,14 +24,14 @@ const ROWS: Row[] = [
     es: ['Para el dev en cada operación', 'Lo que cobra quien lanzó el token'],
     en: ['Dev share of every trade', 'What the token creator earns'],
     pump: { es: '0,30 %', en: '0.30%' },
-    cabal: { es: '0,56 % (70 %)', en: '0.56% (70%)' },
+    cabal: { es: '0,56 %: casi el doble', en: '0.56%: almost double' },
     win: true,
   },
   {
-    es: ['Para la plataforma', 'La parte que se queda el launchpad'],
-    en: ['Platform share', 'What the launchpad keeps'],
-    pump: { es: '0,95 %', en: '0.95%' },
-    cabal: { es: '0,24 % Cabal + 0,20 % Meteora', en: '0.24% Cabal + 0.20% Meteora' },
+    es: ['Cobrar tus comisiones', 'Desde dónde las reclamas'],
+    en: ['Collecting your fees', 'Where you claim them'],
+    pump: { es: 'En pump.fun', en: 'On pump.fun' },
+    cabal: { es: 'Un botón en Cabal, directo a tu wallet', en: 'One button in Cabal, straight to your wallet' },
     win: true,
   },
   {
@@ -38,8 +39,8 @@ const ROWS: Row[] = [
     en: ['After graduation', 'When the token completes the curve'],
     pump: { es: 'Pasa a PumpSwap', en: 'Moves to PumpSwap' },
     cabal: {
-      es: 'Pool de Meteora con la liquidez bloqueada; el dev sigue cobrando el 70 %',
-      en: 'Meteora pool with locked liquidity; the dev keeps earning 70%',
+      es: 'Liquidez bloqueada para siempre y sigues cobrando comisiones',
+      en: 'Liquidity locked forever and you keep earning fees',
     },
     win: true,
   },
@@ -66,8 +67,8 @@ const ROWS: Row[] = [
 ]
 
 const TXT = {
-  es: { feature: 'Para quien lanza', note: 'Cifras de pump.fun leídas de su programa en la red, septiembre de 2026. Meteora se queda el 20 % de la comisión de Cabal Launch; el 70/30 se reparte sobre el resto.' },
-  en: { feature: 'For the creator', note: "pump.fun figures read from its on-chain program, September 2026. Meteora keeps 20% of Cabal Launch's fee; the 70/30 split applies to the rest." },
+  es: { feature: 'Para quien lanza', note: 'Cifras de pump.fun leídas de su programa en la red, septiembre de 2026. Porcentajes sobre el volumen de cada compra y venta del token.' },
+  en: { feature: 'For the creator', note: 'pump.fun figures read from its on-chain program, September 2026. Percentages of the volume of every buy and sell of the token.' },
 }
 
 export function LaunchComparison({ lang = 'es' }: { lang?: Lang }) {
