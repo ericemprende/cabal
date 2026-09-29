@@ -8,7 +8,7 @@ import { RichText } from '@/components/cabal/rich-text'
 import { useT } from '@/lib/i18n/provider'
 import { CopyCA, KindBadge, TokenGlyph, UserAvatar, OfficialBadge } from '@/components/cabal/shared'
 import { QuickBuyButton } from '@/components/cabal/quick-buy'
-import { LiveChart } from '@/components/cabal/live-chart'
+import { ContractResult } from '@/components/cabal/contract-buy'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -164,16 +164,16 @@ function ParentQuote({ post, parent, compact }: { post: PostDTO; parent: PostPar
   )
 }
 
-/** Popup con el gráfico en vivo de un token (calls del feed e historial del perfil). */
+/** Popup con el gráfico en vivo y la compra/venta de un token (calls del feed e historial del perfil). */
 export function TokenChartDialog({
   contract,
-  network,
   ticker,
   open,
   onOpenChange,
 }: {
   contract: string
-  network: string
+  /** La red la detecta ContractResult; se mantiene por compatibilidad. */
+  network?: string
   ticker?: string | null
   open: boolean
   onOpenChange: (v: boolean) => void
@@ -183,7 +183,7 @@ export function TokenChartDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[96dvh] overflow-y-auto border-white/10 bg-[#121410] p-3 sm:max-w-[96vw] lg:max-w-[1200px]" aria-describedby={undefined}>
         <DialogTitle className="text-sm font-bold">{ticker ? `$${ticker}` : t.post.chartTitle}</DialogTitle>
-        {open && <LiveChart network={network} contract={contract} height={600} />}
+        {open && <ContractResult ca={contract} chartHeight={600} />}
       </DialogContent>
     </Dialog>
   )
@@ -448,7 +448,9 @@ export function PostCard({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation()
-                      setChartOpen(true)
+                      // Token conocido en Cabal: ficha completa (gráfico, compra y chat).
+                      if (post.token) openToken(post.token.id)
+                      else setChartOpen(true)
                     }}
                     className="text-muted-foreground hover:text-primary"
                     title={t.post.chartTitle}
