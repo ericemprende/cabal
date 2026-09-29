@@ -111,10 +111,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
     const likedIds = new Set(likes.map((v) => v.targetId))
     // Launch y token de cada post en dos consultas, no dos por post
     const postRefs = await preloadPostRefs(posts)
-    const hypes = await pendingMany(
-      'launch:hype',
-      launches.map((l) => l.id)
-    )
+    const launchIds = launches.map((l) => l.id)
+    const [hypes, fuds, comments] = await Promise.all([
+      pendingMany('launch:hype', launchIds),
+      pendingMany('launch:fud', launchIds),
+      // Comentarios del hilo de cada launch, para ver cómo lo recibió la comunidad
+      db.post.groupBy({ by: ['launchId'], where: { launchId: { in: launchIds } }, _count: { _all: true } }),
+    ])
+    const commentsBy = new Map(comments.map((c) => [c.launchId, c._count._all]))
 
     const officialId = (await db.setting.findUnique({ where: { key: OFFICIAL_ACCOUNT_KEY } }))?.value
     const dto: PublicProfileDTO = {
@@ -144,6 +148,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
         launchAt: l.launchAt.toISOString(),
         status: computeLaunchStatus(l.launchAt, l.dateConfirmed),
         hype: l.hype + (hypes[l.id] ?? 0),
+        fud: l.fud + (fuds[l.id] ?? 0),
+        comments: commentsBy.get(l.id) ?? 0,
       })),
       tokens: tokens.map((t) => ({
         id: t.id,

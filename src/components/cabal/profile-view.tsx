@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BadgeCheck, CalendarDays, Code2, Crown, Rocket, Send, ShieldCheck, Target, Trophy } from 'lucide-react'
+import { BadgeCheck, MessageCircle, CalendarDays, Code2, Crown, Rocket, Send, ShieldCheck, Target, Trophy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -386,9 +386,14 @@ function Projects({ profile }: { profile: PublicProfileDTO }) {
 
       {launches.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121410]">
-          <p className="border-b border-white/10 px-3.5 py-2 text-[11px] font-semibold text-muted-foreground">
-            Launches publicados
-          </p>
+          <div className="flex items-center justify-between gap-2 border-b border-white/10 px-3.5 py-2">
+            <p className="text-[11px] font-semibold text-muted-foreground">Launches publicados</p>
+            <LaunchReactions
+              hype={launches.reduce((n, l) => n + l.hype, 0)}
+              fud={launches.reduce((n, l) => n + l.fud, 0)}
+              comments={launches.reduce((n, l) => n + l.comments, 0)}
+            />
+          </div>
           {launches.map((l) => (
             <button
               key={l.id}
@@ -402,12 +407,28 @@ function Projects({ profile }: { profile: PublicProfileDTO }) {
                   {l.name} · {timeAgo(l.launchAt)}
                 </p>
               </div>
-              <LaunchState status={l.status} />
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <LaunchState status={l.status} />
+                <LaunchReactions hype={l.hype} fud={l.fud} comments={l.comments} />
+              </div>
             </button>
           ))}
         </div>
       )}
     </section>
+  )
+}
+
+/** 🔥 a favor, 💩 en contra y comentarios: cómo recibió la comunidad sus proyectos. */
+function LaunchReactions({ hype, fud, comments }: { hype: number; fud: number; comments: number }) {
+  return (
+    <span className="flex items-center gap-2 text-[11px] tabular-nums text-muted-foreground">
+      <span title="Hype" className={cn(hype > 0 && 'text-[#ff9d4d]')}>🔥 {hype}</span>
+      <span title="FUD" className={cn(fud > 0 && 'text-[#c79a6b]')}>💩 {fud}</span>
+      <span title="Comentarios" className="flex items-center gap-0.5">
+        <MessageCircle className="size-3" /> {comments}
+      </span>
+    </span>
   )
 }
 

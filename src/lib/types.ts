@@ -787,6 +787,10 @@ export interface BuildBuyEvmDTO {
 export interface ProfileLaunchDTO extends LaunchRefDTO {
   status: string
   hype: number
+  /** Votos en contra (💩). */
+  fud: number
+  /** Comentarios en el hilo del launch. */
+  comments: number
 }
 
 /** Token del que el usuario es dev (lo publicó él o lo reclamó y se verificó). */
