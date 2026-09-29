@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Coins, MessageCircle, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Trophy, Zap } from 'lucide-react'
+import { Coins, MessageCircle, MessageSquare, Radar as RadarIcon, Radar as RadarTabIcon, Rocket, Trophy, Zap } from 'lucide-react'
 import { Header } from '@/components/cabal/header'
 import { MobileNav } from '@/components/cabal/mobile-nav'
 import { Ticker } from '@/components/cabal/ticker'
@@ -13,6 +13,7 @@ import { RadarTab } from '@/components/cabal/radar-tab'
 import { TokensTab } from '@/components/cabal/tokens-tab'
 import { FeedTab } from '@/components/cabal/feed-tab'
 import { LeaderboardTab } from '@/components/cabal/leaderboard-tab'
+import { LaunchTab } from '@/components/cabal/launch-tab'
 import { LaunchDetailDialog } from '@/components/cabal/launch-detail'
 import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
@@ -223,6 +224,7 @@ export default function Home() {
               <TabButton active={tab === 'tokens'} onClick={() => useUI.getState().setTab('tokens')} icon={Coins} label={t.nav.tokens} />
               <TabButton active={tab === 'feed'} onClick={() => useUI.getState().setTab('feed')} icon={MessageSquare} label={t.nav.feed} />
               <TabButton active={tab === 'leaderboard'} onClick={() => useUI.getState().setTab('leaderboard')} icon={Trophy} label={t.nav.leaders} />
+              <TabButton active={tab === 'launch'} onClick={() => useUI.getState().setTab('launch')} icon={Rocket} label={t.nav.createToken} />
             </div>
 
             {/* Mobile section title */}
@@ -235,6 +237,8 @@ export default function Home() {
               <h1 className="font-display text-lg font-bold capitalize">
                 {tab === 'leaderboard'
                   ? t.nav.leaders
+                  : tab === 'launch'
+                    ? t.nav.createToken
                   : tab === 'chat'
                     ? t.chat.title
                     : tab === 'tokens'
@@ -250,6 +254,7 @@ export default function Home() {
               {tab === 'tokens' && <TokensTab />}
               {tab === 'feed' && <FeedTab />}
               {tab === 'leaderboard' && <LeaderboardTab />}
+              {tab === 'launch' && <LaunchTab />}
               {/* Alto de pantalla menos header, título y barra inferior */}
               {tab === 'chat' && <LiveChat showUnavailable className="h-[calc(100dvh-12rem)] min-h-[320px] md:h-[600px]" />}
             </div>

@@ -887,6 +887,7 @@ model Boost {
 /// esta fila tiene que vivir mientras exista el token.
 model PumpCoin {
   mint          String    @id // dirección del token (la genera el navegador)
+  platform      String    @default("pump") // pump | bonk (ver lib/launch-platforms.ts)
   name          String
   symbol        String
   description   String    @default("")

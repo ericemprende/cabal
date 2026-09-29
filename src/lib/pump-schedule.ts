@@ -16,6 +16,9 @@ import { createTokenForLaunch } from '@/lib/tokens-sync'
  * contrato: si se publicara antes, los bots podrían preparar la compra.
  */
 
+/** Nombre del launchpad tal como sale en el Radar (lib/cabal.ts LAUNCHPADS). */
+const LAUNCHPAD_LABEL: Record<string, string> = { pump: 'pump.fun', bonk: 'LetsBonk' }
+
 function launchData(coin: PumpCoin) {
   return {
     name: coin.name,
@@ -23,10 +26,11 @@ function launchData(coin: PumpCoin) {
     image: coin.image,
     submitterRole: 'dev',
     devWallet: coin.creatorWallet,
-    launchpad: 'pump.fun',
+    launchpad: LAUNCHPAD_LABEL[coin.platform] ?? coin.platform,
     network: 'solana',
     dateConfirmed: true,
-    description: coin.description || `${coin.name} ($${coin.symbol}), lanzado en pump.fun desde Cabal.`,
+    description:
+      coin.description || `${coin.name} ($${coin.symbol}), lanzado en ${LAUNCHPAD_LABEL[coin.platform] ?? coin.platform} desde Cabal.`,
     website: coin.website,
     twitter: coin.twitter,
     telegram: coin.telegram,
@@ -38,7 +42,7 @@ export async function createScheduledLaunch(coin: PumpCoin, scheduledAt: Date): 
   const launch = await db.launch.create({
     data: { ...launchData(coin), launchAt: scheduledAt, createdById: coin.userId },
   })
-  await awardPoints(coin.userId, 'launch', `Programaste ${coin.name} ($${coin.symbol}) en pump.fun`)
+  await awardPoints(coin.userId, 'launch', `Programaste ${coin.name} ($${coin.symbol}) en ${LAUNCHPAD_LABEL[coin.platform] ?? coin.platform}`)
   await invalidate('launches:*')
   return launch.id
 }
@@ -57,7 +61,7 @@ export async function markLaunched(coin: PumpCoin, signature: string | null): Pr
       data: { ...launchData(coin), contract: coin.mint, launchAt: now, createdById: coin.userId },
     })
     launchId = created.id
-    await awardPoints(coin.userId, 'launch', `Lanzaste ${coin.name} ($${coin.symbol}) en pump.fun`)
+    await awardPoints(coin.userId, 'launch', `Lanzaste ${coin.name} ($${coin.symbol}) en ${LAUNCHPAD_LABEL[coin.platform] ?? coin.platform}`)
   }
   await db.pumpCoin.update({
     where: { mint: coin.mint },
@@ -80,7 +84,7 @@ async function fireScheduled(coin: PumpCoin) {
     console.log(`[pump] lanzado ${coin.symbol} ${coin.mint}`)
   } catch (e) {
     // Pudo entrar aunque la espera fallara: se mira en la red antes de darlo por perdido
-    if (await coinExistsOnChain(coin.mint).catch(() => false)) {
+    if (await coinExistsOnChain(coin.mint, coin.platform).catch(() => false)) {
       await markLaunched(coin, null)
       return
     }

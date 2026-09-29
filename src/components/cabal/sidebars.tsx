@@ -11,6 +11,7 @@ import { CountdownPill, NetworkBadge, PointsPill, TokenGlyph, UserAvatar } from 
 import { PostCard } from '@/components/cabal/post-card'
 import { LaunchActivityCard, useActivity } from '@/components/cabal/launch-activity'
 import { useFollowToggle, useLaunches, useLeaderboard, usePointRules } from '@/lib/api-client'
+import { useGoToTab } from '@/lib/use-go-to-tab'
 import { useUI } from '@/lib/store'
 import { useIsOnline, useOnlineCount, useOnlineMembers } from '@/lib/presence'
 import { LiveChat } from '@/components/cabal/live-chat'
@@ -242,6 +243,7 @@ export function RightRail() {
   const follow = useFollowToggle()
   const rules = usePointRules()
   const router = useRouter()
+  const goToTab = useGoToTab()
   const { openLaunch } = useUI()
 
   const next = useMemo(
@@ -314,16 +316,16 @@ export function RightRail() {
           </div>
         </section>
 
-        {/* Points CTA */}
+        {/* Crear token: abre la pestaña de lanzamiento de /app */}
         <section className="rounded-xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
           <p className="flex items-center gap-1.5 font-display text-sm font-bold text-primary">
-            <Zap className="h-4 w-4" aria-hidden /> {t.rail.pointsTitle}
+            <Rocket className="h-4 w-4" aria-hidden /> {t.rail.createTitle}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">
-            {t.rail.pointsBody}
+            {t.rail.createBody}
           </p>
-          <Button size="sm" onClick={() => router.push('/publicar')} className="mt-2.5 w-full">
-            {t.rail.firstLaunch}
+          <Button size="sm" onClick={() => goToTab('launch')} className="mt-2.5 w-full">
+            {t.rail.createCta}
           </Button>
         </section>
 

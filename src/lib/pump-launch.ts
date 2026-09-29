@@ -13,6 +13,8 @@ import {
 import { NATIVE_MINT } from '@solana/spl-token'
 import { OnlinePumpSdk, PUMP_SDK, bondingCurvePda, getBuyTokenAmountFromSolAmount } from '@pump-fun/pump-sdk'
 import { db } from '@/lib/db'
+import { bonkCoinExists, bonkInstructionGroups } from '@/lib/bonk-launch'
+import type { LaunchPlatformId } from '@/lib/launch-platforms'
 import { solanaConnection } from '@/lib/swap'
 import { siteUrl } from '@/lib/waitlist'
 
@@ -86,6 +88,7 @@ export type DurableNonce = { account: string; value: string }
  *   los ~60 s (llevan `nonceAdvance` delante y el nonce como blockhash).
  */
 export async function buildCreateTxs(p: {
+  platform?: LaunchPlatformId
   mint: string
   creator: string
   name: string
@@ -94,28 +97,8 @@ export async function buildCreateTxs(p: {
   chargeFee?: boolean
   nonces?: DurableNonce[]
 }): Promise<{ txs: string[]; feeSol: number }> {
-  const mint = new PublicKey(p.mint)
   const creator = new PublicKey(p.creator)
-  const meta = { mint, name: p.name, symbol: p.symbol, uri: metadataUri(p.mint), creator, user: creator, mayhemMode: false }
-
-  const groups: TransactionInstruction[][] = []
-  if (p.initialBuySol > 0) {
-    const [global, feeConfig] = await Promise.all([sdk().fetchGlobal(), sdk().fetchFeeConfig()])
-    const solAmount = new BN(Math.round(p.initialBuySol * LAMPORTS_PER_SOL))
-    const amount = getBuyTokenAmountFromSolAmount({
-      global,
-      feeConfig,
-      mintSupply: null,
-      bondingCurve: null,
-      amount: solAmount,
-      quoteMint: NATIVE_MINT,
-    })
-    // [create_v2, ATA del creador, buy]: se parte tras el create
-    const [create, ...buy] = await PUMP_SDK.createV2AndBuyInstructions({ ...meta, global, amount, solAmount })
-    groups.push([create], buy)
-  } else {
-    groups.push([await PUMP_SDK.createV2Instruction(meta)])
-  }
+  const groups = await instructionGroups(p)
 
   let feeSol = 0
   if (p.chargeFee !== false) {
@@ -141,7 +124,7 @@ export async function buildCreateTxs(p: {
         ...(nonce
           ? [SystemProgram.nonceAdvance({ noncePubkey: new PublicKey(nonce.account), authorizedPubkey: creator })]
           : []),
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 400_000 }),
         ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 200_000 }),
         ...ixs,
       ],
@@ -149,6 +132,59 @@ export async function buildCreateTxs(p: {
     return Buffer.from(new VersionedTransaction(message).serialize()).toString('base64')
   })
   return { txs, feeSol }
+}
+
+/** Cuántas transacciones lleva un lanzamiento (una por nonce, al programarlo). */
+export async function txCount(p: Parameters<typeof instructionGroups>[0]): Promise<number> {
+  return (await instructionGroups(p)).length
+}
+
+/** Instrucciones del lanzamiento según la plataforma, agrupadas por transacción. */
+async function instructionGroups(p: {
+  platform?: LaunchPlatformId
+  mint: string
+  creator: string
+  name: string
+  symbol: string
+  initialBuySol: number
+}): Promise<TransactionInstruction[][]> {
+  if (p.platform === 'bonk') {
+    return bonkInstructionGroups({ ...p, uri: metadataUri(p.mint) })
+  }
+  return pumpInstructionGroups(p)
+}
+
+async function pumpInstructionGroups(p: {
+  mint: string
+  creator: string
+  name: string
+  symbol: string
+  initialBuySol: number
+}): Promise<TransactionInstruction[][]> {
+  const mint = new PublicKey(p.mint)
+  const creator = new PublicKey(p.creator)
+  const meta = { mint, name: p.name, symbol: p.symbol, uri: metadataUri(p.mint), creator, user: creator, mayhemMode: false }
+
+  const groups: TransactionInstruction[][] = []
+  if (p.initialBuySol > 0) {
+    const [global, feeConfig] = await Promise.all([sdk().fetchGlobal(), sdk().fetchFeeConfig()])
+    const solAmount = new BN(Math.round(p.initialBuySol * LAMPORTS_PER_SOL))
+    const amount = getBuyTokenAmountFromSolAmount({
+      global,
+      feeConfig,
+      mintSupply: null,
+      bondingCurve: null,
+      amount: solAmount,
+      quoteMint: NATIVE_MINT,
+    })
+    // [create_v2, ATA del creador, buy]: se parte tras el create
+    const [create, ...buy] = await PUMP_SDK.createV2AndBuyInstructions({ ...meta, global, amount, solAmount })
+    groups.push([create], buy)
+  } else {
+    groups.push([await PUMP_SDK.createV2Instruction(meta)])
+  }
+
+  return groups
 }
 
 /**
@@ -258,7 +294,7 @@ export async function sendCreateTxs(
   mint: string,
   creator: string,
 ): Promise<{ signature: string; buyError: string | null }> {
-  const txs = signedB64.slice(0, 2).map((b) => VersionedTransaction.deserialize(Buffer.from(b, 'base64')))
+  const txs = signedB64.slice(0, 3).map((b) => VersionedTransaction.deserialize(Buffer.from(b, 'base64')))
   if (!txs.length) throw new Error('Falta la transacción')
   for (const tx of txs) {
     if (tx.message.staticAccountKeys[0].toBase58() !== creator) throw new Error('La transacción no la paga la wallet del creador')
@@ -279,7 +315,8 @@ export async function sendCreateTxs(
 }
 
 /** true si el token ya existe en pump.fun (su bonding curve está en la red). */
-export async function coinExistsOnChain(mint: string): Promise<boolean> {
+export async function coinExistsOnChain(mint: string, platform?: string): Promise<boolean> {
+  if (platform === 'bonk') return bonkCoinExists(mint)
   const info = await solanaConnection().getAccountInfo(bondingCurvePda(mint), 'confirmed')
   return Boolean(info)
 }

@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js'
 import { PUMP_LIMITS } from '@/lib/pump-launch'
 import { siteUrl } from '@/lib/waitlist'
+import { launchPlatform, type LaunchPlatformId } from '@/lib/launch-platforms'
 
 /**
  * Validación del formulario de /lanzar, compartida por el lanzamiento al
@@ -8,6 +9,7 @@ import { siteUrl } from '@/lib/waitlist'
  */
 
 export type PumpForm = {
+  platform: LaunchPlatformId
   mint: string
   creator: string
   name: string
@@ -40,10 +42,12 @@ function link(v: unknown): string | null {
 }
 
 export function parsePumpForm(body: Record<string, unknown>): { ok: true; data: PumpForm } | { ok: false; error: string } {
+  const platform = launchPlatform(String(body.platform ?? 'pump'))
+  if (!platform.live) return { ok: false, error: `${platform.name} todavía no está disponible` }
   const mint = pubkey(body.mint)
   const creator = pubkey(body.creator)
-  const name = str(body.name, PUMP_LIMITS.name)
-  const symbol = str(body.symbol, PUMP_LIMITS.symbol).replace(/^\$/, '').toUpperCase()
+  const name = str(body.name, platform.limits.name)
+  const symbol = str(body.symbol, platform.limits.symbol).replace(/^\$/, '').toUpperCase()
   const description = str(body.description, PUMP_LIMITS.description)
   let image = str(body.image, 500)
   const initialBuySol = Math.max(0, Number(body.initialBuySol) || 0)
@@ -60,6 +64,7 @@ export function parsePumpForm(body: Record<string, unknown>): { ok: true; data: 
   return {
     ok: true,
     data: {
+      platform: platform.id as LaunchPlatformId,
       mint,
       creator,
       name,

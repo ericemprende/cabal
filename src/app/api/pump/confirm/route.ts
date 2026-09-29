@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error('[pump/confirm] send', e)
     // Pudo confirmarse aunque la espera fallara (red lenta): se mira en la red
-    if (!(await coinExistsOnChain(mint).catch(() => false))) {
+    if (!(await coinExistsOnChain(mint, coin.platform).catch(() => false))) {
       return NextResponse.json(
         { error: 'La transacción no se confirmó. Revisa tu saldo de SOL e inténtalo de nuevo.' },
         { status: 502 },

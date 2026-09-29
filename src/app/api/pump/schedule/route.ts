@@ -3,10 +3,11 @@ import { VersionedTransaction } from '@solana/web3.js'
 import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
 import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
-import { buildCreateTxs, buildNonceWithdrawTx, buildScheduleSetupTx, readNonces, sendAndConfirm } from '@/lib/pump-launch'
+import { buildCreateTxs, buildNonceWithdrawTx, buildScheduleSetupTx, readNonces, sendAndConfirm, txCount } from '@/lib/pump-launch'
 import { parsePumpForm, pubkey } from '@/lib/pump-input'
 import { createScheduledLaunch } from '@/lib/pump-schedule'
 import { invalidate } from '@/lib/cache'
+import type { LaunchPlatformId } from '@/lib/launch-platforms'
 
 export const runtime = 'nodejs'
 
@@ -72,8 +73,12 @@ async function setup(userId: string, body: Record<string, unknown>) {
   if (ahead < MIN_AHEAD_MS) return bad('Prográmalo con al menos 3 minutos de margen, o lánzalo ahora')
   if (ahead > MAX_AHEAD_MS) return bad('Se puede programar hasta 7 días antes')
 
-  const nonceAccounts = (Array.isArray(body.nonceAccounts) ? body.nonceAccounts : []).map(pubkey)
-  const needed = data.initialBuySol > 0 ? 2 : 1
+  // Un nonce por transacción del lanzamiento: cuántas son depende de la
+  // plataforma y de si hay compra inicial. El navegador manda de sobra y aquí
+  // se usan las que hagan falta.
+  const needed = await txCount({ ...data, mint, creator })
+  const offered = (Array.isArray(body.nonceAccounts) ? body.nonceAccounts : []).map(pubkey)
+  const nonceAccounts = offered.slice(0, needed)
   if (nonceAccounts.length !== needed || nonceAccounts.some((a) => !a || a === mint || a === creator)) {
     return bad('Faltan datos para programar')
   }
@@ -86,7 +91,7 @@ async function setup(userId: string, body: Record<string, unknown>) {
   await db.pumpCoin.upsert({ where: { mint }, create: { mint, userId, ...fields }, update: fields })
 
   const { tx, feeSol } = await buildScheduleSetupTx({ creator, nonceAccounts: nonceAccounts as string[] })
-  return NextResponse.json({ ok: true, tx, feeSol })
+  return NextResponse.json({ ok: true, tx, feeSol, nonceAccounts })
 }
 
 async function commit(userId: string, body: Record<string, unknown>) {
@@ -106,6 +111,7 @@ async function commit(userId: string, body: Record<string, unknown>) {
 
   const nonces = await readNonces(coin.nonceAccounts)
   const { txs } = await buildCreateTxs({
+    platform: coin.platform as LaunchPlatformId,
     mint: coin.mint,
     creator: coin.creatorWallet,
     name: coin.name,
@@ -177,6 +183,7 @@ export async function GET() {
     coins.map((c) => ({
       mint: c.status === 'launched' ? c.mint : null,
       key: c.mint,
+      platform: c.platform,
       name: c.name,
       symbol: c.symbol,
       image: c.image,

@@ -8,7 +8,7 @@ import type { BoostTarget } from '@/lib/types'
 export type AmmoTarget = { type: BoostTarget; id: string; name: string; image?: string | null }
 
 /** 'chat' solo tiene botón en la barra móvil: en escritorio el chat vive en la columna izquierda. */
-export type TabKey = 'radar' | 'tokens' | 'feed' | 'leaderboard' | 'chat'
+export type TabKey = 'radar' | 'tokens' | 'feed' | 'leaderboard' | 'launch' | 'chat'
 
 interface UIState {
   tab: TabKey
