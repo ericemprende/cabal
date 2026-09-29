@@ -889,6 +889,7 @@ export const en: Dict = {
     update: 'Update',
     launch: 'Launch',
     posted: 'Posted a new launch',
+    admin: 'Administration',
     seeInRadar: 'see in radar →',
   },
 

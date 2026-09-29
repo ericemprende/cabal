@@ -55,6 +55,8 @@ export function LaunchActivityCard({
   const t = useT()
   const u = l.createdBy
   const updated = kind === 'updated'
+  // Si editó la administración, la actualización la firma Cabal y no quien lo publicó
+  const byAdmin = updated && Boolean(l.lastEditedByAdmin)
   return (
     <article
       className={cn(
@@ -63,15 +65,30 @@ export function LaunchActivityCard({
       )}
     >
       <div className="flex items-start gap-2.5">
-        <Link href={`/u/${u.handle}`} className="shrink-0" aria-label={`Perfil de @${u.handle}`}>
-          <UserAvatar name={u.name} handle={u.handle} src={u.avatar} size={compact ? 'sm' : 'md'} verified={u.walletVerified} official={u.verified} />
-        </Link>
+        {byAdmin ? (
+          <img
+            src="/cabal-logo.webp"
+            alt="Cabal"
+            className={cn('shrink-0 rounded-full object-cover', compact ? 'h-7 w-7' : 'h-9 w-9')}
+          />
+        ) : (
+          <Link href={`/u/${u.handle}`} className="shrink-0" aria-label={`Perfil de @${u.handle}`}>
+            <UserAvatar name={u.name} handle={u.handle} src={u.avatar} size={compact ? 'sm' : 'md'} verified={u.walletVerified} official={u.verified} />
+          </Link>
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-x-1.5">
-            <Link href={`/u/${u.handle}`} className="flex min-w-0 items-center gap-x-1.5 hover:underline">
-              <span className={cn('truncate font-semibold', compact ? 'text-[13px]' : 'text-sm')}>{u.name}</span>
-              <span className="truncate text-xs text-muted-foreground">@{u.handle}</span>
-            </Link>
+            {byAdmin ? (
+              <span className="flex min-w-0 items-center gap-x-1.5">
+                <span className={cn('truncate font-semibold', compact ? 'text-[13px]' : 'text-sm')}>Cabal</span>
+                <span className="truncate text-xs text-muted-foreground">{t.launchActivity.admin}</span>
+              </span>
+            ) : (
+              <Link href={`/u/${u.handle}`} className="flex min-w-0 items-center gap-x-1.5 hover:underline">
+                <span className={cn('truncate font-semibold', compact ? 'text-[13px]' : 'text-sm')}>{u.name}</span>
+                <span className="truncate text-xs text-muted-foreground">@{u.handle}</span>
+              </Link>
+            )}
             <span className="ml-auto flex shrink-0 items-center gap-1.5">
               <span
                 className={cn(

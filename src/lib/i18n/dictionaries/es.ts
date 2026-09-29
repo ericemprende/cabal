@@ -888,6 +888,7 @@ export const es = {
     update: 'Actualización',
     launch: 'Launch',
     posted: 'Publicó un nuevo lanzamiento',
+    admin: 'Administración',
     seeInRadar: 'ver en radar →',
   },
 

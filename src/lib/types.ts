@@ -177,6 +177,8 @@ export interface LaunchDTO {
   lastEditedAt?: string | null
   /** Qué cambió en esa edición, en texto corto ("confirmó la fecha de lanzamiento"). */
   lastChangeNote?: string | null
+  /** La última edición la hizo la administración, no quien publicó el launch. */
+  lastEditedByAdmin?: boolean
   description: string
   website?: string | null
   twitter?: string | null

@@ -21,7 +21,11 @@ export async function GET(req: Request) {
       cached('launches:visible', CACHE_TTL.launch, () =>
         db.launch.findMany({
           where: { hidden: false },
-          include: { createdBy: true },
+          // Solo el autor de la última edición: si no es quien lo publicó, fue un admin
+          include: {
+            createdBy: true,
+            changes: { orderBy: { createdAt: 'desc' }, take: 1, select: { userId: true } },
+          },
           orderBy: { launchAt: 'asc' },
         }),
       ),
@@ -60,6 +64,7 @@ export async function GET(req: Request) {
       dateConfirmed: l.dateConfirmed,
       lastEditedAt: l.lastEditedAt ? new Date(l.lastEditedAt).toISOString() : null,
       lastChangeNote: l.lastChangeNote,
+      lastEditedByAdmin: l.changes.length > 0 && l.changes[0].userId !== l.createdById,
       description: l.description,
       website: l.website,
       twitter: l.twitter,
