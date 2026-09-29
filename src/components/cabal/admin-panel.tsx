@@ -92,6 +92,8 @@ import {
   useAdminRules,
   useAdminSaveAffiliate,
   useAdminSaveSwapFee,
+  useAdminPumpFee,
+  useAdminSavePumpFee,
   useAdminSwapEarnings,
   useAdminSwapTreasury,
   useAdminSwapFees,
@@ -1864,11 +1866,58 @@ function AdminSwapFees({ enabled }: { enabled: boolean }) {
         </p>
       </div>
 
+      <PumpLaunchFee enabled={enabled} />
+
       {list.isLoading && [...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
       <div className="space-y-3">
         {(list.data ?? []).map((cfg) => (
           <SwapFeeRow key={cfg.network} config={cfg} enabled={enabled} />
         ))}
+      </div>
+    </div>
+  )
+}
+
+/** SOL fijos que cobra Cabal por cada token lanzado en pump.fun desde /lanzar. */
+function PumpLaunchFee({ enabled }: { enabled: boolean }) {
+  const q = useAdminPumpFee(enabled)
+  if (!q.data) return <Skeleton className="h-28 w-full" />
+  return <PumpLaunchFeeForm key={`${q.data.sol}-${q.data.wallet}`} initial={q.data} />
+}
+
+function PumpLaunchFeeForm({ initial }: { initial: { sol: number; wallet: string } }) {
+  const save = useAdminSavePumpFee()
+  const [sol, setSol] = useState(String(initial.sol))
+  const [wallet, setWallet] = useState(initial.wallet)
+  const dirty = sol !== String(initial.sol) || wallet !== initial.wallet
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
+      <div className="mb-3 flex items-center gap-2">
+        <NetworkIcon network="solana" className="h-5 w-5" />
+        <span className="font-bold">Lanzamientos en pump.fun</span>
+      </div>
+      <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+        SOL que paga quien lanza un token desde /lanzar, en la misma transacción. Pon 0 para lanzar gratis.
+      </p>
+      <div className="grid gap-2.5 sm:grid-cols-[140px_1fr_auto] sm:items-end">
+        <div>
+          <Label className="text-xs">Comisión (SOL)</Label>
+          <Input inputMode="decimal" value={sol} onChange={(e) => setSol(e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-xs">Wallet que cobra</Label>
+          <Input className="font-mono text-xs" value={wallet} onChange={(e) => setWallet(e.target.value)} />
+          {!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(wallet.trim()) && (
+            <p className="mt-1 text-[11px] text-red-400">Dirección de Solana no válida: mientras no se corrija, no se cobra.</p>
+          )}
+        </div>
+        <Button
+          disabled={!dirty || save.isPending}
+          onClick={() => save.mutate({ sol: Number(sol.replace(',', '.')), wallet: wallet.trim() })}
+        >
+          Guardar
+        </Button>
       </div>
     </div>
   )

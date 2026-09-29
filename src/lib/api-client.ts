@@ -697,6 +697,28 @@ export function useAdminSaveSwapFee(enabled: boolean) {
   })
 }
 
+/** Comisión por lanzar un token en pump.fun desde /lanzar. */
+export function useAdminPumpFee(enabled: boolean) {
+  return useQuery<{ sol: number; wallet: string }>({
+    queryKey: ['admin', 'pump-fee'],
+    queryFn: () => jsonFetch('/api/admin/pump-fee'),
+    enabled,
+  })
+}
+
+export function useAdminSavePumpFee() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { sol: number; wallet: string }) =>
+      jsonFetch<{ sol: number; wallet: string }>('/api/admin/pump-fee', { method: 'PUT', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'pump-fee'] })
+      toast.success('Comisión de lanzamiento guardada')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+}
+
 // ---------- upload ----------
 /**
  * Las fotos del móvil suelen pesar 3-6 MB, llegar en HEIC (iPhone) o sin tipo

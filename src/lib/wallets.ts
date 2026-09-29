@@ -1,5 +1,5 @@
 import bs58 from 'bs58'
-import type { Transaction, VersionedTransaction } from '@solana/web3.js'
+import { VersionedTransaction, type Transaction } from '@solana/web3.js'
 
 /**
  * Wallets del navegador, de cualquier marca — no solo Phantom y MetaMask.
@@ -40,6 +40,11 @@ type SignAndSendFeature = {
   signAndSendTransaction: (
     ...inputs: { account: StdAccount; chain: string; transaction: Uint8Array }[]
   ) => Promise<readonly { signature: Uint8Array }[]>
+}
+type SignTransactionFeature = {
+  signTransaction: (
+    ...inputs: { account: StdAccount; chain: string; transaction: Uint8Array }[]
+  ) => Promise<readonly { signedTransaction: Uint8Array }[]>
 }
 type SignMessageFeature = {
   signMessage: (...inputs: { account: StdAccount; message: Uint8Array }[]) => Promise<readonly { signature: Uint8Array }[]>
@@ -226,6 +231,22 @@ export async function solanaSignAndSend(tx: Transaction | VersionedTransaction):
     transaction: bytes,
   })
   return bs58.encode(out.signature)
+}
+
+/**
+ * Firma transacciones con la wallet de Solana conectada SIN mandarlas, para
+ * las que llevan otro firmante más (el mint al lanzar un token): la wallet
+ * firma primero y el resto después, que es lo que piden Phantom y compañía.
+ * Todas en una sola llamada, así la wallet pide una única aprobación.
+ */
+export async function solanaSignTransactions(txs: VersionedTransaction[]): Promise<VersionedTransaction[]> {
+  const { wallet, account } = solanaAccount()
+  const feature = wallet.features['solana:signTransaction'] as SignTransactionFeature | undefined
+  if (!feature) throw new Error(`${wallet.name} no permite firmar transacciones`)
+  const out = await feature.signTransaction(
+    ...txs.map((tx) => ({ account, chain: SOLANA_MAINNET, transaction: tx.serialize() })),
+  )
+  return out.map((o) => VersionedTransaction.deserialize(o.signedTransaction))
 }
 
 /** Firma un mensaje con la wallet de Solana conectada. Devuelve la firma en base58. */

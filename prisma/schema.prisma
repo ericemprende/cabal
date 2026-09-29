@@ -89,6 +89,7 @@ model User {
   lastSeenAt        DateTime?
   posts             Post[]
   launches          Launch[]
+  pumpCoins         PumpCoin[]
   launchChanges     LaunchChange[]        @relation("launchChanges")
   tokens            Token[]
   votes             Vote[]
@@ -878,5 +879,29 @@ model Boost {
 
   @@index([targetType, targetId, endsAt])
   @@index([endsAt])
+  @@index([userId, createdAt])
+}
+
+/// Token creado en pump.fun desde Cabal (/lanzar). El metadata que pump.fun
+/// lee (nombre, imagen, redes) lo sirve Cabal en /api/pump/meta/<mint>, así que
+/// esta fila tiene que vivir mientras exista el token.
+model PumpCoin {
+  mint          String    @id // dirección del token (la genera el navegador)
+  name          String
+  symbol        String
+  description   String    @default("")
+  image         String // URL absoluta de la imagen
+  twitter       String?
+  telegram      String?
+  website       String?
+  creatorWallet String
+  initialBuySol Float     @default(0)
+  signature     String? // firma de la transacción de creación, cuando se confirma
+  launchedAt    DateTime? // null = preparado pero aún no confirmado en la red
+  launchId      String?   @unique // launch del Radar creado al confirmarse
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+
   @@index([userId, createdAt])
 }
