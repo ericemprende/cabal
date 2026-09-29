@@ -49,6 +49,9 @@ type SignTransactionFeature = {
 type SignMessageFeature = {
   signMessage: (...inputs: { account: StdAccount; message: Uint8Array }[]) => Promise<readonly { signature: Uint8Array }[]>
 }
+type EventsFeature = {
+  on: (event: 'change', listener: (props: { accounts?: readonly StdAccount[] }) => void) => () => void
+}
 
 const SOLANA_MAINNET = 'solana:mainnet'
 
@@ -58,7 +61,10 @@ const stdWallets = new Set<StdWallet>()
 function startWalletStandard() {
   const api = Object.freeze({
     register(...wallets: StdWallet[]) {
-      wallets.forEach((w) => stdWallets.add(w))
+      wallets.forEach((w) => {
+        stdWallets.add(w)
+        watchAccounts(w)
+      })
       emit()
       return () => {
         wallets.forEach((w) => stdWallets.delete(w))
@@ -74,6 +80,29 @@ function startWalletStandard() {
     }
   })
   window.dispatchEvent(new CustomEvent('wallet-standard:app-ready', { detail: api }))
+}
+
+/**
+ * Sigue a la wallet cuando la persona cambia de cuenta dentro de la propia
+ * extensión (Phantom, Solflare…) con la página abierta. Sin esto Cabal seguía
+ * con la cuenta de antes y cada firma fallaba con "la cuenta conectada ya no
+ * está en la wallet" hasta recargar.
+ */
+function watchAccounts(w: StdWallet) {
+  const events = w.features['standard:events'] as EventsFeature | undefined
+  if (!events?.on) return
+  try {
+    events.on('change', ({ accounts }) => {
+      const c = connected.solana
+      if (!accounts || !c || c.walletId !== w.name) return
+      if (accounts.some((a) => a.address === c.address)) return
+      const next = accounts.find((a) => a.chains.includes(SOLANA_MAINNET)) ?? accounts[0]
+      connected.solana = next ? { walletId: c.walletId, address: next.address } : null
+      emit()
+    })
+  } catch {
+    // una wallet que no emite eventos se sigue pudiendo usar reconectando
+  }
 }
 
 function isSolanaWallet(w: StdWallet): boolean {
@@ -191,7 +220,7 @@ export async function connectWallet(family: WalletFamily, id: string): Promise<s
   let address: string | undefined
   if (family === 'solana') {
     const w = findStd(id)
-    const res = await (w.features['standard:connect'] as ConnectFeature).connect()
+    const res = await withTimeout((w.features['standard:connect'] as ConnectFeature).connect(), 120_000)
     const accounts = res.accounts.length ? res.accounts : w.accounts
     address = accounts.find((a) => a.chains.includes(SOLANA_MAINNET))?.address ?? accounts[0]?.address
   } else {
@@ -215,9 +244,36 @@ function solanaAccount(): { wallet: StdWallet; account: StdAccount } {
   const c = connected.solana
   if (!c) throw new Error('Conecta una wallet de Solana primero')
   const wallet = findStd(c.walletId)
-  const account = wallet.accounts.find((a) => a.address === c.address)
-  if (!account) throw new Error('La cuenta conectada ya no está en la wallet; vuelve a conectar')
+  let account = wallet.accounts.find((a) => a.address === c.address)
+  if (!account) {
+    // Se cambió de cuenta en la extensión y el aviso no llegó: se sigue con la
+    // que la wallet tiene ahora en vez de bloquear hasta recargar
+    account = wallet.accounts.find((a) => a.chains.includes(SOLANA_MAINNET)) ?? wallet.accounts[0]
+    if (!account) throw new Error('La wallet no tiene ninguna cuenta conectada; vuelve a conectar')
+    connected.solana = { walletId: c.walletId, address: account.address }
+    emit()
+  }
   return { wallet, account }
+}
+
+/**
+ * Espera a la wallet como mucho `ms`. Si su ventana se cierra sin rechazar
+ * (pasa a veces), la promesa quedaba colgada para siempre y el botón girando.
+ */
+function withTimeout<T>(p: Promise<T>, ms = 180_000): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('La wallet no respondió. Ábrela y vuelve a intentarlo.')), ms)
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(t)
+        reject(e)
+      },
+    )
+  })
 }
 
 /** Firma y manda una transacción con la wallet de Solana conectada. Devuelve la firma en base58. */
@@ -225,11 +281,13 @@ export async function solanaSignAndSend(tx: Transaction | VersionedTransaction):
   const { wallet, account } = solanaAccount()
   const bytes =
     'version' in tx ? tx.serialize() : tx.serialize({ requireAllSignatures: false, verifySignatures: false })
-  const [out] = await (wallet.features['solana:signAndSendTransaction'] as SignAndSendFeature).signAndSendTransaction({
-    account,
-    chain: SOLANA_MAINNET,
-    transaction: bytes,
-  })
+  const [out] = await withTimeout(
+    (wallet.features['solana:signAndSendTransaction'] as SignAndSendFeature).signAndSendTransaction({
+      account,
+      chain: SOLANA_MAINNET,
+      transaction: bytes,
+    }),
+  )
   return bs58.encode(out.signature)
 }
 
@@ -243,8 +301,8 @@ export async function solanaSignTransactions(txs: VersionedTransaction[]): Promi
   const { wallet, account } = solanaAccount()
   const feature = wallet.features['solana:signTransaction'] as SignTransactionFeature | undefined
   if (!feature) throw new Error(`${wallet.name} no permite firmar transacciones`)
-  const out = await feature.signTransaction(
-    ...txs.map((tx) => ({ account, chain: SOLANA_MAINNET, transaction: tx.serialize() })),
+  const out = await withTimeout(
+    feature.signTransaction(...txs.map((tx) => ({ account, chain: SOLANA_MAINNET, transaction: tx.serialize() }))),
   )
   return out.map((o) => VersionedTransaction.deserialize(o.signedTransaction))
 }
@@ -254,7 +312,7 @@ export async function solanaSignMessage(message: Uint8Array): Promise<string> {
   const { wallet, account } = solanaAccount()
   const feature = wallet.features['solana:signMessage'] as SignMessageFeature | undefined
   if (!feature) throw new Error(`${wallet.name} no permite firmar mensajes`)
-  const [out] = await feature.signMessage({ account, message })
+  const [out] = await withTimeout(feature.signMessage({ account, message }))
   return bs58.encode(out.signature)
 }
 

@@ -79,7 +79,10 @@ export function TradePanel({
   const pubkey = useConnectedAddress(family)
   const { requestWallet, picker } = useWalletPicker(family)
   const [busy, setBusy] = useState(false)
-  const { data: balance } = useTokenBalance(tab === 'sell' ? pubkey : null, tab === 'sell' ? contract : null)
+  const { data: balance, refetch: refetchBalance } = useTokenBalance(tab === 'sell' ? pubkey : null, tab === 'sell' ? contract : null)
+  // La wallet conectada no tiene este token: se avisa antes de intentar vender
+  // (antes la venta fallaba en el servidor con un error genérico)
+  const noBalance = tab === 'sell' && !!pubkey && !!balance && !(balance.uiAmount > 0)
 
   if ((network !== 'solana' && !isEvm) || !config?.enabled) return null
 
@@ -179,6 +182,8 @@ export function TradePanel({
         action: { label: 'Ver ↗', onClick: () => window.open(`https://solscan.io/tx/${signature}`, '_blank') },
       })
       setAmount('')
+      // El saldo cambia en unos segundos: se relee para la siguiente venta
+      setTimeout(() => void refetchBalance(), 4000)
     } catch (e) {
       const msg = (e as Error)?.message ?? ''
       if (!isUserRejection(e)) {
@@ -275,9 +280,15 @@ export function TradePanel({
         </div>
       ) : (
         <div className="mt-3 space-y-2.5">
-          {pubkey && (
+          {pubkey && !noBalance && (
             <p className="text-center text-[11px] text-muted-foreground">
               Tienes {balance ? balance.uiAmount.toLocaleString('es', { maximumFractionDigits: 2 }) : '…'} ${ticker}
+            </p>
+          )}
+          {noBalance && (
+            <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-2.5 py-2 text-center text-[11px] leading-snug text-amber-200">
+              La wallet <span className="font-mono">{pubkey.slice(0, 4)}…{pubkey.slice(-4)}</span> no tiene ${ticker}. Si lo
+              tienes en otra cuenta, cámbiala en tu wallet (Phantom, Solflare…) o pulsa &quot;Cambiar wallet&quot;.
             </p>
           )}
           <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#121410] px-3 py-2.5">
@@ -316,7 +327,7 @@ export function TradePanel({
           )}
           <Button
             onClick={sellNow}
-            disabled={busy || !(Number(amount) > 0)}
+            disabled={busy || noBalance || !(Number(amount) > 0)}
             className="w-full gap-2 bg-[#ff5c5c] font-bold text-white hover:bg-[#ff7373]"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Zap className="h-4 w-4" aria-hidden />}
@@ -331,6 +342,8 @@ export function TradePanel({
           {' · '}
           <button
             onClick={() => {
+              // Si una firma se quedó colgada, cambiar de wallet también libera el botón
+              setBusy(false)
               disconnectWallet(family)
               void requestWallet()
             }}

@@ -336,7 +336,14 @@ export async function buildSellTransactions(opts: {
   // rápida sin comisión (buildSwapTransactions cotiza de nuevo, ya con la
   // comisión correcta, para armar la transacción real).
   const price = await solPriceUsd()
-  const estimate = await jupQuote({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, slippageBps: 150 })
+  const estimate = await jupQuote({ inputMint: opts.inputMint, outputMint: SOL_MINT, amount, slippageBps: 150 }).catch((e) => {
+    // Sin ruta en Jupiter (token sin liquidez, recién creado o ya muerto): se
+    // dice así en vez del "no se pudo preparar la venta" genérico
+    if (/route|liquidity/i.test((e as Error).message)) {
+      throw new InvalidSellError('Jupiter no encuentra liquidez para vender este token ahora mismo')
+    }
+    throw e
+  })
   const amountUsd = (Number(estimate.outAmount) / 1e9) * price
 
   const result = await buildSwapTransactions({
