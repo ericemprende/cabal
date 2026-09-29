@@ -176,6 +176,7 @@ const es = {
     `Conecta tu cuenta en <a href="${url}">Cabal</a> → perfil → ${PROVIDER_NAMES[p]} y tus calls contarán para el ranking.`,
   callFailed: 'No he podido publicar la call. Inténtalo otra vez en un momento.',
   botError: (ref: string) => `Algo ha fallado. Si vuelve a pasar, pásale este código al soporte de Cabal: <code>${ref}</code>`,
+  noContractInMessage: 'Ese mensaje no trae ningún contrato de token.',
   callTooFast: 'Vas muy rápido con las calls. Espera un minuto y vuelve a intentarlo.',
   filterOff:
     '🔎 <b>Filtro por token: apagado</b>\nAquí llegan avisos de todos los tokens.\n\nPara recibir solo los de tu token: <code>/filter CONTRATO</code> o <code>/filter $TICKER</code>.',
@@ -313,6 +314,7 @@ const en: Dict = {
     `Connect your account at <a href="${url}">Cabal</a> → profile → ${PROVIDER_NAMES[p]} and your calls will count for the ranking.`,
   callFailed: "I couldn't post the call. Try again in a moment.",
   botError: (ref: string) => `Something went wrong. If it happens again, send this code to Cabal support: <code>${ref}</code>`,
+  noContractInMessage: "That message doesn't contain a token contract.",
   callTooFast: "You're posting calls too fast. Wait a minute and try again.",
   filterOff:
     '🔎 <b>Token filter: off</b>\nThis chat gets alerts about every token.\n\nTo only get your token: <code>/filter CONTRACT</code> or <code>/filter $TICKER</code>.',

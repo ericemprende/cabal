@@ -229,6 +229,15 @@ export default function BotManualPage() {
           En Discord las respuestas de ajustes solo las ve quien escribió el comando, para no llenar el canal; lo que
           interesa a todos (<code>/upcoming</code>, una call) se ve en el canal.
         </p>
+        <p>
+          En Discord, al escribir el contrato de <code>/call</code> o <code>/pnl</code> el bot sugiere tokens: en{' '}
+          <code>/pnl</code> tus calls, y en <code>/call</code> lo último llamado en ese canal (o en Cabal). Puedes buscar
+          por <code>$TICKER</code> o por el principio del contrato.
+        </p>
+        <p>
+          También puedes hacer <strong>clic derecho sobre cualquier mensaje → Apps → Hacer call del token</strong>: el bot
+          busca el primer contrato del mensaje (vale un enlace de DexScreener, GMGN…) y publica la call a tu nombre.
+        </p>
       </LegalSection>
 
       <LegalSection title="3. Pegar un contrato">

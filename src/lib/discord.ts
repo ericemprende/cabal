@@ -160,8 +160,9 @@ const COMMAND_OPTIONS: Record<string, Record<string, unknown>[]> = {
   // Sin código, /start solo saluda: por eso el suyo no es obligatorio
   start: [{ ...CODE_OPT, required: false }],
   link: [CODE_OPT],
+  // autocomplete: mientras se escribe, Discord pide sugerencias (discord-bot → onAutocomplete)
   call: [
-    opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true),
+    { ...opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true), autocomplete: true },
     opt('note', 'Your thesis about the token (optional)', 'Tu tesis sobre el token (opcional)', false),
   ],
   filter: [
@@ -172,7 +173,7 @@ const COMMAND_OPTIONS: Record<string, Record<string, unknown>[]> = {
       false
     ),
   ],
-  pnl: [opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true)],
+  pnl: [{ ...opt('contract', 'Contract address (CA) of the token', 'Contrato (CA) del token', true), autocomplete: true }],
   leaderboard: [
     { ...opt('period', 'Period: 24h, 7d, 30d or all', 'Periodo: 24h, 7d, 30d o all', false), choices: PERIOD_CHOICES },
   ],
@@ -199,8 +200,18 @@ export async function registerDiscordCommands(token: string, appId: string) {
     contexts: [0, 1],
     ...(COMMAND_OPTIONS[c.command] ? { options: COMMAND_OPTIONS[c.command] } : {}),
   }))
-  await dcCall(token, 'PUT', `/applications/${appId}/commands`, commands)
+  // Clic derecho en un mensaje → Apps → publica la call del contrato que trae
+  const callFromMessage = {
+    name: CALL_MESSAGE_COMMAND,
+    name_localizations: { 'es-ES': 'Hacer call del token', 'es-419': 'Hacer call del token' },
+    type: 3,
+    contexts: [0, 1],
+  }
+  await dcCall(token, 'PUT', `/applications/${appId}/commands`, [...commands, callFromMessage])
 }
+
+/** Comando del menú contextual de mensajes que publica una call. */
+export const CALL_MESSAGE_COMMAND = 'Call this token'
 
 // ---------- API REST ----------
 
