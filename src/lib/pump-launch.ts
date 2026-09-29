@@ -14,6 +14,7 @@ import { NATIVE_MINT } from '@solana/spl-token'
 import { OnlinePumpSdk, PUMP_SDK, bondingCurvePda, getBuyTokenAmountFromSolAmount } from '@pump-fun/pump-sdk'
 import { db } from '@/lib/db'
 import { bonkCoinExists, bonkInstructionGroups } from '@/lib/bonk-launch'
+import { cabalCoinExists, cabalInstructionGroups } from '@/lib/cabal-launch'
 import type { LaunchPlatformId } from '@/lib/launch-platforms'
 import { solanaConnection } from '@/lib/swap'
 import { siteUrl } from '@/lib/waitlist'
@@ -172,6 +173,9 @@ async function instructionGroups(p: {
 }): Promise<TransactionInstruction[][]> {
   if (p.platform === 'bonk') {
     return bonkInstructionGroups({ ...p, uri: metadataUri(p.mint) })
+  }
+  if (p.platform === 'cabal') {
+    return cabalInstructionGroups({ ...p, uri: metadataUri(p.mint) })
   }
   return pumpInstructionGroups(p)
 }
@@ -340,6 +344,7 @@ export async function sendCreateTxs(
 /** true si el token ya existe en pump.fun (su bonding curve está en la red). */
 export async function coinExistsOnChain(mint: string, platform?: string): Promise<boolean> {
   if (platform === 'bonk') return bonkCoinExists(mint)
+  if (platform === 'cabal') return cabalCoinExists(mint)
   const info = await solanaConnection().getAccountInfo(bondingCurvePda(mint), 'confirmed')
   return Boolean(info)
 }

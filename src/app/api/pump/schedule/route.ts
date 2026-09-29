@@ -8,6 +8,7 @@ import { parsePumpForm, pubkey } from '@/lib/pump-input'
 import { createScheduledLaunch } from '@/lib/pump-schedule'
 import { invalidate } from '@/lib/cache'
 import type { LaunchPlatformId } from '@/lib/launch-platforms'
+import { cabalPendingFees } from '@/lib/cabal-launch'
 
 export const runtime = 'nodejs'
 
@@ -180,7 +181,7 @@ export async function GET() {
     take: 20,
   })
   return NextResponse.json(
-    coins.map((c) => ({
+    await Promise.all(coins.map(async (c) => ({
       mint: c.status === 'launched' ? c.mint : null,
       key: c.mint,
       platform: c.platform,
@@ -192,6 +193,9 @@ export async function GET() {
       launchedAt: c.launchedAt?.toISOString() ?? null,
       error: c.error,
       hasNonces: c.nonceAccounts.length > 0,
-    })),
+      // Cabal Launch: lo que el dev tiene por reclamar (su 70 % de las comisiones)
+      creatorFeesSol:
+        c.platform === 'cabal' && c.status === 'launched' ? ((await cabalPendingFees(c.mint))?.creatorSol ?? 0) : null,
+    }))),
   )
 }

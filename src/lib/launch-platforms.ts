@@ -7,7 +7,7 @@ import type { NetworkKey } from '@/lib/cabal'
  * cada plataforma.
  */
 /** Plataformas que ya lanzan de verdad (tienen adaptador en lib/pump-launch.ts). */
-export type LaunchPlatformId = 'pump' | 'bonk'
+export type LaunchPlatformId = 'pump' | 'bonk' | 'cabal'
 
 export type LaunchPlatform = {
   id: string
@@ -20,6 +20,9 @@ export type LaunchPlatform = {
 }
 
 export const LAUNCH_PLATFORMS: LaunchPlatform[] = [
+  // Launchpad propio (Meteora DBC, ver lib/cabal-launch.ts): el dev se lleva
+  // el 70 % de las comisiones. Solo lanza cuando su configuración existe
+  { id: 'cabal', name: 'Cabal', network: 'solana', live: true, logo: '/cabal-logo.png', limits: { name: 32, symbol: 10 } },
   { id: 'pump', name: 'Pump', network: 'solana', live: true, logo: '/launchpads/pump.png', limits: { name: 32, symbol: 10 } },
   { id: 'bonk', name: 'Bonk', network: 'solana', live: true, logo: '/launchpads/bonk.png', limits: { name: 32, symbol: 10 } },
   { id: 'bags', name: 'Bags', network: 'solana', live: false, logo: '/launchpads/bags.png', limits: { name: 32, symbol: 10 } },

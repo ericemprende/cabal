@@ -17,7 +17,7 @@ import { createTokenForLaunch } from '@/lib/tokens-sync'
  */
 
 /** Nombre del launchpad tal como sale en el Radar (lib/cabal.ts LAUNCHPADS). */
-const LAUNCHPAD_LABEL: Record<string, string> = { pump: 'pump.fun', bonk: 'LetsBonk' }
+const LAUNCHPAD_LABEL: Record<string, string> = { pump: 'pump.fun', bonk: 'LetsBonk', cabal: 'Cabal Launch' }
 
 function launchData(coin: PumpCoin) {
   return {

@@ -82,6 +82,10 @@ const TXT = {
     mine: 'Tus lanzamientos',
     cancel: 'Cancelar',
     refund: 'Recuperar SOL reservado',
+    claim: (sol: string) => `Reclamar ${sol} SOL`,
+    claimed: 'Comisiones enviadas a tu wallet',
+    nothingToClaim: 'Sin comisiones por reclamar',
+    cabalHint: 'Tu launchpad: te llevas el 70 % de las comisiones de cada operación.',
     cancelled: 'Cancelado. Firmaste la devolución del SOL reservado.',
     refunded: 'SOL reservado devuelto a tu wallet',
     status: {
@@ -140,6 +144,10 @@ const TXT = {
     mine: 'Your launches',
     cancel: 'Cancel',
     refund: 'Recover reserved SOL',
+    claim: (sol: string) => `Claim ${sol} SOL`,
+    claimed: 'Fees sent to your wallet',
+    nothingToClaim: 'No fees to claim',
+    cabalHint: 'Our launchpad: you keep 70% of the fees on every trade.',
     cancelled: 'Cancelled. You signed the refund of the reserved SOL.',
     refunded: 'Reserved SOL returned to your wallet',
     status: {
@@ -170,6 +178,7 @@ type MyCoin = {
   launchedAt: string | null
   error: string | null
   hasNonces: boolean
+  creatorFeesSol: number | null
 }
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
@@ -193,6 +202,7 @@ function signWhereNeeded(txs: VersionedTransaction[], kp: Keypair) {
 /** Ficha del token en su launchpad. */
 function coinUrl(platform: string, mint: string): { url: string; label: string } {
   if (platform === 'bonk') return { url: `https://raydium.io/launchpad/token/?mint=${mint}`, label: 'Raydium' }
+  if (platform === 'cabal') return { url: `https://solscan.io/token/${mint}`, label: 'Solscan' }
   return { url: `https://pump.fun/coin/${mint}`, label: 'pump.fun' }
 }
 
@@ -203,6 +213,9 @@ export function LaunchTab() {
   const [mode, setMode] = useState<Mode>('now')
   const [platformId, setPlatformId] = useState('pump')
   const platform = launchPlatform(platformId)
+  const [cabalReady, setCabalReady] = useState(false)
+  // Cabal Launch solo lanza cuando su configuración ya está creada en /admin
+  const isLive = (p: { id: string; live: boolean }) => p.live && (p.id !== 'cabal' || cabalReady)
   const [step, setStep] = useState<Step>('idle')
   const [fees, setFees] = useState<Record<string, number>>({})
   const [done, setDone] = useState<Done | null>(null)
@@ -221,7 +234,10 @@ export function LaunchTab() {
   useEffect(() => {
     fetch('/api/pump/fee')
       .then((r) => r.json())
-      .then((d: { fees?: Record<string, number> }) => setFees(d.fees ?? {}))
+      .then((d: { fees?: Record<string, number>; cabalReady?: boolean }) => {
+        setFees(d.fees ?? {})
+        setCabalReady(Boolean(d.cabalReady))
+      })
       .catch(() => {})
     loadMine()
   }, [loadMine])
@@ -349,8 +365,22 @@ export function LaunchTab() {
   }
 
   const feeSol = fees[platformId] ?? 0
+  // Cabal Launch: el dev cobra su 70 % de las comisiones del token con su wallet
+  const claimFees = async (c: MyCoin) => {
+    if (!(await requestWallet())) return
+    try {
+      const res = await postJson<{ tx: string }>('/api/pump/claim', { mint: c.key })
+      await solanaSignAndSend(fromB64(res.tx))
+      toast.success(t.claimed)
+    } catch (e) {
+      if (!isUserRejection(e)) toast.error((e as Error).message)
+    } finally {
+      loadMine()
+    }
+  }
+
   const busy = step !== 'idle'
-  const idleLabel = !platform.live
+  const idleLabel = !isLive(platform)
     ? t.soonBtn(platform.name)
     : !pubkey
       ? t.connect
@@ -426,14 +456,14 @@ export function LaunchTab() {
                       platformId === p.id
                         ? 'border-primary bg-primary/15 text-primary'
                         : 'border-white/10 bg-white/[0.03] text-foreground/80 hover:border-white/25',
-                      !p.live && 'opacity-60',
+                      !isLive(p) && 'opacity-60',
                     )}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.logo} alt="" className="h-5 w-5 shrink-0 rounded-md object-cover" />
                     {p.name}
                     <NetworkIcon network={p.network} className="h-3 w-3 opacity-70" />
-                    {!p.live && (
+                    {!isLive(p) && (
                       <span className="absolute -right-1 -top-1.5 rounded bg-amber-400/90 px-1 text-[9px] font-bold uppercase text-black">
                         {t.soon}
                       </span>
@@ -441,6 +471,7 @@ export function LaunchTab() {
                   </button>
                 ))}
               </div>
+              {platformId === 'cabal' && <p className="text-xs font-semibold text-amber-300">{t.cabalHint}</p>}
             </fieldset>
 
             <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1" role="tablist">
@@ -545,7 +576,7 @@ export function LaunchTab() {
               {t.costs} {feeSol > 0 && t.fee(feeSol)} {feeSol > 0 && mode === 'schedule' && t.feeScheduled}
             </p>
 
-            <Button type="submit" size="lg" disabled={busy || !platform.live} className="w-full sm:w-auto">
+            <Button type="submit" size="lg" disabled={busy || !isLive(platform)} className="w-full sm:w-auto">
               {busy ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
               ) : mode === 'now' ? (
@@ -587,6 +618,16 @@ export function LaunchTab() {
                   {(c.status === 'scheduled' || c.status === 'failed') && (
                     <Button size="sm" variant="ghost" onClick={() => void cancelOrRefund(c)}>
                       {t.cancel}
+                    </Button>
+                  )}
+                  {c.creatorFeesSol !== null && (
+                    <Button
+                      size="sm"
+                      className="bg-amber-400 font-bold text-black hover:bg-amber-300"
+                      disabled={c.creatorFeesSol <= 0}
+                      onClick={() => void claimFees(c)}
+                    >
+                      {c.creatorFeesSol > 0 ? t.claim(c.creatorFeesSol.toFixed(4)) : t.nothingToClaim}
                     </Button>
                   )}
                   {(c.status === 'launched' || c.status === 'cancelled') && c.hasNonces && (

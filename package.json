@@ -30,6 +30,7 @@
     "@hookform/resolvers": "^5.1.1",
     "@jup-ag/referral-sdk": "^0.3.0",
     "@mdxeditor/editor": "^3.39.1",
+    "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
     "@prisma/client": "^6.11.1",
     "@pump-fun/pump-sdk": "2.0.0",
     "@radix-ui/react-accordion": "^1.2.11",

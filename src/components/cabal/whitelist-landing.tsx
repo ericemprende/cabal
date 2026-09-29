@@ -26,6 +26,7 @@ import { XLogo } from '@/components/cabal/x-logo'
 import { CABAL_X_HANDLE, CABAL_X_URL } from '@/lib/cabal-x'
 import { LangSwitch } from '@/components/cabal/lang-switch'
 import { BotComparison } from '@/components/cabal/bot-comparison'
+import { LaunchComparison } from '@/components/cabal/launch-comparison'
 import { PlatformComparison } from '@/components/cabal/platform-comparison'
 import { AllInOne } from '@/components/cabal/all-in-one'
 import { useLang } from '@/lib/i18n/provider'
@@ -139,6 +140,22 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
         </section>
 
         <AllInOne lang={lang === 'en' ? 'en' : 'es'} />
+
+        {/* Lanzar un token: pump.fun frente al launchpad propio de Cabal */}
+        <section className="mt-14">
+          <h2 className="font-display text-2xl font-bold sm:text-3xl">
+            {lang === 'en' ? 'Launch your token: pump.fun vs ' : 'Lanza tu token: pump.fun frente a '}
+            <span className="text-amber-300">Cabal Launch</span>
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {lang === 'en'
+              ? 'Our own launchpad on Meteora: you keep 70% of the fees on every trade, the token shows up on the Radar by itself and you can schedule it for the exact time.'
+              : 'Nuestro propio launchpad sobre Meteora: te llevas el 70 % de las comisiones de cada operación, el token sale solo en el Radar y puedes programarlo a la hora exacta.'}
+          </p>
+          <div className="mt-7">
+            <LaunchComparison lang={lang === 'en' ? 'en' : 'es'} />
+          </div>
+        </section>
 
         {/* Cabal frente a las plataformas de trading y de gráficos */}
         <section className="mt-14">

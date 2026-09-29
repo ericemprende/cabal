@@ -67,6 +67,7 @@ import { AdminNotify } from '@/components/cabal/admin-notify'
 import { AdminChatAnnounce } from '@/components/cabal/admin-chat-announce'
 import { AdminGuide } from '@/components/cabal/admin-guide'
 import { AdminPublish } from '@/components/cabal/admin-publish'
+import { AdminCabalLaunch } from '@/components/cabal/admin-cabal-launch'
 import {
   jsonFetch,
   qk,
@@ -1867,6 +1868,7 @@ function AdminSwapFees({ enabled }: { enabled: boolean }) {
       </div>
 
       <PumpLaunchFee enabled={enabled} />
+      <AdminCabalLaunch enabled={enabled} />
 
       {list.isLoading && [...Array(3)].map((_, i) => <Skeleton key={i} className="h-40 w-full" />)}
       <div className="space-y-3">
@@ -1901,7 +1903,7 @@ const LAUNCH_FEE_ROWS = [
     id: 'cabal' as const,
     name: 'Cabal Launch (Meteora)',
     logo: '/cabal-logo.png',
-    trading: 'Launchpad propio de Cabal: aún no está activo. La comisión por operación y el reparto con el dev se fijan al crear su configuración.',
+    trading: 'Por operación: 1 % (Meteora 0,20 % · dev 0,56 % · Cabal 0,24 %). La parte de Cabal se reclama abajo, en Cabal Launch.',
   },
 ]
 
