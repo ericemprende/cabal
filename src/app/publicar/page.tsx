@@ -358,6 +358,21 @@ function LaunchForm({ initial, editId }: { initial: FormInitial; editId?: string
                     subtitle={t.publish.roleCommunitySub}
                   />
                 </div>
+                {/* Un dev que aún no ha sacado su token puede crearlo o
+                    programarlo desde Cabal y ahorrarse publicarlo a mano */}
+                {submitterRole === 'dev' && !editId && (
+                  <div className="mt-2 flex flex-col gap-3 rounded-xl border border-amber-400/35 bg-amber-400/10 p-3.5 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 text-sm font-bold text-amber-300">
+                        <CalendarClock className="h-4 w-4" aria-hidden /> {t.publish.devLaunchTitle}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-foreground/75">{t.publish.devLaunchBody}</p>
+                    </div>
+                    <Button asChild size="sm" className="shrink-0 bg-amber-400 font-bold text-black hover:bg-amber-300">
+                      <Link href="/lanzar">{t.publish.devLaunchCta}</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Nombre + ticker */}

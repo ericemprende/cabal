@@ -46,6 +46,9 @@ const TXT = {
     schedule: 'Programar',
     when: 'Fecha y hora del lanzamiento',
     whenHint: 'En tu hora local. Entre 3 minutos y 7 días desde ahora.',
+    fundsTitle: 'Deja los fondos en tu wallet hasta la hora del lanzamiento',
+    fundsBody: (buy: string) =>
+      `Al programar solo pagas la comisión. El lanzamiento se paga a la hora elegida desde la misma wallet: necesitarás ${buy} SOL de compra inicial más ~0,05 SOL de tarifas del launchpad y de la red. Si en ese momento no hay saldo, el lanzamiento falla y no se reintenta: podrás cancelarlo, recuperar lo reservado y volver a programarlo, pero la comisión no se devuelve.`,
     scheduleInfo:
       'Firmas dos veces: la primera paga la comisión y reserva ~0,0015 SOL por transacción (te lo devolvemos si cancelas); la segunda deja firmado el lanzamiento. A la hora exacta Cabal lo manda a la red. Mantén en tu wallet el SOL de la compra inicial y de las tarifas del launchpad hasta entonces. La dirección del token no se publica hasta que sale.',
     image: 'Imagen del token',
@@ -108,6 +111,9 @@ const TXT = {
     schedule: 'Schedule',
     when: 'Launch date and time',
     whenHint: 'In your local time. Between 3 minutes and 7 days from now.',
+    fundsTitle: 'Keep the funds in your wallet until launch time',
+    fundsBody: (buy: string) =>
+      `Scheduling only charges the fee. The launch is paid at the chosen time from the same wallet: you will need ${buy} SOL for the initial buy plus ~0.05 SOL in launchpad and network fees. If the balance is not there at that moment, the launch fails and is not retried: you can cancel it, recover what was reserved and schedule it again, but the fee is not refunded.`,
     scheduleInfo:
       'You sign twice: the first pays the fee and reserves ~0.0015 SOL per transaction (refunded if you cancel); the second pre-signs the launch. At the exact time Cabal sends it on-chain. Keep the SOL for the initial buy and launchpad fees in your wallet until then. The token address is not published until it goes live.',
     image: 'Token image',
@@ -569,6 +575,12 @@ export function LaunchTab() {
                 />
                 <p className="text-xs text-muted-foreground">{t.whenHint}</p>
                 <p className="pt-2 text-xs leading-relaxed text-muted-foreground">{t.scheduleInfo}</p>
+                <div className="mt-3 rounded-lg border border-amber-400/40 bg-amber-400/10 p-3" role="note">
+                  <p className="text-xs font-bold text-amber-300">⚠ {t.fundsTitle}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-100/85">
+                    {t.fundsBody(String(Number(form.buy.replace(',', '.')) || 0))}
+                  </p>
+                </div>
               </div>
             )}
 
