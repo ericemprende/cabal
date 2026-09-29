@@ -169,7 +169,7 @@ export const es = {
   radar: {
     all: 'Todas',
     statusAria: 'Estado de los launches',
-    status: { active: 'Próximos', ended: 'Finalizados', all: 'Todos' },
+    status: { active: 'Próximos', ended: 'Finalizados', all: 'Todos', recent: 'Recién agregados' },
     byDate: 'Por fecha',
     mostHype: 'Más hype',
     publish: 'Publicar',

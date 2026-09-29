@@ -46,13 +46,13 @@ function RoleChip({ role }: { role: 'dev' | 'community' }) {
   )
 }
 
-type StatusFilter = 'active' | 'ended' | 'all'
+type StatusFilter = 'active' | 'ended' | 'all' | 'recent'
 
 /**
  * "Próximos" incluye lo que se está lanzando ahora (30 min tras la hora) y lo
  * que tenía fecha estimada y todavía no ha salido. Lo demás, a Finalizados.
  */
-const STATUS_TABS: StatusFilter[] = ['active', 'ended', 'all']
+const STATUS_TABS: StatusFilter[] = ['active', 'ended', 'all', 'recent']
 
 export function RadarTab() {
   const t = useT()
@@ -83,10 +83,15 @@ export function RadarTab() {
 
   const counts = useMemo(() => {
     const ended = byNetwork.filter((l) => phaseOf(l) === 'ended').length
-    return { active: byNetwork.length - ended, ended, all: byNetwork.length }
+    return { active: byNetwork.length - ended, ended, all: byNetwork.length, recent: byNetwork.length }
   }, [byNetwork, phaseOf])
 
   const filtered = useMemo(() => {
+    // Recién agregados: todo, del último que se subió a Cabal al primero
+    if (status === 'recent') {
+      const added = (l: LaunchDTO) => +new Date(l.createdAt)
+      return [...byNetwork].sort((a, b) => added(b) - added(a))
+    }
     const list =
       status === 'all'
         ? byNetwork

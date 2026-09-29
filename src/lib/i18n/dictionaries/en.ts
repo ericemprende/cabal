@@ -170,7 +170,7 @@ export const en: Dict = {
   radar: {
     all: 'All',
     statusAria: 'Launch status',
-    status: { active: 'Upcoming', ended: 'Finished', all: 'All' },
+    status: { active: 'Upcoming', ended: 'Finished', all: 'All', recent: 'Recently added' },
     byDate: 'By date',
     mostHype: 'Most hype',
     publish: 'Post',
