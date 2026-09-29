@@ -33,24 +33,46 @@ import { siteUrl } from '@/lib/waitlist'
 export const PUMP_LIMITS = { name: 32, symbol: 10, description: 1000, maxInitialBuySol: 50 }
 
 /**
- * Comisión de Cabal por cada lanzamiento: SOL fijos a una wallet. Se edita en
- * /admin → Comisiones y vive en la tabla Setting; sin fila, estos valores.
+ * Comisión de Cabal por cada lanzamiento: SOL fijos, uno por launchpad, a una
+ * sola wallet. Se edita en /admin → Comisiones y vive en la tabla Setting
+ * (`launch_fee_sol:<plataforma>`); sin fila, estos valores. Pump lee además la
+ * clave antigua, de cuando solo existía pump.fun.
  */
+export const LAUNCH_FEE_PLATFORMS = ['pump', 'bonk', 'cabal'] as const
+export type LaunchFeePlatform = (typeof LAUNCH_FEE_PLATFORMS)[number]
 export const PUMP_FEE_KEYS = { sol: 'pump_launch_fee_sol', wallet: 'pump_launch_fee_wallet' } as const
+export const launchFeeKey = (platform: LaunchFeePlatform) => `launch_fee_sol:${platform}`
 export const PUMP_FEE_DEFAULT = { sol: 0.025, wallet: '9nHveRiAQSvAtwAKCojbmu32yxdKP246Z7cuoHX8pDk8' }
 
 export type PumpLaunchFee = { sol: number; wallet: string }
+export type LaunchFeeSettings = { wallet: string; fees: Record<LaunchFeePlatform, number> }
 
-export async function pumpLaunchFee(): Promise<PumpLaunchFee> {
+export async function launchFeeSettings(): Promise<LaunchFeeSettings> {
   const rows = await db.setting
-    .findMany({ where: { key: { in: [PUMP_FEE_KEYS.sol, PUMP_FEE_KEYS.wallet] } } })
+    .findMany({
+      where: { key: { in: [PUMP_FEE_KEYS.sol, PUMP_FEE_KEYS.wallet, ...LAUNCH_FEE_PLATFORMS.map(launchFeeKey)] } },
+    })
     .catch(() => [] as { key: string; value: string }[])
   const get = (k: string) => rows.find((r) => r.key === k)?.value
-  const sol = Number(get(PUMP_FEE_KEYS.sol) ?? PUMP_FEE_DEFAULT.sol)
-  return {
-    sol: Number.isFinite(sol) && sol > 0 ? sol : 0,
-    wallet: get(PUMP_FEE_KEYS.wallet) ?? PUMP_FEE_DEFAULT.wallet,
+  const clean = (v: string | undefined) => {
+    const n = Number(v ?? PUMP_FEE_DEFAULT.sol)
+    return Number.isFinite(n) && n > 0 ? n : 0
   }
+  return {
+    wallet: get(PUMP_FEE_KEYS.wallet) ?? PUMP_FEE_DEFAULT.wallet,
+    fees: {
+      pump: clean(get(launchFeeKey('pump')) ?? get(PUMP_FEE_KEYS.sol)),
+      bonk: clean(get(launchFeeKey('bonk'))),
+      cabal: clean(get(launchFeeKey('cabal'))),
+    },
+  }
+}
+
+/** Comisión de un launchpad concreto ({ sol, wallet }). */
+export async function pumpLaunchFee(platform: string = 'pump'): Promise<PumpLaunchFee> {
+  const s = await launchFeeSettings()
+  const key = (LAUNCH_FEE_PLATFORMS as readonly string[]).includes(platform) ? (platform as LaunchFeePlatform) : 'pump'
+  return { sol: s.fees[key], wallet: s.wallet }
 }
 
 function toPubkey(w: string): PublicKey | null {
@@ -102,7 +124,7 @@ export async function buildCreateTxs(p: {
 
   let feeSol = 0
   if (p.chargeFee !== false) {
-    const fee = await pumpLaunchFee()
+    const fee = await pumpLaunchFee(p.platform ?? 'pump')
     const to = toPubkey(fee.wallet)
     if (fee.sol > 0 && to) {
       feeSol = fee.sol
@@ -195,6 +217,7 @@ async function pumpInstructionGroups(p: {
  * es del creador y lo recupera si cancela.
  */
 export async function buildScheduleSetupTx(p: {
+  platform?: string
   creator: string
   nonceAccounts: string[]
 }): Promise<{ tx: string; feeSol: number }> {
@@ -216,7 +239,7 @@ export async function buildScheduleSetupTx(p: {
     )
   }
   let feeSol = 0
-  const fee = await pumpLaunchFee()
+  const fee = await pumpLaunchFee(p.platform ?? 'pump')
   const to = toPubkey(fee.wallet)
   if (fee.sol > 0 && to) {
     feeSol = fee.sol

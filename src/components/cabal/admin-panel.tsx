@@ -1878,33 +1878,80 @@ function AdminSwapFees({ enabled }: { enabled: boolean }) {
   )
 }
 
-/** SOL fijos que cobra Cabal por cada token lanzado en pump.fun desde /lanzar. */
+/**
+ * Comisiones de los lanzamientos desde la pestaña Crear token: los SOL fijos
+ * que cobra Cabal por lanzamiento en cada launchpad (editables) y, para
+ * contexto, lo que cobra cada launchpad por operación (leído de su programa
+ * en la red; no depende de Cabal).
+ */
+const LAUNCH_FEE_ROWS = [
+  {
+    id: 'pump' as const,
+    name: 'Pump (pump.fun)',
+    logo: '/launchpads/pump.png',
+    trading: 'Por operación: 1,25 % (0,95 % pump.fun + 0,30 % al creador). Cabal no cobra nada de ahí.',
+  },
+  {
+    id: 'bonk' as const,
+    name: 'Bonk (letsbonk.fun)',
+    logo: '/launchpads/bonk.png',
+    trading: 'Por operación: 1,25 % para LetsBonk + 0,25 % de Raydium; 0 % al creador. Cabal no cobra nada de ahí.',
+  },
+  {
+    id: 'cabal' as const,
+    name: 'Cabal Launch (Meteora)',
+    logo: '/cabal-logo.png',
+    trading: 'Launchpad propio de Cabal: aún no está activo. La comisión por operación y el reparto con el dev se fijan al crear su configuración.',
+  },
+]
+
+type LaunchFees = { wallet: string; fees: Record<'pump' | 'bonk' | 'cabal', number> }
+
 function PumpLaunchFee({ enabled }: { enabled: boolean }) {
   const q = useAdminPumpFee(enabled)
   if (!q.data) return <Skeleton className="h-28 w-full" />
-  return <PumpLaunchFeeForm key={`${q.data.sol}-${q.data.wallet}`} initial={q.data} />
+  return <PumpLaunchFeeForm key={JSON.stringify(q.data)} initial={q.data} />
 }
 
-function PumpLaunchFeeForm({ initial }: { initial: { sol: number; wallet: string } }) {
+function PumpLaunchFeeForm({ initial }: { initial: LaunchFees }) {
   const save = useAdminSavePumpFee()
-  const [sol, setSol] = useState(String(initial.sol))
   const [wallet, setWallet] = useState(initial.wallet)
-  const dirty = sol !== String(initial.sol) || wallet !== initial.wallet
+  const [fees, setFees] = useState(() =>
+    Object.fromEntries(LAUNCH_FEE_ROWS.map((r) => [r.id, String(initial.fees[r.id])])) as Record<LaunchFees['fees'] extends Record<infer K, number> ? K : never, string>,
+  )
+  const dirty = wallet !== initial.wallet || LAUNCH_FEE_ROWS.some((r) => fees[r.id] !== String(initial.fees[r.id]))
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-1 flex items-center gap-2">
         <NetworkIcon network="solana" className="h-5 w-5" />
-        <span className="font-bold">Lanzamientos en pump.fun</span>
+        <span className="font-bold">Lanzamientos desde Crear token</span>
       </div>
       <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
-        SOL que paga quien lanza un token desde /lanzar, en la misma transacción. Pon 0 para lanzar gratis.
+        SOL que paga quien lanza un token, en la misma transacción (en los programados, al programar). Uno por launchpad; 0
+        = gratis. Todo llega a la misma wallet.
       </p>
-      <div className="grid gap-2.5 sm:grid-cols-[140px_1fr_auto] sm:items-end">
-        <div>
-          <Label className="text-xs">Comisión (SOL)</Label>
-          <Input inputMode="decimal" value={sol} onChange={(e) => setSol(e.target.value)} />
-        </div>
+
+      <div className="space-y-2">
+        {LAUNCH_FEE_ROWS.map((r) => (
+          <div key={r.id} className="grid gap-2 rounded-lg border border-white/5 bg-white/[0.02] p-2.5 sm:grid-cols-[1fr_140px] sm:items-center">
+            <div className="flex min-w-0 items-start gap-2.5">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={r.logo} alt="" className="mt-0.5 h-7 w-7 shrink-0 rounded-md object-cover" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{r.name}</p>
+                <p className="text-[11px] leading-snug text-muted-foreground">{r.trading}</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-[11px]">Cabal cobra (SOL)</Label>
+              <Input inputMode="decimal" value={fees[r.id]} onChange={(e) => setFees((f) => ({ ...f, [r.id]: e.target.value }))} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-2.5 sm:grid-cols-[1fr_auto] sm:items-end">
         <div>
           <Label className="text-xs">Wallet que cobra</Label>
           <Input className="font-mono text-xs" value={wallet} onChange={(e) => setWallet(e.target.value)} />
@@ -1914,7 +1961,12 @@ function PumpLaunchFeeForm({ initial }: { initial: { sol: number; wallet: string
         </div>
         <Button
           disabled={!dirty || save.isPending}
-          onClick={() => save.mutate({ sol: Number(sol.replace(',', '.')), wallet: wallet.trim() })}
+          onClick={() =>
+            save.mutate({
+              wallet: wallet.trim(),
+              fees: Object.fromEntries(LAUNCH_FEE_ROWS.map((r) => [r.id, Number(fees[r.id].replace(',', '.'))])) as LaunchFees['fees'],
+            })
+          }
         >
           Guardar
         </Button>

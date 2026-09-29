@@ -204,7 +204,7 @@ export function LaunchTab() {
   const [platformId, setPlatformId] = useState('pump')
   const platform = launchPlatform(platformId)
   const [step, setStep] = useState<Step>('idle')
-  const [feeSol, setFeeSol] = useState(0)
+  const [fees, setFees] = useState<Record<string, number>>({})
   const [done, setDone] = useState<Done | null>(null)
   const [mine, setMine] = useState<MyCoin[]>([])
   const pubkey = useConnectedAddress('solana')
@@ -221,7 +221,7 @@ export function LaunchTab() {
   useEffect(() => {
     fetch('/api/pump/fee')
       .then((r) => r.json())
-      .then((d: { sol?: number }) => setFeeSol(d.sol ?? 0))
+      .then((d: { fees?: Record<string, number> }) => setFees(d.fees ?? {}))
       .catch(() => {})
     loadMine()
   }, [loadMine])
@@ -348,6 +348,7 @@ export function LaunchTab() {
     }
   }
 
+  const feeSol = fees[platformId] ?? 0
   const busy = step !== 'idle'
   const idleLabel = !platform.live
     ? t.soonBtn(platform.name)

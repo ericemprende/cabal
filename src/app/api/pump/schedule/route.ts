@@ -90,7 +90,7 @@ async function setup(userId: string, body: Record<string, unknown>) {
   const fields = { ...data, creatorWallet: creator, scheduledAt, nonceAccounts: nonceAccounts as string[], signedTxs: [] }
   await db.pumpCoin.upsert({ where: { mint }, create: { mint, userId, ...fields }, update: fields })
 
-  const { tx, feeSol } = await buildScheduleSetupTx({ creator, nonceAccounts: nonceAccounts as string[] })
+  const { tx, feeSol } = await buildScheduleSetupTx({ platform: data.platform, creator, nonceAccounts: nonceAccounts as string[] })
   return NextResponse.json({ ok: true, tx, feeSol, nonceAccounts })
 }
 

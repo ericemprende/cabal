@@ -697,9 +697,11 @@ export function useAdminSaveSwapFee(enabled: boolean) {
   })
 }
 
-/** Comisión por lanzar un token en pump.fun desde /lanzar. */
+/** Comisión por lanzamiento de cada launchpad de la pestaña Crear token. */
+type LaunchFeesDTO = { wallet: string; fees: { pump: number; bonk: number; cabal: number } }
+
 export function useAdminPumpFee(enabled: boolean) {
-  return useQuery<{ sol: number; wallet: string }>({
+  return useQuery<LaunchFeesDTO>({
     queryKey: ['admin', 'pump-fee'],
     queryFn: () => jsonFetch('/api/admin/pump-fee'),
     enabled,
@@ -709,11 +711,11 @@ export function useAdminPumpFee(enabled: boolean) {
 export function useAdminSavePumpFee() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { sol: number; wallet: string }) =>
-      jsonFetch<{ sol: number; wallet: string }>('/api/admin/pump-fee', { method: 'PUT', body: JSON.stringify(data) }),
+    mutationFn: (data: LaunchFeesDTO) =>
+      jsonFetch<LaunchFeesDTO>('/api/admin/pump-fee', { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'pump-fee'] })
-      toast.success('Comisión de lanzamiento guardada')
+      toast.success('Comisiones de lanzamiento guardadas')
     },
     onError: (e: Error) => toast.error(e.message),
   })
