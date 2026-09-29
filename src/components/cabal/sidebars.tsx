@@ -317,14 +317,18 @@ export function RightRail() {
         </section>
 
         {/* Crear token: abre la pestaña de lanzamiento de /app */}
-        <section className="rounded-xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
-          <p className="flex items-center gap-1.5 font-display text-sm font-bold text-primary">
+        <section className="rounded-xl border border-amber-400/25 bg-gradient-to-br from-amber-400/10 to-transparent p-4">
+          <p className="flex items-center gap-1.5 font-display text-sm font-bold text-amber-300">
             <Rocket className="h-4 w-4" aria-hidden /> {t.rail.createTitle}
           </p>
           <p className="mt-1 text-[12px] leading-relaxed text-foreground/75">
             {t.rail.createBody}
           </p>
-          <Button size="sm" onClick={() => goToTab('launch')} className="mt-2.5 w-full">
+          <Button
+            size="sm"
+            onClick={() => goToTab('launch')}
+            className="mt-2.5 w-full bg-amber-400 font-bold text-black hover:bg-amber-300"
+          >
             {t.rail.createCta}
           </Button>
         </section>

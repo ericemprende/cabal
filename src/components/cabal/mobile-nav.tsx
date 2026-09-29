@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Megaphone, Plus, Rocket } from 'lucide-react'
 import { Chapa } from '@/components/cabal/chapa'
 import { ActivityStream } from '@/components/cabal/sidebars'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -42,6 +42,7 @@ export function MobileNav() {
   const { tab } = useUI()
   // Desde un perfil también hay que volver a /app para ver la sección
   const setTab = useGoToTab()
+  const [createOpen, setCreateOpen] = useState(false)
   const labels: Record<NavTab['key'], string> = {
     radar: t.nav.radarShort,
     tokens: t.nav.tokens,
@@ -67,16 +68,51 @@ export function MobileNav() {
       >
         <div className="mx-auto grid max-w-md grid-cols-[1fr_1fr_3.5rem_1fr_1fr] items-end px-1">
           {LEFT.map(button)}
-          <Link
-            href="/publicar"
+          <button
+            onClick={() => setCreateOpen(true)}
             className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground neon-shadow-strong transition-transform active:scale-95"
-            aria-label="Publicar lanzamiento"
+            aria-label={t.nav.createMenu}
+            aria-expanded={createOpen}
           >
             <Plus className="h-6 w-6" strokeWidth={3} />
-          </Link>
+          </button>
           {RIGHT.map(button)}
         </div>
       </nav>
+
+      {/* El "+" ofrece las dos formas de subir algo: anunciar un launch que
+          sale en otro sitio, o crear el token desde Cabal */}
+      <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+        <SheetContent side="bottom" className="gap-0 rounded-t-2xl border-white/10 bg-[#0a0b08] p-4 pb-8 md:hidden">
+          <SheetTitle className="mb-3 font-display text-base font-bold">{t.nav.createMenu}</SheetTitle>
+          <div className="grid gap-2">
+            <button
+              onClick={() => {
+                setCreateOpen(false)
+                setTab('launch')
+              }}
+              className="flex items-center gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-left"
+            >
+              <Rocket className="h-5 w-5 shrink-0 text-amber-300" aria-hidden />
+              <span>
+                <span className="block text-sm font-bold">{t.rail.createCta}</span>
+                <span className="block text-xs text-muted-foreground">{t.nav.createTokenHint}</span>
+              </span>
+            </button>
+            <Link
+              href="/publicar"
+              onClick={() => setCreateOpen(false)}
+              className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3"
+            >
+              <Megaphone className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+              <span>
+                <span className="block text-sm font-bold">{t.nav.publishLaunch}</span>
+                <span className="block text-xs text-muted-foreground">{t.nav.publishLaunchHint}</span>
+              </span>
+            </Link>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }
