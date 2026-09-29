@@ -9,6 +9,7 @@ import {
   toLocale,
   type Locale,
 } from '@/lib/share-card'
+import { cookieDomain } from '@/lib/cookie-domain'
 
 export type { Locale }
 export { DEFAULT_LOCALE, toLocale }
@@ -56,7 +57,7 @@ export function readWaitlistCookie(token: string | null | undefined): string | n
 }
 
 export function waitlistCookieOptions(secure: boolean) {
-  return { httpOnly: true, sameSite: 'lax' as const, path: '/', maxAge: TTL_S, secure }
+  return { httpOnly: true, sameSite: 'lax' as const, path: '/', maxAge: TTL_S, secure, ...cookieDomain() }
 }
 
 // ---------- Contenido del post que se comparte en X ----------

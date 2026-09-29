@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/api-helpers'
 import { DISCORD_ME_URL, DISCORD_TOKEN_URL, appOrigin, getDiscordConfig } from '@/lib/oauth'
 import { linkProvider, SocialError } from '@/lib/social'
+import { cookieDomain } from '@/lib/cookie-domain'
 
 /**
  * GET /api/auth/discord/callback
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   const finish = (query: string) => {
     const res = NextResponse.redirect(`${origin}/app?connected=discord&${query}`)
-    res.cookies.set('cabal_dc_state', '', { path: '/', maxAge: 0 })
+    res.cookies.set('cabal_dc_state', '', { path: '/', maxAge: 0, ...cookieDomain() })
     return res
   }
 

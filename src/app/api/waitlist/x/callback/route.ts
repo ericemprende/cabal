@@ -5,6 +5,7 @@ import { X_TOKEN_URL, X_ME_URL, appOrigin, cookieSecureFlag, getXConfig } from '
 import { loginOrCreateSocial, SocialError } from '@/lib/social'
 import { clientIp } from '@/lib/rate-limit'
 import { WAITLIST_COOKIE, createWaitlistCookie, waitlistCookieOptions } from '@/lib/waitlist'
+import { cookieDomain } from '@/lib/cookie-domain'
 
 /**
  * GET /api/waitlist/x/callback
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const clearState = (res: NextResponse) => {
     for (const c of ['cabal_wl_state', 'cabal_wl_verifier', 'cabal_wl_ref']) {
-      res.cookies.set(c, '', { path: '/', maxAge: 0 })
+      res.cookies.set(c, '', { path: '/', maxAge: 0, ...cookieDomain() })
     }
     return res
   }

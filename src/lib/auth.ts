@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { cookies } from 'next/headers'
+import { cookieDomain } from '@/lib/cookie-domain'
 
 /**
  * Sesión de usuario de la app (login/registro por credenciales).
@@ -73,6 +74,7 @@ export function sessionCookieOptions() {
     sameSite: 'lax' as const,
     path: '/',
     maxAge: TTL_S,
+    ...cookieDomain(),
   }
 }
 
@@ -83,5 +85,6 @@ export function clearSessionCookieOptions() {
     sameSite: 'lax' as const,
     path: '/',
     maxAge: 0,
+    ...cookieDomain(),
   }
 }

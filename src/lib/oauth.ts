@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { cookieDomain } from '@/lib/cookie-domain'
 
 /**
  * Utilidades OAuth 2.0 para conectar las APIs de X (Twitter) y Google.
@@ -105,6 +106,7 @@ export function oauthCookieOptions(req: Request) {
     path: '/',
     maxAge: 600, // 10 minutos
     secure: cookieSecureFlag(req),
+    ...cookieDomain(),
   }
 }
 

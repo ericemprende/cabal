@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/api-helpers'
 import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
 import { GOOGLE_TOKEN_URL, GOOGLE_USERINFO_URL, appOrigin, getGoogleConfig } from '@/lib/oauth'
 import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
+import { cookieDomain } from '@/lib/cookie-domain'
 
 /**
  * GET /api/auth/google/callback
@@ -26,8 +27,8 @@ export async function GET(req: NextRequest) {
 
   const finish = (query: string) => {
     const res = NextResponse.redirect(`${origin}/app?connected=google&${query}`)
-    res.cookies.set('cabal_og_state', '', { path: '/', maxAge: 0 })
-    res.cookies.set('cabal_og_mode', '', { path: '/', maxAge: 0 })
+    res.cookies.set('cabal_og_state', '', { path: '/', maxAge: 0, ...cookieDomain() })
+    res.cookies.set('cabal_og_mode', '', { path: '/', maxAge: 0, ...cookieDomain() })
     return res
   }
 

@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/api-helpers'
 import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
 import { X_TOKEN_URL, X_ME_URL, appOrigin, getXConfig } from '@/lib/oauth'
 import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
+import { cookieDomain } from '@/lib/cookie-domain'
 
 /**
  * GET /api/auth/x/callback
@@ -27,9 +28,9 @@ export async function GET(req: NextRequest) {
 
   const finish = (query: string) => {
     const res = NextResponse.redirect(`${origin}/app?connected=x&${query}`)
-    res.cookies.set('cabal_ox_state', '', { path: '/', maxAge: 0 })
-    res.cookies.set('cabal_ox_verifier', '', { path: '/', maxAge: 0 })
-    res.cookies.set('cabal_ox_mode', '', { path: '/', maxAge: 0 })
+    res.cookies.set('cabal_ox_state', '', { path: '/', maxAge: 0, ...cookieDomain() })
+    res.cookies.set('cabal_ox_verifier', '', { path: '/', maxAge: 0, ...cookieDomain() })
+    res.cookies.set('cabal_ox_mode', '', { path: '/', maxAge: 0, ...cookieDomain() })
     return res
   }
 
