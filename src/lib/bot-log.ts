@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto'
 import { db } from '@/lib/db'
+import { rateLimit } from '@/lib/rate-limit'
 import type { BotProvider } from '@/lib/bot-message'
 
 /**
@@ -171,4 +172,21 @@ export async function botMetrics(hours: number, ref?: string | null): Promise<Bo
       .filter((l) => l._max.createdAt)
       .map((l) => ({ provider: l.provider, at: l._max.createdAt!.toISOString() })),
   }
+}
+
+// ---------- Límite de uso ----------
+
+const BOT_LIMIT = 12 // comandos por minuto y persona (/call además tiene el suyo)
+
+/**
+ * true si esa persona ya ha pasado del límite de comandos este minuto. Sin
+ * Redis no limita (ver lib/rate-limit). Los fallos también se registran, para
+ * ver en /admin quién está martilleando el bot.
+ */
+export async function botRateLimited(input: LogInput): Promise<boolean> {
+  if (!input.actorId) return false
+  const r = await rateLimit(`bot:${input.provider}:${input.actorId}`, BOT_LIMIT, 60)
+  if (r.ok) return false
+  void logBotCommand({ ...input, command: `${input.command} (límite)`, ms: 0 })
+  return true
 }

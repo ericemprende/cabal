@@ -9,7 +9,7 @@ import { CALL_MESSAGE_COMMAND, dcCall, editInteractionReply, toDiscordPayload, t
 import { esc, type BotMessage } from '@/lib/bot-message'
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
 import { isReminderLead, toggleLead } from '@/lib/notify-types'
-import { logBotCommand } from '@/lib/bot-log'
+import { botRateLimited, logBotCommand } from '@/lib/bot-log'
 
 /**
  * Qué hace el bot de Discord con cada interacción que llega al endpoint.
@@ -107,6 +107,8 @@ function logFields(i: DcInteraction) {
  * terminar, en deferred(): aquí solo se ha acusado recibo.
  */
 async function trackedCommand(cfg: DiscordConfig, i: DcInteraction): Promise<DcResponse> {
+  // Discord exige respuesta: pasado el límite, un aviso que solo ve quien escribió
+  if (await botRateLimited(logFields(i))) return say(t(langFromLocale(i.locale ?? i.guild_locale)).tooManyCommands)
   const start = performance.now()
   try {
     const res = await onCommand(cfg, i)

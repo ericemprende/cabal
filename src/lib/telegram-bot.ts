@@ -9,7 +9,7 @@ import { esc, tgCall, tgSend, type InlineButton, type TelegramConfig, type TgMes
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
 import { isReminderLead, toggleLead } from '@/lib/notify-types'
 import { fixedXLinks } from '@/lib/fix-links'
-import { trackBotCommand } from '@/lib/bot-log'
+import { botRateLimited, trackBotCommand } from '@/lib/bot-log'
 
 /**
  * Qué hace el bot con cada update que llega al webhook. Los comandos son en
@@ -117,8 +117,11 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
 
   // Solo se registran nuestros comandos: en grupos llegan también los de otros bots
   if (!TRACKED_COMMANDS.has(cmd)) return
+  const logInput = { provider: 'telegram' as const, command: cmd, chatId: String(msg.chat.id), actorId: msg.from ? String(msg.from.id) : null }
+  // Pasado el límite, en grupos se ignora sin contestar (contestar sería más spam)
+  if (await botRateLimited(logInput)) return msg.chat.type === 'private' ? reply(tx.tooManyCommands) : undefined
   await trackBotCommand(
-    { provider: 'telegram', command: cmd, chatId: String(msg.chat.id), actorId: msg.from ? String(msg.from.id) : null },
+    logInput,
     async () => {
       switch (cmd) {
         case 'start':

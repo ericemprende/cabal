@@ -352,6 +352,10 @@ export default function BotManualPage() {
             desactivado. Vuelve a añadirlo y conéctalo con un código nuevo.
           </li>
           <li>
+            <strong>«Vas muy rápido»:</strong> cada persona puede usar hasta 12 comandos por minuto. En grupos, pasado
+            el límite el bot ignora los comandos sin contestar, para no llenar el chat. Espera un minuto.
+          </li>
+          <li>
             <strong>«Algo ha fallado… ERR-XXXXXX»:</strong> el bot tuvo un error de su lado. Prueba otra vez y, si se
             repite, manda ese código al soporte de Cabal: con él vemos exactamente qué pasó.
           </li>

@@ -177,6 +177,7 @@ const es = {
   callFailed: 'No he podido publicar la call. Inténtalo otra vez en un momento.',
   botError: (ref: string) => `Algo ha fallado. Si vuelve a pasar, pásale este código al soporte de Cabal: <code>${ref}</code>`,
   noContractInMessage: 'Ese mensaje no trae ningún contrato de token.',
+  tooManyCommands: 'Vas muy rápido. Espera un minuto y vuelve a probar.',
   callTooFast: 'Vas muy rápido con las calls. Espera un minuto y vuelve a intentarlo.',
   filterOff:
     '🔎 <b>Filtro por token: apagado</b>\nAquí llegan avisos de todos los tokens.\n\nPara recibir solo los de tu token: <code>/filter CONTRATO</code> o <code>/filter $TICKER</code>.',
@@ -315,6 +316,7 @@ const en: Dict = {
   callFailed: "I couldn't post the call. Try again in a moment.",
   botError: (ref: string) => `Something went wrong. If it happens again, send this code to Cabal support: <code>${ref}</code>`,
   noContractInMessage: "That message doesn't contain a token contract.",
+  tooManyCommands: "You're going too fast. Wait a minute and try again.",
   callTooFast: "You're posting calls too fast. Wait a minute and try again.",
   filterOff:
     '🔎 <b>Token filter: off</b>\nThis chat gets alerts about every token.\n\nTo only get your token: <code>/filter CONTRACT</code> or <code>/filter $TICKER</code>.',
