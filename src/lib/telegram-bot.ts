@@ -9,6 +9,7 @@ import { esc, tgCall, tgSend, type InlineButton, type TelegramConfig, type TgMes
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
 import { isReminderLead, toggleLead } from '@/lib/notify-types'
 import { fixedXLinks } from '@/lib/fix-links'
+import { trackBotCommand } from '@/lib/bot-log'
 
 /**
  * Qué hace el bot con cada update que llega al webhook. Los comandos son en
@@ -49,6 +50,9 @@ export type TgUpdate = {
   callback_query?: { id: string; from: TgUser; message?: TgMsg; data?: string }
   my_chat_member?: { chat: TgChat; from: TgUser; new_chat_member: { status: string } }
 }
+
+/** Comandos que atiende el bot (los que pasan por el registro de lib/bot-log). */
+const TRACKED_COMMANDS = new Set(['start', 'link', 'settings', 'language', 'upcoming', 'call', 'pnl', 'leaderboard', 'filter', 'unlink', 'help'])
 
 /** Alias en español de antes de pasar los comandos a inglés: siguen funcionando. */
 const COMMAND_ALIASES: Record<string, string> = {
@@ -111,52 +115,60 @@ export async function handleTelegramUpdate(tg: TelegramConfig, u: TgUpdate) {
   const tx = t(lang)
   const reply: Reply = (m) => tgSend(tg.token, String(msg.chat.id), typeof m === 'string' ? { text: m } : m)
 
-  switch (cmd) {
-    case 'start':
-    case 'link':
-      // ?startgroup=true (sin código) llega como "/start true"
-      return args[0] && args[0] !== 'true' ? link(tg, msg, args[0], reply) : reply(welcomeMessage(msg.chat.type === 'private', 'telegram', lang))
-    case 'settings':
-      if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
-      return reply({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang, 'telegram') })
-    case 'language':
-      if (chat && !(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyAdminChanges)
-      return reply({ text: tx.languagePrompt, buttons: [languageButtons()] })
-    case 'upcoming':
-      return reply(await upcomingMessage(lang))
-    case 'call': {
-      if (!args[0]) return reply(tx.callUsage)
-      const { message } = await handleContractFromBot({
-        provider: 'telegram',
-        actorId: msg.from ? String(msg.from.id) : null,
-        chat,
-        contract: args[0],
-        note: args.slice(1).join(' '),
-        lang,
-        mode: 'command',
-      })
-      return message ? reply(message) : undefined
-    }
-    case 'pnl': {
-      if (!args[0]) return reply(tx.pnlUsage)
-      return reply(
-        await pnlMessage({ provider: 'telegram', actorId: msg.from ? String(msg.from.id) : null, contract: args[0], lang })
-      )
-    }
-    case 'leaderboard':
-      return reply(await leaderboardMessage(chat, args[0] ?? null, lang))
-    case 'filter':
-      if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
-      if (args[0] && !(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyAdminChanges)
-      return reply(await filterCommand(chat, args[0] ?? null, lang))
-    case 'unlink':
-      if (!chat) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
-      if (!(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyManagerUnlinks)
-      await db.chatLink.delete({ where: { id: chat.id } })
-      return reply(tx.unlinked)
-    case 'help':
-      return reply(welcomeMessage(msg.chat.type === 'private', 'telegram', lang))
-  }
+  // Solo se registran nuestros comandos: en grupos llegan también los de otros bots
+  if (!TRACKED_COMMANDS.has(cmd)) return
+  await trackBotCommand(
+    { provider: 'telegram', command: cmd, chatId: String(msg.chat.id), actorId: msg.from ? String(msg.from.id) : null },
+    async () => {
+      switch (cmd) {
+        case 'start':
+        case 'link':
+          // ?startgroup=true (sin código) llega como "/start true"
+          return args[0] && args[0] !== 'true' ? link(tg, msg, args[0], reply) : reply(welcomeMessage(msg.chat.type === 'private', 'telegram', lang))
+        case 'settings':
+          if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
+          return reply({ text: tx.settingsTitle, buttons: settingsButtons(chat, lang, 'telegram') })
+        case 'language':
+          if (chat && !(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyAdminChanges)
+          return reply({ text: tx.languagePrompt, buttons: [languageButtons()] })
+        case 'upcoming':
+          return reply(await upcomingMessage(lang))
+        case 'call': {
+          if (!args[0]) return reply(tx.callUsage)
+          const { message } = await handleContractFromBot({
+            provider: 'telegram',
+            actorId: msg.from ? String(msg.from.id) : null,
+            chat,
+            contract: args[0],
+            note: args.slice(1).join(' '),
+            lang,
+            mode: 'command',
+          })
+          return message ? reply(message) : undefined
+        }
+        case 'pnl': {
+          if (!args[0]) return reply(tx.pnlUsage)
+          return reply(
+            await pnlMessage({ provider: 'telegram', actorId: msg.from ? String(msg.from.id) : null, contract: args[0], lang })
+          )
+        }
+        case 'leaderboard':
+          return reply(await leaderboardMessage(chat, args[0] ?? null, lang))
+        case 'filter':
+          if (!chat || !chat.active) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
+          if (args[0] && !(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyAdminChanges)
+          return reply(await filterCommand(chat, args[0] ?? null, lang))
+        case 'unlink':
+          if (!chat) return reply(tx.notLinked(`${siteUrl()}/app`, 'telegram'))
+          if (!(await canManage(tg, chat, msg.chat, msg.from))) return reply(tx.onlyManagerUnlinks)
+          await db.chatLink.delete({ where: { id: chat.id } })
+          return reply(tx.unlinked)
+        case 'help':
+          return reply(welcomeMessage(msg.chat.type === 'private', 'telegram', lang))
+      }
+    },
+    (ref) => reply(tx.botError(ref))
+  )
 }
 
 function findChat(chatId: number) {

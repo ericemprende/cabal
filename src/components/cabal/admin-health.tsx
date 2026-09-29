@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Activity, AlertTriangle, Cpu, Database, Globe2, MemoryStick, Users } from 'lucide-react'
+import { Activity, AlertTriangle, Bot, Cpu, Database, Globe2, MemoryStick, Users } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { cn } from '@/lib/utils'
-import { useAdminMetrics } from '@/lib/api-client'
+import { useAdminBotMetrics, useAdminMetrics } from '@/lib/api-client'
 
 /**
  * Salud del servidor: cuánto trabajo está haciendo Cabal ahora mismo y cómo ha
@@ -180,4 +180,126 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
       {children}
     </div>
   )
+}
+
+/**
+ * Salud de los bots de Telegram y Discord: qué comandos se usan, cuánto tardan
+ * y qué falla. Cuando un usuario manda un código ERR-XXXXXX se busca aquí.
+ * Los datos salen de BotCommandLog (lib/bot-log, se guardan 30 días).
+ */
+const BOT_RANGES = [
+  { label: '24 h', hours: 24 },
+  { label: '7 d', hours: 24 * 7 },
+  { label: '30 d', hours: 24 * 30 },
+] as const
+
+export function AdminBotHealth() {
+  const [hours, setHours] = useState<number>(24)
+  const [ref, setRef] = useState('')
+  const search = /^ERR-[A-Z0-9]{6}$/i.test(ref.trim()) ? ref.trim() : ''
+  const { data, isPending } = useAdminBotMetrics(hours, search)
+  const errPct = data && data.total ? Math.round((data.errors / data.total) * 1000) / 10 : 0
+  const seen = (p: string) => data?.lastSeen.find((l) => l.provider === p)?.at
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          <Bot className="h-3.5 w-3.5 text-primary" aria-hidden /> Bots de Telegram y Discord
+        </p>
+        <div className="ml-auto flex items-center gap-1 rounded-full border border-white/10 bg-[#0a0b08] p-0.5">
+          {BOT_RANGES.map((r) => (
+            <button
+              key={r.hours}
+              onClick={() => setHours(r.hours)}
+              className={cn(
+                'rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors',
+                hours === r.hours ? 'bg-[#8FA83F]/15 text-primary' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <Tile label="Comandos" value={data?.total.toLocaleString('es') ?? '—'} icon={<Activity className="h-4 w-4" />} />
+        <Tile
+          label="Errores"
+          value={data ? `${data.errors} (${errPct} %)` : '—'}
+          icon={<AlertTriangle className="h-4 w-4" />}
+          warn={errPct > 5}
+        />
+        <Tile label="Último en Telegram" value={seen('telegram') ? timeAgoEs(seen('telegram')!) : '—'} icon={<Bot className="h-4 w-4" />} />
+        <Tile label="Último en Discord" value={seen('discord') ? timeAgoEs(seen('discord')!) : '—'} icon={<Bot className="h-4 w-4" />} />
+      </div>
+
+      {isPending && <div className="h-32 animate-pulse rounded-xl border border-white/10 bg-[#121410]" />}
+
+      {!isPending && data && data.commands.length > 0 && (
+        <Panel title="Comandos" hint="Usos, errores y tiempo de respuesta (media y el 5 % más lento).">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[12px]">
+              <thead className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                <tr>
+                  <th className="py-1 text-left">Comando</th>
+                  <th className="py-1 text-right">Usos</th>
+                  <th className="py-1 text-right">Errores</th>
+                  <th className="py-1 text-right">Media</th>
+                  <th className="py-1 text-right">p95</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.commands.map((c) => (
+                  <tr key={c.command} className="border-t border-white/5">
+                    <td className="py-1.5 font-mono font-semibold">/{c.command}</td>
+                    <td className="py-1.5 text-right tabular-nums">{c.total.toLocaleString('es')}</td>
+                    <td className={cn('py-1.5 text-right tabular-nums', c.errors > 0 && 'text-[#ff8080]')}>{c.errors}</td>
+                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">{c.avgMs} ms</td>
+                    <td className={cn('py-1.5 text-right tabular-nums', c.p95Ms > 3000 ? 'text-[#e0b341]' : 'text-muted-foreground')}>
+                      {c.p95Ms} ms
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
+
+      <Panel title="Errores" hint="Pega aquí el código que te mande un usuario para ver qué le pasó.">
+        <input
+          value={ref}
+          onChange={(e) => setRef(e.target.value)}
+          placeholder="ERR-XXXXXX"
+          className="mb-2 w-full rounded-lg border border-white/10 bg-[#121410] px-3 py-1.5 font-mono text-[12px] uppercase outline-none focus:border-primary/50 sm:w-56"
+        />
+        {!isPending && data && data.recentErrors.length === 0 && (
+          <p className="text-[12px] text-muted-foreground">{search ? 'No hay ningún error con ese código.' : 'Sin errores en este periodo. 👌'}</p>
+        )}
+        <div className="space-y-1.5">
+          {data?.recentErrors.map((e) => (
+            <div key={e.errorRef} className="rounded-lg border border-white/5 bg-[#121410] px-2.5 py-2 text-[12px]">
+              <p className="flex flex-wrap items-center gap-x-2">
+                <span className="font-mono font-bold text-[#ff8080]">{e.errorRef}</span>
+                <span className="font-mono">/{e.command}</span>
+                <span className="capitalize text-muted-foreground">{e.provider}</span>
+                <span className="ml-auto text-[10px] text-muted-foreground">{new Date(e.at).toLocaleString('es')}</span>
+              </p>
+              <p className="mt-1 break-words font-mono text-[11px] text-muted-foreground">{e.error}</p>
+            </div>
+          ))}
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
+function timeAgoEs(iso: string): string {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (min < 1) return 'ahora'
+  if (min < 60) return `hace ${min} min`
+  if (min < 1440) return `hace ${Math.round(min / 60)} h`
+  return `hace ${Math.round(min / 1440)} d`
 }

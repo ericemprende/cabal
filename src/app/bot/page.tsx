@@ -342,6 +342,10 @@ export default function BotManualPage() {
             <strong>El bot dejó de avisar en el grupo:</strong> si lo expulsaron o perdió permisos, el chat queda
             desactivado. Vuelve a añadirlo y conéctalo con un código nuevo.
           </li>
+          <li>
+            <strong>«Algo ha fallado… ERR-XXXXXX»:</strong> el bot tuvo un error de su lado. Prueba otra vez y, si se
+            repite, manda ese código al soporte de Cabal: con él vemos exactamente qué pasó.
+          </li>
         </ul>
       </LegalSection>
     </LegalPage>

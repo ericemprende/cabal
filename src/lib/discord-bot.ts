@@ -9,6 +9,7 @@ import { dcCall, editInteractionReply, toDiscordPayload, type DiscordConfig } fr
 import { esc, type BotMessage } from '@/lib/bot-message'
 import { isLang, langFromLocale, t, type Lang } from '@/lib/bot-i18n'
 import { isReminderLead, toggleLead } from '@/lib/notify-types'
+import { logBotCommand } from '@/lib/bot-log'
 
 /**
  * Qué hace el bot de Discord con cada interacción que llega al endpoint.
@@ -83,12 +84,32 @@ export type DcResponse = {
 
 export async function handleDiscordInteraction(cfg: DiscordConfig, i: DcInteraction): Promise<DcResponse> {
   if (i.type === PING) return { type: PONG }
-  if (i.type === APPLICATION_COMMAND) return onCommand(cfg, i)
+  if (i.type === APPLICATION_COMMAND) return trackedCommand(cfg, i)
   if (i.type === MESSAGE_COMPONENT) return onComponent(cfg, i)
   return say('…')
 }
 
 // ---------- Comandos ----------
+
+function logFields(i: DcInteraction) {
+  return { provider: 'discord' as const, command: i.data?.name ?? '?', chatId: chatIdOf(i), actorId: actorId(i) }
+}
+
+/**
+ * onCommand con registro en lib/bot-log. Los diferidos se registran al
+ * terminar, en deferred(): aquí solo se ha acusado recibo.
+ */
+async function trackedCommand(cfg: DiscordConfig, i: DcInteraction): Promise<DcResponse> {
+  const start = performance.now()
+  try {
+    const res = await onCommand(cfg, i)
+    if (res.type !== DEFERRED_MESSAGE) void logBotCommand({ ...logFields(i), ms: performance.now() - start })
+    return res
+  } catch (error) {
+    const ref = await logBotCommand({ ...logFields(i), ms: performance.now() - start, error })
+    return say(t(langFromLocale(i.locale ?? i.guild_locale)).botError(ref ?? ''))
+  }
+}
 
 async function onCommand(cfg: DiscordConfig, i: DcInteraction): Promise<DcResponse> {
   const channelId = chatIdOf(i)
@@ -203,12 +224,14 @@ async function deferred(
   lang: Lang,
   work: () => Promise<BotMessage | null>
 ) {
+  const start = performance.now()
   try {
     const message = await work()
+    void logBotCommand({ ...logFields(i), ms: performance.now() - start })
     await editInteractionReply(cfg.appId, i.token, message ?? { text: t(lang).callFailed })
-  } catch (e) {
-    console.error(`[discord] /${i.data?.name}`, (e as Error).message)
-    await editInteractionReply(cfg.appId, i.token, { text: t(lang).callFailed }).catch(() => {})
+  } catch (error) {
+    const ref = await logBotCommand({ ...logFields(i), ms: performance.now() - start, error })
+    await editInteractionReply(cfg.appId, i.token, { text: t(lang).botError(ref ?? '') }).catch(() => {})
   }
 }
 

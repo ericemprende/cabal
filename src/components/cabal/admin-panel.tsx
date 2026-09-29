@@ -38,7 +38,7 @@ import {
   Zap,
   Info,
 } from 'lucide-react'
-import { AdminHealth } from '@/components/cabal/admin-health'
+import { AdminBotHealth, AdminHealth } from '@/components/cabal/admin-health'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -550,7 +550,12 @@ export function AdminPanel({
           </div>
         )}
 
-        {view === 'salud' && <AdminHealth />}
+        {view === 'salud' && (
+          <div className="space-y-8">
+            <AdminHealth />
+            <AdminBotHealth />
+          </div>
+        )}
 
         {view === 'stats' && (
           <div className="space-y-4">

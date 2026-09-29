@@ -916,3 +916,22 @@ model PumpCoin {
   @@index([userId, createdAt])
   @@index([status, scheduledAt])
 }
+
+// Cada comando que reciben los bots (Telegram y Discord): cuánto tardó y si
+// falló. Un fallo lleva errorRef (ERR-XXXXXX), el código que ve el usuario
+// para que soporte lo encuentre. Se purga a los 30 días (lib/bot-log).
+model BotCommandLog {
+  id         String   @id @default(cuid())
+  provider   String // telegram | discord
+  command    String
+  chatId     String?
+  actorId    String? // id del usuario en el proveedor
+  ms         Int
+  ok         Boolean
+  errorRef   String?  @unique
+  error      String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([provider, createdAt])
+}

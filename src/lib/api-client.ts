@@ -44,6 +44,7 @@ import type {
   UserDTO,
 } from '@/lib/types'
 import type { CallPeriod } from '@/lib/call-score'
+import type { BotMetricsDTO } from '@/lib/bot-log'
 import { DEFAULT_CHAT_ROOM, type ChatRoom } from '@/lib/chat-rooms'
 import { useUI } from '@/lib/store'
 import { activeEvmProvider, connectedWallet, solanaSignMessage, type WalletFamily } from '@/lib/wallets'
@@ -384,6 +385,15 @@ export function useAdminMetrics(minutes: number) {
   return useQuery<AdminMetricsDTO>({
     queryKey: ['admin', 'metrics', minutes] as const,
     queryFn: () => jsonFetch(`/api/admin/metrics?minutes=${minutes}`),
+    refetchInterval: 60_000,
+  })
+}
+
+export function useAdminBotMetrics(hours: number, ref: string) {
+  return useQuery<BotMetricsDTO>({
+    queryKey: ['admin', 'bot-metrics', hours, ref] as const,
+    queryFn: () =>
+      jsonFetch(`/api/admin/bot-metrics?hours=${hours}${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`),
     refetchInterval: 60_000,
   })
 }
