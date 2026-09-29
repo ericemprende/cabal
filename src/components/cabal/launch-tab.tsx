@@ -428,8 +428,10 @@ export function LaunchTab() {
                       !p.live && 'opacity-60',
                     )}
                   >
-                    <NetworkIcon network={p.network} />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.logo} alt="" className="h-5 w-5 shrink-0 rounded-md object-cover" />
                     {p.name}
+                    <NetworkIcon network={p.network} className="h-3 w-3 opacity-70" />
                     {!p.live && (
                       <span className="absolute -right-1 -top-1.5 rounded bg-amber-400/90 px-1 text-[9px] font-bold uppercase text-black">
                         {t.soon}
