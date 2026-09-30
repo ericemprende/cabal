@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { pusherServer, CHAT_CHANNEL, CHAT_EVENT } from '@/lib/pusher-server'
 import { chatMessageInclude as include, toChatMessageDTO as toDTO } from '@/lib/chat'
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
 
     const limit = await rateLimit(`chat:${me.id ?? clientIp(req)}`, 20, 60)
     if (!limit.ok) return tooManyRequests(limit)
@@ -61,6 +61,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json(dto, { status: 201 })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

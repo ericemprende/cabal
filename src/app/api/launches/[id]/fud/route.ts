@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { bump, pending } from '@/lib/counters'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { invalidate } from '@/lib/cache'
@@ -22,7 +22,7 @@ async function fudCount(id: string, fallback: number) {
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
 
     // Más estricto que el hype (30/min): cada fud escribe un comentario.
     const limit = await rateLimit(`fud:${me.id ?? clientIp(req)}`, 6, 60)
@@ -74,7 +74,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({ ok: true, fudded: true, fud: await fudCount(id, launch.fud), postId: post.id })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }
 
@@ -86,7 +86,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
 
     const existing = await db.vote.findUnique({
       where: { userId_target_targetId: { userId: me.id, target: 'launch', targetId: id } },
@@ -108,6 +108,6 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
     return NextResponse.json({ ok: true, fudded: false, fud: await fudCount(id, launch.fud) })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

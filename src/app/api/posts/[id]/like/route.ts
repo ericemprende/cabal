@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { awardPoints, getCurrentUser } from '@/lib/api-helpers'
+import { awardPoints, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { bump, pending } from '@/lib/counters'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { invalidate } from '@/lib/cache'
@@ -8,7 +8,7 @@ import { invalidate } from '@/lib/cache'
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
 
     const limit = await rateLimit(`like:${me.id ?? clientIp(req)}`, 60, 60)
     if (!limit.ok) return tooManyRequests(limit)
@@ -38,6 +38,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({ ok: true, liked, likes })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

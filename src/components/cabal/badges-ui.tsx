@@ -7,6 +7,7 @@ import { Chapa, type Metal } from '@/components/cabal/chapa'
 import { SILUETAS, type Silueta } from '@/lib/siluetas'
 import { useMe } from '@/lib/api-client'
 import { useLang } from '@/lib/i18n/provider'
+import { baseLang } from '@/lib/i18n/config'
 import { useUI } from '@/lib/store'
 import type { BadgeDTO } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -47,7 +48,7 @@ const TXT = {
 
 function useTxt() {
   const [lang] = useLang()
-  return TXT[lang === 'en' ? 'en' : 'es']
+  return TXT[baseLang(lang)]
 }
 
 function siluetaDe(b: BadgeDTO): Silueta | null {

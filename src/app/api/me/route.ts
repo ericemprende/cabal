@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser, getPointRules } from '@/lib/api-helpers'
+import { getCurrentUser, getPointRules, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
 import { premiumStatus } from '@/lib/premium'
 import { computeBadges, computeNextBadges, isFounder, tradeVolumeUsd } from '@/lib/badges'
@@ -128,7 +128,7 @@ function parseClaimStats(raw: string): DevClaimStats | null {
 
 export async function PATCH(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
     const body = await req.json()
     const data: Record<string, string | boolean> = {}
     if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim().slice(0, 40)
@@ -143,13 +143,14 @@ export async function PATCH(req: Request) {
     if (typeof body.wallet === 'string') {
       const w = body.wallet.trim()
       data.wallet = w.length >= 20 ? w : null
-      if (w.length >= 20 && !me.walletVerified) data.walletVerified = true
+      // Escribir una dirección no demuestra que sea tuya: la marca de
+      // verificada solo la pone /api/me/wallets/verify, con firma.
     }
     if (typeof body.notifyEmail === 'boolean') data.notifyEmail = body.notifyEmail
     if (typeof body.showTrackRecord === 'boolean') data.showTrackRecord = body.showTrackRecord
     const updated = await db.user.update({ where: { id: me.id }, data })
     return NextResponse.json({ ok: true, user: toUserDTO(updated) })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

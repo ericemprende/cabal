@@ -27,7 +27,12 @@ function sign(payload: string, secret: string): string {
 export function verifyCredentials(user: string, password: string): boolean {
   const c = creds()
   if (c.password.length < 8 || !c.secret) return false
-  return user.trim().toLowerCase() === c.user.toLowerCase() && password === c.password
+  // Se comparan resúmenes de igual longitud en tiempo constante: un === corta
+  // en el primer carácter distinto y deja medir cuánto se ha acertado.
+  const digest = (v: string) => createHash('sha256').update(v).digest()
+  const userOk = user.trim().toLowerCase() === c.user.toLowerCase()
+  const passOk = timingSafeEqual(digest(password), digest(c.password))
+  return userOk && passOk
 }
 
 export function createSessionToken(): string {

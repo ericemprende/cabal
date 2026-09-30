@@ -5,6 +5,7 @@ import { ExternalLink, Loader2, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useLang } from '@/lib/i18n/provider'
+import { baseLang } from '@/lib/i18n/config'
 import {
   connectWallet,
   connectedWallet,
@@ -93,7 +94,7 @@ function WalletPickerDialog({
   onDone: (address: string | null) => void
 }) {
   const [lang] = useLang()
-  const tx = TEXT[lang] ?? TEXT.es
+  const tx = TEXT[baseLang(lang)]
   useWalletsVersion()
   const wallets = open ? listWallets(family) : []
   const last = open ? lastUsedWallet(family) : null

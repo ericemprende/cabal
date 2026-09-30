@@ -233,6 +233,33 @@ export async function getCurrentUser() {
   return user
 }
 
+/** Petición de escritura sin sesión real: se responde 401, no se actúa como el invitado. */
+export class UnauthorizedError extends Error {
+  constructor() {
+    super('Inicia sesión para hacer esto')
+  }
+}
+
+/**
+ * Para escrituras: solo una sesión real. Nunca cae en el usuario demo, que
+ * sin esto dejaba a cualquier visitante anónimo publicar, votar o vincular
+ * wallets en nombre de esa cuenta (que además es admin en la semilla).
+ */
+export async function requireSessionUser() {
+  const sessionUserId = await sessionUserIdFromCookies()
+  const user = sessionUserId ? await db.user.findUnique({ where: { id: sessionUserId } }) : null
+  if (!user) throw new UnauthorizedError()
+  await touchLastSeen(user)
+  return user
+}
+
+/** Estado HTTP para un error capturado en una ruta: 401/403 si toca, 500 si no. */
+export function errorStatus(e: unknown): number {
+  if (e instanceof UnauthorizedError) return 401
+  if (e instanceof ForbiddenError) return 403
+  return 500
+}
+
 /**
  * Para lecturas públicas (GET): nunca falla. Devuelve el id de quien mira o,
  * sin sesión ni usuario demo, un id que no existe (sus votos/follows salen vacíos).

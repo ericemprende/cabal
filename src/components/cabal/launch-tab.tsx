@@ -14,6 +14,7 @@ import { useConnectedAddress, useWalletPicker } from '@/components/cabal/wallet-
 import { uploadImage } from '@/lib/api-client'
 import { isUserRejection, solanaSignAndSend, solanaSignTransactions } from '@/lib/wallets'
 import { useLang } from '@/lib/i18n/provider'
+import { baseLang } from '@/lib/i18n/config'
 import { cn } from '@/lib/utils'
 import { NETWORKS } from '@/lib/cabal'
 import { NetworkIcon } from '@/components/cabal/shared'
@@ -214,7 +215,7 @@ function coinUrl(platform: string, mint: string): { url: string; label: string }
 
 export function LaunchTab() {
   const [lang] = useLang()
-  const t = TXT[lang] ?? TXT.es
+  const t = TXT[baseLang(lang)]
   const [form, setForm] = useState(EMPTY)
   const [mode, setMode] = useState<Mode>('now')
   const [platformId, setPlatformId] = useState('pump')
@@ -394,7 +395,7 @@ export function LaunchTab() {
         ? t.launch
         : t.scheduleBtn
   const label = step === 'idle' ? idleLabel : t[step]
-  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === 'en' ? 'en' : 'es', { dateStyle: 'medium', timeStyle: 'short' })
+  const fmt = (iso: string) => new Date(iso).toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' })
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-2xl">

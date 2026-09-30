@@ -30,6 +30,7 @@ import { LaunchComparison } from '@/components/cabal/launch-comparison'
 import { PlatformComparison } from '@/components/cabal/platform-comparison'
 import { AllInOne } from '@/components/cabal/all-in-one'
 import { useLang } from '@/lib/i18n/provider'
+import { baseLang } from '@/lib/i18n/config'
 import { useT } from '@/lib/i18n/provider'
 import type { Dict } from '@/lib/i18n/dictionaries'
 import type { WaitlistStatusDTO } from '@/lib/waitlist'
@@ -50,7 +51,8 @@ const BENEFIT_ICONS = [Radar, ShieldCheck, Trophy, Users, Eye, Gift]
  */
 export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = {}) {
   const t = useT()
-  const [lang] = useLang()
+  // Las tablas comparativas solo están en es/en: pt y de las ven en inglés.
+  const lang = baseLang(useLang()[0])
   const status = useQuery<WaitlistStatusDTO>({
     queryKey: qk.waitlistMe,
     queryFn: () => jsonFetch('/api/waitlist/me'),

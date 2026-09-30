@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { awardPoints, getCurrentUser } from '@/lib/api-helpers'
+import { awardPoints, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { verifyWalletSignature, walletMessage } from '@/lib/wallet-verify'
 
 const VERIFY_WALLET_BONUS = 10
@@ -8,7 +8,7 @@ const VERIFY_WALLET_BONUS = 10
 /** Verifica por firma la posesión de una wallet conectada (Solana ed25519 / EVM personal_sign). */
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
     const body = (await req.json()) as {
       id?: string
       message?: string
@@ -50,6 +50,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, pointsEarned })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

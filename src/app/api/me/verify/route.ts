@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
 import { linkProvider, SocialError, SocialProvider, unlinkProvider } from '@/lib/social'
 import { socialDemoAllowed } from '@/lib/oauth'
@@ -13,7 +13,7 @@ import { socialDemoAllowed } from '@/lib/oauth'
  */
 export async function POST(req: NextRequest) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
     const body = await req.json()
     const provider: SocialProvider | null =
       body.provider === 'x' || body.provider === 'google' || body.provider === 'discord'
@@ -45,6 +45,6 @@ export async function POST(req: NextRequest) {
     if (e instanceof SocialError) {
       return NextResponse.json({ error: e.message }, { status: 400 })
     }
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

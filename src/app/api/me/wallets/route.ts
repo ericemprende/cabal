@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { getCurrentUser, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { isValidContract, isValidNetwork } from '@/lib/chain-stats'
 
 function serialize(w: {
@@ -36,7 +36,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
     const body = (await req.json()) as { network?: string; address?: string; label?: string }
     const network = (body.network ?? '').trim()
     const address = (body.address ?? '').trim()
@@ -62,19 +62,20 @@ export async function POST(req: Request) {
     if (!me.wallet) {
       await db.user.update({
         where: { id: me.id },
-        data: { wallet: address, walletVerified: true },
+        // Sin firma no hay verificación: eso lo hace /api/me/wallets/verify.
+        data: { wallet: address },
       })
     }
 
     return NextResponse.json(serialize(wallet))
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }
 
 export async function DELETE(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
     const id = new URL(req.url).searchParams.get('id') ?? ''
     const wallet = await db.walletLink.findUnique({ where: { id } })
     if (!wallet || wallet.userId !== me.id) {
@@ -83,6 +84,6 @@ export async function DELETE(req: Request) {
     await db.walletLink.delete({ where: { id } })
     return NextResponse.json({ ok: true })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

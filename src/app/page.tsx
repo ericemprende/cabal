@@ -3,6 +3,7 @@ import { WhitelistLanding } from '@/components/cabal/whitelist-landing'
 import { buildShareMetadata, parseHandle } from '@/lib/share-metadata'
 import { toLocale, siteUrl } from '@/lib/waitlist'
 import { resolveLang } from '@/lib/i18n/server'
+import { baseLang } from '@/lib/i18n/config'
 import { CABAL_X_URL } from '@/lib/follow-x'
 
 /**
@@ -23,7 +24,8 @@ export async function generateMetadata({
   // Sin ?l, el título sale en el idioma en que se pinta la página (cookie →
   // navegador), para que coincida con el H1.
   const raw = Array.isArray(l) ? l[0] : l
-  const locale = raw ? toLocale(raw) : await resolveLang()
+  // La tarjeta para compartir solo existe en es/en: pt y de la reciben en inglés.
+  const locale = raw ? toLocale(raw) : baseLang(await resolveLang())
   return buildShareMetadata(parseHandle(ref), locale)
 }
 

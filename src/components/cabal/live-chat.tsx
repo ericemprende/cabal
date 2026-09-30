@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { RichText } from '@/components/cabal/rich-text'
 import { Flag } from '@/components/cabal/flag'
 import { useLang, useT } from '@/lib/i18n/provider'
+import { baseLang } from '@/lib/i18n/config'
 
 /**
  * Chat en vivo global del Cabal. Historial vía React Query, mensajes nuevos
@@ -26,8 +27,10 @@ export function LiveChat({ className, showUnavailable }: { className?: string; s
   const t = useT()
   const [lang] = useLang()
   // La sala que se abre la primera vez es la del idioma de la plataforma; a
-  // partir de ahí manda lo que la persona elija con las banderitas.
-  const [room, setRoom] = useChatRoom(lang)
+  // partir de ahí manda lo que la persona elija con las banderitas. Solo hay
+  // salas es/en: quien usa la plataforma en portugués o alemán entra a la de
+  // inglés, que es donde está la gente de fuera de habla hispana.
+  const [room, setRoom] = useChatRoom(baseLang(lang))
   const { data: history } = useChatMessages(room)
   const [live, setLive] = useState<ChatMessageDTO[]>([])
   const onlineIds = useOnlineIds()

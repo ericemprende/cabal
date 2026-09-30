@@ -12,8 +12,22 @@ import { cookieDomain } from '@/lib/cookie-domain'
 export const SESSION_COOKIE = 'cabal_session'
 const TTL_S = 60 * 60 * 24 * 30
 
+let warnedNoSecret = false
+
+/**
+ * Clave con la que se firman las sesiones. Sin AUTH_SECRET se deriva de
+ * secretos que ya existen en el servidor (nunca de un texto que esté en el
+ * código: con uno público cualquiera podría firmarse la sesión de otro).
+ */
 function secret(): string {
-  return process.env.AUTH_SECRET || 'cabal-user-secret-v1'
+  if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET
+  const base = process.env.ADMIN_SECRET || process.env.DATABASE_URL || process.env.ADMIN_PASSWORD
+  if (!base) return 'cabal-user-secret-dev'
+  if (!warnedNoSecret) {
+    warnedNoSecret = true
+    console.warn('[auth] Falta AUTH_SECRET: la firma de sesiones se deriva de otros secretos. Define AUTH_SECRET.')
+  }
+  return createHmac('sha256', 'cabal-auth-secret').update(base).digest('hex')
 }
 
 export function hashPassword(password: string): string {

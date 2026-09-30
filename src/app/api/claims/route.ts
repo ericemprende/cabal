@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { getCurrentUser, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { verifyProjectOwnership } from '@/lib/chain-verify'
 
 const NETWORKS = ['solana', 'base', 'ethereum', 'bsc', 'tron', 'robinhood', 'arc']
@@ -44,7 +44,7 @@ export async function GET() {
 // Body: { contract, network, wallet }
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
     const body = await req.json()
     const contract = normalizeContract(String(body.contract ?? ''))
     const network = String(body.network ?? '').trim()
@@ -124,6 +124,6 @@ export async function POST(req: Request) {
       note: check.note,
     })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

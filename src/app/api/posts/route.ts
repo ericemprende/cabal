@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { awardPoints, getCurrentUser } from '@/lib/api-helpers'
+import { awardPoints, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { toPostDTO } from '@/lib/serializers'
 import { invalidate } from '@/lib/cache'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
@@ -9,7 +9,7 @@ import { fetchEntrySnapshot } from '@/lib/chain-stats'
 
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
 
     const limit = await rateLimit(`post:${me.id ?? clientIp(req)}`, 10, 60)
     if (!limit.ok) return tooManyRequests(limit)
@@ -71,6 +71,6 @@ export async function POST(req: Request) {
     await invalidate('feed:*')
     return NextResponse.json({ ok: true, pointsEarned, post: await toPostDTO(post, false) }, { status: 201 })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }

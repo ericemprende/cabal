@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { awardPoints, computeLaunchStatus, getCurrentUser, getReaderId } from '@/lib/api-helpers'
+import { awardPoints, computeLaunchStatus, getReaderId, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { toPublicUserDTO } from '@/lib/serializers'
 import { cached, CACHE_TTL, invalidate } from '@/lib/cache'
 import { pendingMany } from '@/lib/counters'
@@ -93,7 +93,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const me = await getCurrentUser()
+    const me = await requireSessionUser()
     const body = await req.json()
     const parsed = parseLaunchInput(body)
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
@@ -114,6 +114,6 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ ok: true, pointsEarned }, { status: 201 })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    return NextResponse.json({ error: (e as Error).message }, { status: errorStatus(e) })
   }
 }
