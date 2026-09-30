@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/api-helpers'
-import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
+import { oauthFinish, oauthLinkUserId } from '@/lib/app-handoff'
 import { X_TOKEN_URL, X_ME_URL, appOrigin, getXConfig } from '@/lib/oauth'
 import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
 import { cookieDomain } from '@/lib/cookie-domain'
@@ -26,8 +25,8 @@ export async function GET(req: NextRequest) {
   const savedState = req.cookies.get('cabal_ox_state')?.value
   const verifier = req.cookies.get('cabal_ox_verifier')?.value
 
-  const finish = (query: string) => {
-    const res = NextResponse.redirect(`${origin}/app?connected=x&${query}`)
+  const finish = (query: string, loginUserId?: string) => {
+    const res = oauthFinish(req, origin, 'x', query, loginUserId)
     res.cookies.set('cabal_ox_state', '', { path: '/', maxAge: 0, ...cookieDomain() })
     res.cookies.set('cabal_ox_verifier', '', { path: '/', maxAge: 0, ...cookieDomain() })
     res.cookies.set('cabal_ox_mode', '', { path: '/', maxAge: 0, ...cookieDomain() })
@@ -76,14 +75,14 @@ export async function GET(req: NextRequest) {
     // 3. Login social: entrar/crear cuenta con la identidad de X
     if (loginMode) {
       const { user, created } = await loginOrCreateSocial('x', username, meJson.data?.name, photo)
-      const res = finish(created ? 'ok=1&login=1&created=1' : 'ok=1&login=1')
-      res.cookies.set(SESSION_COOKIE, createSessionValue(user.id), sessionCookieOptions())
-      return res
+      return finish(created ? 'ok=1&login=1&created=1' : 'ok=1&login=1', user.id)
     }
 
     // 4. Modo verificación: vincular la cuenta al usuario actual
-    const me = await getCurrentUser()
-    await linkProvider(me.id, 'x', username, photo)
+    // Solo una sesión real (o la de la app, vía token): nunca la cuenta demo
+    const meId = await oauthLinkUserId(req)
+    if (!meId) return finish('connect_error=login')
+    await linkProvider(meId, 'x', username, photo)
     return finish('ok=1')
   } catch (e) {
     if (e instanceof SocialError) return finish('connect_error=profile')

@@ -130,6 +130,7 @@ export default function Home() {
         no_config: 'Las API keys del proveedor no están configuradas',
         taken: 'Esa cuenta ya está vinculada a otro perfil de Cabal',
         server: 'Error inesperado durante la verificación',
+        login: 'Inicia sesión antes de conectar una cuenta',
       }
       toast.error(msgs[oauthReturn.error] ?? 'No se pudo completar la operación')
     } else if (oauthReturn.provider && oauthReturn.isLogin) {

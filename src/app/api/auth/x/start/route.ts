@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { markAppOAuth } from '@/lib/app-handoff'
 import {
   X_AUTH_URL,
   X_SCOPE,
@@ -44,5 +45,6 @@ export async function GET(req: NextRequest) {
   res.cookies.set('cabal_ox_state', state, opts)
   res.cookies.set('cabal_ox_verifier', verifier, opts)
   if (loginMode) res.cookies.set('cabal_ox_mode', 'login', opts)
+  markAppOAuth(req, res)
   return res
 }

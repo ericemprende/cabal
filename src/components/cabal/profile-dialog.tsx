@@ -68,6 +68,7 @@ import { useUI } from '@/lib/store'
 import { OAuthConsentDialog } from '@/components/cabal/oauth-consent-dialog'
 import { PushSettings } from '@/components/cabal/push-settings'
 import { LangSwitch } from '@/components/cabal/lang-switch'
+import { startOAuth } from '@/lib/native-bridge'
 import { useLang, useT } from '@/lib/i18n/provider'
 import { TelegramConnect } from '@/components/cabal/telegram-connect'
 import { DiscordConnect } from '@/components/cabal/discord-connect'
@@ -144,7 +145,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
   /** CTA de conexión: OAuth real si hay credenciales, consentimiento demo (solo en desarrollo) si no. */
   const connect = (provider: 'x' | 'google' | 'discord') => {
     if (authStatus?.[provider]?.configured) {
-      window.location.assign(`/api/auth/${provider}/start`)
+      void startOAuth(provider, 'link')
     } else if (provider !== 'discord' && authStatus?.[provider]?.demo) {
       setConsent(provider)
     }

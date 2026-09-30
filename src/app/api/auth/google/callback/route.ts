@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/api-helpers'
-import { SESSION_COOKIE, createSessionValue, sessionCookieOptions } from '@/lib/auth'
+import { oauthFinish, oauthLinkUserId } from '@/lib/app-handoff'
 import { GOOGLE_TOKEN_URL, GOOGLE_USERINFO_URL, appOrigin, getGoogleConfig } from '@/lib/oauth'
 import { linkProvider, loginOrCreateSocial, SocialError } from '@/lib/social'
 import { cookieDomain } from '@/lib/cookie-domain'
@@ -25,8 +24,8 @@ export async function GET(req: NextRequest) {
   const state = url.searchParams.get('state')
   const savedState = req.cookies.get('cabal_og_state')?.value
 
-  const finish = (query: string) => {
-    const res = NextResponse.redirect(`${origin}/app?connected=google&${query}`)
+  const finish = (query: string, loginUserId?: string) => {
+    const res = oauthFinish(req, origin, 'google', query, loginUserId)
     res.cookies.set('cabal_og_state', '', { path: '/', maxAge: 0, ...cookieDomain() })
     res.cookies.set('cabal_og_mode', '', { path: '/', maxAge: 0, ...cookieDomain() })
     return res
@@ -63,14 +62,14 @@ export async function GET(req: NextRequest) {
     // 3. Login social: entrar/crear cuenta con el email de Google
     if (loginMode) {
       const { user, created } = await loginOrCreateSocial('google', uiJson.email, uiJson.name)
-      const res = finish(created ? 'ok=1&login=1&created=1' : 'ok=1&login=1')
-      res.cookies.set(SESSION_COOKIE, createSessionValue(user.id), sessionCookieOptions())
-      return res
+      return finish(created ? 'ok=1&login=1&created=1' : 'ok=1&login=1', user.id)
     }
 
     // 4. Modo verificación: vincular la cuenta verificada
-    const me = await getCurrentUser()
-    await linkProvider(me.id, 'google', uiJson.email)
+    // Solo una sesión real (o la de la app, vía token): nunca la cuenta demo
+    const meId = await oauthLinkUserId(req)
+    if (!meId) return finish('connect_error=login')
+    await linkProvider(meId, 'google', uiJson.email)
     return finish('ok=1')
   } catch (e) {
     if (e instanceof SocialError) return finish('connect_error=profile')

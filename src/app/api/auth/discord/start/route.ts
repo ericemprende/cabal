@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { markAppOAuth } from '@/lib/app-handoff'
 import {
   DISCORD_AUTH_URL,
   DISCORD_SCOPE,
@@ -38,5 +39,6 @@ export async function GET(req: NextRequest) {
 
   const res = NextResponse.redirect(`${DISCORD_AUTH_URL}?${params.toString()}`)
   res.cookies.set('cabal_dc_state', state, oauthCookieOptions(req))
+  markAppOAuth(req, res)
   return res
 }

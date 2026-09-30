@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { markAppOAuth } from '@/lib/app-handoff'
 import {
   GOOGLE_AUTH_URL,
   GOOGLE_SCOPE,
@@ -39,5 +40,6 @@ export async function GET(req: NextRequest) {
   const res = NextResponse.redirect(`${GOOGLE_AUTH_URL}?${params.toString()}`)
   res.cookies.set('cabal_og_state', state, oauthCookieOptions(req))
   if (loginMode) res.cookies.set('cabal_og_mode', 'login', oauthCookieOptions(req))
+  markAppOAuth(req, res)
   return res
 }

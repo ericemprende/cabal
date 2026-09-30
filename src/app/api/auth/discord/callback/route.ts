@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser } from '@/lib/api-helpers'
+import { oauthFinish, oauthLinkUserId } from '@/lib/app-handoff'
 import { DISCORD_ME_URL, DISCORD_TOKEN_URL, appOrigin, getDiscordConfig } from '@/lib/oauth'
 import { linkProvider, SocialError } from '@/lib/social'
 import { cookieDomain } from '@/lib/cookie-domain'
@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
   const state = url.searchParams.get('state')
   const savedState = req.cookies.get('cabal_dc_state')?.value
 
-  const finish = (query: string) => {
-    const res = NextResponse.redirect(`${origin}/app?connected=discord&${query}`)
+  const finish = (query: string, loginUserId?: string) => {
+    const res = oauthFinish(req, origin, 'discord', query, loginUserId)
     res.cookies.set('cabal_dc_state', '', { path: '/', maxAge: 0, ...cookieDomain() })
     return res
   }
@@ -63,9 +63,11 @@ export async function GET(req: NextRequest) {
     if (!profile.id) return finish('connect_error=profile')
 
     // 3. Vincular al perfil actual y abonar el bonus (una sola vez)
-    const me = await getCurrentUser()
+    // Solo una sesión real (o la de la app, vía token): nunca la cuenta demo
+    const meId = await oauthLinkUserId(req)
+    if (!meId) return finish('connect_error=login')
     await linkProvider(
-      me.id,
+      meId,
       'discord',
       profile.id,
       undefined,

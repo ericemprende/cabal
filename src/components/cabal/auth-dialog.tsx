@@ -14,6 +14,7 @@ import { CabalWordmark } from '@/components/cabal/shared'
 import { OAuthConsentDialog, XLogo, GoogleG } from '@/components/cabal/oauth-consent-dialog'
 import { jsonFetch, useAuthStatus, useLogin, useRegister } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
+import { startOAuth } from '@/lib/native-bridge'
 
 export type AuthMode = 'login' | 'register'
 
@@ -111,7 +112,7 @@ export function AuthDialog() {
   // demo, que el servidor solo admite en desarrollo (en producción el botón no sale)
   const startSocial = (provider: 'x' | 'google') => {
     if (authStatus?.[provider].configured) {
-      window.location.assign(`/api/auth/${provider}/start?mode=login`)
+      void startOAuth(provider, 'login')
     } else if (authStatus?.[provider].demo) {
       setDemoProvider(provider)
     }

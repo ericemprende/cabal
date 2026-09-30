@@ -37,21 +37,32 @@ En Xcode: Signing & Capabilities → tu equipo, y añade **Push Notifications** 
   (3.1.1 y 3.2.2). Lo ya comprado sigue funcionando.
 - Página sin conexión (`www/offline.html`).
 
+- Login y vinculación con X, Google y Discord: se abren en el navegador del
+  sistema (Google bloquea OAuth en WebViews) y vuelven a la app por
+  `army.cabal.app://auth` con un token de un solo uso (`src/lib/app-handoff.ts`,
+  `src/lib/native-bridge.ts`). **Paso obligatorio en Xcode:** registrar el
+  esquema en `ios/App/App/Info.plist`:
+
+  ```xml
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key><string>army.cabal.app</string>
+      <key>CFBundleURLSchemes</key><array><string>army.cabal.app</string></array>
+    </dict>
+  </array>
+  ```
+
 ## Pendiente antes de enviar a revisión
 
-1. **Login con Google dentro de la app.** Google bloquea OAuth en WebViews
-   (`disallowed_useragent`). Hay que abrirlo con `@capacitor/browser`
-   (SFSafariViewController) y devolver la sesión a la app con un token de un
-   solo uso por deep link (`army.cabal.app://auth?t=…` → `/api/auth/app-handoff`).
-   El login con usuario/contraseña ya funciona tal cual.
-2. **Wallets.** En el móvil no hay extensiones: conectar Phantom/Solflare por
+1. **Wallets.** En el móvil no hay extensiones: conectar Phantom/Solflare por
    deep link (protocolo de deeplinks de Phantom). Mientras tanto, el botón de
    compra debería abrir el token en Phantom en vez de firmar dentro de la app
    (además, Apple 3.1.5 pide licencia para intercambiar cripto dentro de la app).
-3. **Push nativo.** Registrar el token APNs (plugin PushNotifications) en una
+2. **Push nativo.** Registrar el token APNs (plugin PushNotifications) en una
    ruta nueva y enviarlo junto a las web-push actuales (clave `.p8` de APNs).
-4. **Funciones nativas visibles** para no caer en la 4.2 (web envuelta): push,
+3. **Funciones nativas visibles** para no caer en la 4.2 (web envuelta): push,
    hoja de compartir nativa y háptica en hype/likes.
-5. **Ficha de la tienda:** capturas, política de privacidad
+4. **Ficha de la tienda:** capturas, política de privacidad
    (`https://cabal.army/privacidad`), etiquetas de privacidad, cuenta de prueba
    para el revisor y nota explicando que no hay intercambio de cripto en la app.
