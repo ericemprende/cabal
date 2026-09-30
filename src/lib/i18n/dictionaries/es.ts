@@ -357,6 +357,9 @@ export const es = {
     passwordChanged: 'Contraseña cambiada · sesión iniciada',
     resend: 'Reenviar código',
     backToLogin: 'Volver a iniciar sesión',
+    twoFactorTitle: 'Verificación en dos pasos',
+    twoFactorLead: (hint: string) => `Te mandamos un código de 6 dígitos a ${hint}. Escríbelo para entrar.`,
+    twoFactorResent: 'Código nuevo enviado',
     noVerifiedEmail: '¿Tu cuenta no tiene correo verificado? Escríbenos por Telegram o Discord y te ayudamos.',
   },
 

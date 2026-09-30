@@ -358,6 +358,9 @@ export const en: Dict = {
     passwordChanged: 'Password changed · signed in',
     resend: 'Resend code',
     backToLogin: 'Back to sign in',
+    twoFactorTitle: 'Two-step verification',
+    twoFactorLead: (hint: string) => `We sent a 6-digit code to ${hint}. Enter it to sign in.`,
+    twoFactorResent: 'New code sent',
     noVerifiedEmail: "No verified email on your account? Message us on Telegram or Discord and we'll help.",
   },
 

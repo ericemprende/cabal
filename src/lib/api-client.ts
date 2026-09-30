@@ -234,11 +234,16 @@ export function useLogin() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: { handle: string; password: string }) =>
-      jsonFetch<{ ok: boolean; user: UserDTO }>('/api/auth/login', {
+      jsonFetch<
+        | { ok: boolean; user: UserDTO; twoFactor?: undefined }
+        | { ok: boolean; twoFactor: true; challengeId: string; emailHint: string }
+      >('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // Con verificación en dos pasos aún no hay sesión: falta el código del correo
+      if (res.twoFactor) return
       qc.invalidateQueries()
       toast.success('Sesión iniciada')
     },

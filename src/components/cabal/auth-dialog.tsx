@@ -40,6 +40,7 @@ export function AuthDialog() {
   const [referralCode, setReferralCode] = useState('')
   const [demoProvider, setDemoProvider] = useState<'x' | 'google' | null>(null)
   const [forgot, setForgot] = useState(false)
+  const [challenge, setChallenge] = useState<{ id: string; hint: string } | null>(null)
 
   // Enlace de invitación (/app?ref=CODIGO): se guarda para prellenar el registro
   // aunque el visitante tarde en abrir el diálogo o recargue la página.
@@ -64,6 +65,7 @@ export function AuthDialog() {
     setAuthOpen(open)
     if (!open) {
       setForgot(false)
+      setChallenge(null)
       setPassword('')
       setHandle('')
       setName('')
@@ -78,7 +80,12 @@ export function AuthDialog() {
       if (!handle.trim() || !password) return
       login.mutate(
         { handle: handle.trim(), password },
-        { onSuccess: () => close(false) }
+        {
+          onSuccess: (res) => {
+            if (res.twoFactor) setChallenge({ id: res.challengeId, hint: res.emailHint })
+            else close(false)
+          },
+        }
       )
     } else {
       if (!handle.trim() || !password || !email.trim()) return
@@ -126,7 +133,14 @@ export function AuthDialog() {
             </DialogDescription>
           </div>
 
-          {forgot ? (
+          {challenge ? (
+            <TwoFactorStep
+              challenge={challenge}
+              onChallenge={setChallenge}
+              onBack={() => setChallenge(null)}
+              onDone={() => close(false)}
+            />
+          ) : forgot ? (
             <ForgotPassword initial={handle} onBack={() => setForgot(false)} onDone={() => close(false)} />
           ) : (
           <>
@@ -460,6 +474,90 @@ function ForgotPassword({ initial, onBack, onDone }: { initial: string; onBack: 
         )}
       </div>
       <p className="text-[10px] leading-relaxed text-muted-foreground/60">{t.auth.noVerifiedEmail}</p>
+    </form>
+  )
+}
+
+/**
+ * Segundo paso del login con verificación en dos pasos: el código que llegó al
+ * correo. "Reenviar" devuelve un reto nuevo, que sustituye al anterior.
+ */
+function TwoFactorStep({
+  challenge,
+  onChallenge,
+  onBack,
+  onDone,
+}: {
+  challenge: { id: string; hint: string }
+  onChallenge: (c: { id: string; hint: string }) => void
+  onBack: () => void
+  onDone: () => void
+}) {
+  const t = useT()
+  const qc = useQueryClient()
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const verify = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (code.length !== 6) return
+    setBusy(true)
+    try {
+      await jsonFetch('/api/auth/2fa', { method: 'POST', body: JSON.stringify({ challengeId: challenge.id, code }) })
+      qc.invalidateQueries()
+      toast.success('Sesión iniciada')
+      onDone()
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const resend = async () => {
+    setBusy(true)
+    try {
+      const res = await jsonFetch<{ challengeId: string; emailHint: string }>('/api/auth/2fa', {
+        method: 'POST',
+        body: JSON.stringify({ challengeId: challenge.id, resend: true }),
+      })
+      onChallenge({ id: res.challengeId, hint: res.emailHint })
+      setCode('')
+      toast.success(t.auth.twoFactorResent)
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={verify} className="mt-5 space-y-3.5" aria-label={t.auth.twoFactorTitle}>
+      <div>
+        <h3 className="text-sm font-bold">{t.auth.twoFactorTitle}</h3>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t.auth.twoFactorLead(challenge.hint)}</p>
+      </div>
+      <Input
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        placeholder="000000"
+        aria-label={t.auth.code}
+        autoFocus
+        className="h-11 border-white/10 bg-[#0a0b08] text-center font-mono text-lg tracking-[0.4em]"
+      />
+      <Button type="submit" disabled={busy || code.length !== 6} className="w-full text-sm font-bold">
+        {busy ? t.auth.connecting : t.auth.login}
+      </Button>
+      <div className="flex items-center justify-between text-[11px]">
+        <button type="button" onClick={onBack} className="flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" aria-hidden /> {t.auth.backToLogin}
+        </button>
+        <button type="button" onClick={() => void resend()} disabled={busy} className="font-semibold text-primary hover:underline">
+          {t.auth.resend}
+        </button>
+      </div>
     </form>
   )
 }
