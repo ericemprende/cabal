@@ -1,0 +1,17 @@
+# Claves de firma: NUNCA al repositorio. Guárdalas con copia de seguridad fuera
+# (si pierdes la de la dApp Store no podrás actualizar la app allí).
+*.keystore
+*.jks
+# Lo que genera Bubblewrap al compilar
+app/
+build/
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+*.apk
+*.aab
+*.idsig
+local.properties
+store_icon.png
+manifest-checksum.txt

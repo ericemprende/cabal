@@ -6,7 +6,8 @@ import { NextResponse, type NextRequest } from 'next/server'
  * redirige al canónico con la misma ruta: cabal.army/app → beta.cabal.army/app.
  *
  * /api queda fuera: los webhooks (Stripe, NOWPayments, Telegram…) no siguen
- * redirecciones y deben seguir funcionando en el dominio viejo.
+ * redirecciones y deben seguir funcionando en el dominio viejo. /.well-known
+ * tampoco: la verificación de la app de Android (assetlinks.json) no las sigue.
  */
 export function proxy(req: NextRequest) {
   const canonical = process.env.CANONICAL_HOST
@@ -23,5 +24,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api/|_next/|uploads/).*)'],
+  matcher: ['/((?!api/|_next/|uploads/|\\.well-known/).*)'],
 }
