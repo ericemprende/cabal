@@ -24,6 +24,7 @@ export const es = {
     retry: 'Reintentar',
     open: 'Abrir',
     free: 'Gratis',
+    iosPurchasesOff: 'Las compras no están disponibles en la app de iOS.',
   },
 
   landing: {
@@ -826,6 +827,13 @@ export const es = {
     referralPoints: 'Puntos por referidos',
     photoUpdated: 'Foto de perfil actualizada',
     photoFailed: 'No se pudo subir la imagen',
+    deleteTitle: 'Borrar mi cuenta',
+    deleteBody: 'Se borran tus datos personales, wallets, conexiones y avisos. Tus publicaciones quedan como “Cuenta eliminada”. No se puede deshacer.',
+    deleteCta: 'Borrar cuenta',
+    deleteConfirm: (h: string) => `Escribe @${h} para confirmar`,
+    deleteFinal: 'Borrar definitivamente',
+    deleteDone: 'Tu cuenta se ha borrado',
+    deleteFailed: 'No se pudo borrar la cuenta',
     reasons: {
       thesis: 'Tesis publicada',
       comment: 'Comentario',

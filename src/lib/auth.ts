@@ -72,11 +72,19 @@ export function readSessionValue(token: string | null | undefined): string | nul
   }
 }
 
-/** Lee el userId de la cookie de sesión (server-side). */
+/**
+ * Lee el userId de la cookie de sesión (server-side). Una cuenta que su dueño
+ * borró no vale aunque la cookie esté bien firmada: la firma no caduca, así
+ * que sin esta comprobación la sesión seguiría viva tras el borrado.
+ */
 export async function sessionUserIdFromCookies(): Promise<string | null> {
   try {
     const store = await cookies()
-    return readSessionValue(store.get(SESSION_COOKIE)?.value)
+    const userId = readSessionValue(store.get(SESSION_COOKIE)?.value)
+    if (!userId) return null
+    const { db } = await import('@/lib/db')
+    const user = await db.user.findUnique({ where: { id: userId }, select: { deletedAt: true } })
+    return user && !user.deletedAt ? userId : null
   } catch {
     return null
   }

@@ -25,6 +25,7 @@ export const pt: Dict = {
     retry: 'Tentar de novo',
     open: 'Abrir',
     free: 'Grátis',
+    iosPurchasesOff: 'As compras não estão disponíveis no app para iOS.',
   },
 
   landing: {
@@ -827,6 +828,13 @@ export const pt: Dict = {
     referralPoints: 'Pontos de indicação',
     photoUpdated: 'Foto de perfil atualizada',
     photoFailed: 'Não foi possível enviar a imagem',
+    deleteTitle: 'Excluir minha conta',
+    deleteBody: 'Seus dados pessoais, wallets, conexões e avisos são apagados. Suas publicações ficam como “Conta excluída”. Não dá para desfazer.',
+    deleteCta: 'Excluir conta',
+    deleteConfirm: (h: string) => `Digite @${h} para confirmar`,
+    deleteFinal: 'Excluir definitivamente',
+    deleteDone: 'Sua conta foi excluída',
+    deleteFailed: 'Não foi possível excluir a conta',
     reasons: {
       thesis: 'Tese publicada',
       comment: 'Comentário',

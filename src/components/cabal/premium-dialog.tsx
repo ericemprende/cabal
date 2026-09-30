@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { usePurchasesAllowed } from '@/lib/use-purchases-allowed'
 import { useLang, useT } from '@/lib/i18n/provider'
 import { useOpenBillingPortal, usePremiumInfo, useSession, useStartPremiumCheckout } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -19,6 +20,7 @@ import type { PremiumPlanDTO } from '@/lib/types'
  * esperar al webhook (ver useConfirmPremiumCheckout en app/page.tsx).
  */
 export function PremiumDialog() {
+  const allowed = usePurchasesAllowed()
   const t = useT()
   const { premiumOpen, setPremiumOpen, openAuth } = useUI()
   const { data: session } = useSession()
@@ -77,6 +79,11 @@ export function PremiumDialog() {
               onManage={() => portal.mutate(window.open('', '_blank'))}
               managing={portal.isPending}
             />
+          ) : !allowed ? (
+            // App de iOS: sin compras fuera de In-App Purchase (App Store 3.1.1)
+            <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-muted-foreground">
+              {t.common.iosPurchasesOff}
+            </p>
           ) : (
             <div className="space-y-4">
               {info.plans.length === 0 && (

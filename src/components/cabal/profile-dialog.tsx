@@ -474,6 +474,7 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
             <div className="space-y-2.5 p-4">
               <SectionTitle>{t.profile.advanced}</SectionTitle>
               <ClaimProjectSection />
+              <DeleteAccountSection handle={me?.handle ?? ''} isAdmin={Boolean(me?.isAdmin)} />
             </div>
           )}
         </div>
@@ -482,6 +483,75 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
       {/* Pantalla de consentimiento simulada (modo demo, sin API keys) */}
       <OAuthConsentDialog provider={consent} appName="Cabal" onOpenChange={(o) => !o && setConsent(null)} />
     </>
+  )
+}
+
+/**
+ * Borrar la cuenta. Lo exigen App Store y Google Play: tiene que poder hacerse
+ * desde la app, sin escribir a soporte. Se confirma escribiendo el @usuario.
+ */
+function DeleteAccountSection({ handle, isAdmin }: { handle: string; isAdmin: boolean }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const [confirm, setConfirm] = useState('')
+  const [busy, setBusy] = useState(false)
+  if (!handle || isAdmin) return null
+
+  const submit = async () => {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/me/account', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || t.profile.deleteFailed)
+      toast.success(t.profile.deleteDone)
+      window.location.href = '/'
+    } catch (e) {
+      toast.error((e as Error).message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-xl border border-red-500/25 bg-red-500/5 p-3">
+      <p className="flex items-center gap-1.5 text-[13px] font-semibold text-red-300">
+        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+        {t.profile.deleteTitle}
+      </p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{t.profile.deleteBody}</p>
+      {!open ? (
+        <Button variant="outline" size="sm" className="mt-2 border-red-500/40 text-red-300" onClick={() => setOpen(true)}>
+          {t.profile.deleteCta}
+        </Button>
+      ) : (
+        <div className="mt-2 space-y-2">
+          <Label htmlFor="delete-confirm" className="text-[11px]">{t.profile.deleteConfirm(handle)}</Label>
+          <Input
+            id="delete-confirm"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder={`@${handle}`}
+            autoComplete="off"
+          />
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setOpen(false)} disabled={busy}>
+              {t.common.cancel}
+            </Button>
+            <Button
+              size="sm"
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={busy || confirm.trim().replace(/^@/, '').toLowerCase() !== handle.toLowerCase()}
+              onClick={submit}
+            >
+              {busy ? t.common.loading : t.profile.deleteFinal}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

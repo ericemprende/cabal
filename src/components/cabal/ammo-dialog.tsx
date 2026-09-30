@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { usePurchasesAllowed } from '@/lib/use-purchases-allowed'
 import { useLang, useT } from '@/lib/i18n/provider'
 import { useAmmoInfo, useBoostScores, useBuyAmmoPack, useFireAmmo, useSession } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
@@ -278,6 +279,7 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
   const t = useT()
   const [chosen, setChosen] = useState<string | null>(null)
   const buy = useBuyAmmoPack()
+  const allowed = usePurchasesAllowed()
 
   // El que más balas por dólar da: se marca para que no haya que hacer cuentas.
   const bestKey = useMemo(() => {
@@ -286,10 +288,12 @@ function PackGrid({ packs, hasTarget }: { packs: AmmoPackDTO[]; hasTarget: boole
     return best?.key ?? null
   }, [packs])
 
-  if (packs.length === 0) {
+  // En la app de iOS no se venden cargadores (App Store 3.1.1): se ven y se
+  // disparan las balas que ya se tengan, pero no se compran.
+  if (packs.length === 0 || !allowed) {
     return (
       <p className="rounded-xl border border-dashed border-white/10 p-4 text-center text-sm text-muted-foreground">
-        {t.arsenal.noPacks}
+        {packs.length === 0 ? t.arsenal.noPacks : t.common.iosPurchasesOff}
       </p>
     )
   }

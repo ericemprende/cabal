@@ -1,4 +1,5 @@
 import { headers } from 'next/headers'
+import { blockIosAppPurchase } from '@/lib/native-app'
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { sessionUserIdFromCookies } from '@/lib/auth'
@@ -59,6 +60,8 @@ export async function GET() {
  * tiene sigue teniendo el widget del diálogo, que cobra igual pero no puntúa.
  */
 export async function POST(req: Request) {
+  const blocked = blockIosAppPurchase(req)
+  if (blocked) return blocked
   try {
     const userId = await sessionUserIdFromCookies().catch(() => null)
     if (!userId) {

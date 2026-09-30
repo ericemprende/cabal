@@ -87,6 +87,7 @@ model User {
   // Última vez que se le vio con la sesión abierta (se refresca como mucho cada
   // 5 min, ver touchLastSeen). null = nunca entró desde que existe el campo.
   lastSeenAt        DateTime?
+  deletedAt         DateTime? // cuenta borrada por su dueño: datos personales anonimizados y sesión inválida
   posts             Post[]
   launches          Launch[]
   pumpCoins         PumpCoin[]

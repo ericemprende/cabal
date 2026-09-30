@@ -1,0 +1,8 @@
+node_modules/
+# ios/ se genera con `npm run ios:add`; se versiona cuando se personalice
+# (iconos, Info.plist, entitlements). Lo que nunca va al repo:
+ios/App/Pods/
+ios/App/build/
+*.p12
+*.mobileprovision
+*.p8

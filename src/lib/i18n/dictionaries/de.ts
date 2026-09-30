@@ -24,6 +24,7 @@ export const de: Dict = {
     retry: 'Nochmal versuchen',
     open: 'Öffnen',
     free: 'Kostenlos',
+    iosPurchasesOff: 'Käufe sind in der iOS-App nicht verfügbar.',
   },
 
   landing: {
@@ -826,6 +827,13 @@ export const de: Dict = {
     referralPoints: 'Empfehlungspunkte',
     photoUpdated: 'Profilbild aktualisiert',
     photoFailed: 'Bild konnte nicht hochgeladen werden',
+    deleteTitle: 'Mein Konto löschen',
+    deleteBody: 'Deine persönlichen Daten, Wallets, Verbindungen und Hinweise werden gelöscht. Deine Beiträge bleiben als „Gelöschtes Konto“. Das lässt sich nicht rückgängig machen.',
+    deleteCta: 'Konto löschen',
+    deleteConfirm: (h: string) => `Tippe @${h} zur Bestätigung`,
+    deleteFinal: 'Endgültig löschen',
+    deleteDone: 'Dein Konto wurde gelöscht',
+    deleteFailed: 'Das Konto konnte nicht gelöscht werden',
     reasons: {
       thesis: 'These gepostet',
       comment: 'Kommentar',

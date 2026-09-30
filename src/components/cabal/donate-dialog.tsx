@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { useUI } from '@/lib/store'
 import { jsonFetch } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
+import { purchasesAllowed } from '@/lib/native-app'
+import { usePurchasesAllowed } from '@/lib/use-purchases-allowed'
 import { useT } from '@/lib/i18n/provider'
 import { fmtUsd, type DonateConfigDTO } from '@/lib/donate'
 
@@ -63,6 +65,9 @@ function markSeen() {
 export function DonateButton({ className }: { className?: string }) {
   const t = useT()
   const setDonateOpen = useUI((s) => s.setDonateOpen)
+  const allowed = usePurchasesAllowed()
+  // App Store 3.2.2: solo las ONG aprobadas pueden pedir donaciones en iOS.
+  if (!allowed) return null
   return (
     <Button
       variant="donar"
@@ -89,8 +94,10 @@ export function DonateButton({ className }: { className?: string }) {
 export function DonateDialog() {
   const t = useT()
   const { donateOpen, setDonateOpen } = useUI()
+  const allowed = usePurchasesAllowed()
 
   useEffect(() => {
+    if (!purchasesAllowed()) return
     const seen = readSeen()
     // Primera visita: guardamos la marca y no molestamos.
     if (seen === null) {
@@ -113,6 +120,7 @@ export function DonateDialog() {
     return () => clearTimeout(t)
   }, [])
 
+  if (!allowed) return null
   return (
     /* El diálogo tiene que caber en pantalla: si el botón «Continue» del widget
        queda por debajo del borde de la ventana y hay que arrastrar para llegar,

@@ -25,6 +25,7 @@ export const en: Dict = {
     retry: 'Try again',
     open: 'Open',
     free: 'Free',
+    iosPurchasesOff: 'Purchases are not available in the iOS app.',
   },
 
   landing: {
@@ -827,6 +828,13 @@ export const en: Dict = {
     referralPoints: 'Referral points',
     photoUpdated: 'Profile picture updated',
     photoFailed: 'Could not upload the image',
+    deleteTitle: 'Delete my account',
+    deleteBody: 'Your personal data, wallets, connections and alerts are removed. Your posts stay as “Deleted account”. This cannot be undone.',
+    deleteCta: 'Delete account',
+    deleteConfirm: (h: string) => `Type @${h} to confirm`,
+    deleteFinal: 'Delete permanently',
+    deleteDone: 'Your account has been deleted',
+    deleteFailed: 'We could not delete the account',
     reasons: {
       thesis: 'Thesis posted',
       comment: 'Comment',

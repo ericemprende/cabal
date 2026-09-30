@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { blockIosAppPurchase } from '@/lib/native-app'
 import { db } from '@/lib/db'
 import { appOrigin } from '@/lib/oauth'
 import { rateLimit, tooManyRequests } from '@/lib/rate-limit'
@@ -14,6 +15,8 @@ import { createNowInvoice, nowpaymentsConfigured } from '@/lib/nowpayments'
  * El acceso se activa cuando llega la confirmación del proveedor (webhook).
  */
 export async function POST(req: Request) {
+  const blocked = blockIosAppPurchase(req)
+  if (blocked) return blocked
   try {
     const viewer = await getViewer(req)
     if (!viewer.userId) {
