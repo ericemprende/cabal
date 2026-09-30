@@ -40,7 +40,14 @@ export function emailConfig(): { provider: EmailProvider; key: string; from: Sen
   return null
 }
 
-export type EmailMessage = { to: string; subject: string; html: string; text: string }
+export type EmailMessage = {
+  to: string
+  subject: string
+  html: string
+  text: string
+  /** Cabeceras extra (p. ej. List-Unsubscribe en los correos masivos). */
+  headers?: Record<string, string>
+}
 
 export async function sendEmail(msg: EmailMessage): Promise<void> {
   const cfg = emailConfig()
@@ -63,6 +70,7 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
             subject: msg.subject,
             htmlContent: msg.html,
             textContent: msg.text,
+            ...(msg.headers ? { headers: msg.headers } : {}),
           }),
           signal: AbortSignal.timeout(15_000),
         })
@@ -75,6 +83,7 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
             subject: msg.subject,
             html: msg.html,
             text: msg.text,
+            ...(msg.headers ? { headers: msg.headers } : {}),
           }),
           signal: AbortSignal.timeout(15_000),
         })
@@ -87,7 +96,7 @@ export async function sendEmail(msg: EmailMessage): Promise<void> {
 
 // ---------- Plantillas ----------
 
-export type CodePurpose = 'verify_email' | 'login' | 'two_factor'
+export type CodePurpose = 'verify_email' | 'login' | 'two_factor' | 'reset_password'
 
 const COPY: Record<CodePurpose, { subject: string; intro: string; outro: string }> = {
   verify_email: {
@@ -104,6 +113,11 @@ const COPY: Record<CodePurpose, { subject: string; intro: string; outro: string 
     subject: 'Tu código de seguridad · Cabal',
     intro: 'Usa este código para cambiar la verificación en dos pasos de tu cuenta de Cabal:',
     outro: 'Si no has sido tú, ignora este mensaje y revisa tu cuenta.',
+  },
+  reset_password: {
+    subject: 'Tu código para cambiar la contraseña · Cabal',
+    intro: 'Alguien pidió cambiar la contraseña de tu cuenta de Cabal. Si eres tú, usa este código:',
+    outro: 'Si no has sido tú, ignora este mensaje: tu contraseña sigue igual y nadie puede cambiarla sin este código.',
   },
 }
 
@@ -175,6 +189,87 @@ export function launchReminderEmail(
   </div>
 </body></html>`
   return { subject, html, text }
+}
+
+/** Escapa texto para meterlo en el HTML de un correo. */
+function esc(v: string): string {
+  return v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+/** Marco común de los correos: tarjeta oscura con la cabecera verde de Cabal. */
+function frame(opts: { kicker: string; body: string; footer: string }): string {
+  return `<!doctype html>
+<html lang="es"><body style="margin:0;padding:24px;background:#0a0b08;font-family:Arial,Helvetica,sans-serif;color:#e8ebe2">
+  <div style="max-width:480px;margin:0 auto;background:#121410;border:1px solid #2a2e24;border-radius:16px;padding:28px">
+    <p style="margin:0 0 18px;font-size:13px;font-weight:bold;letter-spacing:2px;color:#8FA83F">${opts.kicker}</p>
+    ${opts.body}
+    <p style="margin:22px 0 0;font-size:11px;line-height:1.5;color:#7c8272">${opts.footer}</p>
+  </div>
+</body></html>`
+}
+
+function button(href: string, label: string): string {
+  return `<a href="${esc(href)}" style="display:inline-block;background:#8FA83F;color:#0a0b08;font-weight:bold;text-decoration:none;padding:10px 18px;border-radius:10px;font-size:14px">${label}</a>`
+}
+
+function para(text: string): string {
+  return `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${text}</p>`
+}
+
+/** Aviso de seguridad: la contraseña de la cuenta acaba de cambiar. */
+export function passwordChangedEmail(handle: string, appUrl: string): { subject: string; html: string; text: string } {
+  const subject = 'Tu contraseña de Cabal ha cambiado'
+  const intro = `La contraseña de tu cuenta @${handle} se acaba de cambiar.`
+  const warn = 'Si has sido tú, no tienes que hacer nada. Si no, entra en Cabal y usa "¿Olvidaste tu contraseña?" para recuperarla cuanto antes.'
+  const text = `${intro}\n\n${warn}\n\n${appUrl}\n\n— Cabal · cabal.army`
+  const html = frame({
+    kicker: 'CABAL · SEGURIDAD',
+    body: para(esc(intro)) + para(esc(warn)) + button(appUrl, 'Ir a Cabal →'),
+    footer: 'Este aviso se envía siempre que cambia la contraseña, para que nadie lo haga sin que te enteres.',
+  })
+  return { subject, html, text }
+}
+
+/** Bienvenida: se manda una vez, al verificar el correo por primera vez. */
+export function welcomeEmail(name: string, appUrl: string): { subject: string; html: string; text: string } {
+  const subject = 'Bienvenido al Cabal 🐺'
+  const lines = [
+    `Hola ${name}, tu correo ya está verificado y tu cuenta protegida.`,
+    'Lo que puedes hacer desde ya: dar hype a los launches que te gusten, publicar tus calls y tesis, y activar la campanita para que te avisemos antes de que salga un proyecto.',
+    'Cada acción suma puntos para el airdrop. Si invitas a alguien con tu código, también sumas por su actividad.',
+  ]
+  const text = `${lines.join('\n\n')}\n\n${appUrl}\n\n— Cabal · cabal.army`
+  const html = frame({
+    kicker: 'CABAL · BIENVENIDA',
+    body: lines.map((l) => para(esc(l))).join('') + button(appUrl, 'Entrar en Cabal →'),
+    footer: 'Te escribimos solo para lo importante: seguridad de tu cuenta, avisos que actives y grandes novedades del proyecto.',
+  })
+  return { subject, html, text }
+}
+
+/**
+ * Anuncio masivo (p. ej. el lanzamiento oficial). El texto lo escribe el admin:
+ * los párrafos se separan con una línea en blanco. Lleva siempre el enlace de baja.
+ */
+export function announcementEmail(opts: {
+  subject: string
+  body: string
+  ctaLabel: string
+  ctaUrl: string
+  unsubscribeUrl: string
+}): { subject: string; html: string; text: string } {
+  const paragraphs = opts.body
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+  const text = `${paragraphs.join('\n\n')}\n\n${opts.ctaLabel}: ${opts.ctaUrl}\n\n— Cabal · cabal.army\nDarte de baja de estas novedades: ${opts.unsubscribeUrl}`
+  const html = frame({
+    kicker: 'CABAL',
+    body:
+      paragraphs.map((p) => para(esc(p).replace(/\n/g, '<br>'))).join('') + button(opts.ctaUrl, `${esc(opts.ctaLabel)} →`),
+    footer: `Recibes esto porque tienes cuenta en Cabal o te apuntaste a la whitelist. <a href="${esc(opts.unsubscribeUrl)}" style="color:#9aa08e">Darme de baja de las novedades</a> (los avisos de seguridad seguirán llegando).`,
+  })
+  return { subject: opts.subject, html, text }
 }
 
 /** "e••••@gmail.com": para decir a dónde se mandó el código sin revelarlo entero. */

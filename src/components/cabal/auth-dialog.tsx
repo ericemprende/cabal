@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { AtSign, Gift, KeyRound, LogIn, Mail, UserPlus } from 'lucide-react'
+import { ArrowLeft, AtSign, Gift, KeyRound, LogIn, Mail, UserPlus } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -10,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/provider'
 import { CabalWordmark } from '@/components/cabal/shared'
 import { OAuthConsentDialog, XLogo, GoogleG } from '@/components/cabal/oauth-consent-dialog'
-import { useAuthStatus, useLogin, useRegister } from '@/lib/api-client'
+import { jsonFetch, useAuthStatus, useLogin, useRegister } from '@/lib/api-client'
 import { useUI } from '@/lib/store'
 
 export type AuthMode = 'login' | 'register'
@@ -37,6 +39,7 @@ export function AuthDialog() {
   const [password, setPassword] = useState('')
   const [referralCode, setReferralCode] = useState('')
   const [demoProvider, setDemoProvider] = useState<'x' | 'google' | null>(null)
+  const [forgot, setForgot] = useState(false)
 
   // Enlace de invitación (/app?ref=CODIGO): se guarda para prellenar el registro
   // aunque el visitante tarde en abrir el diálogo o recargue la página.
@@ -60,6 +63,7 @@ export function AuthDialog() {
   const close = (open: boolean) => {
     setAuthOpen(open)
     if (!open) {
+      setForgot(false)
       setPassword('')
       setHandle('')
       setName('')
@@ -122,6 +126,10 @@ export function AuthDialog() {
             </DialogDescription>
           </div>
 
+          {forgot ? (
+            <ForgotPassword initial={handle} onBack={() => setForgot(false)} onDone={() => close(false)} />
+          ) : (
+          <>
           {/* Tabs */}
           <div className="mt-5 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-[#0a0b08] p-1">
             {(
@@ -275,6 +283,15 @@ export function AuthDialog() {
               {!isLogin && (
                 <p className="text-[10px] text-muted-foreground/70">{t.auth.passwordHint}</p>
               )}
+              {isLogin && (
+                <button
+                  type="button"
+                  onClick={() => setForgot(true)}
+                  className="text-[11px] font-semibold text-muted-foreground hover:text-primary hover:underline"
+                >
+                  {t.auth.forgot}
+                </button>
+              )}
             </div>
 
             <Button
@@ -303,6 +320,8 @@ export function AuthDialog() {
               </>
             )}
           </p>
+          </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -315,5 +334,132 @@ export function AuthDialog() {
       onOpenChange={(o) => !o && setDemoProvider(null)}
     />
     </>
+  )
+}
+
+/**
+ * Recuperar la contraseña en dos pasos: pedir un código al correo verificado
+ * (usuario o correo) y, con el código, poner una contraseña nueva. Al acabar
+ * queda la sesión iniciada.
+ */
+function ForgotPassword({ initial, onBack, onDone }: { initial: string; onBack: () => void; onDone: () => void }) {
+  const t = useT()
+  const qc = useQueryClient()
+  const [identifier, setIdentifier] = useState(initial)
+  const [sent, setSent] = useState(false)
+  const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const request = async () => {
+    if (!identifier.trim()) return
+    setBusy(true)
+    try {
+      await jsonFetch('/api/auth/password/forgot', { method: 'POST', body: JSON.stringify({ identifier: identifier.trim() }) })
+      setSent(true)
+      toast.success(t.auth.codeSent)
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const reset = async () => {
+    setBusy(true)
+    try {
+      await jsonFetch('/api/auth/password/reset', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: identifier.trim(), code, password }),
+      })
+      qc.invalidateQueries()
+      toast.success(t.auth.passwordChanged)
+      onDone()
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (sent) void reset()
+    else void request()
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-5 space-y-3.5" aria-label={t.auth.forgotTitle}>
+      <div>
+        <h3 className="text-sm font-bold">{t.auth.forgotTitle}</h3>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{sent ? t.auth.codeSent : t.auth.forgotLead}</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="forgot-id" className="text-xs text-muted-foreground">{t.auth.identifier}</Label>
+        <Input
+          id="forgot-id"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          autoComplete="username"
+          disabled={sent}
+          className="h-10 border-white/10 bg-[#0a0b08] text-base sm:text-sm"
+          required
+        />
+      </div>
+
+      {sent && (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor="forgot-code" className="text-xs text-muted-foreground">{t.auth.code}</Label>
+            <Input
+              id="forgot-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="000000"
+              className="h-10 border-white/10 bg-[#0a0b08] text-center font-mono text-lg tracking-[0.4em]"
+              required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="forgot-pass" className="text-xs text-muted-foreground">{t.auth.newPassword}</Label>
+            <Input
+              id="forgot-pass"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={6}
+              placeholder="••••••••"
+              className="h-10 border-white/10 bg-[#0a0b08] text-base sm:text-sm"
+              required
+            />
+            <p className="text-[10px] text-muted-foreground/70">{t.auth.passwordHint}</p>
+          </div>
+        </>
+      )}
+
+      <Button
+        type="submit"
+        disabled={busy || !identifier.trim() || (sent && (code.length !== 6 || password.length < 6))}
+        className="w-full text-sm font-bold"
+      >
+        {busy ? t.auth.connecting : sent ? t.auth.changePassword : t.auth.sendCode}
+      </Button>
+
+      <div className="flex items-center justify-between text-[11px]">
+        <button type="button" onClick={onBack} className="flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3 w-3" aria-hidden /> {t.auth.backToLogin}
+        </button>
+        {sent && (
+          <button type="button" onClick={() => void request()} disabled={busy} className="font-semibold text-primary hover:underline">
+            {t.auth.resend}
+          </button>
+        )}
+      </div>
+      <p className="text-[10px] leading-relaxed text-muted-foreground/60">{t.auth.noVerifiedEmail}</p>
+    </form>
   )
 }

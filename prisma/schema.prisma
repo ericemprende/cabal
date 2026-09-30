@@ -317,7 +317,7 @@ model EmailCode {
   id         String    @id @default(cuid())
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purpose    String // verify_email | login | two_factor
+  purpose    String // verify_email | login | two_factor | reset_password
   email      String
   codeHash   String
   attempts   Int       @default(0)
@@ -934,4 +934,25 @@ model BotCommandLog {
 
   @@index([createdAt])
   @@index([provider, createdAt])
+}
+
+// Correos que pidieron no recibir novedades (anuncios masivos). Va por correo y
+// no por cuenta porque el anuncio también llega a la whitelist, que puede no
+// tener cuenta. Los correos de seguridad (códigos, cambio de contraseña) se
+// mandan igual: no son publicidad.
+model EmailOptOut {
+  email     String   @id
+  createdAt DateTime @default(now())
+}
+
+// Un correo ya recibió el anuncio `key` (p. ej. "launch-oficial"). Permite
+// mandarlo por tandas: con el tope diario del plan gratis de Resend, el envío
+// se corta y al día siguiente sigue por donde iba sin repetir a nadie.
+model EmailBroadcastSend {
+  id     String   @id @default(cuid())
+  key    String
+  email  String
+  sentAt DateTime @default(now())
+
+  @@unique([key, email])
 }

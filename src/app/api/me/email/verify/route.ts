@@ -4,6 +4,8 @@ import { sessionUserIdFromCookies } from '@/lib/auth'
 import { toUserDTO } from '@/lib/serializers'
 import { checkCode, emailTakenByOther } from '@/lib/email-codes'
 import { queueGhlSync } from '@/lib/ghl'
+import { sendEmail, welcomeEmail } from '@/lib/email'
+import { siteUrl } from '@/lib/waitlist'
 
 /** POST /api/me/email/verify — { code } confirma el correo al que se mandó el último código. */
 export async function POST(req: Request) {
@@ -19,11 +21,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Ese correo ya lo verificó otra cuenta' }, { status: 409 })
     }
 
+    const before = await db.user.findUnique({ where: { id: userId }, select: { emailVerified: true } })
     const user = await db.user.update({
       where: { id: userId },
       data: { email: result.email, emailVerified: true },
     })
     queueGhlSync(userId)
+    // Bienvenida solo la primera vez que verifica un correo (no al cambiarlo)
+    if (!before?.emailVerified) {
+      sendEmail({ to: result.email, ...welcomeEmail(user.name, `${siteUrl()}/app`) }).catch((e) =>
+        console.warn('[email/verify] no se pudo mandar la bienvenida:', (e as Error).message)
+      )
+    }
     return NextResponse.json({ ok: true, user: toUserDTO(user) })
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 })

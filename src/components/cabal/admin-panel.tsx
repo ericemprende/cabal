@@ -19,6 +19,7 @@ import {
   Heart,
   LifeBuoy,
   Link2,
+  Mail,
   MessageCircle,
   MessageSquareWarning,
   Megaphone,
@@ -64,6 +65,7 @@ import { CopyCA, PointsPill, TokenGlyph, UserAvatar, NetworkIcon, TimezoneHint }
 import { ImageDrop } from '@/components/cabal/image-drop'
 import { AdminUsers } from '@/components/cabal/admin-users'
 import { AdminNotify } from '@/components/cabal/admin-notify'
+import { AdminEmail } from '@/components/cabal/admin-email'
 import { AdminChatAnnounce } from '@/components/cabal/admin-chat-announce'
 import { AdminGuide } from '@/components/cabal/admin-guide'
 import { AdminPublish } from '@/components/cabal/admin-publish'
@@ -261,6 +263,7 @@ type AdminView =
   | 'moderacion'
   | 'stats'
   | 'salud'
+  | 'correos'
 
 function toInputDateTime(iso: string): string {
   const d = new Date(iso)
@@ -371,6 +374,7 @@ export function AdminPanel({
     { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
     { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
     { key: 'notificaciones', label: 'Telegram y Discord', icon: Send },
+    { key: 'correos', label: 'Correos y anuncios', icon: Mail },
     { key: 'chat', label: 'Aviso del chat en vivo', icon: MessageCircle },
     { key: 'guia', label: 'Radio Cabal (asistente)', icon: LifeBuoy },
     { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
@@ -549,6 +553,8 @@ export function AdminPanel({
             </Button>
           </div>
         )}
+
+        {view === 'correos' && <AdminEmail />}
 
         {view === 'salud' && (
           <div className="space-y-8">
