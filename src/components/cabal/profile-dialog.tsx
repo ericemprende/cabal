@@ -27,6 +27,7 @@ import {
   Send,
   ShieldCheck,
   Trash2,
+  UserRound,
   TrendingUp,
   Users,
   Wallet,
@@ -95,17 +96,33 @@ const REASON_META: Record<string, { icon: typeof Zap }> = {
   share_donation: { icon: Send },
 }
 
+type ProfileTab = 'profile' | 'points' | 'alerts' | 'connections' | 'wallets' | 'advanced'
+
+const TABS: { id: ProfileTab; icon: typeof Zap }[] = [
+  { id: 'profile', icon: UserRound },
+  { id: 'points', icon: Zap },
+  { id: 'alerts', icon: Bell },
+  { id: 'connections', icon: AtSign },
+  { id: 'wallets', icon: Wallet },
+  { id: 'advanced', icon: KeyRound },
+]
+
 export function ProfileDialog() {
   const { profileOpen, setProfileOpen } = useUI()
   const { data: me } = useMe()
 
   return (
     <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
-      <DialogContent className="max-h-[88dvh] grid-cols-[minmax(0,1fr)] overflow-y-auto border-white/10 bg-[#121410] p-0 sm:max-w-lg" aria-describedby={undefined}>
+      <DialogContent className="flex h-[88dvh] flex-col gap-0 overflow-hidden border-white/10 bg-[#121410] p-0 sm:max-w-3xl" aria-describedby={undefined}>
         {me && <ProfileContent me={me} />}
       </DialogContent>
     </Dialog>
   )
+}
+
+/** Título de bloque dentro de una pestaña. */
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{children}</p>
 }
 
 function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data']> }) {
@@ -118,6 +135,8 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
   // "+N" sale de la regla vigente y no de un número escrito aquí.
   const rules = usePointRules()
   const [consent, setConsent] = useState<'x' | 'google' | null>(null)
+  const [tab, setTab] = useState<ProfileTab>('profile')
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [name, setName] = useState(me.name)
   const [bio, setBio] = useState(me.bio ?? '')
   const [avatar, setAvatar] = useState(me.avatar)
@@ -140,277 +159,325 @@ function ProfileContent({ me }: { me: NonNullable<ReturnType<typeof useMe>['data
     setProfileOpen(false)
   }
 
+  const events = me?.pointEvents ?? []
+
   return (
     <>
-        <div className="relative overflow-hidden border-b border-white/10 p-5">
-          <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#8FA83F]/8 blur-3xl" />
-          <div className="relative flex items-start gap-4">
-            <UserAvatar
-              name={me?.name}
-              handle={me?.handle}
-              src={avatar}
-              size="xl"
-              verified={me?.walletVerified} official={me?.verified}
-              premium={me?.premium.active}
-            />
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="font-display flex items-center gap-1.5 truncate text-xl font-bold">
-                {me?.name}
-                {me?.premium.active && <PremiumPill />}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground">@{me?.handle}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <PointsPill points={me?.points ?? 0} />
-                <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-muted-foreground">
-                  Rank #{me?.pointsRank} por puntos
+      {/* Cabecera fija: identidad, puntos e insignias */}
+      <div className="relative shrink-0 overflow-hidden border-b border-white/10 p-4 pr-12">
+        <div className="pointer-events-none absolute -right-12 -top-16 h-44 w-44 rounded-full bg-[#8FA83F]/8 blur-3xl" />
+        <div className="relative flex items-start gap-4">
+          <UserAvatar
+            name={me?.name}
+            handle={me?.handle}
+            src={avatar}
+            size="xl"
+            verified={me?.walletVerified} official={me?.verified}
+            premium={me?.premium.active}
+          />
+          <div className="min-w-0 flex-1">
+            <DialogTitle className="font-display flex items-center gap-1.5 truncate text-xl font-bold">
+              {me?.name}
+              {me?.premium.active && <PremiumPill />}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">@{me?.handle}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <PointsPill points={me?.points ?? 0} />
+              <span className="rounded-full border border-white/10 px-2 py-0.5 text-[11px] text-muted-foreground">
+                Rank #{me?.pointsRank} por puntos
+              </span>
+              {me?.isDev && (
+                <span className="flex items-center gap-1 rounded-full border border-[#8FA83F]/30 bg-[#8FA83F]/10 px-2 py-0.5 text-[11px] font-bold text-primary">
+                  <ShieldCheck className="h-3 w-3" aria-hidden /> DEV
                 </span>
-                {me?.isDev && (
-                  <span className="flex items-center gap-1 rounded-full border border-[#8FA83F]/30 bg-[#8FA83F]/10 px-2 py-0.5 text-[11px] font-bold text-primary">
-                    <ShieldCheck className="h-3 w-3" aria-hidden /> DEV
-                  </span>
-                )}
-                {me?.isAdmin && (
-                  <span className="rounded-full bg-[#8FA83F]/12 px-2 py-0.5 text-[11px] font-bold text-primary">ADMIN</span>
-                )}
-              </div>
-              {me && <BadgesRow badges={me.badges} next={me.nextBadges} className="mt-2.5" />}
+              )}
+              {me?.isAdmin && (
+                <span className="rounded-full bg-[#8FA83F]/12 px-2 py-0.5 text-[11px] font-bold text-primary">ADMIN</span>
+              )}
             </div>
+            {me && <BadgesRow badges={me.badges} next={me.nextBadges} className="mt-2.5" />}
           </div>
+        </div>
+      </div>
 
-          {/* Premium: pasar a Pro o gestionar la suscripción activa */}
-          <button
-            type="button"
-            onClick={() => setPremiumOpen(true)}
-            className={cn(
-              'relative mt-4 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
-              me?.premium.active
-                ? 'border-amber-400/25 bg-amber-400/5 hover:border-amber-400/40'
-                : 'border-amber-400/30 bg-gradient-to-br from-amber-400/10 to-transparent hover:border-amber-400/50'
-            )}
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10">
-              <Crown className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-bold text-amber-200">
-                {me?.premium.active ? t.profile.premiumOn : t.profile.premiumOff}
-              </span>
-              <span className="block text-[11px] text-muted-foreground">
-                {me?.premium.active
-                  ? me.premium.until
-                    ? t.profile.activeUntil(
-                        new Date(me.premium.until).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' })
-                      )
-                    : t.profile.noExpiry
-                  : t.profile.premiumPitch}
-              </span>
-            </span>
-            <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground" aria-hidden />
-          </button>
+      <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+        {/* Navegación: columna lateral en escritorio, fila deslizable en móvil */}
+        <nav
+          role="tablist"
+          className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/10 p-2 sm:w-48 sm:flex-col sm:overflow-visible sm:border-b-0 sm:border-r"
+        >
+          {TABS.map(({ id, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={cn(
+                'flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-semibold transition-colors',
+                tab === id ? 'bg-[#8FA83F]/12 text-primary' : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
+              {t.profile.tabs[id]}
+            </button>
+          ))}
+        </nav>
 
-          {/* Verificación oficial del perfil: perk Premium con revisión del admin */}
-          {me && (
-            <div className="mt-2.5">
-              <VerifyRequestRow kind="user" verified={me.verified} />
+        <div role="tabpanel" className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+          {tab === 'profile' && (
+            <div className="space-y-5 p-4">
+              {/* Editar perfil: lo primero, que es para lo que se abre la ventana */}
+              <div className="space-y-3.5">
+                <SectionTitle>{t.profile.editProfile}</SectionTitle>
+                <AvatarEditor
+                  avatar={avatar}
+                  name={me.name}
+                  onApply={(url) => {
+                    setAvatar(url)
+                    updateMe.mutate({ avatar: url })
+                  }}
+                  busy={updateMe.isPending}
+                />
+                <div className="space-y-1.5">
+                  <Label htmlFor="pf-name" className="text-xs text-muted-foreground">{t.profile.name}</Label>
+                  <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} className="h-9 bg-[#0a0b08]" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pf-bio" className="text-xs text-muted-foreground">Bio</Label>
+                  <Textarea id="pf-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[56px] resize-none bg-[#0a0b08]" />
+                </div>
+                <Button onClick={save} disabled={updateMe.isPending} className="w-full font-bold">
+                  {updateMe.isPending ? t.profile.savingProfile : t.profile.saveProfile}
+                </Button>
+              </div>
+
+              {/* Premium: pasar a Pro o gestionar la suscripción activa */}
+              <div className="space-y-2.5">
+                <SectionTitle>Premium</SectionTitle>
+                <button
+                  type="button"
+                  onClick={() => setPremiumOpen(true)}
+                  className={cn(
+                    'relative flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors',
+                    me?.premium.active
+                      ? 'border-amber-400/25 bg-amber-400/5 hover:border-amber-400/40'
+                      : 'border-amber-400/30 bg-gradient-to-br from-amber-400/10 to-transparent hover:border-amber-400/50'
+                  )}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/10">
+                    <Crown className="h-4 w-4 fill-amber-300 text-amber-300" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13px] font-bold text-amber-200">
+                      {me?.premium.active ? t.profile.premiumOn : t.profile.premiumOff}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {me?.premium.active
+                        ? me.premium.until
+                          ? t.profile.activeUntil(
+                              new Date(me.premium.until).toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' })
+                            )
+                          : t.profile.noExpiry
+                        : t.profile.premiumPitch}
+                    </span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground" aria-hidden />
+                </button>
+
+                {/* Verificación oficial del perfil: perk Premium con revisión del admin */}
+                {me && <VerifyRequestRow kind="user" verified={me.verified} />}
+              </div>
+
+              {/* Preferencias: idioma y visibilidad del track record */}
+              <div className="space-y-2.5">
+                <SectionTitle>{t.profile.preferences}</SectionTitle>
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
+                  <Languages className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">{t.lang.label}</p>
+                    <p className="text-[11px] text-muted-foreground">{t.lang.hint}</p>
+                  </div>
+                  <LangSwitch size="md" className="shrink-0" />
+                </div>
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
+                  <LineChart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">{t.profile.trackRecord}</p>
+                    <p className="text-[11px] text-muted-foreground">{t.profile.trackRecordBody}</p>
+                  </div>
+                  <Switch
+                    checked={me?.showTrackRecord ?? false}
+                    disabled={updateMe.isPending}
+                    onCheckedChange={(v) => updateMe.mutate({ showTrackRecord: v })}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
-          {/* Avisos de lanzamientos por correo (10 y 5 min antes): perk Premium, requiere correo verificado */}
-          <div className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
-            <Bell className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold">{t.profile.emailAlerts}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {t.profile.emailAlertsBody}
-                {!(me?.premium.active && me?.emailVerified) && t.profile.emailAlertsNeedsPremium}
-              </p>
-            </div>
-            <Switch
-              checked={me?.notifyEmail ?? true}
-              disabled={!(me?.premium.active && me?.emailVerified) || updateMe.isPending}
-              onCheckedChange={(v) => updateMe.mutate({ notifyEmail: v })}
-            />
-          </div>
-
-          {/* Track record público: las operaciones hechas desde Cabal con sus wallets */}
-          <div className="mt-2.5 flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
-            <LineChart className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold">{t.profile.trackRecord}</p>
-              <p className="text-[11px] text-muted-foreground">{t.profile.trackRecordBody}</p>
-            </div>
-            <Switch
-              checked={me?.showTrackRecord ?? false}
-              disabled={updateMe.isPending}
-              onCheckedChange={(v) => updateMe.mutate({ showTrackRecord: v })}
-            />
-          </div>
-        </div>
-
-        {/* Idioma de la plataforma: lo primero de los ajustes, porque de él
-            depende entender todo lo demás. */}
-        <div className="flex items-center gap-3 border-b border-white/10 p-4">
-          <Languages className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold">{t.lang.label}</p>
-            <p className="text-[11px] text-muted-foreground">{t.lang.hint}</p>
-          </div>
-          <LangSwitch size="md" className="shrink-0" />
-        </div>
-
-        {/* Avisos push del navegador / la app instalada */}
-        <PushSettings />
-
-        {/* Telegram: campanita de launches y avisos en grupos/canales */}
-        <TelegramConnect />
-        <DiscordConnect />
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2 border-b border-white/10 p-4">
-          <Stat icon={<MessageSquare className="h-3.5 w-3.5" />} label={t.profile.posts} value={me?.stats.postsCount ?? 0} />
-          <Stat icon={<Rocket className="h-3.5 w-3.5" />} label={t.profile.launches} value={me?.stats.launchesCount ?? 0} />
-          <Stat icon={<Flame className="h-3.5 w-3.5" />} label={t.profile.hypes} value={me?.stats.hypesGiven ?? 0} />
-          <Stat icon={<Zap className="h-3.5 w-3.5" />} label={t.profile.lifetime} value={me?.lifetimePoints ?? 0} />
-        </div>
-
-        {/* Points wallet */}
-        <div className="border-b border-white/10 p-4">
-          <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.profile.balance}</p>
-                <p className="font-machina mt-1 flex items-center gap-2 text-3xl font-bold text-primary">
-                  {(me?.points ?? 0).toLocaleString('es')}
-                  <Zap className="h-5 w-5 text-primary/80" aria-hidden />
-                </p>
-              </div>
-              <Gift className="h-10 w-10 text-primary/30" aria-hidden />
-            </div>
-            <p className="mt-2.5 rounded-lg bg-[#0a0b08]/70 px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
-              Cuando lancemos <span className="font-bold text-primary">$CABAL</span>, tus puntos se canjean por tokens del airdrop comunitario. 1 punto = 1 cupo del pool comunitario.
-            </p>
-          </div>
-
-          {/* Campaña de X: puntos por seguir la cuenta y compartir la tarjeta */}
-          <FollowXCampaign className="mt-3" />
-
-          {/* history */}
-          <p className="pb-1.5 pt-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.history}</p>
-          <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
-            {(me?.pointEvents ?? []).length === 0 && (
-              <p className="py-4 text-center text-sm text-muted-foreground">{t.profile.historyEmpty}</p>
-            )}
-            {(me?.pointEvents ?? []).map((e) => {
-              const meta = REASON_META[e.reason]
-              const Icon = meta?.icon ?? Zap
-              return (
-                <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-white/4">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/8 bg-white/5 text-zinc-400" aria-hidden>
-                    <Icon className="h-3.5 w-3.5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-medium">
-                      {e.note ?? t.profile.reasons[e.reason as keyof typeof t.profile.reasons] ?? e.reason}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</p>
+          {tab === 'points' && (
+            <>
+              <div className="border-b border-white/10 p-4">
+                <div className="rounded-xl border border-[#8FA83F]/20 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">{t.profile.balance}</p>
+                      <p className="font-machina mt-1 flex items-center gap-2 text-3xl font-bold text-primary">
+                        {(me?.points ?? 0).toLocaleString('es')}
+                        <Zap className="h-5 w-5 text-primary/80" aria-hidden />
+                      </p>
+                    </div>
+                    <Gift className="h-10 w-10 text-primary/30" aria-hidden />
                   </div>
-                  <span className={cn('font-mono text-[13px] font-bold', e.amount >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
-                    {e.amount >= 0 ? '+' : ''}{e.amount}
-                  </span>
+                  <p className="mt-2.5 rounded-lg bg-[#0a0b08]/70 px-2.5 py-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                    Cuando lancemos <span className="font-bold text-primary">$CABAL</span>, tus puntos se canjean por tokens del airdrop comunitario. 1 punto = 1 cupo del pool comunitario.
+                  </p>
                 </div>
-              )
-            })}
-          </div>
+
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  <Stat icon={<MessageSquare className="h-3.5 w-3.5" />} label={t.profile.posts} value={me?.stats.postsCount ?? 0} />
+                  <Stat icon={<Rocket className="h-3.5 w-3.5" />} label={t.profile.launches} value={me?.stats.launchesCount ?? 0} />
+                  <Stat icon={<Flame className="h-3.5 w-3.5" />} label={t.profile.hypes} value={me?.stats.hypesGiven ?? 0} />
+                  <Stat icon={<Zap className="h-3.5 w-3.5" />} label={t.profile.lifetime} value={me?.lifetimePoints ?? 0} />
+                </div>
+
+                {/* Campaña de X: puntos por seguir la cuenta y compartir la tarjeta */}
+                <FollowXCampaign className="mt-3" />
+
+                {/* Historial desplegable */}
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen((o) => !o)}
+                  aria-expanded={historyOpen}
+                  className="mt-3 flex w-full items-center justify-between rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5 text-left text-[13px] font-semibold hover:border-white/20"
+                >
+                  {t.profile.historyToggle(events.length)}
+                  <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', historyOpen && 'rotate-180')} aria-hidden />
+                </button>
+                {historyOpen && (
+                  <div className="mt-1.5 max-h-72 space-y-1 overflow-y-auto pr-1">
+                    {events.length === 0 && (
+                      <p className="py-4 text-center text-sm text-muted-foreground">{t.profile.historyEmpty}</p>
+                    )}
+                    {events.map((e) => {
+                      const meta = REASON_META[e.reason]
+                      const Icon = meta?.icon ?? Zap
+                      return (
+                        <div key={e.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-white/4">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/8 bg-white/5 text-zinc-400" aria-hidden>
+                            <Icon className="h-3.5 w-3.5" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[13px] font-medium">
+                              {e.note ?? t.profile.reasons[e.reason as keyof typeof t.profile.reasons] ?? e.reason}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</p>
+                          </div>
+                          <span className={cn('font-mono text-[13px] font-bold', e.amount >= 0 ? 'text-primary' : 'text-[#ff8080]')}>
+                            {e.amount >= 0 ? '+' : ''}{e.amount}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Invita y gana: código de referido */}
+              <ReferralSection />
+            </>
+          )}
+
+          {tab === 'alerts' && (
+            <>
+              {/* Avisos de lanzamientos por correo (10 y 5 min antes): perk Premium, requiere correo verificado */}
+              <div className="border-b border-white/10 p-4">
+                <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0a0b08] px-3 py-2.5">
+                  <Mail className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">{t.profile.emailAlerts}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {t.profile.emailAlertsBody}
+                      {!(me?.premium.active && me?.emailVerified) && t.profile.emailAlertsNeedsPremium}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={me?.notifyEmail ?? true}
+                    disabled={!(me?.premium.active && me?.emailVerified) || updateMe.isPending}
+                    onCheckedChange={(v) => updateMe.mutate({ notifyEmail: v })}
+                  />
+                </div>
+              </div>
+              {/* Avisos push del navegador / la app instalada */}
+              <PushSettings />
+              {/* Telegram y Discord: campanita de launches y avisos en grupos/canales */}
+              <TelegramConnect />
+              <DiscordConnect />
+            </>
+          )}
+
+          {tab === 'connections' && (
+            /* Conexiones: X, Google y Discord (OAuth 2.0 real con fallback demo) */
+            <div className="space-y-2 p-4">
+              <SectionTitle>{t.profile.connections}</SectionTitle>
+              <ConnectionRow
+                icon={<AtSign className="h-4 w-4" />}
+                title={t.profile.xAccount}
+                subtitle={t.profile.xAccountSub}
+                verified={me?.xVerified ?? false}
+                verifiedLabel={me?.xHandle ? `@${me.xHandle}` : t.profile.verifiedShort}
+                provider="x"
+                cta="Conectar con X"
+                configured={authStatus?.x.configured ?? false}
+                demo={authStatus?.x.demo ?? false}
+                onConnect={() => connect('x')}
+              />
+              <ConnectionRow
+                icon={<Mail className="h-4 w-4" />}
+                title={t.profile.googleAccount}
+                subtitle={t.profile.googleAccountSub}
+                verified={me?.googleVerified ?? false}
+                verifiedLabel={me?.googleEmail ?? t.profile.verifiedShort}
+                provider="google"
+                cta="Conectar con Google"
+                configured={authStatus?.google.configured ?? false}
+                demo={authStatus?.google.demo ?? false}
+                onConnect={() => connect('google')}
+              />
+              <ConnectionRow
+                icon={<DiscordLogo className="h-4 w-4" />}
+                title={t.profile.discordAccount}
+                subtitle={t.profile.discordAccountSub(rules.points_verify_discord)}
+                verified={me?.discordVerified ?? false}
+                verifiedLabel={me?.discordName ?? t.profile.verifiedShort}
+                provider="discord"
+                cta="Conectar con Discord"
+                configured={authStatus?.discord.configured ?? false}
+                demo={false}
+                onConnect={() => connect('discord')}
+              />
+              <ApiSetupHelp status={authStatus} />
+            </div>
+          )}
+
+          {tab === 'wallets' && (
+            /* Wallets conectadas + verificación de tokens como dev */
+            <div className="space-y-2.5 p-4">
+              <SectionTitle>{t.profile.wallets}</SectionTitle>
+              <WalletManager me={me} />
+            </div>
+          )}
+
+          {tab === 'advanced' && (
+            /* Opciones avanzadas: reclamar proyectos como propios */
+            <div className="space-y-2.5 p-4">
+              <SectionTitle>{t.profile.advanced}</SectionTitle>
+              <ClaimProjectSection />
+            </div>
+          )}
         </div>
-
-        {/* Invita y gana: código de referido */}
-        <ReferralSection />
-
-        {/* Conexiones: X y Google (OAuth 2.0 real con fallback demo) */}
-        <div className="space-y-2 border-b border-white/10 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.connections}</p>
-          <ConnectionRow
-            icon={<AtSign className="h-4 w-4" />}
-            title={t.profile.xAccount}
-            subtitle={t.profile.xAccountSub}
-            verified={me?.xVerified ?? false}
-            verifiedLabel={me?.xHandle ? `@${me.xHandle}` : t.profile.verifiedShort}
-            provider="x"
-            cta="Conectar con X"
-            configured={authStatus?.x.configured ?? false}
-            demo={authStatus?.x.demo ?? false}
-            onConnect={() => connect('x')}
-          />
-          <ConnectionRow
-            icon={<Mail className="h-4 w-4" />}
-            title={t.profile.googleAccount}
-            subtitle={t.profile.googleAccountSub}
-            verified={me?.googleVerified ?? false}
-            verifiedLabel={me?.googleEmail ?? t.profile.verifiedShort}
-            provider="google"
-            cta="Conectar con Google"
-            configured={authStatus?.google.configured ?? false}
-            demo={authStatus?.google.demo ?? false}
-            onConnect={() => connect('google')}
-          />
-          <ConnectionRow
-            icon={<DiscordLogo className="h-4 w-4" />}
-            title={t.profile.discordAccount}
-            subtitle={t.profile.discordAccountSub(rules.points_verify_discord)}
-            verified={me?.discordVerified ?? false}
-            verifiedLabel={me?.discordName ?? t.profile.verifiedShort}
-            provider="discord"
-            cta="Conectar con Discord"
-            configured={authStatus?.discord.configured ?? false}
-            demo={false}
-            onConnect={() => connect('discord')}
-          />
-          <ApiSetupHelp status={authStatus} />
-        </div>
-
-        {/* Wallets conectadas + verificación de tokens como dev */}
-        <div className="space-y-2.5 border-b border-white/10 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.wallets}</p>
-          <WalletManager me={me} />
-        </div>
-
-        {/* Opciones avanzadas: reclamar proyectos como propios */}
-        <div className="space-y-2.5 border-b border-white/10 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.advanced}</p>
-          <ClaimProjectSection />
-        </div>
-
-        {/* Edit profile */}
-        <div className="space-y-3.5 p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t.profile.editProfile}</p>
-
-          {/* Foto de perfil: subir archivo o pegar URL */}
-          <AvatarEditor
-            avatar={avatar}
-            name={me.name}
-            onApply={(url) => {
-              setAvatar(url)
-              updateMe.mutate({ avatar: url })
-            }}
-            busy={updateMe.isPending}
-          />
-
-          <div className="space-y-1.5">
-            <Label htmlFor="pf-name" className="text-xs text-muted-foreground">{t.profile.name}</Label>
-            <Input id="pf-name" value={name} onChange={(e) => setName(e.target.value)} className="h-9 bg-[#0a0b08]" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pf-bio" className="text-xs text-muted-foreground">Bio</Label>
-            <Textarea id="pf-bio" value={bio} onChange={(e) => setBio(e.target.value)} className="min-h-[56px] resize-none bg-[#0a0b08]" />
-          </div>
-          <Button
-            onClick={save}
-            disabled={updateMe.isPending}
-            className="w-full font-bold"
-          >
-            {updateMe.isPending ? t.profile.savingProfile : t.profile.saveProfile}
-          </Button>
-        </div>
+      </div>
 
       {/* Pantalla de consentimiento simulada (modo demo, sin API keys) */}
       <OAuthConsentDialog provider={consent} appName="Cabal" onOpenChange={(o) => !o && setConsent(null)} />
