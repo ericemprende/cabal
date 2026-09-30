@@ -675,6 +675,21 @@ export interface SwapFeeTotalsDTO {
 
 /** Lo que llevan generado las comisiones de compra/venta (panel de admin). */
 export interface SwapFeeEarningsDTO {
+/** Fuentes de ingreso de Cabal (/admin → Ingresos). */
+export type RevenueSource = 'premium' | 'ammo' | 'donations' | 'launch' | 'swap'
+
+/** Todos los ingresos juntos, en dólares, por fuente. */
+export interface RevenueDTO {
+  /** Precio de SOL usado para pasar a dólares las comisiones de lanzamiento (0 = no se pudo leer). */
+  solUsd: number
+  range: { from: string; to: string; bySource: Record<RevenueSource, number> }
+  all: Record<RevenueSource, number>
+  last30d: Record<RevenueSource, number>
+  last7d: Record<RevenueSource, number>
+  series: ({ date: string } & Record<RevenueSource, number>)[]
+  recent: { source: RevenueSource; at: string; usd: number; label: string; who: string | null }[]
+}
+
   all: SwapFeeTotalsDTO
   last30d: SwapFeeTotalsDTO
   last7d: SwapFeeTotalsDTO

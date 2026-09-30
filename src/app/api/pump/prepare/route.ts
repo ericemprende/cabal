@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     await db.pumpCoin.upsert({ where: { mint }, create: { mint, userId, ...fields }, update: fields })
 
     const { txs, feeSol } = await buildCreateTxs({ mint, creator, ...data })
+    await db.pumpCoin.update({ where: { mint }, data: { feeSol } })
     return NextResponse.json({ ok: true, txs, feeSol })
   } catch (e) {
     console.error('[pump/prepare]', e)

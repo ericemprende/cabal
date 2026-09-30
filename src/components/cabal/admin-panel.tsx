@@ -70,6 +70,7 @@ import { AdminChatAnnounce } from '@/components/cabal/admin-chat-announce'
 import { AdminGuide } from '@/components/cabal/admin-guide'
 import { AdminPublish } from '@/components/cabal/admin-publish'
 import { AdminCabalLaunch } from '@/components/cabal/admin-cabal-launch'
+import { AdminRevenue } from '@/components/cabal/admin-revenue'
 import {
   jsonFetch,
   qk,
@@ -249,6 +250,7 @@ type AdminView =
   | 'chat'
   | 'guia'
   | 'usuarios'
+  | 'ingresos'
   | 'premium'
   | 'municion'
   | 'reclamos'
@@ -361,6 +363,7 @@ export function AdminPanel({
 
   const NAV_ITEMS = [
     { key: 'usuarios', label: 'Usuarios y perfiles', icon: Users },
+    { key: 'ingresos', label: 'Ingresos', icon: TrendingUp },
     { key: 'premium', label: 'Plan Premium', icon: Crown },
     { key: 'municion', label: 'Munición y boosts', icon: Bomb },
     { key: 'verificacion', label: 'Verificación oficial', icon: ShieldCheck },
@@ -369,7 +372,7 @@ export function AdminPanel({
     { key: 'proyectos', label: 'Proyectos (launches)', icon: Rocket },
     { key: 'tokens', label: 'Tokens', icon: Coins },
     { key: 'afiliados', label: 'Plataformas afiliadas', icon: Link2 },
-    { key: 'comisiones', label: 'Comisiones de compra/venta', icon: Percent },
+    { key: 'comisiones', label: 'Comisiones (configuración)', icon: Percent },
     { key: 'calls', label: 'Calls por usuario', icon: Megaphone },
     { key: 'moderacion', label: 'Moderación del feed', icon: MessageSquareWarning },
     { key: 'reglas', label: 'Reglas de puntos', icon: Settings2 },
@@ -377,7 +380,7 @@ export function AdminPanel({
     { key: 'correos', label: 'Correos y anuncios', icon: Mail },
     { key: 'chat', label: 'Aviso del chat en vivo', icon: MessageCircle },
     { key: 'guia', label: 'Radio Cabal (asistente)', icon: LifeBuoy },
-    { key: 'stats', label: 'Estadísticas', icon: BarChart3 },
+    { key: 'stats', label: 'Visitas y comunidad', icon: BarChart3 },
     { key: 'salud', label: 'Salud del servidor', icon: Activity },
   ] as { key: AdminView; label: string; icon: typeof Zap }[]
 
@@ -451,6 +454,13 @@ export function AdminPanel({
               />
             )}
           />
+        )}
+
+        {view === 'ingresos' && (
+          <div className="space-y-4">
+            <AdminRevenue enabled={enabled} />
+            <SwapFeeEarnings enabled={enabled} />
+          </div>
         )}
 
         {view === 'premium' && <AdminPremium enabled={enabled} />}
@@ -1290,7 +1300,7 @@ function AdminPremium({ enabled }: { enabled: boolean }) {
         <Kpi label="Regalados" value={s?.admin ?? 0} icon={<ShieldCheck className="h-3.5 w-3.5" />} />
         <div className="rounded-xl border border-white/10 bg-[#0a0b08] px-3.5 py-3">
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            <TrendingUp className="h-3.5 w-3.5" /> Ingresos 30d
+            <TrendingUp className="h-3.5 w-3.5" /> Cobros Premium 30d
           </p>
           <p className="mt-1 text-xl font-bold tabular-nums">${revenue.toLocaleString('es')}</p>
         </div>
@@ -1674,7 +1684,7 @@ function SwapFeeEarnings({ enabled }: { enabled: boolean }) {
     <div className="space-y-3 rounded-xl border border-white/10 bg-[#0a0b08] p-3.5">
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-          <TrendingUp className="h-3.5 w-3.5 text-primary" aria-hidden /> Comisiones generadas
+          <TrendingUp className="h-3.5 w-3.5 text-primary" aria-hidden /> Detalle: comisiones de compra/venta
         </p>
         <span className="text-[10px] text-muted-foreground">{d.all.trades} operaciones confirmadas</span>
       </div>
@@ -1857,7 +1867,6 @@ function AdminSwapFees({ enabled }: { enabled: boolean }) {
 
   return (
     <div className="space-y-3">
-      <SwapFeeEarnings enabled={enabled} />
       <SwapFeeTreasury />
 
       <p className="text-xs text-muted-foreground">

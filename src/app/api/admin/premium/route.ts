@@ -5,6 +5,7 @@ import { appOrigin } from '@/lib/oauth'
 import { PLAN_KEYS, getPremiumSettings, savePremiumSettings, subscriptionIsActive } from '@/lib/premium'
 import { stripeConfigured, stripeProductFor, stripeWebhookSecret } from '@/lib/stripe'
 import { nowpaymentsConfigured, nowpaymentsSandbox } from '@/lib/nowpayments'
+import { DONATION_PLAN } from '@/lib/donate-server'
 import type { AdminPremiumDTO } from '@/lib/types'
 
 const userRef = { select: { id: true, handle: true, name: true, avatar: true } } as const
@@ -20,7 +21,13 @@ export async function GET(req: Request) {
       db.subscription.findMany({ include: { user: userRef }, orderBy: { createdAt: 'desc' }, take: 200 }),
       db.payment.findMany({ include: { user: userRef }, orderBy: { createdAt: 'desc' }, take: 50 }),
       db.payment.aggregate({
-        where: { createdAt: { gte: since30d }, status: { in: ['paid', 'finished'] } },
+        // Solo el plan: donaciones y munición también son Payment, y van en
+        // sus pestañas y en /admin → Ingresos.
+        where: {
+          createdAt: { gte: since30d },
+          status: { in: ['paid', 'finished'] },
+          NOT: [{ plan: DONATION_PLAN }, { plan: { startsWith: 'ammo_' } }],
+        },
         _sum: { amountUsd: true },
       }),
     ])

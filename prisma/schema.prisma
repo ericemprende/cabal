@@ -911,6 +911,9 @@ model PumpCoin {
   feeSignature  String? // cobro de la comisión, al programar
   error         String?
   userId        String
+  // SOL que Cabal cobró (o cobrará al firmarse) por este lanzamiento: la
+  // comisión vigente al armar la transacción. Es lo que suma /admin → Ingresos.
+  feeSol        Float     @default(0)
   user          User      @relation(fields: [userId], references: [id])
   createdAt     DateTime  @default(now())
 
