@@ -53,16 +53,23 @@ En Xcode: Signing & Capabilities → tu equipo, y añade **Push Notifications** 
   </array>
   ```
 
+- Wallets: en el móvil no hay extensiones, así que el selector ofrece "Abrir en
+  Phantom / Solflare / MetaMask" (`src/lib/wallet-deeplinks.ts`), que abre la
+  misma página dentro del navegador de la wallet. Comprar y firmar ocurre allí,
+  fuera de la app de Cabal (encaja con la norma 3.1.5). Para que iOS deje abrir
+  esas apps, añade en `Info.plist`:
+
+  ```xml
+  <key>LSApplicationQueriesSchemes</key>
+  <array><string>phantom</string><string>solflare</string><string>metamask</string></array>
+  ```
+
 ## Pendiente antes de enviar a revisión
 
-1. **Wallets.** En el móvil no hay extensiones: conectar Phantom/Solflare por
-   deep link (protocolo de deeplinks de Phantom). Mientras tanto, el botón de
-   compra debería abrir el token en Phantom en vez de firmar dentro de la app
-   (además, Apple 3.1.5 pide licencia para intercambiar cripto dentro de la app).
-2. **Push nativo.** Registrar el token APNs (plugin PushNotifications) en una
+1. **Push nativo.** Registrar el token APNs (plugin PushNotifications) en una
    ruta nueva y enviarlo junto a las web-push actuales (clave `.p8` de APNs).
-3. **Funciones nativas visibles** para no caer en la 4.2 (web envuelta): push,
+2. **Funciones nativas visibles** para no caer en la 4.2 (web envuelta): push,
    hoja de compartir nativa y háptica en hype/likes.
-4. **Ficha de la tienda:** capturas, política de privacidad
+3. **Ficha de la tienda:** capturas, política de privacidad
    (`https://cabal.army/privacidad`), etiquetas de privacidad, cuenta de prueba
    para el revisor y nota explicando que no hay intercambio de cripto en la app.

@@ -12,12 +12,31 @@ type Listener = { remove: () => Promise<void> | void }
 type CapPlugins = {
   Browser?: { open: (o: { url: string; presentationStyle?: string }) => Promise<void>; close: () => Promise<void> }
   App?: { addListener: (ev: 'appUrlOpen', cb: (e: { url: string }) => void) => Promise<Listener> | Listener }
+  AppLauncher?: { openUrl: (o: { url: string }) => Promise<{ completed: boolean }> }
 }
 
 function plugins(): CapPlugins | null {
   if (typeof window === 'undefined') return null
   const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; Plugins?: CapPlugins } }).Capacitor
   return cap?.isNativePlatform?.() ? cap.Plugins ?? null : null
+}
+
+/**
+ * Abre un enlace fuera de Cabal: en la app nativa con AppLauncher (los enlaces
+ * universales de Phantom o Solflare abren su app), y en el navegador del móvil
+ * navegando a él, que es lo que dispara el enlace universal.
+ */
+export async function openExternal(url: string) {
+  const launcher = plugins()?.AppLauncher
+  if (launcher) {
+    try {
+      await launcher.openUrl({ url })
+      return
+    } catch {
+      /* sin la app instalada sigue abajo: la web de la wallet ofrece instalarla */
+    }
+  }
+  window.location.href = url
 }
 
 /**

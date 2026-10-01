@@ -17,6 +17,8 @@ import {
   walletsVersion,
   type WalletFamily,
 } from '@/lib/wallets'
+import { MOBILE_WALLETS, isMobileDevice } from '@/lib/wallet-deeplinks'
+import { openExternal } from '@/lib/native-bridge'
 
 // Textos propios del selector (los diccionarios globales los edita otra tanda de trabajo en paralelo).
 const TEXT = {
@@ -27,6 +29,8 @@ const TEXT = {
     last: 'Última usada',
     none: 'No encontramos ninguna wallet instalada en este navegador. Instala una y recarga la página:',
     failed: 'No se pudo conectar la wallet',
+    mobile: 'En el móvil, abre Cabal dentro de tu wallet: desde ahí podrás conectarla, firmar y comprar.',
+    openIn: (name: string) => `Abrir en ${name}`,
   },
   en: {
     title: 'Connect your wallet',
@@ -35,6 +39,8 @@ const TEXT = {
     last: 'Last used',
     none: "We couldn't find any wallet installed in this browser. Install one and reload the page:",
     failed: "Couldn't connect the wallet",
+    mobile: 'On mobile, open Cabal inside your wallet: from there you can connect it, sign and buy.',
+    openIn: (name: string) => `Open in ${name}`,
   },
 }
 
@@ -154,6 +160,26 @@ function WalletPickerDialog({
               </li>
             ))}
           </ul>
+        ) : isMobileDevice() ? (
+          // Móvil (navegador o app de Cabal): no hay extensiones, así que se
+          // abre esta misma página dentro del navegador de la wallet.
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{tx.mobile}</p>
+            <ul className="space-y-1.5">
+              {MOBILE_WALLETS[family].map((w) => (
+                <li key={w.id}>
+                  <button
+                    onClick={() => void openExternal(w.link(window.location.href))}
+                    className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-[#0a0b08] px-3 py-2.5 text-left text-sm font-bold transition-colors hover:border-primary/50 hover:bg-primary/5"
+                  >
+                    <Wallet className="h-7 w-7 p-1 text-primary" aria-hidden />
+                    <span className="flex-1">{tx.openIn(w.name)}</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">{tx.none}</p>
