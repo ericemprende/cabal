@@ -85,7 +85,7 @@ export function BoostHero({ item }: { item: BoostedItem }) {
                 </span>
               </>
             )}
-            {launch && <CountdownPill target={launch.launchAt} size="sm" estimated={!launch.dateConfirmed} />}
+            {launch && <CountdownPill target={launch.launchAt} size="sm" estimated={!launch.dateConfirmed} awaitingContract={!launch.contract} />}
           </div>
 
           {/* El cargador: se vacía a la vista y pega un fogonazo al recargarse */}

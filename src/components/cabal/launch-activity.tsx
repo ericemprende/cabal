@@ -115,7 +115,7 @@ export function LaunchActivityCard({
               <span className="font-normal text-muted-foreground">· {l.name}</span>
             </span>
             {l.status === 'upcoming' ? (
-              <CountdownPill target={l.launchAt} size="xs" compact estimated={!l.dateConfirmed} />
+              <CountdownPill target={l.launchAt} size="xs" compact estimated={!l.dateConfirmed} awaitingContract={!l.contract} />
             ) : (
               <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-primary">
                 {t.launchActivity.seeInRadar}

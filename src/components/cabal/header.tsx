@@ -208,7 +208,7 @@ export function Header() {
                       </span>
                     </div>
                   </div>
-                  <CountdownPill target={l.launchAt} size="sm" estimated={!l.dateConfirmed} />
+                  <CountdownPill target={l.launchAt} size="sm" estimated={!l.dateConfirmed} awaitingContract={!l.contract} />
                 </button>
               ))}
             </PopoverContent>

@@ -288,7 +288,7 @@ export function RightRail() {
                   </p>
                   <div className="mt-0.5"><NetworkBadge network={l.network} /></div>
                 </div>
-                <CountdownPill target={l.launchAt} size="sm" estimated={!l.dateConfirmed} />
+                <CountdownPill target={l.launchAt} size="sm" estimated={!l.dateConfirmed} awaitingContract={!l.contract} />
               </button>
             ))}
             {next.length === 0 && (

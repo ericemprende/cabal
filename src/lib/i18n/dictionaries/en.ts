@@ -463,6 +463,8 @@ export const en: Dict = {
     live: 'Live',
     pending: 'Pending',
     pendingTitle: 'The date was an estimate and it passed: whoever posted it has not confirmed the launch yet',
+    awaitingContract: 'Awaiting CA',
+    awaitingContractTitle: 'Launch time has come but the poster has not added the contract yet. Launching inside Cabal updates it automatically.',
     launched: 'Launched',
     finished: 'Finished',
     estimatedDate: 'Estimated date, not confirmed yet',

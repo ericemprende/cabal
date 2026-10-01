@@ -462,6 +462,8 @@ export const es = {
     live: 'En vivo',
     pending: 'Pendiente',
     pendingTitle: 'La fecha era estimada y ya pasó: quien lo subió todavía no ha confirmado el lanzamiento',
+    awaitingContract: 'Esperando CA',
+    awaitingContractTitle: 'Ya es la hora pero quien lo publicó todavía no ha puesto el contrato. Lanzando dentro de Cabal se actualiza solo.',
     launched: 'Lanzado',
     finished: 'Finalizado',
     estimatedDate: 'Fecha estimada, todavía sin confirmar',

@@ -398,7 +398,7 @@ export function LaunchCard({ launch }: { launch: LaunchDTO }) {
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <CountdownPill target={launch.launchAt} compact size="xs" estimated={!launch.dateConfirmed} className="mt-0.5" />
+          <CountdownPill target={launch.launchAt} compact size="xs" estimated={!launch.dateConfirmed} awaitingContract={!launch.contract} className="mt-0.5" />
           {launch.boost && <BoostCounter boost={launch.boost} size="xs" />}
         </div>
       </div>

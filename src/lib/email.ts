@@ -216,6 +216,35 @@ function para(text: string): string {
   return `<p style="margin:0 0 14px;font-size:15px;line-height:1.55">${text}</p>`
 }
 
+/**
+ * Al autor de un launch: llegó la hora y no puso el contrato, así que en Cabal
+ * sale "Esperando CA" y nadie puede comprar.
+ */
+export function missingContractEmail(
+  launch: { name: string; ticker: string | null; isPrivate: boolean },
+  launchUrl: string
+): { subject: string; html: string; text: string } {
+  const raw = launch.ticker && !launch.isPrivate ? `$${launch.ticker} · ${launch.name}` : launch.name
+  const subject = `⚠️ ${raw}: falta el contrato`
+  const intro = 'Ya es la hora de tu lanzamiento y todavía no has puesto el contrato (CA). En Cabal aparece como «Esperando CA» y la comunidad no puede comprar.'
+  const tip = 'Si lanzas el token dentro de Cabal, el contrato se actualiza solo.'
+  const text = `${intro}
+
+${raw}
+
+Pon el contrato aquí: ${launchUrl}
+
+${tip}
+
+— Cabal`
+  const html = frame({
+    kicker: 'CABAL · FALTA EL CONTRATO',
+    body: `${para(intro)}<p style="margin:0 0 20px;font-size:20px;font-weight:bold;color:#cddc8f">${esc(raw)}</p>${button(launchUrl, 'Poner el contrato →')}${para('')}${para(tip)}`,
+    footer: 'Te llega porque publicaste este lanzamiento en Cabal.',
+  })
+  return { subject, html, text }
+}
+
 /** Aviso de seguridad: la contraseña de la cuenta acaba de cambiar. */
 export function passwordChangedEmail(handle: string, appUrl: string): { subject: string; html: string; text: string } {
   const subject = 'Tu contraseña de Cabal ha cambiado'

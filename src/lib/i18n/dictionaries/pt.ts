@@ -463,6 +463,8 @@ export const pt: Dict = {
     live: 'Ao vivo',
     pending: 'Pendente',
     pendingTitle: 'A data era uma estimativa e já passou: quem publicou ainda não confirmou o launch',
+    awaitingContract: 'Aguardando CA',
+    awaitingContractTitle: 'Já é a hora, mas quem publicou ainda não colocou o contrato. Lançando dentro do Cabal ele se atualiza sozinho.',
     launched: 'Lançado',
     finished: 'Encerrado',
     estimatedDate: 'Data estimada, ainda não confirmada',

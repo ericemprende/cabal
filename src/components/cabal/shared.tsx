@@ -700,6 +700,7 @@ export function CountdownPill({
   className,
   compact,
   estimated,
+  awaitingContract,
 }: {
   target: string
   size?: 'xs' | 'sm' | 'md' | 'lg'
@@ -708,6 +709,11 @@ export function CountdownPill({
   compact?: boolean
   /** La fecha es un estimado sin confirmar: antepone "~" y lo aclara en el title. */
   estimated?: boolean
+  /** El launch no tiene contrato publicado: llegada la hora no se puede comprar, así que
+   *  en vez de "En vivo/Lanzado" se avisa de que falta el CA. Pasa mucho: la gente
+   *  publica el launch y nunca vuelve a poner el contrato. La salida de fondo es que
+   *  lancen dentro de Cabal, donde el contrato se rellena solo al desplegar el token. */
+  awaitingContract?: boolean
 }) {
   const t = useT()
   const c = useCountdown(target, !estimated)
@@ -727,6 +733,15 @@ export function CountdownPill({
   // Rojo: en vivo o a punto de lanzar (<45 min) · Ámbar: pocas horas (<6 h) · Oliva: con tiempo
   const urgent = c.totalMs < 45 * 60_000
   const soon = c.totalMs < 6 * 3600_000
+  if (awaitingContract && (c.live || c.recent || c.ended))
+    return (
+      <span
+        title={t.shared.awaitingContractTitle}
+        className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-amber-300/40 bg-amber-300/10 font-bold uppercase text-amber-300', cls, className)}
+      >
+        {t.shared.awaitingContract}
+      </span>
+    )
   if (c.live)
     return (
       <span className={cn('inline-flex shrink-0 items-center whitespace-nowrap rounded-md border border-[#ff4d5e]/50 bg-[#ff4d5e]/12 font-bold uppercase text-[#ff6b7a]', cls, className)}>

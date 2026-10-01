@@ -462,6 +462,8 @@ export const de: Dict = {
     live: 'Live',
     pending: 'Ausstehend',
     pendingTitle: 'Das Datum war geschätzt und ist vorbei: der Launch wurde noch nicht bestätigt',
+    awaitingContract: 'Warte auf CA',
+    awaitingContractTitle: 'Der Launch-Zeitpunkt ist da, aber der Vertrag wurde noch nicht eingetragen. Beim Launch in Cabal wird er automatisch ergänzt.',
     launched: 'Gestartet',
     finished: 'Beendet',
     estimatedDate: 'Geschätztes Datum, noch nicht bestätigt',

@@ -97,7 +97,7 @@ export function LaunchDetailDialog() {
                     </p>
                   )}
                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                    <CountdownPill target={launch.launchAt} estimated={!launch.dateConfirmed} />
+                    <CountdownPill target={launch.launchAt} estimated={!launch.dateConfirmed} awaitingContract={!launch.contract} />
                     <span className="text-xs text-muted-foreground">
                       {new Date(launch.launchAt).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getAmmoSettings } from '@/lib/ammo'
-import { emailConfig, launchReminderEmail, sendEmail } from '@/lib/email'
+import { emailConfig, launchReminderEmail, missingContractEmail, sendEmail } from '@/lib/email'
 import { networkMeta } from '@/lib/cabal'
 import { siteUrl } from '@/lib/waitlist'
 import { sleep, TelegramApiError, telegramConfig, tgSend } from '@/lib/telegram'
@@ -128,6 +128,7 @@ export async function runNotificationTick(): Promise<TickResult> {
     }
   }
   await sendReminders(senders, result)
+  await nudgeMissingContracts(senders, result)
   // Aviso recurrente del chat en vivo (donaciones): no depende de los bots.
   await postChatAnnouncement().catch((e) => console.error('[chat-announce]', (e as Error).message))
   return result
@@ -433,6 +434,94 @@ async function sendRemindersForLead(senders: Senders, r: TickResult, lead: numbe
 
     await markSent(key, sent + pushedNow)
     r.reminders++
+    r.messages += sent
+  }
+}
+
+// ---------- 5. Launch sin contrato ----------
+
+/** Margen tras la hora antes de avisar: a veces el dev pega el CA al minuto. */
+const NO_CA_GRACE_MS = 5 * 60_000
+/** No se persigue a launches que ya salieron hace mucho (worker caído, datos viejos). */
+const NO_CA_MAX_AGE_MS = 24 * 3600_000
+
+/**
+ * Llegó la hora del launch y su autor no ha puesto el contrato: en la web sale
+ * "Esperando CA" y nadie puede comprar. Se le avisa a él (privado del bot,
+ * correo verificado y push) para que lo actualice, e invitándole a lanzar
+ * dentro de Cabal, donde el contrato se rellena solo. Una vez por launch y hora.
+ */
+async function nudgeMissingContracts(senders: Senders, r: TickResult) {
+  const now = Date.now()
+  const launches = await db.launch.findMany({
+    where: {
+      hidden: false,
+      contract: null,
+      launchAt: { gte: new Date(now - NO_CA_MAX_AGE_MS), lte: new Date(now - NO_CA_GRACE_MS) },
+    },
+    select: { id: true, name: true, ticker: true, isPrivate: true, launchAt: true, createdById: true },
+    take: 50,
+  })
+  const keyOf = (l: { id: string; launchAt: Date }) => `launch:noca:${l.id}:${l.launchAt.getTime()}`
+  const pending = await notDispatched(launches.map(keyOf))
+  const providers = providersOf(senders)
+  const mail = emailConfig() !== null || process.env.NODE_ENV !== 'production'
+
+  for (const l of launches) {
+    const key = keyOf(l)
+    if (!pending.has(key) || !(await reserve(key))) continue
+    const url = launchUrl(l.id)
+    const label = launchLabel(l)
+    let sent = 0
+
+    if (providers.length > 0) {
+      const privates = await db.chatLink.findMany({
+        where: { provider: { in: providers }, active: true, chatType: 'private', userId: l.createdById },
+      })
+      sent += await broadcast(senders, privates, (lang) => ({
+        text:
+          lang === 'es'
+            ? `⚠️ <b>${esc(label)}</b> ya debía haber salido y no tiene contrato.
+
+En Cabal aparece como «Esperando CA» y nadie puede comprar. Entra y pon el contrato (CA) del token.
+
+Si lanzas dentro de Cabal, el contrato se actualiza solo.`
+            : `⚠️ <b>${esc(label)}</b> should be live by now but has no contract.
+
+On Cabal it shows "Awaiting CA" and nobody can buy. Open it and add the token contract (CA).
+
+Launch inside Cabal and the contract is filled in automatically.`,
+        buttons: [[{ text: lang === 'es' ? 'Poner el contrato' : 'Add the contract', url }]],
+      }))
+    }
+
+    if (mail) {
+      const u = await db.user.findFirst({
+        where: { id: l.createdById, emailVerified: true, email: { not: null } },
+        select: { email: true },
+      })
+      if (u) {
+        const { subject, html, text } = missingContractEmail(l, url)
+        try {
+          await sendEmail({ to: u.email!, subject, html, text })
+          r.emails++
+        } catch (e) {
+          console.error(`[notify] correo de falta de CA (${l.id}):`, (e as Error).message)
+        }
+      }
+    }
+
+    let pushed = 0
+    if (pushConfigured()) {
+      pushed = await pushToUsers([l.createdById], 'reminders', {
+        title: `${label}: falta el contrato`,
+        body: 'Ya es la hora y nadie puede comprar. Pon el CA del token.',
+        url: `/app?launch=${l.id}`,
+        tag: `noca-${l.id}`,
+      })
+      r.push += pushed
+    }
+    await markSent(key, sent + pushed)
     r.messages += sent
   }
 }
