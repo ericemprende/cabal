@@ -1,3 +1,7 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { Download, Hammer, LineChart, Radar, Smartphone, Trophy, Wallet } from 'lucide-react'
 
 /**
@@ -94,32 +98,93 @@ export function AllInOne({ lang = 'es' }: { lang?: Lang }) {
         })}
       </ol>
 
-      {/* Móvil y app */}
-      <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-5 sm:flex-row sm:items-center">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#8FA83F]/30 bg-[#8FA83F]/10">
-          <Smartphone className="h-6 w-6 text-primary" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h3 className="flex flex-wrap items-center gap-2 font-display text-[17px] font-bold">
+      {/* Móvil y app: texto y descarga a la izquierda, el teléfono a la derecha */}
+      <div className="mt-6 grid items-center gap-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0">
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#8FA83F]/30 bg-[#8FA83F]/10">
+            <Smartphone className="h-6 w-6 text-primary" aria-hidden />
+          </span>
+          <h3 className="mt-4 flex flex-wrap items-center gap-2 font-display text-2xl font-bold">
             {t.mobileTitle}
             <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
               <Hammer className="h-3 w-3" aria-hidden /> {t.mobileSoon}
             </span>
           </h3>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{t.mobileBody}</p>
+          <p className="mt-2 max-w-lg text-[14px] leading-relaxed text-muted-foreground">{t.mobileBody}</p>
+          <div className="mt-6 flex flex-col items-start gap-1.5">
+            <a
+              href="/download/cabal-seeker.apk"
+              download
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-black transition hover:bg-amber-300"
+            >
+              <Download className="h-4 w-4" aria-hidden /> {t.apkCta}
+              <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase">Beta</span>
+            </a>
+            <span className="max-w-[18rem] text-[11px] text-muted-foreground">{t.apkNote}</span>
+          </div>
         </div>
-        <div className="flex shrink-0 flex-col items-start gap-1 sm:items-center">
-          <a
-            href="/download/cabal-seeker.apk"
-            download
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90"
-          >
-            <Download className="h-4 w-4" aria-hidden /> {t.apkCta}
-            <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase">Beta</span>
-          </a>
-          <span className="max-w-[16rem] text-[11px] text-muted-foreground sm:text-center">{t.apkNote}</span>
-        </div>
+        <PhoneMockup lang={lang} />
       </div>
     </section>
+  )
+}
+
+/** Pantallas reales de la app móvil (public/landing), en el orden del carrusel. */
+const PHONE_SCREENS = [
+  { src: '/landing/m1-radar.webp', label: 'Radar' },
+  { src: '/landing/m2-tokens.webp', label: 'Tokens' },
+  { src: '/landing/m3-feed.webp', label: 'Feed' },
+  { src: '/landing/m4-lideres.webp', label: { es: 'Líderes', en: 'Leaders' } },
+  { src: '/landing/m5-perfil.webp', label: { es: 'Perfil', en: 'Profile' } },
+]
+
+/**
+ * Un teléfono con la app real: las pantallas pasan solas en horizontal cada
+ * pocos segundos, y los puntos de abajo permiten saltar a una.
+ */
+function PhoneMockup({ lang }: { lang: Lang }) {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setI((n) => (n + 1) % PHONE_SCREENS.length), 3200)
+    return () => clearInterval(id)
+  }, [i])
+  const label = (l: (typeof PHONE_SCREENS)[number]['label']) => (typeof l === 'string' ? l : l[lang])
+
+  return (
+    <div className="relative mx-auto w-[230px] sm:w-[260px]">
+      <div
+        aria-hidden
+        className="absolute -inset-10 opacity-70 blur-3xl"
+        style={{ background: 'radial-gradient(50% 50% at 50% 50%, rgba(143,168,63,0.25) 0%, transparent 70%)' }}
+      />
+      <div className="animate-squad-sway relative rounded-[2.6rem] border border-white/15 bg-[#050604] p-2.5 shadow-[0_30px_70px_rgba(0,0,0,0.7)]">
+        <div className="relative aspect-[390/844] overflow-hidden rounded-[2.1rem]">
+          <div
+            className="flex h-full transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${i * 100}%)` }}
+          >
+            {PHONE_SCREENS.map((s) => (
+              <div key={s.src} className="relative h-full w-full shrink-0">
+                <Image src={s.src} alt={`Cabal · ${label(s.label)}`} fill className="object-cover object-top" sizes="260px" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="relative mt-4 flex items-center justify-center gap-1.5">
+        {PHONE_SCREENS.map((s, n) => (
+          <button
+            key={s.src}
+            type="button"
+            onClick={() => setI(n)}
+            aria-label={label(s.label)}
+            className={`h-1.5 rounded-full transition-all ${n === i ? 'w-5 bg-amber-400' : 'w-1.5 bg-white/25 hover:bg-white/50'}`}
+          />
+        ))}
+      </div>
+      <p className="relative mt-2 text-center text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+        {label(PHONE_SCREENS[i].label)}
+      </p>
+    </div>
   )
 }
