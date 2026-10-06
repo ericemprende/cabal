@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Trophy,
   Users,
+  Shield,
   Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -44,7 +45,7 @@ import type { WaitlistStatusDTO } from '@/lib/waitlist'
  */
 
 /** Los iconos van en el mismo orden que landing.benefits del diccionario. */
-const BENEFIT_ICONS = [Radar, ShieldCheck, Trophy, Users, Eye, Gift]
+const BENEFIT_ICONS = [Radar, ShieldCheck, Trophy, Users, Eye, Gift, Shield]
 
 type Shot = { src: string; w: number; h: number }
 
@@ -71,7 +72,24 @@ const BENEFIT_SHOTS: Shot[][] = [
     { src: '/landing/founder-a.webp', w: 1280, h: 624 },
     { src: '/landing/founder-b.webp', w: 1280, h: 880 },
   ],
+  [{ src: '/landing/clanes-a.webp', w: 1280, h: 1131 }],
 ]
+
+/**
+ * Séptimo beneficio, los clanes. Va aquí y no en el diccionario porque la
+ * landing ya lleva sus textos nuevos en es/en (pt y de lo ven en inglés).
+ */
+const CLAN_BENEFIT = {
+  es: {
+    title: 'Clanes: tu comunidad, conectada',
+    body: 'Cada grupo de Telegram o servidor de Discord puede ser un clan en Cabal, con su ranking y sus mejores callers. El bot es bidireccional: lo que pasa en Cabal llega a tu comunidad y las calls de tu comunidad llegan a Cabal. No tienes que vivir dentro de Cabal; sigue en tus grupos de siempre y entérate de todo.',
+  },
+  en: {
+    title: 'Clans: your community, connected',
+    body: 'Every Telegram group or Discord server can become a clan on Cabal, with its own ranking and top callers. The bot works both ways: what happens on Cabal reaches your community and your community’s calls reach Cabal. No need to live inside Cabal; stay in your usual groups and still catch everything.',
+  },
+}
+
 
 /**
  * @param refHandle Quién invita. Lo pasa la ruta /r/<handle>; si no viene, se
@@ -155,7 +173,7 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-muted-foreground">{t.landing.benefitsLead}</p>
           <ol className="mt-10 border-t border-white/10">
-            {t.landing.benefits.map((b, i) => {
+            {[...t.landing.benefits, CLAN_BENEFIT[lang === 'en' ? 'en' : 'es']].map((b, i) => {
               const Icon = BENEFIT_ICONS[i] ?? Radar
               const shots = BENEFIT_SHOTS[i] ?? []
               return (
@@ -534,8 +552,8 @@ function CtaButton({
 }) {
   const startHref = `/api/waitlist/x/start${refHandle ? `?ref=${encodeURIComponent(refHandle)}` : ''}`
   const classes = compact
-    ? 'group relative inline-flex h-10 items-center justify-center gap-2 justify-self-start overflow-hidden rounded-xl bg-primary px-4 text-[13px] font-bold text-primary-foreground transition-transform hover:scale-[1.03] hover:bg-[#9dba46] sm:justify-self-end'
-    : 'group animate-cta-glow relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-xl bg-primary px-8 text-[16px] font-bold text-primary-foreground transition-transform hover:scale-[1.02] hover:bg-[#9dba46] sm:w-auto'
+    ? 'group relative inline-flex h-10 items-center justify-center gap-2 justify-self-start overflow-hidden rounded-none btn-relieve bg-gradient-to-b from-[#9dba46] to-primary px-4 text-[13px] font-bold text-primary-foreground sm:justify-self-end'
+    : 'group relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-none btn-relieve bg-gradient-to-b from-[#9dba46] to-primary px-8 text-[16px] font-bold text-primary-foreground [--chaflan:polygon(12px_0,100%_0,100%_calc(100%-12px),calc(100%-12px)_100%,0_100%,0_12px)] sm:w-auto'
   const icon = compact ? 'h-4 w-4' : 'h-5 w-5'
 
   // Quien ya conectó X continúa donde lo dejó

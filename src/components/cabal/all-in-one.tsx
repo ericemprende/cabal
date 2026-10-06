@@ -115,7 +115,7 @@ export function AllInOne({ lang = 'es' }: { lang?: Lang }) {
             <a
               href="/download/cabal-seeker.apk"
               download
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-[15px] font-bold text-black transition hover:bg-amber-300"
+              className="btn-cabal btn-relieve inline-flex items-center gap-2 bg-gradient-to-b from-amber-300 to-amber-400 px-5 py-3 text-[15px] text-black"
             >
               <Download className="h-4 w-4" aria-hidden /> {t.apkCta}
               <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase">Beta</span>

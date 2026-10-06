@@ -127,7 +127,7 @@ export function IntroVideoPopup({ targetId, lang }: { targetId: string; lang: 'e
               onClick={unmute}
               className="absolute inset-0 flex items-center justify-center bg-black/30 transition hover:bg-black/20"
             >
-              <span className="animate-cta-glow inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-black">
+              <span className="btn-cabal btn-relieve inline-flex items-center gap-2 bg-gradient-to-b from-amber-300 to-amber-400 px-5 py-3 text-sm text-black">
                 <Volume2 className="h-5 w-5" aria-hidden />
                 {lang === 'en' ? 'Watch with sound' : 'Ver con sonido'}
               </span>
