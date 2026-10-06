@@ -63,9 +63,9 @@ Para que abra sin barra de URL, añadir esa huella a `ANDROID_SHA256_FINGERPRINT
 
 ## Integración SKR (premio extra de 10.000 $)
 
-Familia de insignias **Seeker** en , según el SKR que la cuenta
+Familia de insignias **Seeker** en `src/lib/badges.ts`, según el SKR que la cuenta
 tiene en sus wallets de Solana **verificadas** (firmadas), leído on-chain del mint
-oficial :
+oficial `SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3`:
 
 | Rango | Nombre | SKR |
 |---|---|---|
@@ -74,6 +74,6 @@ oficial :
 | Oro | Guardián Seeker | 10.000 |
 | Obsidiana | Leyenda Seeker | 100.000 |
 
- suma el saldo con  y lo cachea 10 min.
+`skrHeld()` suma el saldo con `getParsedTokenAccountsByOwner` y lo cachea 10 min.
 Sale en el perfil, en la alerta de insignia desbloqueada (con botón para presumirla
 en X) y en Próximos objetivos para quien aún no tiene SKR.
