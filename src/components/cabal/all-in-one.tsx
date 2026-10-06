@@ -1,4 +1,4 @@
-import { Bell, Hammer, LineChart, Radar, Smartphone, Trophy, Wallet } from 'lucide-react'
+import { Download, Hammer, LineChart, Radar, Smartphone, Trophy, Wallet } from 'lucide-react'
 
 /**
  * Bloque de la landing que vende la idea central: en Cabal todo pasa en un
@@ -24,7 +24,9 @@ const TXT = {
     ],
     mobileTitle: 'Hecho para el móvil',
     mobileBody: 'Cabal está pensado para usarse con una mano: avisos al instante, compra en un toque y todo a la vista sin menús escondidos. Hoy ya lo puedes instalar como app desde el navegador.',
-    mobileSoon: 'App para iOS y Android en construcción',
+    mobileSoon: 'App en beta · pronto en App Store y Google Play',
+    apkCta: 'Descargar APK Android',
+    apkNote: 'Versión beta · Android y Solana Seeker · 2,8 MB. Pronto en App Store y Google Play.',
   },
   en: {
     title: ['Everything happens in ', 'one place'],
@@ -41,7 +43,9 @@ const TXT = {
     ],
     mobileTitle: 'Built for mobile',
     mobileBody: 'Cabal is made to be used with one hand: instant alerts, one-tap buys and everything in view with no hidden menus. You can already install it as an app from your browser.',
-    mobileSoon: 'iOS and Android app in the works',
+    mobileSoon: 'App in beta · coming soon to the App Store and Google Play',
+    apkCta: 'Download Android APK',
+    apkNote: 'Beta version · Android and Solana Seeker · 2.8 MB. Coming soon to the App Store and Google Play.',
   },
 }
 
@@ -104,7 +108,17 @@ export function AllInOne({ lang = 'es' }: { lang?: Lang }) {
           </h3>
           <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{t.mobileBody}</p>
         </div>
-        <Bell className="hidden h-5 w-5 shrink-0 text-primary/60 sm:block" aria-hidden />
+        <div className="flex shrink-0 flex-col items-start gap-1 sm:items-center">
+          <a
+            href="/download/cabal-seeker.apk"
+            download
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground transition hover:opacity-90"
+          >
+            <Download className="h-4 w-4" aria-hidden /> {t.apkCta}
+            <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase">Beta</span>
+          </a>
+          <span className="max-w-[16rem] text-[11px] text-muted-foreground sm:text-center">{t.apkNote}</span>
+        </div>
       </div>
     </section>
   )
