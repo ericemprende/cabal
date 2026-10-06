@@ -112,12 +112,17 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
               t={t}
               lang={lang}
             />
-            <Mockup t={t} />
+            <PresentationVideo />
           </div>
         </div>
       </div>
 
       <div className="relative mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
+        {/* Los personajes de Cabal, debajo del hero */}
+        <div className="mt-6 flex justify-center">
+          <Mockup t={t} />
+        </div>
+
         <section className="mt-10 md:mt-16">
           <h2 className="font-display text-2xl font-bold sm:text-3xl">
             {t.landing.benefitsTitle.before}
@@ -461,6 +466,27 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
  * detras. El marco va en su propia capa para poder moverlo sin arrastrar al
  * escuadron, que se mantiene quieto y nitido.
  */
+function PresentationVideo() {
+  return (
+    <div className="relative mx-auto w-full max-w-[560px] lg:mx-0">
+      <div
+        aria-hidden
+        className="absolute -inset-8 rounded-[40px] opacity-70 blur-2xl"
+        style={{ background: 'radial-gradient(50% 50% at 50% 50%, rgba(143,168,63,0.22) 0%, transparent 70%)' }}
+      />
+      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_20px_45px_rgba(0,0,0,0.55)]">
+        <video
+          src="https://assets.cdn.filesafe.space/PzBHLZpVRI65nyeCEHng/media/6ac56555dca4eec506170e1d.mp4"
+          controls
+          playsInline
+          preload="metadata"
+          className="aspect-video w-full"
+        />
+      </div>
+    </div>
+  )
+}
+
 function Mockup({ t }: { t: Dict }) {
   return (
     <div className="relative mx-auto w-full max-w-[560px] lg:mx-0">
