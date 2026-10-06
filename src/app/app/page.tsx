@@ -18,6 +18,7 @@ import { LaunchDetailDialog } from '@/components/cabal/launch-detail'
 import { TokenDetailDialog } from '@/components/cabal/token-detail'
 import { ProfileDialog } from '@/components/cabal/profile-dialog'
 import { BadgeUnlockWatcher } from '@/components/cabal/badges-ui'
+import { AppWelcomeGate } from '@/components/cabal/app-welcome-gate'
 import { AdminDialog } from '@/components/cabal/admin-dialog'
 import { PremiumDialog } from '@/components/cabal/premium-dialog'
 import { AmmoDialog } from '@/components/cabal/ammo-dialog'
@@ -294,6 +295,7 @@ export default function Home() {
       <DonateThanksDialog />
       <GuideAssistant />
       <BadgeUnlockWatcher />
+      <AppWelcomeGate />
     </div>
   )
 }
