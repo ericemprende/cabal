@@ -172,6 +172,7 @@ export const MWA_WALLET_NAME = 'Mobile Wallet Adapter'
 
 async function startMobileWalletAdapter() {
   if (!/android/i.test(navigator.userAgent)) return
+  skipLoopbackPermissionModal()
   try {
     const mwa = await import('@solana-mobile/wallet-standard-mobile')
     mwa.registerMwa({
@@ -187,6 +188,30 @@ async function startMobileWalletAdapter() {
     })
   } catch {
     // sin MWA quedan los enlaces para abrir Cabal dentro de la wallet
+  }
+}
+
+/**
+ * MWA 0.6 pregunta el permiso "loopback-network" (Acceso a la red local de
+ * Chrome) y, si está en "prompt", enseña su aviso "Allow connection…" y espera
+ * a que Chrome muestre la ventana de permitir. Dentro de la TWA esa ventana
+ * nunca sale y la app se queda congelada. Respondemos "granted" para que MWA
+ * vaya directo al websocket local: si Chrome lo bloquea, falla con error en
+ * vez de colgarse.
+ */
+function skipLoopbackPermissionModal() {
+  const perms = navigator.permissions
+  if (!perms?.query) return
+  const original = perms.query.bind(perms)
+  try {
+    perms.query = ((desc: PermissionDescriptor) => {
+      if ((desc as { name: string }).name === 'loopback-network') {
+        return Promise.resolve({ state: 'granted', onchange: null } as unknown as PermissionStatus)
+      }
+      return original(desc)
+    }) as Permissions['query']
+  } catch {
+    // navegador que no deja sobrescribir query: queda el flujo normal de MWA
   }
 }
 
