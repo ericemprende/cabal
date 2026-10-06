@@ -79,6 +79,9 @@ export function AppWelcomeGate() {
       <div className="relative flex flex-col items-center gap-4">
         <img src="/cabal-logo.png" alt="Cabal" className="h-24 w-24 rounded-2xl" />
         <h1 className="text-3xl font-black tracking-tight">Cabal</h1>
+        <span className="-mt-2 rounded-full border border-[#8FA83F]/40 bg-[#8FA83F]/10 px-2.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
+          Beta 1.0
+        </span>
         <p className="max-w-xs text-sm text-muted-foreground">{tx.tagline}</p>
       </div>
       <div className="relative flex w-full max-w-xs flex-col gap-3">
