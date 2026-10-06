@@ -145,12 +145,13 @@ export function GuideAssistant() {
           onClick={open}
           aria-label={t.guide.open(character.name)}
           className={cn(
-            'fixed right-3 z-40 flex items-center gap-2 rounded-full border border-[#8FA83F]/40 bg-[#121410]/95 py-1.5 pl-1.5 pr-3.5 shadow-lg backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95 md:right-4',
+            'fixed right-3 z-40 flex items-center gap-2 rounded-full border border-[#8FA83F]/40 bg-[#121410]/95 p-1 shadow-lg md:py-1.5 md:pl-1.5 md:pr-3.5 backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95 md:right-4',
             'bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-11'
           )}
         >
           <CharacterAvatar character={character} size={40} />
-          <span className="flex flex-col items-start leading-tight">
+          {/* En móvil solo la cara: el rótulo tapaba el contenido */}
+          <span className="hidden flex-col items-start leading-tight md:flex">
             <span className="text-[12px] font-bold text-primary">{t.guide.title}</span>
             <span className="text-[10px] text-muted-foreground">
               {progress.done < progress.total ? t.guide.missions(progress.done, progress.total) : t.guide.questions}

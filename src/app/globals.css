@@ -129,6 +129,8 @@
     font-feature-settings: "tnum";
     /* Red de seguridad en móvil: nada puede provocar scroll horizontal (clip no rompe sticky) */
     overflow-x: clip;
+    /* Sin zoom por doble toque: los toques responden al momento, como en una app */
+    touch-action: manipulation;
   }
 }
 

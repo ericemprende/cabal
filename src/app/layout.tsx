@@ -52,6 +52,9 @@ export const viewport: Viewport = {
   themeColor: "#0a0b08",
   width: "device-width",
   initialScale: 1,
+  // App, no página: sin zoom con los dedos (en la app instalada se sentía como una pestaña)
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default async function RootLayout({
