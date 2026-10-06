@@ -29,6 +29,7 @@ import { BotComparison } from '@/components/cabal/bot-comparison'
 import { LaunchComparison } from '@/components/cabal/launch-comparison'
 import { PlatformComparison } from '@/components/cabal/platform-comparison'
 import { AllInOne } from '@/components/cabal/all-in-one'
+import { INTRO_VIDEO_URL, IntroVideoPopup } from '@/components/cabal/intro-video-popup'
 import { useLang } from '@/lib/i18n/provider'
 import { baseLang } from '@/lib/i18n/config'
 import { useT } from '@/lib/i18n/provider'
@@ -205,7 +206,10 @@ export function WhitelistLanding({ refHandle }: { refHandle?: string | null } = 
           <Mockup t={t} />
         </section>
 
-        <AllInOne lang={lang === 'en' ? 'en' : 'es'} />
+        <div id="cabal-app">
+          <AllInOne lang={lang === 'en' ? 'en' : 'es'} />
+        </div>
+        <IntroVideoPopup targetId="cabal-app" lang={lang === 'en' ? 'en' : 'es'} />
 
         {/* Lanzar un token: pump.fun frente al launchpad propio de Cabal */}
         <section className="mt-14">
@@ -606,7 +610,8 @@ function PresentationVideo() {
       />
       <div className="relative overflow-hidden rounded-3xl border border-[#8FA83F]/40 bg-black shadow-[0_20px_45px_rgba(0,0,0,0.55)]">
         <video
-          src="https://assets.cdn.filesafe.space/PzBHLZpVRI65nyeCEHng/media/6ac56555dca4eec506170e1d.mp4#t=0.5"
+          src={`${INTRO_VIDEO_URL}#t=0.5`}
+          data-intro-video
           controls
           playsInline
           preload="metadata"

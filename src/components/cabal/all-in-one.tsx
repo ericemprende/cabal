@@ -99,28 +99,28 @@ export function AllInOne({ lang = 'es' }: { lang?: Lang }) {
       </ol>
 
       {/* Móvil y app: texto y descarga a la izquierda, el teléfono a la derecha */}
-      <div className="mt-6 grid items-center gap-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="mt-6 grid items-center gap-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#8FA83F]/10 to-transparent p-6 sm:p-10 md:grid-cols-2 md:gap-10">
         <div className="min-w-0">
           <span className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#8FA83F]/30 bg-[#8FA83F]/10">
             <Smartphone className="h-6 w-6 text-primary" aria-hidden />
           </span>
-          <h3 className="mt-4 flex flex-wrap items-center gap-2 font-display text-2xl font-bold">
+          <h3 className="mt-5 flex flex-wrap items-center gap-3 font-display text-3xl font-bold sm:text-4xl">
             {t.mobileTitle}
             <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
               <Hammer className="h-3 w-3" aria-hidden /> {t.mobileSoon}
             </span>
           </h3>
-          <p className="mt-2 max-w-lg text-[14px] leading-relaxed text-muted-foreground">{t.mobileBody}</p>
-          <div className="mt-6 flex flex-col items-start gap-1.5">
+          <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-muted-foreground sm:text-[17px]">{t.mobileBody}</p>
+          <div className="mt-8 flex flex-col items-start gap-2">
             <a
               href="/download/cabal-seeker.apk"
               download
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-sm font-bold text-black transition hover:bg-amber-300"
+              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-[15px] font-bold text-black transition hover:bg-amber-300"
             >
               <Download className="h-4 w-4" aria-hidden /> {t.apkCta}
               <span className="rounded-full bg-black/20 px-1.5 py-0.5 text-[10px] font-bold uppercase">Beta</span>
             </a>
-            <span className="max-w-[18rem] text-[11px] text-muted-foreground">{t.apkNote}</span>
+            <span className="max-w-sm text-[12px] text-muted-foreground">{t.apkNote}</span>
           </div>
         </div>
         <PhoneMockup lang={lang} />
@@ -151,7 +151,7 @@ function PhoneMockup({ lang }: { lang: Lang }) {
   const label = (l: (typeof PHONE_SCREENS)[number]['label']) => (typeof l === 'string' ? l : l[lang])
 
   return (
-    <div className="relative mx-auto w-[230px] sm:w-[260px]">
+    <div className="relative mx-auto w-[240px] sm:w-[280px]">
       <div
         aria-hidden
         className="absolute -inset-10 opacity-70 blur-3xl"
