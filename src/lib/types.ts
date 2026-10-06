@@ -374,7 +374,7 @@ export interface PremiumInfoDTO {
 
 /** Emblema del perfil por un hito (fundador, actividad…). Ver lib/badges.ts. */
 /** El metal de una insignia: dice el nivel. Fundador va aparte, no es un rango. */
-export type BadgeMetal = 'bronce' | 'acero' | 'oro' | 'obsidiana' | 'verde' | 'fundador'
+export type BadgeMetal = 'bronce' | 'acero' | 'oro' | 'obsidiana' | 'verde' | 'fundador' | 'blanco'
 
 export interface BadgeDTO {
   id: string
@@ -673,8 +673,6 @@ export interface SwapFeeTotalsDTO {
   trades: number
 }
 
-/** Lo que llevan generado las comisiones de compra/venta (panel de admin). */
-export interface SwapFeeEarningsDTO {
 /** Fuentes de ingreso de Cabal (/admin → Ingresos). */
 export type RevenueSource = 'premium' | 'ammo' | 'donations' | 'launch' | 'swap'
 
@@ -690,6 +688,8 @@ export interface RevenueDTO {
   recent: { source: RevenueSource; at: string; usd: number; label: string; who: string | null }[]
 }
 
+/** Lo que llevan generado las comisiones de compra/venta (panel de admin). */
+export interface SwapFeeEarningsDTO {
   all: SwapFeeTotalsDTO
   last30d: SwapFeeTotalsDTO
   last7d: SwapFeeTotalsDTO

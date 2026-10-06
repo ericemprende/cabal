@@ -14,7 +14,7 @@ import { SILUETAS, type Silueta } from '@/lib/siluetas'
  * Dos modos, decididos por el tamaño: con placa de 44px para arriba, silueta
  * sola por debajo, porque a 22px el octógono se cierra y tapa el dibujo.
  */
-export type Metal = 'bronce' | 'acero' | 'oro' | 'obsidiana' | 'verde' | 'fundador'
+export type Metal = 'bronce' | 'acero' | 'oro' | 'obsidiana' | 'verde' | 'fundador' | 'blanco'
 
 /** Los degradados viven una sola vez en el layout: ChapaDefs. */
 const CARA: Record<Metal, [string, string, string]> = {
@@ -24,6 +24,8 @@ const CARA: Record<Metal, [string, string, string]> = {
   obsidiana: ['#ffffff', '#cdd6ff', '#4a3f7a'],
   verde: ['#eaf7c0', '#8FA83F', '#46571f'],
   fundador: ['#eaf7c0', '#8FA83F', '#46571f'],
+  // Donador: blanco perla, que no se confunda con el acero
+  blanco: ['#ffffff', '#f4f1ea', '#b9b3a6'],
 }
 
 const PLACA: Record<Metal, [string, string, string]> = {
@@ -33,6 +35,7 @@ const PLACA: Record<Metal, [string, string, string]> = {
   obsidiana: ['#1c1d2a', '#0d0e16', '#050509'],
   verde: ['#2c3420', '#1a2013', '#0d1009'],
   fundador: ['#2c3420', '#1a2013', '#0d1009'],
+  blanco: ['#34322e', '#1f1e1b', '#0e0d0c'],
 }
 
 const REMACHE: Record<Metal, string> = {
@@ -42,6 +45,7 @@ const REMACHE: Record<Metal, string> = {
   obsidiana: '#b9c4ff',
   verde: '#8FA83F',
   fundador: '#8FA83F',
+  blanco: '#ffffff',
 }
 
 const METALES = Object.keys(CARA) as Metal[]

@@ -12,6 +12,7 @@ import {
   isUserRejection,
   lastUsedWallet,
   listWallets,
+  MWA_WALLET_NAME,
   subscribeWallets,
   SUGGESTED_WALLETS,
   walletsVersion,
@@ -118,7 +119,9 @@ function WalletPickerDialog({
   }
 
   // La última usada primero
-  const sorted = [...wallets].sort((a, b) => Number(b.id === last) - Number(a.id === last))
+  // (en Android, Mobile Wallet Adapter por delante: es la vía nativa del Seeker)
+  const rank = (id: string) => (id === last ? 2 : 0) + (id === MWA_WALLET_NAME ? 1 : 0)
+  const sorted = [...wallets].sort((a, b) => rank(b.id) - rank(a.id))
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onDone(null)}>

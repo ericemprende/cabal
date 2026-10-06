@@ -158,6 +158,36 @@ function ensureStarted() {
   started = true
   startWalletStandard()
   startEip6963()
+  void startMobileWalletAdapter()
+}
+
+/**
+ * Mobile Wallet Adapter (Solana Mobile): en Android, también dentro de la app
+ * TWA del Seeker, no hay extensiones; MWA se anuncia como una wallet estándar
+ * más ("Mobile Wallet Adapter") y abre la wallet instalada en el teléfono
+ * (Seed Vault, Phantom, Solflare…) para conectar y firmar sin salir de Cabal.
+ * Se carga solo en Android para no sumar peso al escritorio.
+ */
+export const MWA_WALLET_NAME = 'Mobile Wallet Adapter'
+
+async function startMobileWalletAdapter() {
+  if (!/android/i.test(navigator.userAgent)) return
+  try {
+    const mwa = await import('@solana-mobile/wallet-standard-mobile')
+    mwa.registerMwa({
+      appIdentity: {
+        name: 'Cabal',
+        uri: window.location.origin,
+        icon: '/icons/icon-192.png',
+      },
+      authorizationCache: mwa.createDefaultAuthorizationCache(),
+      chains: [SOLANA_MAINNET],
+      chainSelector: mwa.createDefaultChainSelector(),
+      onWalletNotFound: mwa.createDefaultWalletNotFoundHandler(),
+    })
+  } catch {
+    // sin MWA quedan los enlaces para abrir Cabal dentro de la wallet
+  }
 }
 
 export function subscribeWallets(cb: () => void): () => void {

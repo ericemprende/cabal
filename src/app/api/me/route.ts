@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { getCurrentUser, getPointRules, requireSessionUser, errorStatus } from '@/lib/api-helpers'
 import { toUserDTO } from '@/lib/serializers'
 import { premiumStatus } from '@/lib/premium'
-import { computeBadges, computeNextBadges, isFounder, tradeVolumeUsd } from '@/lib/badges'
+import { computeBadges, computeNextBadges, isFounder, tradeVolumeUsd, donatedUsd } from '@/lib/badges'
 import type { DevClaimStats, MeDTO } from '@/lib/types'
 
 export async function GET() {
@@ -57,6 +57,7 @@ export async function GET() {
         likesReceived: likesReceived._sum.likes ?? 0,
         hypesGiven: hypes,
         tradeVolumeUsd: await tradeVolumeUsd(me.id),
+        donatedUsd: await donatedUsd(me.id),
       },
       calls: { won: me.callsWon, total: me.callsTotal, best: mejorCall._max.peakMultiple },
       rep: { score: me.repScore, votes: me.repUp + me.repDown },

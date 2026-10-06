@@ -35,6 +35,8 @@ export type BadgeContext = {
     hypesGiven: number
     /** Dólares operados con el botón de compra/venta de Cabal (trades confirmados). */
     tradeVolumeUsd?: number
+    /** Dólares donados a Cabal (donaciones confirmadas). Ver lib/donate-server. */
+    donatedUsd?: number
   }
   /** Resultados de sus calls. Ver lib/call-score. */
   calls: {
@@ -65,6 +67,18 @@ type Familia = {
 }
 
 const FAMILIAS: Familia[] = [
+  {
+    // Donador: la primera es blanca y no la de bronce, porque donar un dólar ya
+    // es de presumir. Luego sube como las demás: no es lo mismo $1 que $1.000.
+    id: 'donor',
+    silueta: 'cherish',
+    rangos: [
+      { cumple: (c) => (c.stats.donatedUsd ?? 0) >= 1, metal: 'blanco', label: 'Donador', description: 'Donó a Cabal para mantenerlo gratis' },
+      { cumple: (c) => (c.stats.donatedUsd ?? 0) >= 25, metal: 'acero', label: 'Aliado', description: 'Donó $25 o más a Cabal' },
+      { cumple: (c) => (c.stats.donatedUsd ?? 0) >= 100, metal: 'oro', label: 'Mecenas', description: 'Donó $100 o más a Cabal' },
+      { cumple: (c) => (c.stats.donatedUsd ?? 0) >= 1_000, metal: 'obsidiana', label: 'Benefactor', description: 'Donó $1.000 o más a Cabal' },
+    ],
+  },
   {
     id: 'launches',
     silueta: 'rocket',
@@ -197,8 +211,24 @@ export function computeBadges(ctx: BadgeContext): BadgeDTO[] {
   }
 
   // Obsidiana primero, bronce al final; Fundador siempre abre
-  const peso: Record<BadgeMetal, number> = { obsidiana: 4, oro: 3, acero: 2, bronce: 1, verde: 0, fundador: 5 }
+  const peso: Record<BadgeMetal, number> = { obsidiana: 4, oro: 3, acero: 2, bronce: 1, verde: 0, fundador: 5, blanco: 1 }
   return out.sort((a, b) => peso[b.metal] - peso[a.metal])
+}
+
+/**
+ * La insignia de donador que corresponde a un total donado, o null si aún no
+ * llega a la primera. La enseña la pantalla de gracias de una donación.
+ */
+export function donorBadge(usd: number): BadgeDTO | null {
+  const fam = FAMILIAS.find((f) => f.id === 'donor')
+  if (!fam) return null
+  const ctx = { stats: { donatedUsd: usd } } as BadgeContext
+  for (let i = fam.rangos.length - 1; i >= 0; i--) {
+    const r = fam.rangos[i]
+    if (!r.cumple(ctx)) continue
+    return { id: `${fam.id}-${i + 1}`, label: r.label, description: r.description, icon: fam.silueta, silueta: fam.silueta, metal: r.metal, rango: i + 1 }
+  }
+  return null
 }
 
 /**
@@ -213,6 +243,14 @@ export async function tradeVolumeUsd(userId: string): Promise<number> {
       where: { consumed: true, OR: links.map((l) => ({ network: l.network, walletAddress: l.address })) },
       _sum: { amountUsd: true },
     })
+    return agg._sum.amountUsd ?? 0
+  })
+}
+
+/** Dólares donados y confirmados. Cacheado 5 minutos, como el volumen. */
+export async function donatedUsd(userId: string): Promise<number> {
+  return cached(`badges:donated:${userId}`, 300, async () => {
+    const agg = await db.donation.aggregate({ where: { userId }, _sum: { amountUsd: true } })
     return agg._sum.amountUsd ?? 0
   })
 }

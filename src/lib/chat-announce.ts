@@ -40,10 +40,12 @@ export const MAX_ANNOUNCE_BODY = 500
 const DEFAULTS = {
   body:
     'Cabal es gratis y sin anuncios, pero los servidores y los datos en vivo no lo son. ' +
-    'Con 1 USDT ya estás aportando: lo que entra se va entero en mantener esto en pie. 🫡',
+    'Con 1 USDT ya estás aportando: lo que entra se va entero en mantener esto en pie. ' +
+    'Y te llevas la insignia de Donador en tu perfil, que sube de nivel cuanto más aportes. 🫡',
   bodyEn:
     'Cabal is free and ad-free, but servers and live data are not. ' +
-    'One single USDT already helps: every cent that comes in goes into keeping this running. 🫡',
+    'One single USDT already helps: every cent that comes in goes into keeping this running. ' +
+    'You also get the Donor badge on your profile, and it levels up the more you give. 🫡',
   link: 'donate',
   label: 'Donar a Cabal',
   labelEn: 'Donate to Cabal',

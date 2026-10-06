@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { invalidate } from '@/lib/cache'
 import { awardPoints, getPointRules } from '@/lib/api-helpers'
 import { CABAL_X_HANDLE } from '@/lib/cabal-x'
 import {
@@ -137,6 +138,8 @@ export async function creditDonation(payment: {
       throw e
     })
   if (!donation) return null
+  // Que la insignia de Donador aparezca ya, sin esperar a la caché
+  await invalidate(`badges:donated:${payment.userId}`)
 
   if (points > 0) {
     await awardPoints(payment.userId, 'donation', `Donación de ${fmtUsd(payment.amountUsd)}`, points)
