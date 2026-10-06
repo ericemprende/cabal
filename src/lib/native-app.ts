@@ -31,3 +31,13 @@ export function blockIosAppPurchase(req: Request): Response | null {
   if (!isIosAppUA(req.headers.get('user-agent'))) return null
   return Response.json({ error: 'Las compras no están disponibles en la app de iOS.' }, { status: 403 })
 }
+
+/**
+ * En el navegador: ¿es la app de Android (TWA de la carpeta android/) o la web
+ * instalada en la pantalla de inicio de un Android? Las dos van a pantalla
+ * completa (display-mode standalone).
+ */
+export function isAndroidInstalledApp(): boolean {
+  if (typeof window === 'undefined' || !/android/i.test(navigator.userAgent)) return false
+  return Boolean(window.matchMedia?.('(display-mode: standalone)').matches || document.referrer.startsWith('android-app://'))
+}

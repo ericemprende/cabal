@@ -22,6 +22,8 @@ import { redis } from '@/lib/redis'
  * Los tokens van firmados, caducan en minutos y, con Redis, valen una sola vez.
  */
 export const APP_SCHEME = 'army.cabal.app'
+/** Paquete de la app Android (TWA, carpeta android/). */
+const ANDROID_PACKAGE = 'army.cabal.app'
 
 const APP_COOKIE = 'cabal_oauth_app'
 const LINK_COOKIE = 'cabal_oauth_link'
@@ -68,9 +70,10 @@ export async function consumeHandoffToken(token: string | null | undefined, purp
 /** En /start: recuerda (en el navegador del sistema) que el flujo viene de la app. */
 export function markAppOAuth(req: NextRequest, res: NextResponse) {
   const params = req.nextUrl.searchParams
-  if (params.get('app') !== '1') return
+  const app = params.get('app')
+  if (app !== '1' && app !== 'android') return
   const opts = oauthCookieOptions(req)
-  res.cookies.set(APP_COOKIE, '1', opts)
+  res.cookies.set(APP_COOKIE, app, opts)
   const link = params.get('link')
   if (link && link.length < 400) res.cookies.set(LINK_COOKIE, link, opts)
 }
@@ -93,9 +96,22 @@ export function oauthFinish(
   query: string,
   loginUserId?: string
 ): NextResponse {
-  const fromApp = req.cookies.get(APP_COOKIE)?.value === '1'
+  const fromApp = req.cookies.get(APP_COOKIE)?.value
   let res: NextResponse
-  if (fromApp) {
+  if (fromApp === 'android') {
+    // App de Android (TWA): X o Google sueltan a la persona en el navegador.
+    // Un enlace intent:// la devuelve a la app, que abre el traspaso y pone la
+    // sesión dentro; si no se puede abrir la app, el navegador sigue al mismo
+    // enlace https y la sesión queda al menos ahí.
+    const t = loginUserId ? createHandoffToken(loginUserId, 'login') : null
+    const target = t
+      ? `${origin}/api/auth/app-handoff?p=${provider}&t=${encodeURIComponent(t)}${query.includes('created=1') ? '&created=1' : ''}`
+      : `${origin}/app?connected=${provider}&${query}`
+    const u = new URL(target)
+    res = NextResponse.redirect(
+      `intent://${u.host}${u.pathname}${u.search}#Intent;scheme=https;package=${ANDROID_PACKAGE};S.browser_fallback_url=${encodeURIComponent(target)};end`
+    )
+  } else if (fromApp === '1') {
     const t = loginUserId ? `&t=${encodeURIComponent(createHandoffToken(loginUserId, 'login'))}` : ''
     res = NextResponse.redirect(`${APP_SCHEME}://auth?p=${provider}&${query}${t}`)
   } else {

@@ -1,6 +1,6 @@
 'use client'
 
-import { isIosApp } from '@/lib/native-app'
+import { isAndroidInstalledApp, isIosApp } from '@/lib/native-app'
 
 /**
  * Puente con la app nativa (Capacitor, carpeta mobile/). La web se carga en
@@ -46,6 +46,19 @@ export async function openExternal(url: string) {
  */
 export async function startOAuth(provider: 'x' | 'google' | 'discord', mode: 'login' | 'link') {
   const path = `/api/auth/${provider}/start${mode === 'login' ? '?mode=login' : ''}`
+  if (isAndroidInstalledApp()) {
+    // App de Android: el OAuth acaba en el navegador o en la app de X; con
+    // app=android el servidor devuelve a la persona a Cabal al terminar.
+    const url = new URL(path, window.location.origin)
+    url.searchParams.set('app', 'android')
+    if (mode === 'link') {
+      const res = await fetch('/api/auth/app-link-token', { method: 'POST' })
+      const data = (await res.json().catch(() => ({}))) as { token?: string }
+      if (data.token) url.searchParams.set('link', data.token)
+    }
+    window.location.assign(url.toString())
+    return
+  }
   const browser = isIosApp() ? plugins()?.Browser : undefined
   if (!browser) {
     window.location.assign(path)
