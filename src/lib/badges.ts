@@ -1,4 +1,6 @@
+import { PublicKey } from '@solana/web3.js'
 import { db } from '@/lib/db'
+import { solanaConnection } from '@/lib/swap'
 import { cached } from '@/lib/cache'
 import { REP_MIN_VOTES } from '@/lib/reputation'
 import type { BadgeDTO, BadgeMetal } from '@/lib/types'
@@ -37,6 +39,8 @@ export type BadgeContext = {
     tradeVolumeUsd?: number
     /** Dólares donados a Cabal (donaciones confirmadas). Ver lib/donate-server. */
     donatedUsd?: number
+    /** SKR (el token de Solana Mobile) en sus wallets de Solana verificadas. Ver skrHeld. */
+    skrHeld?: number
   }
   /** Resultados de sus calls. Ver lib/call-score. */
   calls: {
@@ -67,6 +71,19 @@ type Familia = {
 }
 
 const FAMILIAS: Familia[] = [
+  {
+    // Seeker: premia a quien tiene SKR, el token del ecosistema Solana Mobile.
+    // Se lee on-chain de las wallets verificadas (firmadas), no de lo que diga
+    // el usuario, así que no se puede presumir del SKR de otro.
+    id: 'skr',
+    silueta: 'radar-sweep',
+    rangos: [
+      { cumple: (c) => (c.stats.skrHeld ?? 0) >= 1, metal: 'bronce', label: 'Seeker', description: 'Tiene SKR, el token de Solana Mobile, en su wallet verificada' },
+      { cumple: (c) => (c.stats.skrHeld ?? 0) >= 1_000, metal: 'acero', label: 'Seeker veterano', description: 'Tiene 1.000 SKR o más en su wallet verificada' },
+      { cumple: (c) => (c.stats.skrHeld ?? 0) >= 10_000, metal: 'oro', label: 'Guardián Seeker', description: 'Tiene 10.000 SKR o más en su wallet verificada' },
+      { cumple: (c) => (c.stats.skrHeld ?? 0) >= 100_000, metal: 'obsidiana', label: 'Leyenda Seeker', description: 'Tiene 100.000 SKR o más en su wallet verificada' },
+    ],
+  },
   {
     // Donador: la primera es blanca y no la de bronce, porque donar un dólar ya
     // es de presumir. Luego sube como las demás: no es lo mismo $1 que $1.000.
@@ -244,6 +261,36 @@ export async function tradeVolumeUsd(userId: string): Promise<number> {
       _sum: { amountUsd: true },
     })
     return agg._sum.amountUsd ?? 0
+  })
+}
+
+/** Mint oficial de SKR (https://solanamobile.com/skr). */
+export const SKR_MINT = 'SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3'
+
+/**
+ * SKR que tiene en sus wallets de Solana verificadas, sumado y en unidades
+ * legibles. Cacheado 10 minutos: es una consulta al RPC por wallet. Si el RPC
+ * falla, cuenta 0 en vez de romper el perfil.
+ */
+export async function skrHeld(userId: string): Promise<number> {
+  return cached(`badges:skr:${userId}`, 600, async () => {
+    const links = await db.walletLink.findMany({
+      where: { userId, network: 'solana', signature: true },
+      select: { address: true },
+    })
+    if (links.length === 0) return 0
+    const conn = solanaConnection()
+    const mint = new PublicKey(SKR_MINT)
+    let total = 0
+    for (const { address } of links) {
+      try {
+        const res = await conn.getParsedTokenAccountsByOwner(new PublicKey(address), { mint })
+        for (const { account } of res.value) total += Number(account.data.parsed?.info?.tokenAmount?.uiAmount ?? 0)
+      } catch {
+        // una dirección rara o un RPC caído no tumba el perfil
+      }
+    }
+    return total
   })
 }
 

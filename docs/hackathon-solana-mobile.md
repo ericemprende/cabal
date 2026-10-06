@@ -61,7 +61,19 @@ Para que abra sin barra de URL, añadir esa huella a `ANDROID_SHA256_FINGERPRINT
 5. Gamificación: insignias, puntos, ranking de callers, insignia de donador.
 6. Cierre: qué viene (dApp Store, integración SKR).
 
-## Premio SKR (extra, 10.000 $)
+## Integración SKR (premio extra de 10.000 $)
 
-Idea por si da tiempo: pagar Premium o munición en SKR, o insignia para quien
-tenga SKR en la wallet conectada.
+Familia de insignias **Seeker** en , según el SKR que la cuenta
+tiene en sus wallets de Solana **verificadas** (firmadas), leído on-chain del mint
+oficial :
+
+| Rango | Nombre | SKR |
+|---|---|---|
+| Bronce | Seeker | 1 |
+| Acero | Seeker veterano | 1.000 |
+| Oro | Guardián Seeker | 10.000 |
+| Obsidiana | Leyenda Seeker | 100.000 |
+
+ suma el saldo con  y lo cachea 10 min.
+Sale en el perfil, en la alerta de insignia desbloqueada (con botón para presumirla
+en X) y en Próximos objetivos para quien aún no tiene SKR.

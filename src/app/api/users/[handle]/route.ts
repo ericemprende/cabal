@@ -6,7 +6,7 @@ import { publicDevClaim } from '@/lib/claims'
 import { pendingMany } from '@/lib/counters'
 import { preloadPostRefs, toPostDTO, toPublicUserDTO } from '@/lib/serializers'
 import { hasPremium } from '@/lib/premium'
-import { computeBadges, isFounder, tradeVolumeUsd, donatedUsd } from '@/lib/badges'
+import { computeBadges, isFounder, tradeVolumeUsd, donatedUsd, skrHeld } from '@/lib/badges'
 import type { PostDTO, PublicProfileDTO } from '@/lib/types'
 import { OFFICIAL_ACCOUNT_KEY } from '@/lib/chat-announce'
 
@@ -97,6 +97,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ handle:
         hypesGiven,
         tradeVolumeUsd: await tradeVolumeUsd(user.id),
         donatedUsd: await donatedUsd(user.id),
+        skrHeld: await skrHeld(user.id),
       },
       calls: { won: user.callsWon, total: user.callsTotal, best: mejorCall._max.peakMultiple },
       rep: { score: user.repScore, votes: user.repUp + user.repDown },
