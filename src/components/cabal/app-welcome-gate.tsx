@@ -77,14 +77,47 @@ export function AppWelcomeGate() {
         className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-[radial-gradient(circle_at_50%_30%,rgba(143,168,63,0.28),transparent_65%)]"
       />
       <div className="relative flex flex-col items-center gap-4">
-        <img src="/cabal-logo.png" alt="Cabal" className="h-24 w-24 rounded-2xl" />
+        {/* Logo como un radar: barrido girando y ondas que salen, y un "pulso" al entrar */}
+        <div className="relative flex h-44 w-44 items-center justify-center">
+          <style>{`
+            @keyframes cabal-sweep { to { transform: rotate(360deg) } }
+            @keyframes cabal-wave { 0% { transform: scale(.55); opacity: .7 } 100% { transform: scale(1.35); opacity: 0 } }
+            @keyframes cabal-pop { 0% { transform: scale(.4); opacity: 0 } 60% { transform: scale(1.08); opacity: 1 } 80% { transform: scale(.97) } 100% { transform: scale(1) } }
+            @keyframes cabal-glow { 0%,100% { box-shadow: 0 0 24px rgba(143,168,63,.35) } 50% { box-shadow: 0 0 48px rgba(143,168,63,.7) } }
+            @media (prefers-reduced-motion: reduce) { .cabal-anim { animation: none !important } }
+          `}</style>
+          <span aria-hidden className="absolute inset-0 rounded-full border border-[#8FA83F]/25" />
+          <span aria-hidden className="absolute inset-6 rounded-full border border-[#8FA83F]/20" />
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              aria-hidden
+              className="cabal-anim absolute inset-0 rounded-full border-2 border-[#8FA83F]/60"
+              style={{ animation: `cabal-wave 2.4s ease-out ${i * 0.8}s infinite`, opacity: 0 }}
+            />
+          ))}
+          <span
+            aria-hidden
+            className="cabal-anim absolute inset-0 rounded-full"
+            style={{
+              background: 'conic-gradient(from 0deg, rgba(143,168,63,.45), rgba(143,168,63,0) 70deg, transparent 360deg)',
+              animation: 'cabal-sweep 2.4s linear infinite',
+            }}
+          />
+          <img
+            src="/cabal-logo.png"
+            alt="Cabal"
+            className="cabal-anim relative h-24 w-24 rounded-2xl"
+            style={{ animation: 'cabal-pop .7s cubic-bezier(.2,.8,.2,1) both, cabal-glow 2.4s ease-in-out .7s infinite' }}
+          />
+        </div>
         <h1 className="text-3xl font-black tracking-tight">Cabal</h1>
         <span className="-mt-2 rounded-full border border-[#8FA83F]/40 bg-[#8FA83F]/10 px-2.5 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-primary">
           Beta 1.0
         </span>
         <p className="max-w-xs text-sm text-muted-foreground">{tx.tagline}</p>
       </div>
-      <div className="relative flex w-full max-w-xs flex-col gap-3">
+      <div className="relative flex w-full max-w-xs flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 fill-mode-both duration-700 delay-300">
         <Button size="lg" className="w-full" onClick={() => openAuth('login')}>
           {tx.login}
         </Button>
