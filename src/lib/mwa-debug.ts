@@ -6,7 +6,18 @@
  */
 
 const MAX = 40
-const lines: string[] = []
+const KEY = 'cabal:mwa-debug'
+let lines: string[] = []
+
+// Se guarda en localStorage: al volver de la wallet la página puede recargarse
+// y sin esto el registro se perdía justo antes de poder leerlo.
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), lines }))
+  } catch {
+    // sin almacenamiento solo se ve en vivo
+  }
+}
 let box: HTMLDivElement | null = null
 let hooked = false
 
@@ -33,6 +44,7 @@ function fmt(args: unknown[]): string {
 export function mwaLog(...args: unknown[]) {
   lines.push(`${stamp()} ${fmt(args)}`)
   if (lines.length > MAX) lines.shift()
+  save()
   render()
 }
 
@@ -40,11 +52,23 @@ export function mwaLog(...args: unknown[]) {
 export function startMwaDebug() {
   if (hooked || typeof window === 'undefined' || !/android/i.test(navigator.userAgent)) return
   hooked = true
+  // Registro de antes de una recarga reciente (menos de 10 min): se recupera y se enseña
+  let reopen = false
+  try {
+    const prev = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { at: number; lines: string[] } | null
+    if (prev && Date.now() - prev.at < 10 * 60_000 && prev.lines.length) {
+      lines = [...prev.lines, `${stamp()} ---- PÁGINA RECARGADA ----`]
+      reopen = true
+    }
+  } catch {
+    // registro corrupto: se empieza de cero
+  }
   for (const level of ['warn', 'error'] as const) {
     const orig = console[level].bind(console)
     console[level] = (...args: unknown[]) => {
       lines.push(`${stamp()} ${level}: ${fmt(args)}`)
       if (lines.length > MAX) lines.shift()
+      save()
       render()
       orig(...args)
     }
@@ -52,6 +76,13 @@ export function startMwaDebug() {
   window.addEventListener('unhandledrejection', (e) => mwaLog('rechazo:', e.reason))
   window.addEventListener('error', (e) => mwaLog('error:', e.message))
   document.addEventListener('visibilitychange', () => mwaLog('visible:', document.visibilityState))
+  window.addEventListener('pagehide', (e) => mwaLog('pagehide, persisted:', e.persisted))
+  if (reopen) {
+    save()
+    const show = () => showMwaDebug()
+    if (document.body) show()
+    else document.addEventListener('DOMContentLoaded', show)
+  }
 }
 
 /** Muestra el recuadro (se llama al elegir Mobile Wallet Adapter). */
@@ -64,6 +95,10 @@ export function showMwaDebug() {
       'background:rgba(0,0,0,.92);color:#9f9;font:11px/1.35 monospace;padding:8px 8px 8px 8px;' +
       'border:1px solid #3a3;border-radius:8px;white-space:pre-wrap;word-break:break-all'
     box.addEventListener('click', () => {
+      lines = []
+      try {
+        localStorage.removeItem(KEY)
+      } catch {}
       box?.remove()
       box = null
     })
