@@ -20,6 +20,7 @@ import {
 } from '@/lib/wallets'
 import { MOBILE_WALLETS, isMobileDevice } from '@/lib/wallet-deeplinks'
 import { openExternal } from '@/lib/native-bridge'
+import { showMwaDebug } from '@/lib/mwa-debug'
 
 // Textos propios del selector (los diccionarios globales los edita otra tanda de trabajo en paralelo).
 const TEXT = {
@@ -108,6 +109,7 @@ function WalletPickerDialog({
   const [connecting, setConnecting] = useState<string | null>(null)
 
   const pick = async (id: string) => {
+    if (id === MWA_WALLET_NAME) showMwaDebug()
     setConnecting(id)
     try {
       onDone(await connectWallet(family, id))
@@ -139,7 +141,7 @@ function WalletPickerDialog({
           <DialogDescription>{family === 'solana' ? tx.solana : tx.evm}</DialogDescription>
         </DialogHeader>
 
-        {sorted.length > 0 ? (
+        {sorted.length > 0 && (
           <ul className="space-y-1.5">
             {sorted.map((w) => (
               <li key={w.id}>
@@ -163,9 +165,10 @@ function WalletPickerDialog({
               </li>
             ))}
           </ul>
-        ) : isMobileDevice() ? (
-          // Móvil (navegador o app de Cabal): no hay extensiones, así que se
-          // abre esta misma página dentro del navegador de la wallet.
+        )}
+        {isMobileDevice() ? (
+          // Móvil (navegador o app de Cabal): además de MWA, abrir esta misma
+          // página dentro del navegador de la wallet, que firma sin intents de por medio.
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">{tx.mobile}</p>
             <ul className="space-y-1.5">
@@ -183,7 +186,7 @@ function WalletPickerDialog({
               ))}
             </ul>
           </div>
-        ) : (
+        ) : sorted.length === 0 ? (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">{tx.none}</p>
             <ul className="space-y-1.5">
@@ -202,7 +205,7 @@ function WalletPickerDialog({
               ))}
             </ul>
           </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   )

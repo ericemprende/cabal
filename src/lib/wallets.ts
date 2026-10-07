@@ -1,5 +1,6 @@
 import bs58 from 'bs58'
 import { VersionedTransaction, type Transaction } from '@solana/web3.js'
+import { mwaLog, showMwaDebug, startMwaDebug } from '@/lib/mwa-debug'
 
 /**
  * Wallets del navegador, de cualquier marca — no solo Phantom y MetaMask.
@@ -172,6 +173,7 @@ export const MWA_WALLET_NAME = 'Mobile Wallet Adapter'
 
 async function startMobileWalletAdapter() {
   if (!/android/i.test(navigator.userAgent)) return
+  startMwaDebug()
   skipLoopbackPermissionModal()
   try {
     const mwa = await import('@solana-mobile/wallet-standard-mobile')
@@ -186,7 +188,9 @@ async function startMobileWalletAdapter() {
       chainSelector: mwa.createDefaultChainSelector(),
       onWalletNotFound: mwa.createDefaultWalletNotFoundHandler(),
     })
-  } catch {
+    mwaLog('MWA registrado')
+  } catch (e) {
+    mwaLog('MWA no se pudo registrar:', e)
     // sin MWA quedan los enlaces para abrir Cabal dentro de la wallet
   }
 }
@@ -206,6 +210,10 @@ function skipLoopbackPermissionModal() {
   try {
     perms.query = ((desc: PermissionDescriptor) => {
       if ((desc as { name: string }).name === 'loopback-network') {
+        original(desc).then(
+          (r) => mwaLog('permiso loopback real:', r.state),
+          (e) => mwaLog('permiso loopback real: error', e),
+        )
         return Promise.resolve({ state: 'granted', onchange: null } as unknown as PermissionStatus)
       }
       return original(desc)
@@ -285,7 +293,12 @@ export async function connectWallet(family: WalletFamily, id: string): Promise<s
   let address: string | undefined
   if (family === 'solana') {
     const w = findStd(id)
-    const res = await withTimeout((w.features['standard:connect'] as ConnectFeature).connect(), 120_000)
+    if (id === MWA_WALLET_NAME) mwaLog('connect: inicio')
+    const res = await withTimeout((w.features['standard:connect'] as ConnectFeature).connect(), 120_000).catch((e) => {
+      if (id === MWA_WALLET_NAME) mwaLog('connect: fallo', e)
+      throw e
+    })
+    if (id === MWA_WALLET_NAME) mwaLog('connect: ok', res.accounts.length, 'cuentas')
     const accounts = res.accounts.length ? res.accounts : w.accounts
     address = accounts.find((a) => a.chains.includes(SOLANA_MAINNET))?.address ?? accounts[0]?.address
   } else {
@@ -346,13 +359,22 @@ export async function solanaSignAndSend(tx: Transaction | VersionedTransaction):
   const { wallet, account } = solanaAccount()
   const bytes =
     'version' in tx ? tx.serialize() : tx.serialize({ requireAllSignatures: false, verifySignatures: false })
+  const mwa = wallet.name === MWA_WALLET_NAME
+  if (mwa) {
+    showMwaDebug()
+    mwaLog('firma: inicio')
+  }
   const [out] = await withTimeout(
     (wallet.features['solana:signAndSendTransaction'] as SignAndSendFeature).signAndSendTransaction({
       account,
       chain: SOLANA_MAINNET,
       transaction: bytes,
     }),
-  )
+  ).catch((e) => {
+    if (mwa) mwaLog('firma: fallo', e)
+    throw e
+  })
+  if (mwa) mwaLog('firma: ok')
   return bs58.encode(out.signature)
 }
 
