@@ -1,6 +1,6 @@
 import bs58 from 'bs58'
 import { VersionedTransaction, type Transaction } from '@solana/web3.js'
-import { mwaLog, showMwaDebug, startMwaDebug } from '@/lib/mwa-debug'
+import { mwaLog, startMwaDebug } from '@/lib/mwa-debug'
 
 /**
  * Wallets del navegador, de cualquier marca — no solo Phantom y MetaMask.
@@ -360,10 +360,7 @@ export async function solanaSignAndSend(tx: Transaction | VersionedTransaction):
   const bytes =
     'version' in tx ? tx.serialize() : tx.serialize({ requireAllSignatures: false, verifySignatures: false })
   const mwa = wallet.name === MWA_WALLET_NAME
-  if (mwa) {
-    showMwaDebug()
-    mwaLog('firma: inicio')
-  }
+  if (mwa) mwaLog('firma: inicio')
   const [out] = await withTimeout(
     (wallet.features['solana:signAndSendTransaction'] as SignAndSendFeature).signAndSendTransaction({
       account,

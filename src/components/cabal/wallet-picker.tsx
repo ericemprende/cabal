@@ -20,7 +20,6 @@ import {
 } from '@/lib/wallets'
 import { MOBILE_WALLETS, isMobileDevice } from '@/lib/wallet-deeplinks'
 import { openExternal } from '@/lib/native-bridge'
-import { showMwaDebug } from '@/lib/mwa-debug'
 
 // Textos propios del selector (los diccionarios globales los edita otra tanda de trabajo en paralelo).
 const TEXT = {
@@ -109,7 +108,6 @@ function WalletPickerDialog({
   const [connecting, setConnecting] = useState<string | null>(null)
 
   const pick = async (id: string) => {
-    if (id === MWA_WALLET_NAME) showMwaDebug()
     setConnecting(id)
     try {
       onDone(await connectWallet(family, id))

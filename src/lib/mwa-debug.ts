@@ -77,12 +77,8 @@ export function startMwaDebug() {
   window.addEventListener('error', (e) => mwaLog('error:', e.message))
   document.addEventListener('visibilitychange', () => mwaLog('visible:', document.visibilityState))
   window.addEventListener('pagehide', (e) => mwaLog('pagehide, persisted:', e.persisted))
-  if (reopen) {
-    save()
-    const show = () => showMwaDebug()
-    if (document.body) show()
-    else document.addEventListener('DOMContentLoaded', show)
-  }
+  // El recuadro ya no se abre solo; showMwaDebug() lo enseña cuando haga falta diagnosticar
+  if (reopen) save()
 }
 
 /** Muestra el recuadro (se llama al elegir Mobile Wallet Adapter). */
