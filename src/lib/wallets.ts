@@ -244,6 +244,16 @@ export function connectedWallet(family: WalletFamily): (Connected & { name: stri
   return w ? { ...c, name: w.name } : null
 }
 
+/**
+ * MWA abre la wallet con un intent, y Chrome solo deja lanzarlo justo después
+ * de un toque. Conectar y luego firmar en la misma pulsación abre la wallet
+ * dos veces: la segunda se pierde y Solflare se abre sin pedir nada. Con MWA
+ * cada apertura de la wallet necesita su propio toque.
+ */
+export function isMwaConnected(): boolean {
+  return connected.solana?.walletId === MWA_WALLET_NAME
+}
+
 export function disconnectWallet(family: WalletFamily) {
   connected[family] = null
   emit()

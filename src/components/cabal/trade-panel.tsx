@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useBuildBuy, useBuildBuyEvm, useBuildSell, useConfirmSwap, useConfirmSwapEvm, useSwapConfig, useSwapConfigEvm, useTokenBalance } from '@/lib/api-client'
 import { ensureEvmChain, EVM_EXPLORER, isEvmNetwork, signAndSendEvmBuy, type EvmNetwork } from '@/lib/evm-wallet'
-import { disconnectWallet, isUserRejection, solanaSignAndSend } from '@/lib/wallets'
+import { disconnectWallet, isMwaConnected, isUserRejection, solanaSignAndSend } from '@/lib/wallets'
 import { useConnectedAddress, useWalletPicker } from '@/components/cabal/wallet-picker'
 
 /**
@@ -89,6 +89,13 @@ export function TradePanel({
   // Abre el selector de wallets si todavía no hay una conectada en esta página
   const connect = (): Promise<string | null> => requestWallet()
 
+  // Con Mobile Wallet Adapter cada firma necesita su propio toque (ver isMwaConnected)
+  const mwaNeedsTap = (verb: string): boolean => {
+    if (!isMwaConnected()) return false
+    toast.success('Wallet lista', { description: `Toca ${verb} otra vez para firmar en tu wallet.` })
+    return true
+  }
+
   const buyEvmNow = async (pk: string) => {
     const usd = Number(amount)
     setBusy(true)
@@ -123,6 +130,7 @@ export function TradePanel({
     if (!(usd > 0)) return
     const pk = pubkey ?? (await connect())
     if (!pk) return
+    if (!pubkey && !isEvm && mwaNeedsTap('Comprar')) return
 
     if (isEvm) {
       await buyEvmNow(pk)
@@ -137,6 +145,7 @@ export function TradePanel({
       if (res.createFeeAccountTx) {
         const setupTx = Transaction.from(Buffer.from(res.createFeeAccountTx.base64, 'base64'))
         await solanaSignAndSend(setupTx)
+        if (mwaNeedsTap('Comprar')) return
       }
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
@@ -163,6 +172,7 @@ export function TradePanel({
     if (!(pct > 0 && pct <= 100)) return
     const pk = pubkey ?? (await connect())
     if (!pk) return
+    if (!pubkey && mwaNeedsTap('Vender')) return
     setBusy(true)
     try {
       const res = await sell.mutateAsync({ inputMint: contract, percent: pct, userPublicKey: pk })
@@ -171,6 +181,7 @@ export function TradePanel({
       if (res.createFeeAccountTx) {
         const setupTx = Transaction.from(Buffer.from(res.createFeeAccountTx.base64, 'base64'))
         await solanaSignAndSend(setupTx)
+        if (mwaNeedsTap('Vender')) return
       }
 
       const swapTx = VersionedTransaction.deserialize(Buffer.from(res.swapTransaction.base64, 'base64'))
